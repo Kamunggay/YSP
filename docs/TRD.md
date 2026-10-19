@@ -738,13 +738,15 @@ These are required future demonstrations, not passed tests. AC-01–AC-23 and ev
 ## Appendix B: Domain glossary
 
 Use the following terms consistently in implementation, screens, forms, tests and officer communication. Supplier DR and customer DR are distinct source/handover contexts. A chapter is an organizational unit; one person may have several operational roles without becoming several independent approvers.
-The language used for YSP chapter requisitions, merchandise sales, inventory, purchasing, and receiving.
 
 ### Organization and people
 
 **Chapter**:
 A local YSP organizational unit, such as YSP Cebu or YSP Liloan.
 _Avoid_: Branch, tenant
+
+**Event**:
+A named chapter occasion that may provide the permitted-use context for goods. Its booth operation additionally records approved stock custody, trading and close-out.
 
 **Committee requester**:
 An authorized chapter member who requests goods for a committee or department.
@@ -779,7 +781,7 @@ _Avoid_: Available-to-allocate stock
 Usable stock committed to an approved requisition or sales order and awaiting handover. RF-reserved and SO-reserved quantities remain separately identifiable; reservation does not remove units from usable on-hand.
 
 **Available-to-allocate stock**:
-Usable on-hand stock that has no active reservation.
+Usable stockroom stock eligible for the intended demand, excluding active reservations and applicable holds.
 _Avoid_: Usable on-hand stock
 
 **Quarantined stock**:
@@ -820,6 +822,14 @@ _Avoid_: Proof of full settlement
 The portion of a verified buyer payment attributed to specified order items or quantities.
 _Avoid_: New payment
 
+**Procurement-funding designation**:
+The portion of verified buyer credit designated to the approved cost of a particular accepted backorder. The designation does not create another payment or consume that credit a second time.
+_Avoid_: Supplier payment, additional buyer charge
+
+**Release coverage**:
+Verified buyer credit allocated to the merchandise value of specified quantities awaiting or undergoing handover. Coverage is consumed only for the actual quantities handed over.
+_Avoid_: Procurement funding, proof of full-order settlement
+
 **Funded backorder commitment**:
 An accepted order shortage supported by a verified downpayment allocated to its approved procurement cost.
 _Avoid_: Fully paid merchandise
@@ -846,6 +856,10 @@ The record of accepted goods inspected against a PO, DA, or IPC.
 **Restricted donation stock**:
 Donated goods whose eligibility for sale or internal use is limited by donor conditions.
 _Avoid_: Unrestricted merchandise
+
+**Uninterpreted donor condition**:
+A donor condition whose permitted use has not been recorded in the supported restriction vocabulary. The affected goods remain unavailable for allocation until an authorized interpretation or resolution makes eligibility expressible.
+_Avoid_: Unrestricted stock, ordinary allocation override
 
 **Reorder point (ROP)**:
 An approved item-level threshold marking low usable stockroom stock.

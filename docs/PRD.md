@@ -576,7 +576,7 @@ _Avoid_: Available-to-allocate stock
 Usable stock committed to an approved requisition or sales order and awaiting handover. RF-reserved and SO-reserved quantities remain separately identifiable; reservation does not remove units from usable on-hand.
 
 **Available-to-allocate stock**:
-Usable on-hand stock that has no active reservation.
+Usable stockroom stock eligible for the intended demand, excluding active reservations and applicable holds.
 _Avoid_: Usable on-hand stock
 
 **Quarantined stock**:
