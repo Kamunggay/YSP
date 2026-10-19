@@ -2,9 +2,9 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Architecture overview aligned to agreed requirements and verified prototype; implementation and verification remain separate |
-| Updated | 15 October 2026 |
-| Requirements authority | [TRD.md](./TRD.md), version 2.0; [PRODUCT.md](./PRODUCT.md), version 1.1; [APP-FLOW.md](./APP-FLOW.md) (including Perspective 4 Operations Architecture Map, S-01–S-22) |
+| Status | Reconciled architecture review candidate; adopted design, no prototype or implementation verification claimed |
+| Updated | 19 October 2026 |
+| Requirements authority | [TRD.md](./TRD.md), version 2.1 review candidate; [PRD.md](./PRD.md), version 1.2 review candidate; [APP-FLOW.md](./APP-FLOW.md) (including Perspective 4 Operations Architecture Map, S-01–S-22) |
 | Launch | One organization, Cebu pilot, four individual internal users |
 | Deployment | React/TypeScript; modular Laravel; private MySQL; Docker Compose on one 4 GB Lightsail host |
 
@@ -22,17 +22,17 @@ flowchart TB
         subgraph LaravelApp["Modular Laravel API Process"]
             Pipeline["HTTP Transport Controls<br/>HttpOnly Session and CSRF<br/>MFA for Approvers and Administrators<br/>Validated Requests and Operation Identity"]
             AppOps["Application Operations<br/>Shared Entry for HTTP and Background Work<br/>Server-Controlled Authority, Versions and Outcomes"]
-            ExecutionGate["Three-Tier RBAC & Execution Policies (TR-17, TR-30)<br/>Tier 1: Tenancy Boundary (chapter_id isolation)<br/>Tier 2: 15 TRD Role Grants (duty_grants)<br/>Tier 3: Runtime Invariants (GOV-05, GOV-06, GOV-07)<br/>Business Posting / Scoped Read-Export / Essential Control"]
+            ExecutionGate["Three-Tier RBAC & Execution Policies (TR-17, TR-30)<br/>Tier 1: Tenancy Boundary (chapter_id isolation)<br/>Tier 2: 14 Chapter Duty Grants (duty_grants)<br/>Tier 3: Runtime Invariants (GOV-05, GOV-06, GOV-07)<br/>Business Posting / Scoped Read-Export / Essential Control"]
             TxCoordinator["One Operation-Owned MySQL Transaction (TR-10–TR-14)<br/>Fresh Authority, Independent Approval, Policy and Version Checks<br/>Stock, Funding and Evidence Checks under Consistent Locks<br/>One Commit across Participating Modules"]
             ScopedReads["Authorized Queries and Output Delivery<br/>Chapter and Duty Scope, Current Access Recheck<br/>Grace Permits Scoped Read/Export"]
 
             subgraph DomainModules["Seven Modules in One Laravel Application (TR-02)"]
                 direction TB
                 subgraph ModAdmin["Access and Chapter Administration"]
-                    ChapterAdmin["Memberships, 15 TRD Roles, Alternates and Versioned Policies<br/>Opening/Stage Activation and Entitlement History"]
+                    ChapterAdmin["Memberships, 14 Chapter Duties, Alternates and Versioned Policies<br/>Opening/Stage Activation and Entitlement History"]
                     ProviderAdmin["Controlled Provider/Provisioning Administration (GOV-03)<br/>Chapter and Initial Head Provisioning<br/>Subscription Verification, Extension and Reactivation<br/>Provider Admin Isolated from Operational Sign-Offs"]
                 end
-                ModRF["Requisitions and Fulfillment<br/>RF Review, Revision, Shortage and Partial Signed Issue<br/>Scoped 48h Clocks and Custody Assignment"]
+                ModRF["Requisitions and Fulfillment<br/>RF Review, Revision, Shortage and Partial Signed Issue<br/>RF Custody Assignment; Unpaid SO Clocks in Sales"]
                 ModPurchasing["Purchasing and Receiving Coordination<br/>RepF Net Need, Budget, Quotations and PO<br/>PO/Supplier DR, DA or IPC Inspection and Discrepancies"]
                 ModBooth["Booth Operations<br/>Signed Checkout, Event Custody & Stepper Sales (S-15)<br/>Float Accounting: Float PHP 2k + Sales PHP 4.5k = PHP 6.5k Remittance (BTH-06)<br/>Independent Recounts, Returns and Remittance Close-Out"]
 
@@ -110,69 +110,33 @@ All business mutations persist the chapter/action/idempotency key, payload finge
 
 Actual cash, GCash credit and physical handover remain real-world facts even if a database action fails. Uncertain outcomes require reconciliation; neither rollback nor retry permits a second physical handover or receipt (TR-11; SEC-06).
 
-## Three-Tier RBAC & Segregation of Duties Engine
+## Three-layer authorization
 
-To balance developer ergonomics, audit enforceability, and operational flexibility across small chapter officer teams, the backend implements a **Three-Tier Lightweight RBAC Engine** (TR-17) rather than brittle account-level permission checkboxes or flat 50+ permission enums per user:
+1. **Identity and membership:** Scope chapter operations to explicit current membership; audit the authority used. Provider/provisioning roles grant no automatic chapter operational authority. The same individual may receive separately approved chapter membership and duty grants; operational actions must use and audit that chapter authority and satisfy the same independence checks. Provider-role possession alone never satisfies an operational sign-off.
+2. **Duties and permissions:** Use the fourteen chapter duties in [embedded duty and permission matrix](TRD.md#appendix-d-shared-role-matrix-and-candidate-control), granted through chapter memberships. System provisioning, subscription billing and technical recovery use separate provider-role grants. Do not grant launch buyer/member access. Four-person assignments are provisional until approved; no fixed user-ID matrix controls authorization.
+3. **Contextual checks:** Apply independent review to the relevant action: own RF approval blocked, Inventory cannot approve its own purchase, ordinary ADJ preparer cannot be sole approver, and booth custody/cashiering needs another independent close-out reviewer. Count variances require Chapter Head and Finance approval by at least two distinct authorized people. The count preparer and the custodian whose stock is being checked cannot approve that variance. If one person holds both approving duties, retain both duty decisions and require an authorized independent co-approver, or use an approved alternate for a duty. No preparer/custodian may serve as that fallback. Missing independent coverage blocks approval; holding multiple roles does not bypass it.
 
-1. **Tier 1 — Tenancy Boundary (`chapter_id` Isolation):**
-   - Every operational query, command, and transaction is strictly scoped by `chapter_id`.
-   - Provider/provisioning administration is strictly segregated from chapter operations: Provider Admin (`USR-PROV-99`) is hard-blocked from operational sign-offs, releasing inventory, or modifying chapter collections (`GOV-03`).
-
-2. **Tier 2 — 15 TRD Role Grants (`duty_grants` Mapping):**
-   - Instead of assigning 50+ granular checkboxes directly to individual users (which causes permission rot when volunteer officers transition), the system defines 15 canonical operational roles derived from TRD duties:
-     `CH_HEAD`, `CH_FIN`, `CH_OPS`, `CH_REQ`, `CH_AUD`, `INV_MGR`, `BOOTH_CUST`, `BOOTH_CASH`, `PURCH_OFF`, `REC_OFF`, `SALES_OFF`, `DON_OFF`, `DISP_OFF`, `MEMBER`, `SYS_ADMIN`.
-   - For the Cebu 4-officer pilot, duties are mapped explicitly:
-     - `USR-CEB-01` (Chapter Head): Executive approvals, IPC opening baseline, final variance resolution.
-     - `USR-CEB-02` (Finance Officer/Treasurer): Payment verification, OR issuance, disbursement approvals, variance co-approval.
-     - `USR-CEB-03` (Operations/Logistics Officer): Receiving inspection (RM), stockroom custody, booth checkout/close-out, count preparation.
-     - `USR-CEB-04` (Requisitioner/Auditor): Internal RF creation, independent physical recounts, audit reviews.
-
-3. **Tier 3 — Runtime Contextual Invariants (Transaction-Enforced):**
-   - Role possession is necessary but not sufficient; business invariants are evaluated dynamically inside the operation transaction under consistent locks:
-     - **Strict Segregation of Duties (`GOV-05`):** The transaction rejects any operation where `actor_id == preparer_id`. A preparer cannot approve their own requisition, receiving report, or adjustment.
-     - **Dual Co-Approval on Count Variances (`GOV-06`):** Material adjustments and count discrepancies require two distinct authorized approvals: Chapter Head (`USR-CEB-01`) AND Finance (`USR-CEB-02`). The count preparer (`USR-CEB-03`) is hard-blocked from acting as approver (`actor_id != preparer_id`).
-     - **Alternate & Fallback Segregation (`GOV-07`):** When volunteer officers hold combined roles, dual-approval workflows mandate co-signature by an independent alternate officer; one physical user cannot satisfy both required approval steps.
-
-```mermaid
-flowchart TD
-    subgraph Tier1["Tier 1: Tenancy Boundary"]
-        Tenant["chapter_id Multi-Tenant Isolation<br/>Provider Admin (USR-PROV-99) Quarantined from Ops (GOV-03)"]
-    end
-
-    subgraph Tier2["Tier 2: 15 TRD Role Grants"]
-        Roles["15 Canonical Operational Roles (roles & duty_grants)<br/>Mapped to Pilot Users: USR-CEB-01 to USR-CEB-04<br/>Prevents Permission Rot & Simplifies Officer Turnover"]
-    end
-
-    subgraph Tier3["Tier 3: Runtime Contextual Invariants (Inside TxCoordinator)"]
-        Gov05["GOV-05: Preparer != Approver<br/>actor_id != preparer_id"]
-        Gov06["GOV-06: Dual Co-Approval<br/>Distinct Chapter Head & Finance Sign-Offs<br/>Preparer (USR-CEB-03) Hard-Blocked"]
-        Gov07["GOV-07: Alternate Fallback<br/>Independent Alternate Required if Roles Overlap"]
-    end
-
-    Tier1 --> Tier2 --> Tier3 --> Commit["TxCoordinator Atomic Commit"]
-```
+There is no rule rejecting every operation by its preparer. A receiving officer may prepare and post an inspected RM when authorized, after valid-source, quantity, evidence, immutable-history and idempotency checks. Recheck authority/version, entitlement, duty scope and independent actors inside the operation transaction. HTTP, queued work, files and reports share these policies. Restrict and audit infrastructure access through approved support/recovery procedures.
 
 ## Ownership of inventory, finance and adjustments
 
 The shared inventory operations belong to **Inventory and custody**. The shared financial operations belong to **Sales and finance**. They are module-owned operations in the same Laravel application. Controllers, report jobs and scheduled work use authorized application operations and cannot write stock or money around them (TR-02).
 
-### The Six Stock Balance Silos (INV-03, TR-08)
+### Seven related stock views (INV-03, TR-08)
 
-Inventory balances are projected into six distinct, strictly tracked silos:
-1. **Usable Stockroom:** Uncommitted physical inventory in primary storage available for general allocation.
-2. **Available-to-Allocate:** Usable stockroom balance minus active reservations (`RSV-01`) and active holds.
-3. **Active Reservations:** Quantities allocated to confirmed orders under active 48-hour clocks (`RSV-01`–`04`).
-4. **Booth Custody Stock:** Inventory checked out to a specific event/booth location (`stock_locations.location_kind = 'booth'`). **Crucial Invariant:** Live booth sales (`ModBooth`) decrement **Booth Custody Stock ONLY**; primary stockroom positions are never touched during live selling.
-5. **Quarantined / Damaged:** Physically isolated non-usable inventory awaiting inspection, supplier claim, or disposal (`stock_conditions.usable = 0`).
-6. **Inbound Open PO:** Supplier purchase quantities confirmed and ordered, but not yet accepted via Receiving Report (`RM`).
+1. **Usable stockroom on-hand:** Accepted usable units physically held in the stockroom, including RF/SO-reserved units; excludes booth custody and quarantine/rejected goods.
+2. **Available-to-allocate:** Eligible usable on-hand minus RF and SO reservations and applicable holds, with held/reserved intersections counted once. Eligibility is evaluated by lot, restriction, condition and purpose.
+3. **RF-reserved:** Outstanding stock committed to approved internal or booth-checkout RFs. No unpaid-sales expiry clock applies.
+4. **SO-reserved:** Outstanding stock committed to approved SO quantities. Only unpaid available-stock quantities use RSV-01 expiry; paid/funded protected quantities follow RSV-02/RSV-10.
+5. **Booth custody:** Units checked out to a named event custodian. Booth sales reduce eligible booth custody once; they do not deduct stockroom stock again.
+6. **Quarantined/rejected:** Physically held unavailable units, separately visible until authorized treatment. They are not inbound supply or available stock.
+7. **Inbound open PO:** Approved supplier commitments not yet accepted through RM. They are not on-hand or available.
 
-### Custody and Cash Float Accounting Formula (BTH-06)
+These are related reporting views, not mutually exclusive physical buckets to sum. For example, 10 usable on-hand with 7 reserved and no holds gives 3 available; on-hand remains 10. RF and SO reserved subtotals remain separately visible.
 
-Booth operations enforce strict segregation between operational revenue and custodial liabilities:
-- **Custodial Cash Float Liability:** The opening cash float of **PHP 2,000.00** issued to the cashier is a custody liability, strictly excluded from sales revenue.
-- **Remittance Formula:**
-  $$\text{Remittance Due} = \text{Opening Float (PHP 2,000.00)} + \text{Cash Sales (PHP 4,500.00)} = \text{PHP 6,500.00 Physical Cash}$$
-- Close-out reconciles physical cash, GCash digital collections, and unsold merchandise returned to the stockroom via dual-signature count.
+### Cash float and reconciliation (BTH-06)
+
+Record approved float issued and returned separately from buyer receipts and sales revenue. Reconcile actual cash and official-account GCash independently. At the start of reconciliation, expected physical cash still due equals float issued plus verified cash sales, less executed authorized cash refunds, prior verified cash deposits/remittances and separately recorded verified float returns. Do not subtract one transfer twice: a float return is recorded only in float movements, a sales remittance only in remittances. Each prior movement is recognized once. Do not net GCash against physical cash or receive it again. Show float still due, sales cash still due, actual counted cash and any difference separately; a difference requires investigation and approved resolution. Example only: PHP 2,000 float + PHP 4,500 cash sales = PHP 6,500 physical cash before any refund, deposit or return; PHP 3,000 GCash reconciles separately. Amounts, item codes, account identities, payment references and schedules are approved setup/scenario inputs, not fixed policy.
 
 | Responsibility | Owning/coordinating modules and controls |
 | --- | --- |
@@ -207,17 +171,17 @@ Uploads use validated staging and immutable hash/version binding to the authoriz
 
 ### Dual-Mode Signature Capture Architecture (DOC-08, TR-15)
 
-Customer release (`S-07`), requisition issue (`S-05`), and stock count acknowledgments support two distinct verification capture modes:
+Customer release and requisition issue (`S-07`), plus required count acknowledgments, support two signature evidence capture modes:
 - **Method A — Live Digital Signature Pad:**
   - Client-side HTML5 Canvas capturing pen/touch vector coordinates.
   - Dynamically smoothed with quadratic Bezier curves (`smoothSignatures`) to eliminate jagged volunteer signatures.
   - Interactive Clear and Redo actions; exports dual formats (PNG base64 raster and vector path array).
 - **Method B — Signed Paper Form Scan / Upload:**
   - File upload (`image/*`, `application/pdf`) for physical wet-signed delivery receipts or counter sheets.
-  - Pre-upload validation for MIME-type, size boundaries (bounded to 10 MB), and malware/integrity checks.
+   - Client preview and size/type feedback; server validation of actual content/type, configured size limit and file integrity before evidence is ready. A 10 MB limit is an implementation planning example, not approved chapter policy.
 - **Cryptographic Binding Invariant:**
-  - Both Method A and Method B produce a canonical SHA-256 evidence digest (`content_hash`) in `evidence_objects`.
-  - Immutable binding links the hash, signee name, title/capacity, and capture timestamp to the target record (`acknowledgments`, `evidence_bindings`) before the MySQL transaction commits.
+   - For both methods the server computes SHA-256 of the stored file bytes as `evidence_objects.content_hash`; `evidence_bindings.bound_hash` pins that file and object version. A client-supplied digest is not sufficient validation.
+   - `acknowledgments.acknowledged_snapshot_hash` separately hashes the exact canonical recipient/batch business snapshot. Bind file evidence and acknowledgment to that same handover before commitment; changed material quantities or recipient require fresh evidence. Hashes establish integrity, not signatory identity.
 
 ### Financial and Goods Release Gates (PAY-02, SO-08)
 

@@ -1,16 +1,17 @@
 # YSP Chapter Operations — Application Flow
 
+
 | Field | Value |
 | --- | --- |
-| Status | Complete flow draft; Q1–Q19 agreed; final shared-understanding confirmation pending |
-| Date | 14 October 2026 |
-| Sole requirements baseline | [TRD.md](./TRD.md), version 2.0 |
+| Status | Reconciled flow review candidate; original flow Q1–Q19 retained; adopted additions UI-Q20–UI-Q26 recorded for review |
+| Date | 19 October 2026 |
+| Requirements baseline | PRD.md v1.2 review candidate; TRD.md v2.1 review candidate; PRD section 21 |
 | Launch scope | One organization, Cebu pilot, four individual internal users |
 | Delivery sequence | App flow → UI prototype if needed → implementation tickets → fresh context per ticket |
 
 ## Authority and scope
 
-This document translates the TRD into officer-facing screens, navigation and journeys. The TRD remains the requirements authority. Preserve its requirement IDs, glossary and explicit ambiguity resolutions; flow decision labels do not create or replace requirement IDs. No other requirements document is a baseline for this interview.
+This review document translates the reconciled PRD/TRD into officer-facing screens, navigation and journeys. The candidate PRD defines product behavior and the candidate TRD specifies technical controls; both incorporate the dated decisions embedded in PRD section 21. Preserve its requirement IDs, glossary and explicit ambiguity resolutions; flow decision labels do not create or replace requirement IDs. The review PRD states product behavior; the review TRD states technical controls. PRD section 21 records this reconciliation, including the deliberate count-variance policy extension.
 
 React/TypeScript, a modular Laravel API, MySQL and the approved low-cost single-host deployment remain settled (TR-01–TR-05; TR-25–TR-26). This phase does not implement the application, deploy it, create implementation tickets or choose final visual styling.
 
@@ -66,19 +67,21 @@ The user accepted all first-round recommendations (Q1–Q7) and all second-round
 | Q18 — Readiness and service restrictions | Checklist sections: people/authority, policy/master data, opening/carried obligations, recovery/release evidence and commercial readiness. Link to scoped preparation/approval screens. Explain the enabled rollout stage and trial start in activation confirmation. Display trial/paid-through/grace status and scoped read/export access. Maintenance/recovery notices show affected operation blocks, next update and manual booth guidance when applicable; provider controls remain separate. | GOV-08–GOV-09; MIG-01–MIG-08; SEC-05–SEC-06; SUB-01–SUB-06; TR-21; TR-24; TR-30 |
 | Q19 — Reports and background output | Report catalogue grouped by inventory, demand/procurement, finance/booths and controls. Filter/preview before PDF/CSV output. Show report time, actual versus entry date basis, units/currency and scope. A small output/job panel shows pending, ready or failed with responsible operator and authorized retry; regenerating output reuses issued document identity and never reposts business effects. | RPT-03–RPT-07; DOC-06–DOC-07; DOC-11; SEC-02–SEC-03; TR-04; TR-15; TR-18 |
 
-### Agreed third-round prototype & architecture decisions
+### Adopted additions — UI-Q20–UI-Q26
 
-The prototype evaluation and architectural review on 15 October 2026 confirmed decisions Q20–Q26, fully aligned with the TRD v2.0 baseline and verified in the interactive UI prototype (`ysp_chapter_operations_ui.html`).
+The user authorized the recommended additions and corrections for this review package on 19 October 2026. These UI-prefixed labels replace the pulled document's colliding Q20–Q26 prototype labels; original product interview numbering remains unchanged. Design adoption does not establish a tested prototype or software. The referenced HTML prototype was not supplied in this checkout; no prototype verification is claimed.
 
-| Decision | Agreed interaction package | Requirement trace |
+| Decision | Adopted behavior | Requirement trace |
 | --- | --- | --- |
-| Q20 — Bird's-Eye Operations Architecture Map | Provide a dedicated high-level operations architecture view (Perspective 4) with 5 interactive sub-flows: (1) 5-Swimlane End-to-End System Map, (2) Money, Collections & Official Receipts Flow, (3) Physical Stocks, Lots & Custody Flow (6 balance silos), (4) Dual Governance & Segregation of Duties Matrix, and (5) Live Scenario Flow Tracer with Persistent Interactive Node Inspector linking all 22 screens. | GOV-01–GOV-07; PAY-01–PAY-12; INV-01–INV-14; BTH-01–BTH-14; TR-08–TR-10 |
-| Q21 — Work queue dynamic filtering | S-02 My Work provides zero-reload dynamic row filtering across "Needs my action", "Waiting on others", and "Resolved/history" queues, preserving urgency sorting, uncertain posting alerts at top, and duty tags. | RPT-01–RPT-02; UX-01–UX-03; GOV-04–GOV-07 |
-| Q22 — Zero-flicker demand workspace tabs | S-04 Demand Workspace uses in-place DOM tab switching (`switchDemandTab`) across Summary & Review, Lines & Clocks, Connected Documents (SI/OR/DR/RepF), and Version/Approval Audit History, maintaining scroll position and form context without page reload. | DOC-02–DOC-05; TR-09; UX-01–UX-04 |
-| Q23 — Interactive HTML5 Canvas signature pad | S-07 Allocation & Handover implements dual-mode signatory evidence capture: Method A offers an interactive HTML5 Canvas with Bezier curve smoothing, Clear/Redo controls, and base64 vector export; Method B provides paper scan upload. Both methods compute SHA-256 evidence digests before customer DR / IS-AR posting. | DOC-08; RF-04; SO-09; BTH-02; BTH-08; TR-11; TR-15 |
-| Q24 — Booth selling steppers and cart controls | S-15 Booth Sale includes responsive increment/decrement quantity steppers (`+`/`-`), direct numeric inputs, a 1-click cart reset, and complete catalog listing including merchandise kits (`YSP-KIT-STD`). Sales decrement Booth Custody Stock only. | BTH-03–BTH-05; BTH-04; INV-03; PAY-01–PAY-04; UX-01–UX-03 |
-| Q25 — Strict dual-approval enforcement | S-18 Claims, Counts & ADJ strictly enforces GOV-06: physical count variances require co-approval by Chapter Head (`USR-CEB-01`) and Finance Officer (`USR-CEB-02`). Count preparers (`USR-CEB-03`) are hard-blocked from approving own counts. Provider Administrator (`USR-PROV-99`) is disabled from operational sign-offs. | GOV-03; GOV-05–GOV-07; ADJ-01–ADJ-10; TR-05; TR-10; TR-17 |
-| Q26 — Lightweight RBAC architecture | Access control uses Role-Based Access Control (RBAC) mapping the 15 standard TRD duties to users via role assignments, combined with application-level contextual invariant checks (`actor_id != preparer_id`, dual-signoff on count variances, custody isolation), avoiding brittle account-level toggles and permission enum bloat. | GOV-01–GOV-07; SEC-01–SEC-03; TR-05; TR-10; TR-17 |
+| UI-Q20 — Operations map | Five scoped views: end-to-end workflow, money, seven stock views/custody, duty matrix, scenario tracer and node inspector linking S-01–S-22. Supporting view delivered after core workflows; accessible text alternative; illustrative data labeled. | ADD-01; ADD-08; GOV-01; SEC-03 |
+| UI-Q21 — Queue filters | In-place action/waiting/history filters; uncertainty first, urgency preserved, scoped loading/error/empty states. | ADD-02; ADD-08; RPT-01; UX-01–UX-04 |
+| UI-Q22 — Demand tabs | Summary, Lines & Clocks, Documents, History; preserve context, require explicit save/discard, no silent stale merge. | ADD-03; DOC-02–DOC-05; UX-02 |
+| UI-Q23 — Signatures | Canvas with smoothing and Clear/Redo plus signed-paper upload fallback; recipient/batch preview; server-validated ready evidence and separate file/snapshot integrity. | ADD-04; DOC-08; TR-15 |
+| UI-Q24 — Booth cart | Quantity buttons/input/reset with permitted precision, approved catalog and fresh stock/payment validation; uncertain-sale lookup; no posted-sale reversal from reset. | ADD-05; BTH-03–BTH-05; DOC-11 |
+| UI-Q25 — Variance independence | No approval by the count preparer or affected custodian; Head/Finance approvals and independent fallback by eligible people. Ordinary claims retain configured approval. | ADD-06; GOV-05–GOV-06; ADJ-04 |
+| UI-Q26 — Three-layer RBAC | Identity/chapter membership, canonical duty permissions and action-specific invariant checks. Provider membership requires separate approval. Staffing remains provisional. | ADD-07; GOV-01–GOV-07; TR-17 |
+
+Detailed observable behavior and future acceptance scenarios are in PRD section 20; shared resolutions are in PRD section 21.
 
 ## Flow and screen notation
 
@@ -105,22 +108,22 @@ Phone and desktop use the same destinations and business flows. Exact navigation
 | S-05 SO list & editor | Sales | Buyer record entered by Sales; terms/prices/discounts, quantities, arrangement/date; review; acceptance and contact log. No buyer login screen. | Sales and authorized Sales/Finance reviewer; SO-01–SO-07; SO-11–SO-12; RPT-02 |
 | S-06 Payment & coverage | Finance / linked SO | Evidence, actual receipt/verification times, channel/account/reference and actors; OR issue/registration; allocations, funding designation, release coverage, credit/balance and refunds/reversals. Sales Invoice is billing only; release gated 100% on verified OR payment coverage. | Authorized collectors, Finance and scoped Sales read access; PAY-01–PAY-12; RSV-02; RSV-05–RSV-09; SEC-03 |
 | S-07 Allocation & handover batch | Inventory / linked demand | Eligible source quantities and restrictions; priority explanation; fresh limits, actual issue/release quantities and remaining demand; customer DR / IS-AR; dual-mode signature capture via interactive HTML5 Canvas pad (Bezier curves, Clear/Redo) or paper scan upload, generating verified SHA-256 evidence digests before posting. | Inventory/Dispatch, authorized recipients and applicable reviewers; INV-02–INV-09; RF-04–RF-08; SO-08–SO-10; DOC-08; TR-11; TR-15 |
-| S-08 Inventory overview & item | Inventory | Items/variants/units, prices/ROP/target history; source lots; 6 balance silos (usable on-hand, availability, RF/SO reservations, booth custody, quarantine/rejected and inbound open PO) shown strictly separate; movement drill-down. | Inventory and other specifically authorized duties; INV-01–INV-14; RPT-03; TR-07–TR-08 |
+| S-08 Inventory overview & item | Inventory | Items/variants/units, approved price/ROP/target history; source lots; seven separate related views: usable on-hand including reserved goods, available, RF-reserved, SO-reserved, booth custody, quarantine/rejected and inbound PO; movement drill-down. | Scoped authorized duties; INV-01–INV-14; RPT-03; TR-07–TR-08 |
 | S-09 Reservations & shortages | Inventory / linked demand | Parent/line quantity, history, expiry/protection and consumed/released quantities; low stock/net need; existing RepF/PO coverage; overrides through approval. Two 48-hour elapsed clocks tracked separately. | Inventory with Sales/Purchasing views as authorized; INV-04–INV-12; RSV-01–RSV-10; PRC-01–PRC-03 |
 | S-10 RepF workspace | Purchasing & receiving | Trigger/demand links, uncovered need components, urgency, estimates/funding, OR allocation gate; budget review, return/hold/cancel and revisions. | Inventory preparer, Purchasing and independent budget authority; PRC-01–PRC-04; PRC-08–PRC-09; GOV-05; RSV-05–RSV-06 |
 | S-11 Quotations & PO | Purchasing & receiving | Like-for-like comparison; selection rationale, policy/emergency approvals; PO review/issue, acknowledgment, quantities, terms, date and changes; outstanding/disputed supply. | Purchasing and applicable independent budget/purchase authority; PRC-05–PRC-09; GOV-10–GOV-11 |
 | S-12 Receiving & discrepancies | Purchasing & receiving | Select approved PO plus supplier DR, DA or IPC; actual inspection counts/specification; accepted/rejected/held/missing quantities; accepted RM posting and separate correction/follow-up. | Receiving, required representatives, Inventory and authorized source reviewers; RCV-01–RCV-07; RCV-09–RCV-13; INV-07; INV-14 |
 | S-13 Donation & opening sources | Inventory / readiness links | DA acknowledgment/restrictions/valuation; IPC cutoff, independent counts, signatures, condition/location and one-baseline status; links to RM. | Authorized donation/count officers, Chapter Head, Finance, independent counter and Receiving; RCV-08–RCV-13; MIG-01–MIG-04 |
-| S-14 Booth event & checkout | Booths | Event RF, approved prices/cash float (PHP 2,000 custody liability, not revenue), custodian/cashier, schedule; approved signed checkout and opening custody; event workspace. | Booth requester/custodian/cashier, Inventory, approvers and Finance within their duties; BTH-01–BTH-02; BTH-06; RF-01–RF-08 |
-| S-15 Booth sale | Booths / selected event | Eligible event stock → items/quantities via increment/decrement steppers (`+`/`-`), numeric entry, and cart reset → cash/actual official GCash verification → review → sale/OR outcome. Includes all merchandise catalog lines (`YSP-KIT-STD`). Sale decrements Booth Custody Stock only. Out-of-stock/custom demand links to Sales for Track 1. | Authorized booth cashier; BTH-03–BTH-05; PAY-01–PAY-04; UX-01–UX-03 |
+| S-14 Booth event & checkout | Booths | Event RF, approved configurable price list/float, custodian/cashier and schedule; signed checkout into event custody. Float is separate from revenue. | BTH-01–BTH-02; BTH-06; RF-01–RF-08 |
+| S-15 Booth sale | Booths / selected event | Eligible event stock → items/quantities via increment/decrement steppers (`+`/`-`), numeric entry, and cart reset → cash/actual official GCash verification → review → sale/OR outcome. Includes approved event catalog lines; `YSP-KIT-STD` is an illustrative SKU, not required master data. Sale decrements Booth Custody Stock only. Out-of-stock/custom demand links to Sales for Track 1. | Authorized booth cashier; BTH-03–BTH-05; PAY-01–PAY-04; UX-01–UX-03 |
 | S-16 Manual booth entry | Booths / selected event | Original manual OR, actual sale and entry times, payment verification evidence and sold items; receipt-range reconciliation, duplicates/missing references. Separate from new sales. | Authorized entry cashier and independent reconciliation duty; BTH-11–BTH-12; PAY-07; DOC-07; DOC-11 |
-| S-17 Booth close-out | Booths / selected event | Expected versus independently counted usable/damaged/unexplained stock; signed usable returns; variance ADJ; cash float (PHP 2,000) return, OR totals, cash collections/deposits, GCash credits and actual physical remittance ($\text{Float} + \text{Sales} = \text{Remittance}$); closure blockers. | Custodian, independent counter/reconciler, Inventory, Finance and variance approvers; BTH-06–BTH-10; BTH-13–BTH-14; GOV-05–GOV-07 |
-| S-18 Claims, counts & ADJ | Linked sale/booth / Inventory / Finance | Source-linked claim or count, inspection/recount, cumulative limits, approvals, proposed condition/movements, replacement signature, financial/supplier follow-up. Enforces strict GOV-06 dual-approval: Chapter Head (`acct1`) + Finance (`acct2`) co-signatures required for count variances; preparer (`acct3`) hard-blocked; Provider Admin (`prov`) disabled. | Sales, Inventory, independent counter, configured approvers, Chapter Head/Finance; ADJ-01–ADJ-10; INV-13–INV-14; PAY-10–PAY-12; GOV-05–GOV-06 |
+| S-17 Booth close-out | Booths / event | Independent usable/damaged/unexplained counts; signed usable returns; variance ADJ; separate float liability, cash sales/refunds, deposits/remittances and official-account GCash reconciliation; visible closure blockers. | Custodian/cashier plus different independent review, Finance and variance approvers; BTH-06–BTH-14; GOV-05–GOV-07 |
+| S-18 Claims, counts & ADJ | Linked source / Inventory / Finance | Source-linked inspection/recount, cumulative limits, configured claim approvals, proposed stock/financial treatment and follow-up. Count preparer/affected custodian barred from variance approval; Head/Finance and independent fallback as GOV-06. | Scoped duties from TRD Appendix D; ADJ-01–ADJ-10; GOV-05–GOV-06 |
 | S-19 Finance reconciliation | Finance | Track 1 SI/OR/DR match, booth collections/remittances, receipt sequences, cash/GCash matching and unresolved differences; independent overlap review. | Finance and authorized independent reviewer; PAY-09–PAY-12; GOV-07; RPT-05 |
 | S-20 Reports & overview | Reports | Separate summaries; inventory, demand/procurement, finance/booth and control catalogue; date/item/event/status filters, date basis, scoped preview/PDF/CSV; retained history/count review. | Per-report and per-evidence authorized duties; RPT-03–RPT-07; SEC-03–SEC-04; TR-18 |
 | S-21 Chapter administration & readiness | Administration | Memberships/roles/alternates and disable actions within authority; versioned operational/financial settings; sequences/templates; approved readiness evidence and staged activation; subscription status. | Chapter Head, Finance and other configured setup administrators within authority; GOV-04; GOV-08–GOV-12; SEC-02; MIG-01–MIG-08; SUB-01–SUB-03 |
-| S-22 Provider & technical administration | Separate administration surface | Chapter/initial Head provisioning; provider subscription verification/extension; funded preservation plan; operator maintenance/recovery/job status and evidence. Zero operational chapter access. | Provisioning/provider/technical lead/backup with explicit authority; GOV-03; SUB-02–SUB-06; TR-04; TR-17–TR-25; TR-30 |
-| **Perspective 4** | Operations Architecture Map | High-level interactive architectural overview with 5 views: (1) Full 5-Swimlane End-to-End System Map, (2) Money, Collections & OR Flow, (3) Physical Stocks, Lots & Custody Flow (6 balance silos), (4) Dual Governance & Segregation of Duties Matrix, and (5) Live Scenario Flow Tracer with Persistent Node Inspector linking all 22 screens. | All authorized officers and reviewers; cross-screen architecture view |
+| S-22 Provider & technical administration | Separate administration surface | Chapter/initial Head provisioning; provider subscription verification/extension; funded preservation plan; operator maintenance/recovery/job status and evidence. Provider authority gives no implicit operational chapter access; separately approved chapter membership is required. | Provisioning/provider/technical lead/backup with explicit authority; GOV-03; SUB-02–SUB-06; TR-04; TR-17–TR-25; TR-30 |
+| **Perspective 4** | Operations Architecture Map | Supporting overview with five views: end-to-end workflow, money/OR, seven related stock views and custody, duties/independence, and scenario tracer with node inspector linking S-01–S-22. Scenario examples are labeled; live details and linked actions remain scoped. | Chapter/duty-authorized officers and reviewers; ADD-01; ADD-AC-12 |
 
 Documents/evidence and pending/ready/failed operation/output panels are reusable parts of these screen families, not extra top-level destinations. Lists and connected records support direct authorized links. Role-scoped navigation and query enforcement apply equally to downloaded files and queued output (DOC-02; DOC-06–DOC-11; SEC-03; RPT-07; TR-04; TR-15–TR-18).
 
@@ -158,33 +161,15 @@ flowchart TD
 
 ### Four-person coverage and lightweight RBAC architecture
 
-The operational access model implements **Lightweight Role-Based Access Control (RBAC)** across three distinct authorization layers:
+Check current identity and chapter membership, chapter duty grants, then transaction-specific independent controls. Use [embedded duty and permission matrix](TRD.md#appendix-d-shared-role-matrix-and-candidate-control) for the canonical fourteen chapter duties and provisional four-officer coverage example. Neither a user ID nor a displayed role bypasses runtime checks. Provider authority grants no implicit chapter access; separately approved membership can authorize scoped operations.
 
-1. **Layer 1: Chapter Tenancy & Membership (`memberships`):** Enforces chapter boundary isolation. Global user accounts have zero operational access until granted an explicit chapter membership. Provisioning Administrator (`USR-PROV-99`) operates outside the chapter operational boundary (`GOV-03`).
-2. **Layer 2: Role Grants & Permissions (`roles`, `duty_grants`):** The 15 standard chapter operational duties defined in TRD section A.2.2 are represented as canonical roles. Officers are assigned one or more roles via chapter duty grants.
-3. **Layer 3: Dynamic Contextual Invariants (Segregation of Duties):** Business operations enforce strict separation-of-duties invariants at runtime, preventing self-approval and concentration of custody:
-   - Requester $\ne$ Approver (`GOV-05`, `RF-03`).
-   - Preparer $\ne$ Approver (`GOV-05`, `SO-03`, `PRC-04`).
-   - Custodian $\ne$ Reconciler / Independent Counter (`GOV-07`, `BTH-07`, `ADJ-04`).
-   - Dual Co-Approval for Count Variances: requires both Chapter Head and Finance Officer co-signatures (`GOV-06`). The count preparer is strictly blocked from signing as approver.
-
-#### Pilot four-officer role allocation matrix
-
-The YSP Cebu launch pilot configures four internal accounts to cover all 15 operational duties while strictly satisfying all independence constraints:
-
-| Pilot Account | Canonical Identity | Primary Chapter Duties | Permitted Actions | Independence Constraints & Fallbacks |
-| --- | --- | --- | --- | --- |
-| **Account 1** | `USR-CEB-01` (Chapter Head) | Chapter Head, System Administrator, Requisition Approver | Activate trial/staged rollout (S-21), approve RFs (S-04), co-approve count variances (S-18), configure policies | Cannot approve own RF requests; cannot act as sole counter of stockroom |
-| **Account 2** | `USR-CEB-02` (Finance Officer) | Finance / Treasury, Sales Reviewer, Budget Approver | Verify GCash/cash payments & issue OR (S-06), approve SO pricing (S-05), approve RepF budget (S-10), co-approve count variances (S-18), finance reconciliation (S-19) | Cannot act as sales order creator for reviewed orders; cannot act as physical cash remitter for booth events |
-| **Account 3** | `USR-CEB-03` (Inventory & Purchasing) | Inventory Custodian, Purchasing Officer, Receiving Officer, Booth Custodian | Manage stock allocations (S-07), prepare RepF net-need (S-10), select PO quotations (S-11), inspect & post RM receipts (S-12), receive booth custody (S-14), count stock (S-17) | **Hard-blocked** from approving count variances on own custody (S-18); cannot approve own RepF budget commitments |
-| **Account 4** | `USR-CEB-04` (Sales & Dispatch) | Sales Officer, Dispatch / Release Officer, Booth Cashier, Independent Counter | Intake buyer SOs (S-05), conduct signed physical release (S-07), execute booth cash/GCash sales (S-15), conduct independent counts & recounts (S-17, S-18) | Cannot verify payments / issue OR on Track 1; cannot act as sole booth custodian for events where selling as cashier |
-| **Provider Admin** | `USR-PROV-99` (Platform Provider) | Technical / Provisioning Administrator | Chapter provisioning (S-22), subscription billing verification, backup/recovery runbooks | **Zero operational access** to chapter stock, sales, receipts, or approvals (`GOV-03`) |
+Actual assignments, requesting-unit scopes, limits and alternates remain approved setup inputs. Do not seed pseudonymous identities as actual officers. For booth close-out, a selling cashier's second role does not make them independent of their own sales; use an eligible different officer. A missing independent officer blocks the relevant action. Count-variance preparers/affected custodians cannot sign either approval step; Head/Finance overlap requires an eligible independent co-approver or approved alternate. Ordinary claim preparers cannot be sole approvers. No blanket preparer inequality applies to every posting.
 
 Requester → independent RF approver → Inventory → recipient is the RF responsibility chain. Sales → authorized Sales/Finance reviewer → payment verification/allocation → Dispatch → recipient is Track 1. Inventory/need owner → independent budget/purchase authority → Purchasing → Receiving/Inventory is procurement. Custodian/cashier → independent counter/reconciler → Finance plus variance approval where needed is booth close-out. Each role can be covered by an existing account only where the specific independence controls allow it.
 
 ### Perspective 4 — Bird's-Eye Operations Architecture & Process Flow Map
 
-Perspective 4 is an integrated operations architecture and visual flow surface implemented directly in the prototype (`ysp_chapter_operations_ui.html`). It provides officers, auditors, and technical leads with an end-to-end mental model of how customer money, stockroom merchandise, booth event custody, purchasing restocks, and dual approvals flow across all 22 screens.
+Perspective 4 is the adopted supporting operations map design; implementation and prototype verification remain future work. It is delivered after core workflows and is not a dependency of stock/payment posting. It provides officers, auditors, and technical leads with an end-to-end mental model of how customer money, stockroom merchandise, booth event custody, purchasing restocks, and dual approvals flow across all 22 screens.
 
 #### The 4 Core Operational Invariants
 
@@ -192,21 +177,22 @@ Perspective 4 is an integrated operations architecture and visual flow surface i
 flowchart TD
     subgraph INV1["1. Money Invariant (PAY-02, SO-08)"]
         SI[Sales Invoice: Billing Notice Only] -->|Never Proof of Payment| GATE{Verified Money Gate}
-        GCASH[GCash / Bank Credit: Ref GC-771201] -->|Finance Verification| OR[Official Receipt Issued]
+        GCASH[Official-account GCash Credit: illustrative ref GC-771201] -->|Finance Verification| OR[Official Receipt Issued]
         OR --> GATE
         GATE -->|100% Value Coverage Verified| RELEASE[Physical Goods Released via Customer DR]
     end
 
-    subgraph INV2["2. Stock Invariant (INV-03, BTH-04)"]
-        STOCK[6 Strictly Separate Stock Silos]
-        S1["1. Usable Stockroom On-Hand (10)"]
-        S2["2. Available-to-Allocate (3)"]
-        S3["3. Active Reservations: 48h Clock (7)"]
-        S4["4. Booth Custody Stock: Isolated (70)"]
-        S5["5. Quarantined / Damaged (7)"]
-        S6["6. Inbound Open Purchase Orders (60)"]
-        STOCK --- S1 & S2 & S3 & S4 & S5 & S6
-        SALE[Booth Sale S-15] -->|Decrements Silo 4 Only| S4
+    subgraph INV2["2. Seven Related Stock Views (INV-03)"]
+        STOCK["Related reporting views: do not sum"]
+        S1["1. Usable stockroom on-hand: includes reservations"]
+        S2["2. Available-to-allocate"]
+        S3["3. RF-reserved: no unpaid-SO clock"]
+        S4["4. SO-reserved: scoped unpaid expiry and paid protection"]
+        S5["5. Booth custody"]
+        S6["6. Quarantined / rejected"]
+        S7["7. Inbound open PO: not on-hand"]
+        STOCK --- S1 & S2 & S3 & S4 & S5 & S6 & S7
+        SALE["Booth sale S-15"] -->|"Decrements booth custody only"| S5
     end
 
     subgraph INV3["3. Scoped 48h Clocks (RSV-01–04)"]
@@ -216,11 +202,11 @@ flowchart TD
 
     subgraph INV4["4. Dual Governance & Segregation (GOV-05, GOV-06)"]
         G1["Requester != Approver (RF-03)"]
-        G2["Preparer != Approver (SO-03, PRC-04)"]
-        G3["Custodian != Reconciler (BTH-07, ADJ-04)"]
+        G2["Action-specific independent review; no blanket posting ban"]
+        G3["Own custody/cashiering requires different independent reviewer"]
         G4["Count Variances: Dual Co-Approval (GOV-06)"]
-        G4 --> DUAL["Chapter Head (acct1) + Finance (acct2) ONLY; Preparer (acct3) BLOCKED"]
-        G5["Provider Admin (prov): ZERO Operational Access (GOV-03)"]
+        G4 --> DUAL["Head + Finance; eligible independent fallback; preparer/custodian barred"]
+        G5["Provider role: no implicit chapter access; membership separately approved"]
     end
 ```
 
@@ -232,22 +218,22 @@ flowchart TD
    - **Swimlane 3 (Stock Allocation & Handover):** Eligible source reservation (S-07), stockroom overview (S-08), 48h clocks (S-09), and signed batch releases (S-07).
    - **Swimlane 4 (Event Booth Selling & Remittance):** Event RF checkout to booth custody (S-14), immediate cash/GCash sales via steppers (S-15), manual outage entries (S-16), and close-out with cash float return and remittance (S-17).
    - **Swimlane 5 (Purchasing, Restocks & Receiving):** Shortage/ROP RepF (S-10), quotation comparison and PO issue (S-11), physical inspection and RM posting (S-12), and donation/opening baseline (S-13).
-   - **Cross-Lane Governance & Claims:** Source-linked ADJ (S-18) enforcing dual sign-offs for returns, replacements, count variances, and supplier discrepancies.
+   - **Cross-Lane Governance & Claims:** Source-linked ADJ (S-18) using configured return/replacement approval, Finance for refunds/unequal exchanges, and Head/Finance plus independent coverage for count variances; supplier discrepancies retain their authorized receiving/claim process.
 
 2. **View 2 — Money, Collections & Official Receipts Flow:**
    - **Track 1 Order:** Sales Order $\rightarrow$ Full SI $\rightarrow$ GCash/Cash Collection $\rightarrow$ Finance Verification $\rightarrow$ Official Receipt (OR) $\rightarrow$ Release Coverage Consumption $\rightarrow$ Customer DR Handover $\rightarrow$ S-19 Finance Reconciliation.
-   - **Track 2 Booth Event:** Opening Float (PHP 2,000 custody liability) $\rightarrow$ Cash/GCash Sales $\rightarrow$ Immediate Booth OR $\rightarrow$ Float Return $\rightarrow$ Remittance Formula: $\text{Float (PHP 2,000)} + \text{Cash Sales (PHP 4,500)} = \text{PHP 6,500 Physical Cash}$. Official GCash credits (PHP 3,000) reconciled directly with Ref GC-771201.
-   - **Replenishment Procurement:** Shortage $\rightarrow$ RepF Funding Gate ($\ge$ approved cost verified by OR) $\rightarrow$ PO Issue $\rightarrow$ RM Receipt.
+   - **Track 2 Booth Event:** Approved configurable float → verified cash/GCash sales and OR → separate float return, sales remittance and GCash reconciliation. Use actual refunds, deposits and prior returns once; see BTH-06. Sample amounts and references are illustrative only.
+   - **Replenishment Procurement:** RF/ROP shortage → chapter budget/purchasing approval → PO → accepted RM. Accepted SO shortage → verified OR funding at approved shortage cost → budget/purchasing approval → PO → accepted RM. An unpaid SO shortage cannot be relabeled RF/ROP to bypass funding.
    - **Defect Refund:** Source DR/OR Claim $\rightarrow$ ADJ Inspection $\rightarrow$ Finance Approval $\rightarrow$ Refund Execution $\rightarrow$ Negative Payment Entry.
 
 3. **View 3 — Physical Stocks, Lots & Custody Flow:**
-   - Strict tracking of the 6 balance silos (`INV-03`).
+   - Separate presentation of the seven related balance views (`INV-03`).
    - Lot provenance maintained from PO delivery / DA donation through RM receipt into stock positions.
    - Booth custody stock completely decoupled from stockroom available stock during active selling.
 
 4. **View 4 — Dual Governance & Segregation of Duties Matrix:**
-   - 15 TRD duties mapped across Pilot Accounts 1–4, showing authorized actions, prohibited overlaps, and mandatory fallback co-approvers.
-   - Visual segregation highlighting that `USR-CEB-03` (custodian/preparer) cannot sign count variance ADJ, and `USR-PROV-99` has disabled transaction controls.
+   - Fourteen chapter duties from TRD Appendix D with provisional staffing and explicit alternate coverage; provider duties are separate.
+   - Visual segregation identifies the actual count preparer/affected custodian and required independent approving people. Provider roles confer no implicit chapter authority.
 
 5. **View 5 — Live Scenario Flow Tracer & Persistent Node Inspector:**
    - Interactive step-by-step trace of real-world scenarios: (A) Track 1 Sales Order with backorder and GCash deposit, (B) Track 2 Booth Event with float and close-out, and (C) Purchasing Replenishment.
@@ -327,13 +313,13 @@ Review and post only accepted RM quantity once. On a PO for 100 accepting 40, st
 
 **Screens:** S-14–S-17, S-07, linked S-18/S-19. **Trace:** BTH-01–BTH-14; RF-01–RF-08; GOV-05–GOV-07; PAY-01–PAY-04; PAY-07; PAY-09; ADJ-01–ADJ-10; AC-05–AC-06; AC-17–AC-18.
 
-1. Prepare approved booth RF/event setup with dates, item quantities, approved price list, custodian/cashier, cash float (PHP 2,000 active custody liability, not revenue) and remittance schedule. Shortage follows chapter-funded F-05. Inventory prepares IS; custodian counts and signs actual IS/AR. Confirm checkout once into named event custody before trading; separate simultaneous events retain distinct custody.
-2. Cashier selects eligible booth items/quantities via responsive increment/decrement steppers (`+`/`-`), direct numeric inputs, or 1-click cart reset on S-15. Complete event catalog is supported, including standard merchandise kits (`YSP-KIT-STD`). Cashier verifies actual cash in drawer or confirmed official-account GCash credit (Ref GC-771201) and reviews total. Record the immediate paid sale with its actual handover and OR; outcome shows committed reference and event remaining stock. Do not add SO, SI, customer DR or a per-sale reservation. Sale reduces booth custody once, never stockroom again. Unverified credit, unavailable goods or unauthorized discount blocks sale; custom/out-of-stock demand becomes staff-recorded Track 1.
+1. Prepare approved booth RF/event setup with dates, item quantities, approved price list, custodian/cashier, approved configurable cash float (separate custody liability, excluded from revenue) and remittance schedule. Shortage follows chapter-funded F-05. Inventory prepares IS; custodian counts and signs actual IS/AR. Confirm checkout once into named event custody before trading; separate simultaneous events retain distinct custody.
+2. Cashier selects eligible booth items/quantities via responsive increment/decrement steppers (`+`/`-`), direct numeric inputs, or 1-click cart reset on S-15. Complete event catalog is supported, including configured event-authorized merchandise kits (sample SKU `YSP-KIT-STD`). Cashier verifies actual cash in drawer or confirmed official-account GCash credit (illustrative reference GC-771201) and reviews total. Record the immediate paid sale with its actual handover and OR; outcome shows committed reference and event remaining stock. Do not add SO, SI, customer DR or a per-sale reservation. Sale reduces booth custody once, never stockroom again. Unverified credit, unavailable goods or unauthorized discount blocks sale; custom/out-of-stock demand becomes staff-recorded Track 1.
 3. An uncertain sale response invokes F-11 operation lookup and prevents a second submission/receipt/handover. If physical money/goods already moved, preserve the real-world facts for reconciliation even when the database outcome is absent or unknown.
 4. During connectivity loss, display approved manual receipt/count guidance. Manual cash or independently confirmed actual official GCash credit can support immediate handover under approved controls; inability to confirm GCash does not permit credit sale. Record original receipts/counts manually, not offline app synchronization.
 5. On restoration, Enter manual sale records original OR/series, actual sale time, actual entered time, officer, items/payment and evidence. Post each original sale/payment once to event custody; do not issue another OR. Missing ranges, stock conflicts and duplicates remain reconciliation issues. If the restored state lacks checkout/custody or a prior uncertain sale may already exist, investigate before posting.
 6. Close-out shows expected unsold by item/variant from actual signed checkouts minus sales and approved movements. Independent counter records actual usable, damaged and unexplained units with signed evidence. Verified usable returns post through F-08 while unexplained custody and damage remain visible. Damage blocks use immediately without an unapproved quantity write-off; variance routes to F-09 dual approval.
-7. Finance panel separately reconciles cash float, OR totals, cash collections/deposits, GCash credits and actual remittance at day end/approved schedule. Cash float is strictly a custody liability, excluded from sales revenue calculations. Physical cash remittance strictly follows: $\text{Opening Float (PHP 2,000)} + \text{Cash Sales (PHP 4,500)} = \text{PHP 6,500 Physical Cash}$. Official GCash receipts (PHP 3,000) are credited directly to the chapter bank account and verified via statement matching without physical handover. Correct stock does not resolve missing remittance.
+7. Finance separately reconciles actual float issued/returned, cash sales/refunds, cash deposits/prior remittances and GCash credits. Apply BTH-06 and show remaining cash due and actual differences. Amounts are configurable; a completed stock count does not resolve missing remittance.
 8. Close booth RF/event only after checkout/sales/returns, damages/variances and collections/remittance have authorized resolution with evidence. The 100 checkout → 30 sale → 70 return example gives stockroom net −30 and booth zero; closing must not deduct another 30.
 
 ### F-08 — Signed physical handover and evidence lifecycle
@@ -344,7 +330,7 @@ Select actual permitted batch quantities, review current eligible source and app
 - **Method A (Interactive On-Device Signature Pad):** Captured directly on-screen using an HTML5 Canvas pad featuring touch/mouse event tracking, real-time quadratic Bezier curve stroke smoothing, Clear/Redo controls, and export to base64 image data.
 - **Method B (Signed Paper Scan Upload):** Uploads physical signed paper delivery receipts with client-side file staging, MIME/size validation, and preview.
 
-Both methods compute a cryptographic SHA-256 evidence digest (`evidence_objects.content_hash`) and bind it immutably via `evidence_bindings` prior to atomic customer DR or IS/AR posting. IS/AR supports RF/checkout/return as applicable; customer DR supports Track 1; replacement acknowledgment links ADJ/DR. Booth immediate sales remain F-07 without an added signature requirement.
+For both methods, the server validates stored evidence bytes and computes `evidence_objects.content_hash`, pinned by `evidence_bindings` to the file/version. The separate `acknowledged_snapshot_hash` identifies the exact recipient and batch acknowledged. A material quantity/recipient change requires new acknowledgment; hashes protect integrity and do not prove identity. Bind ready evidence before atomic customer DR or IS/AR posting. IS/AR supports RF/checkout/return as applicable; customer DR supports Track 1; replacement acknowledgment links ADJ/DR. Booth immediate sales remain F-07 without an added signature requirement.
 
 Upload panel distinguishes staging/uploading, validation pending, ready and failed/quarantined; attachment readiness requires type/content/size checks and authorized immutable linkage. Failed upload preserves other input and provides correction/retry. Missing or suspect evidence blocks the posting needing it, not unrelated permitted drafts. Historical missing evidence produces a reconciliation issue, not silent replacement of signed history. Downloads remain private/duty-scoped.
 
@@ -356,11 +342,7 @@ Preparation, printing, uploading or signing alone does not post a movement. Conf
 
 Start source-linked ADJ from Track 1 OR plus signed customer DR, booth original OR, or count/IPC/booth evidence. Preparation does not change stock; physically returned/damaged goods are held unavailable. Check genuine evidence, configured return window/eligibility and cumulative sold/issued/returned/replaced/refunded limits. Inventory inspects current/proposed condition before approval; count variance requires independent recount. Missing/contradictory evidence remains correction/investigation.
 
-Configured return/exchange approver reviews independently of the preparer being sole approver. S-18 strictly enforces **GOV-06 dual-approval logic**:
-- Physical count variances require independent co-approval from **Chapter Head (`USR-CEB-01`)** and **Finance Officer (`USR-CEB-02`)**.
-- The count preparer (**`USR-CEB-03`**, custodian) is **hard-blocked** by the system from approving their own counts (`actor_id != preparer_id`).
-- If Chapter Head and Finance duties are held by one individual, an independent authorized co-approver must sign.
-- **Provider Administrator (`USR-PROV-99`)** has disabled controls with zero operational authorization (`GOV-03`).
+Configured ordinary return/exchange approval must include an authorized person independent of the preparer being sole approver. Refunds and unequal exchanges additionally require Finance. Count variances require Chapter Head and Finance approval by at least two distinct authorized people. The count preparer and the custodian whose stock is being checked cannot approve that variance. If one person holds both approving duties, retain both duty decisions and require an authorized independent co-approver, or use an approved alternate for a duty. No preparer/custodian may serve as that fallback. Missing independent coverage blocks approval; holding multiple roles does not bypass it. Provider/provisioning roles grant no automatic chapter operational authority. The same individual may receive separately approved chapter membership and duty grants; operational actions must use and audit that chapter authority and satisfy the same independence checks. Provider-role possession alone never satisfies an operational sign-off.
 
 Show each required approving duty/actor, remaining approvals and material version. Rejection/return retains reason and posts no stock change. Investigation/revision loops return to inspection/review with retained original count/custody.
 
@@ -496,7 +478,7 @@ All are design coverage only; execution evidence remains outstanding.
 | AC-14 | F-02/F-03: review NO → revision/resubmission or cancel with reasons/reservation history |
 | AC-15 | F-05: budget NO, quotation blocker and emergency review never create unauthorized PO |
 | AC-16 | F-05/F-06/F-09: ROP/shortage refresh preserves existing supply coverage and avoids duplicated need |
-| AC-17 | F-01/F-07/F-09: sole preparer variance approval blocked; Head/Finance and independent fallback recorded |
+| AC-17 | F-01/F-07/F-09: any count-preparer/affected-custodian variance approval blocked; Head/Finance and independent fallback recorded |
 | AC-18 | F-07/F-11/F-12: original manual OR/payment entered twice posts once; dates/ranges/discrepancies retained |
 | AC-19 | F-01/F-10/F-11: chapter switch, disabled session and provisioning-only record access enforce scope |
 | AC-20 | F-03/F-04/F-05/F-09: funded cancellation previews and resolves PO/stock/payment instead of forfeiture |
@@ -571,7 +553,7 @@ RF/SO revision loops, RepF revision, missing-source correction, later delivery i
 | Explicit drafts → navigation/offline/session/stale/unknown outcomes | Q6 → Q17; F-11 |
 | Readiness → staged setup/activation/restrictions/service recovery | Q7 → Q18; F-01/F-12 |
 
-All interviewed screen/interaction branches are resolved by Q1–Q19; no additional unresolved flow decision is recorded. Final confirmation that this draft captures shared understanding is pending. Visual styling/layout and optional prototype evaluation belong to the next phase. Named assignments, actual chapter policy values, provider commercial terms and recovery/funding approvals remain deliberate TRD pre-live inputs, not unanswered screen-design questions.
+Original flow choices Q1–Q19 are retained. The user authorized the UI-Q20–UI-Q26 additions and consistency resolutions for review on 19 October 2026. The user authorized publication of this reconciled documentation candidate. Visual styling, prototype demonstration and implementation acceptance are future work. Named assignments, actual chapter policy values, provider commercial terms and recovery/funding approvals remain deliberate TRD pre-live inputs, not unanswered screen-design questions.
 
 Requirements, acceptance scenarios and source release checks remain unimplemented and unverified. This document specifies officer-observable behavior and traceability; it is not executed test, security, restore or production acceptance evidence (TR-27–TR-29; MIG-08; TRD Appendix C).
 
@@ -579,4 +561,4 @@ Design-document verification on 14 October 2026: identifier/range checks found a
 
 ## Later implementation handoff
 
-Each implementation ticket must reference both [TRD.md](./TRD.md) and this file, the relevant unchanged requirement IDs, applicable repository instructions and existing code. Begin each ticket with fresh context. Consider a UI prototype only after the flow is agreed, where it resolves a remaining design question. No implementation tickets or application code have been created in this phase.
+Each implementation ticket must reference both [TRD.md](./TRD.md) and this file, the relevant unchanged requirement IDs, applicable repository instructions and existing code. Begin each ticket with fresh context. Consider a UI prototype only after the flow is agreed, where it resolves a remaining design question. This package changes review documents only; no implementation tickets or application code are created.
