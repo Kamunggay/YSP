@@ -15,7 +15,7 @@ This review document translates the reconciled PRD/TRD into officer-facing scree
 
 React/TypeScript, a modular Laravel API, MySQL and the approved low-cost single-host deployment remain settled (TR-01–TR-05; TR-25–TR-26). This phase does not implement the application, deploy it, create implementation tickets or choose final visual styling.
 
-An interview answer may settle a screen or interaction choice. It does not alter a requirement, authorize a missing operational policy or invent a named officer assignment. Save agreed decisions here as the interview progresses. A completed flow requires a final shared-understanding check before any subsequent phase.
+An interview answer may settle a screen or interaction choice. It does not alter a requirement, authorize a missing operational policy or invent a named officer assignment. Save agreed decisions here as the interview progresses. A completed flow requires a final shared-understanding check before any subsequent phase. For implementation, record the authorized acceptance of the exact PRD/TRD/APP-FLOW/schema revisions and scope; until then, this reconciled flow remains a review candidate and its candidate-only changes are not implementation authority.
 
 ## Settled constraints from the TRD
 

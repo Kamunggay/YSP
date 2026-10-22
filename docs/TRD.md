@@ -11,11 +11,11 @@
 | Stack | React/TypeScript frontend; modular Laravel API; MySQL; Docker Compose on AWS Lightsail |
 | Funding | USD 100 total AWS credit; USD 35/month infrastructure planning target |
 | Operations | Project owner is technical lead; one member trained as backup |
-| Delivery state | Final requirements specification; implementation, deployment and acceptance evidence are separate deliverables |
+| Delivery state | Reconciled review candidate; implementation baseline only after authorized acceptance of this revision; implementation, deployment and acceptance evidence are separate deliverables |
 
 ## 1. Document authority and use
 
-This is the review candidate for the standalone technical requirements baseline for YSP Chapter Operations. It is written for the four-member delivery and operations team and can be shared as a single Markdown file. Architecture, operational behavior, terminology, cost assumptions, release gates and complete source-flowchart coverage are included below; no companion repository document is required to interpret a requirement.
+This is a review candidate for the standalone technical requirements handoff for YSP Chapter Operations. The approved v2.0 operational workflow is the historical source baseline; this reconciled v2.1 document includes later additions and corrections that require explicit authorized acceptance before those changes become implementation requirements. Publication or the historical v2.0 approval does not by itself accept v2.1. Record accepted revision, date, approver and scope in the project docs. It is written for the four-member delivery and operations team and can be shared as a single Markdown file. Architecture, operational behavior, terminology, cost assumptions, release gates and complete source-flowchart coverage are included below; no companion repository document is required to interpret a requirement.
 
 The first deployment serves YSP Cebu within one organization. It uses a separate React/TypeScript frontend, one modular Laravel backend, private MySQL on the same Docker host and tested off-host backups. The full agreed operational workflow is required. Growth follows measured host, database and worker capacity; independent microservices are a later architectural option.
 
@@ -237,7 +237,7 @@ Use a small chapter subscription record and controlled provider administration; 
 | Provider price, collection verification, post-grace/retention terms | Commercial offer/activation; chapter buyer money remains separate |
 | Release, operator and restore runbooks | Successful rehearsal and evidence; actual maintenance scheduling agreed |
 
-These inputs do not remove any requirement. The initial architecture and trial/maintenance rules are settled; named chapter policies and operating values remain deliberate pre-live inputs. This final specification is the implementation baseline. Production acceptance requires executed evidence, demonstrated recovery, funded hosting and authorized activation; publication of this document alone does not satisfy those gates.
+These inputs do not remove any requirement. The initial architecture and trial/maintenance rules are settled; named chapter policies and operating values remain deliberate pre-live inputs. The approved v2.0 workflow remains the historical approved source baseline. This v2.1 review candidate becomes the implementation baseline only after an authorized requirements owner records acceptance of this revision and its scope. Production acceptance requires executed evidence, demonstrated recovery, funded hosting and authorized activation; publication of this document alone does not satisfy those gates.
 
 ## 12. Deployment cost and funding plan
 
@@ -292,7 +292,7 @@ These are responsibilities, not five mandatory hires. Four members may cover sev
 
 Implement the complete scope in Appendix A and the controls in TR-01–TR-30. Complete release acceptance requires all staged MIG gates, all AC scenarios, all Appendix C coverage and demonstrated recovery. Partial software, unchecked coverage or an unavailable independent approver cannot be relabeled complete because the host is small.
 
-This version is final as a requirements handoff. Later changes must record the version/date, changed IDs, rationale, affected workflow/test evidence and required Chapter Head/Finance review. Preserve existing IDs; add new IDs for additional requirements rather than silently renumbering. Changes to cloud size alone do not authorize weaker product controls.
+The v2.0 document was the approved requirements handoff. This v2.1 reconciliation remains a review candidate until authorized acceptance is recorded. Later changes must record the version/date, changed IDs, rationale, affected workflow/test evidence and required Chapter Head/Finance review. Preserve existing IDs; add new IDs for additional requirements rather than silently renumbering. Changes to cloud size alone do not authorize weaker product controls.
 
 | Version | Change |
 | --- | --- |
