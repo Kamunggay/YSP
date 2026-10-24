@@ -1,0 +1,70 @@
+name: ysp-health
+services:
+  backend:
+    image: ysp-backend:local
+    build:
+      context: ./backend
+      target: local
+    env_file: ./backend/.env.example
+    ports:
+      - "127.0.0.1:${YSP_HTTP_PORT:-8080}:8080"
+    secrets:
+      - app_key
+      - db_password
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks: [local, private]
+    init: true
+    dns_opt: ["timeout:1", "attempts:1"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    pids_limit: 128
+    restart: "on-failure:3"
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+    healthcheck:
+      test: ["CMD", "php", "scripts/http-smoke.php"]
+      interval: 10s
+      timeout: 20s
+      retries: 5
+      start_period: 10s
+  mysql:
+    image: mysql:8.4@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69
+    environment:
+      MYSQL_DATABASE: ysp_local
+      MYSQL_USER: ysp_app
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+    secrets: [db_password, db_root_password]
+    volumes: [mysql_data:/var/lib/mysql]
+    networks: [private]
+    mem_limit: 1g
+    pids_limit: 256
+    restart: "on-failure:3"
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$(cat /run/secrets/db_password) mysql --protocol=TCP -h 127.0.0.1 -u ysp_app ysp_local -Nse 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+networks:
+  local:
+    driver: bridge
+  private:
+    internal: true
+volumes:
+  mysql_data:
+secrets:
+  app_key:
+    file: ./.runtime/app_key
+  db_password:
+    file: ./.runtime/db_password
+  db_root_password:
+    file: ./.runtime/db_root_password
