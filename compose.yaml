@@ -1,13 +1,38 @@
 name: ysp-health
 services:
+  frontend:
+    image: ysp-frontend:local
+    build:
+      context: ./frontend
+      target: local
+    ports:
+      - "127.0.0.1:${YSP_HTTP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [local]
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
+    pids_limit: 128
+    restart: "on-failure:3"
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   backend:
     image: ysp-backend:local
     build:
       context: ./backend
       target: local
     env_file: ./backend/.env.example
-    ports:
-      - "127.0.0.1:${YSP_HTTP_PORT:-8080}:8080"
     secrets:
       - app_key
       - db_password

@@ -1,7 +1,7 @@
 # Laravel/MySQL local health baseline
 
 Local ticket `stage-0-leader/04`; [parent spec #2](https://github.com/Kamunggay/YSP/issues/2).
-This is the backend portion of P01/Q6 (TR-01–TR-05, TR-19–TR-20). Glenn's frontend, same-origin integration, actual nonauthor reproduction, applicable remote CI and reviewed merge remain P01 gates.
+This is the backend portion of P01/Q6 (TR-01–TR-05, TR-19–TR-20). Ticket 05 adds the [initial frontend and same-origin connection](../frontend/README.md) with Leader's authorization. Actual nonauthor reproduction, applicable remote CI and reviewed merge remain P01 gates.
 
 ## Prerequisites and pinned versions
 
@@ -15,7 +15,7 @@ Run from repository root. On Linux/macOS replace `powershell -NoProfile -File` w
 
 ```powershell
 powershell -NoProfile -File scripts/init-local.ps1
-docker compose build backend
+docker compose build backend frontend
 docker compose up -d --wait --wait-timeout 180
 docker compose exec -T backend php artisan migrate --force
 docker compose exec -T backend php artisan baseline:verify
@@ -23,7 +23,7 @@ docker compose exec -T backend php scripts/http-smoke.php
 Invoke-RestMethod http://localhost:8080/api/v1/health
 ```
 
-If 8080 is busy, set `$env:YSP_HTTP_PORT = '18080'` before Compose. Only the backend loopback port is published. Laravel joins a local bridge for host HTTP and an internal network shared with MySQL. MySQL joins only that internal network and has no host port. `docker compose down` retains the named database volume. Do not run `down --volumes` on a database you intend to keep.
+If 8080 is busy, set `$env:YSP_HTTP_PORT = '18080'` before Compose. Only the frontend gateway loopback port is published; `/api` is proxied to Laravel. Laravel joins a local bridge shared with the gateway and an internal network shared with MySQL. MySQL joins only that internal network and has no host port. `docker compose down` retains the named database volume. Do not run `down --volumes` on a database you intend to keep. Standalone backend diagnostics may opt into `compose.backend.yaml`; `scripts/verify-backend.ps1` uses that override on its isolated project and starts only backend/MySQL.
 
 `init-local.ps1` generates independent random application/root DB passwords and a Laravel key in ignored `.runtime/`, preserving existing values. Keep that directory private to your local account and Docker; never share, upload or commit it. Compose mounts only needed secrets; Laravel never receives root credentials. Secrets are excluded from the image build context. This is local development configuration; production credential deployment is a later package. The application account has privileges scoped to `ysp_local.*`, including migration DDL, and has no global/root grants. Production runtime/migration credential separation remains a deployment responsibility.
 
