@@ -55,8 +55,14 @@ environment/Compose secret values. Capture the combined console output:
 ```powershell
 $evidenceDirectory = 'C:/path/to/new/p01-review-evidence'
 New-Item -ItemType Directory -Path $evidenceDirectory -ErrorAction Stop
-powershell -NoProfile -File scripts/verify.ps1 *> (Join-Path $evidenceDirectory 'verification.log')
-$verificationExit = $LASTEXITCODE
+$capturePreference = $ErrorActionPreference
+try {
+    # Windows PowerShell wraps native stderr (including Docker progress) as errors.
+    # The child verifier sets Stop internally and checks each real command exit.
+    $ErrorActionPreference = 'Continue'
+    powershell -NoProfile -File scripts/verify.ps1 *> (Join-Path $evidenceDirectory 'verification.log')
+    $verificationExit = $LASTEXITCODE
+} finally { $ErrorActionPreference = $capturePreference }
 "Verification exit: $verificationExit" | Set-Content (Join-Path $evidenceDirectory 'exit.txt')
 if ($verificationExit -ne 0) { throw 'Reproduction failed; retain the log and report the failure' }
 git status --short
