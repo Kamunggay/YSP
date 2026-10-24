@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ysp:ipc-rm-acceptance:v1",
+  "title": "IPC/RM acceptance - Leader review revision 1",
+  "description": "P00 stage-0-leader/02, revision 1.0.0-review.1, 2026-10-24. Internal Purchasing/Receiving command and participant/read/result contracts. Register transport and identity-record-evidence v1 first. No runtime endpoint, authorization, evidence validation, DDL or posting implementation is supplied. Cross-value relationships and commit-time rules in internal-operations.md are mandatory server checks; schema validity is insufficient. Actual Inventory/Documents/Glenn review and P06/AC-04 execution remain pending.",
+  "$defs": {
+    "IpcReference": {
+      "allOf": [
+        { "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/MaterialReference" },
+        { "type": "object", "properties": { "record": { "type": "object", "properties": { "kind": { "const": "IPC" } } } } }
+      ]
+    },
+    "RmReference": {
+      "allOf": [
+        { "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/MaterialReference" },
+        { "type": "object", "properties": { "record": { "type": "object", "properties": { "kind": { "const": "RM" } } } } }
+      ]
+    },
+    "IpcLine": {
+      "allOf": [
+        { "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/LineReference" },
+        { "type": "object", "properties": { "line_kind": { "const": "IPC" }, "record": { "type": "object", "properties": { "kind": { "const": "IPC" } } } } }
+      ]
+    },
+    "RmLine": {
+      "allOf": [
+        { "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/LineReference" },
+        { "type": "object", "properties": { "line_kind": { "const": "RM" }, "record": { "type": "object", "properties": { "kind": { "const": "RM" } } } } }
+      ]
+    },
+    "SourcePin": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_kind", "target", "expected_row_version"],
+      "properties": {
+        "source_kind": { "const": "opening" },
+        "target": { "$ref": "#/$defs/IpcReference" },
+        "expected_row_version": { "$ref": "urn:ysp:transport:v1#/$defs/Version" }
+      },
+      "description": "Only IPC is enabled by this slice; PO+supplier DR and DA remain later extensions. Source target pins material version AND hash separately from current row concurrency. Not a claim of source validity or approval."
+    },
+    "EvidencePin": {
+      "type": "object", "additionalProperties": false,
+      "required": ["binding_id", "target", "line", "evidence", "purpose_code"],
+      "properties": {
+        "binding_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "target": { "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/MaterialReference" },
+        "line": { "anyOf": [{ "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/LineReference" }, { "type": "null" }] },
+        "evidence": { "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/ReadyEvidenceReference" },
+        "purpose_code": { "enum": ["ipc_signed_count_sheet", "rm_inspection", "rm_discrepancy"] }
+      },
+      "description": "Consumer pin resolved by Documents against the actual authorized append-only EvidenceBinding. An object/hash or purpose assertion alone proves neither readiness nor signers. Required evidence set is server-derived from source/inspection/policy, never selected by omitting a pin."
+    },
+    "AcceptOpeningInput": {
+      "type": "object", "additionalProperties": false,
+      "required": ["context", "receipt", "source", "evidence"],
+      "properties": {
+        "context": {
+          "allOf": [
+            { "$ref": "urn:ysp:transport:v1#/$defs/CommandContext" },
+            { "type": "object", "required": ["expected_material_version"], "properties": {
+              "action_code": { "const": "purchasing.accept_opening_rm" },
+              "record": { "allOf": [{ "$ref": "urn:ysp:transport:v1#/$defs/RecordReference" }, { "type": "object", "properties": { "kind": { "const": "RM" } } }] },
+              "expected_row_version": { "$ref": "urn:ysp:transport:v1#/$defs/Version" },
+              "expected_material_version": { "$ref": "urn:ysp:transport:v1#/$defs/Version" }
+            } }
+          ]
+        },
+        "receipt": { "$ref": "#/$defs/RmReference" },
+        "source": { "$ref": "#/$defs/SourcePin" },
+        "evidence": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "$ref": "#/$defs/EvidencePin" } }
+      },
+      "description": "Normalized internal input. Adapter derives chapter/action from authorized operation and key from Idempotency-Key. Client proposes immutable references/expected versions only. Quantities, inspector, authority, approval and opening eligibility come from validated server state. No public generic posting endpoint is defined."
+    },
+    "InspectionLine": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reference", "source_line", "expected_quantity", "delivered_quantity", "accepted_quantity", "rejected_quantity", "held_quantity", "missing_quantity", "nonusable_recorded_quantity", "location_id", "custody_assignment_id", "condition_code", "restriction_version_id", "unit_valuation", "valuation_basis", "condition_notes"],
+      "properties": {
+        "reference": { "$ref": "#/$defs/RmLine" },
+        "source_line": { "$ref": "#/$defs/IpcLine" },
+        "expected_quantity": { "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity" },
+        "delivered_quantity": { "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity" },
+        "accepted_quantity": { "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity" },
+        "rejected_quantity": { "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity" },
+        "held_quantity": { "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity" },
+        "missing_quantity": { "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity" },
+        "nonusable_recorded_quantity": { "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity" },
+        "location_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "custody_assignment_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "condition_code": { "enum": ["usable", "quarantine", "damaged", "rejected", "held"] },
+        "restriction_version_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "unit_valuation": { "$ref": "urn:ysp:transport:v1#/$defs/Quantity" },
+        "valuation_basis": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "condition_notes": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      },
+      "description": "Persisted inspected source split, not client balance instructions. Exact arithmetic, scale and source limits enforced under locks. For this complete opening walkthrough, expected equals IPC counted, delivered+missing equals expected, delivered equals accepted+rejected+held, and nonusable_recorded <= rejected+held. Missing has no position. Separate lines split conditions/locations; only usable accepted quantity may enter usable stock. No negative deltas or double acceptance."
+    },
+    "InspectionMaterial": {
+      "type": "object", "additionalProperties": false,
+      "required": ["chapter_id", "record", "source", "inspection_at", "inspector", "representatives", "policy", "lines"],
+      "properties": {
+        "chapter_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "record": { "allOf": [{ "$ref": "urn:ysp:transport:v1#/$defs/RecordReference" }, { "type": "object", "properties": { "kind": { "const": "RM" } } }] },
+        "source": { "$ref": "#/$defs/IpcReference" },
+        "inspection_at": { "$ref": "urn:ysp:transport:v1#/$defs/UtcInstant" },
+        "inspector": { "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/Attribution" },
+        "representatives": { "type": "array", "items": { "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/Attribution" } },
+        "policy": { "$ref": "urn:ysp:identity-record-evidence:v1#/$defs/PolicyReference" },
+        "lines": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/InspectionLine" } }
+      }
+    },
+    "InspectedReceipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "target", "material"],
+      "properties": {
+        "state": { "$ref": "urn:ysp:transport:v1#/$defs/RecordState" },
+        "target": { "$ref": "#/$defs/RmReference" },
+        "material": { "$ref": "#/$defs/InspectionMaterial" }
+      },
+      "description": "Purchasing/Receiving read model. Target must hash the immutable inspection material and match state/chapter/record/material version. State axes and exact admissibility defined in internal-operations.md. No screen state authorizes acceptance."
+    },
+    "StockEffect": {
+      "type": "object", "additionalProperties": false,
+      "required": ["receipt_line", "posting_id", "lot_id", "position_id", "movement_id", "lot_kind", "condition_code", "documented_quantity", "accepted_quantity"],
+      "properties": {
+        "receipt_line": { "$ref": "#/$defs/RmLine" },
+        "posting_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "lot_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "position_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "movement_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "lot_kind": { "enum": ["accepted", "nonusable"] },
+        "condition_code": { "enum": ["usable", "quarantine", "damaged", "rejected", "held"] },
+        "documented_quantity": { "allOf": [{ "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity" }, { "type": "object", "properties": { "value": { "type": "string", "not": { "pattern": "^0(?:\\.0+)?$" } } } }] },
+        "accepted_quantity": { "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity" }
+      },
+      "allOf": [{
+        "if": { "properties": { "lot_kind": { "const": "nonusable" } } },
+        "then": { "properties": { "condition_code": { "enum": ["quarantine", "damaged", "rejected", "held"] }, "accepted_quantity": { "type": "object", "properties": { "value": { "type": "string", "pattern": "^0(?:\\.0+)?$" } } } } },
+        "else": { "properties": { "condition_code": { "const": "usable" }, "accepted_quantity": { "type": "object", "properties": { "value": { "type": "string", "not": { "pattern": "^0(?:\\.0+)?$" } } } } } }
+      }],
+      "description": "Inventory-owned result references. Accepted lot accepted quantity equals documented quantity; nonusable lot accepted quantity is zero and documents physical nonusable custody without adding usable stock or accepted source progress. Nonusable movement represents custody recording, not acceptance. IDs resolve to the RM/line/variant and Inventory posting. No zero movement is written."
+    },
+    "AcceptedOpeningData": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source", "source_state", "baseline_id", "cutover", "posting_ids", "stock_effects", "discrepancy_ids", "audit_event_id", "follow_up_task_ids"],
+      "properties": {
+        "source": { "$ref": "#/$defs/IpcReference" },
+        "source_state": { "$ref": "urn:ysp:transport:v1#/$defs/RecordState" },
+        "baseline_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "cutover": { "allOf": [{ "$ref": "urn:ysp:transport:v1#/$defs/RecordReference" }, { "type": "object", "properties": { "kind": { "const": "CUTOVER" } } }] },
+        "posting_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "urn:ysp:transport:v1#/$defs/Id" } },
+        "stock_effects": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/StockEffect" } },
+        "discrepancy_ids": { "type": "array", "uniqueItems": true, "items": { "$ref": "urn:ysp:transport:v1#/$defs/Id" } },
+        "audit_event_id": { "$ref": "urn:ysp:transport:v1#/$defs/Id" },
+        "follow_up_task_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "urn:ysp:transport:v1#/$defs/Id" } }
+      }
+    },
+    "AcceptedOpeningResult": {
+      "allOf": [
+        { "$ref": "urn:ysp:transport:v1#/$defs/ActionResult" },
+        { "type": "object", "required": ["data"], "properties": {
+          "action_result": { "const": "success" },
+          "record": { "type": "object", "properties": { "reference": { "type": "object", "properties": { "kind": { "const": "RM" } } }, "states": { "type": "object", "required": ["inspection", "posting", "exception"], "additionalProperties": false, "properties": { "inspection": { "const": "complete" }, "posting": { "const": "posted" }, "exception": { "enum": ["none", "open", "resolved"] } } } } },
+          "data": { "$ref": "#/$defs/AcceptedOpeningData" }
+        } }
+      ]
+    },
+    "UnacceptedResult": {
+      "allOf": [
+        { "$ref": "urn:ysp:transport:v1#/$defs/ActionResult" },
+        { "type": "object", "properties": { "action_result": { "enum": ["blocked", "stale", "forbidden", "uncertain"] }, "data": { "type": "null" } } }
+      ]
+    }
+  }
+}
