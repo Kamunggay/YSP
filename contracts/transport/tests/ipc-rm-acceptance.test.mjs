@@ -150,3 +150,37 @@ test('TR-12: replay keeps the original durable references and uncertainty never 
   const forbidden = value('forbidden');
   for (const field of ['chapter_id', 'record', 'operation']) assert.equal(forbidden[field], null);
 });
+
+test('TR-12: opening fingerprint matches the shared JCS wrapper and an independent literal vector', async () => {
+  const vector = await readJson('../../ipc-rm-acceptance/v1/fingerprint-vector.json');
+  // Contract example check for this bounded ASCII-key/integer/string domain, not a runtime JCS provider.
+  const canonical = (item) => {
+    if (Array.isArray(item)) return `[${item.map(canonical).join(',')}]`;
+    if (item !== null && typeof item === 'object') {
+      return `{${Object.keys(item).sort().map((key) => `${JSON.stringify(key)}:${canonical(item[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(item);
+  };
+  const normalized = (input) => {
+    const { chapter_id, action_code, idempotency_key, ...context } = input.context;
+    return {
+      chapter_id, action_code, input_schema: 'urn:ysp:ipc-rm-acceptance:v1#/$defs/AcceptOpeningInput',
+      input: { context, receipt: input.receipt, source: input.source, evidence: [...input.evidence].sort((a, b) => BigInt(a.binding_id) < BigInt(b.binding_id) ? -1 : 1) }
+    };
+  };
+  const original = value('accept-input');
+  assert.deepEqual(normalized(original), vector.normalized_value);
+  const encoded = canonical(normalized(original));
+  assert.equal(encoded, vector.canonical_json);
+  assert.equal(createHash('sha256').update(encoded, 'utf8').digest('hex'), vector.sha256);
+  const reordered = structuredClone(original);
+  reordered.context.idempotency_key = 'another-key';
+  reordered.evidence.reverse();
+  assert.equal(canonical(normalized(reordered)), vector.canonical_json);
+  const changed = structuredClone(original);
+  changed.source.expected_row_version = 9;
+  assert.notEqual(canonical(normalized(changed)), vector.canonical_json);
+  changed.source.expected_row_version = 8;
+  changed.evidence[0].evidence.object_version = 'djI=';
+  assert.notEqual(canonical(normalized(changed)), vector.canonical_json);
+});

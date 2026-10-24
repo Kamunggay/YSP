@@ -137,7 +137,7 @@
         "then": { "properties": { "condition_code": { "enum": ["quarantine", "damaged", "rejected", "held"] }, "accepted_quantity": { "type": "object", "properties": { "value": { "type": "string", "pattern": "^0(?:\\.0+)?$" } } } } },
         "else": { "properties": { "condition_code": { "const": "usable" }, "accepted_quantity": { "type": "object", "properties": { "value": { "type": "string", "not": { "pattern": "^0(?:\\.0+)?$" } } } } } }
       }],
-      "description": "Inventory-owned result references. Accepted lot accepted quantity equals documented quantity; nonusable lot accepted quantity is zero and documents physical nonusable custody without adding usable stock or accepted source progress. Nonusable movement represents custody recording, not acceptance. IDs resolve to the RM/line/variant and Inventory posting. No zero movement is written."
+      "description": "Inventory-owned result references. Accepted lot accepted quantity equals documented quantity; nonusable lot accepted quantity is zero and documents physical nonusable custody without adding usable stock or accepted source progress. The rm_nonusable_intake receipt movement records nonusable intake, not acceptance. IDs resolve to the RM/line/variant and Inventory posting. No zero movement is written."
     },
     "AcceptedOpeningData": {
       "type": "object", "additionalProperties": false,

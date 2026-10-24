@@ -11,7 +11,7 @@ The boundary connects a signed IPC, persisted inspection and ready evidence to o
 | [source-and-evidence.json](source-and-evidence.json) | Expected two-line IPC and immutable evidence bindings, using ticket 08's existing definitions |
 | [internal-operations.md](internal-operations.md) | Purchasing/Receiving owner; Access, Documents and Inventory participants, locks/guards, commitment, rollback/retry |
 | [schema-change-register.md](schema-change-register.md) | Leader integration reservations, ownership, exact relationships and deferred constraints |
-| [walkthrough.md](walkthrough.md) and [cases.json](cases.json) | S-13 → S-12 → acceptance/lookup; numerical expectations and future integrated verification cases |
+| [walkthrough.md](walkthrough.md), [cases.json](cases.json) and [fingerprint-vector.json](fingerprint-vector.json) | S-13 → S-12 → acceptance/lookup; numerical expectations, literal operation fingerprint and future integrated verification cases |
 
 Governing inputs are the **main workspace's working** `docs/PRD.md`, `docs/TRD.md`, `docs/DATABASE-SCHEMA.md` §§2, 4.2, 5, 10–12, `docs/BACKEND-ARCHITECTURE.MD`, `docs/APP-FLOW.md` F-01/F-06/S-12/S-13, `docs/IMPLEMENTATION-PLAN.md` P00/P02–P06, `docs/contracts/first-slice-agreement.md` Q2/Q4–Q5, root glossary and ADRs 0001/0003. Historical copies/proposals remain supporting design; this contract does not promote them. It implements the ticket's TR-02–TR-03/TR-06/TR-10–TR-12/TR-15, INV-07–INV-08, RCV-01–RCV-03/RCV-08–RCV-10 and MIG-01/MIG-04 handoff. P06 still implements and proves AC-04.
 
@@ -29,7 +29,7 @@ Validation proves schema shapes, expected fixture relationships, exact arithmeti
 
 Outstanding consumer questions requiring actual review:
 
-- **Efren / Inventory:** confirm accepted/nonusable lot and movement mapping, receipt-line source batch identity, guard participation and returned posting/lot/position/movement references against P05/P06 design. A nonusable custody movement must never increase accepted progress or usable stock.
+- **Efren / Inventory:** confirm accepted/nonusable lot and movement mapping, receipt-line source batch identity, guard participation and returned posting/lot/position/movement references against P05/P06 design. A nonusable intake receipt movement must never increase accepted progress or usable stock.
 - **Documents provider/consumer maintainer:** confirm version-pinned binding storage, signer verification/availability checks and transaction participation; confirm the cyclic operation/attribution/evidence FKs can be enforced before enablement. Signed-sheet integrity alone does not establish genuine required signers.
 - **Glenn / S-13/S-12 and lookup:** confirm separate quantity and exception displays, preservation of corrected/stale input and original uncertain attempt, and scoped recovery of the saved result without another acceptance.
 - **Leader integration with affected maintainers:** validate the reserved DDL tuples, cutover source fence and complete graph against intended MySQL. Reservation is design ownership, not accepted DDL or a passed migration.
