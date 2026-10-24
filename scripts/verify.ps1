@@ -29,4 +29,4 @@ Invoke-Checked docker @('run', '--rm', 'ysp-verification:local', 'npm', 'audit',
 Invoke-Checked docker @('run', '--rm', 'ysp-verification:local', 'node', '--version')
 Invoke-Checked docker @('image', 'inspect', 'ysp-verification:local', 'ysp-backend:local', 'ysp-frontend:local', '--format', '{{.RepoTags}} {{.Id}}')
 Get-FileHash contracts/health/v1/*.json, contracts/transport/v1/*.json -Algorithm SHA256 | Format-List
-Write-Output 'Combined local verification passed. Remote CI, nonauthor reproduction and P01 acceptance remain pending.'
+Write-Output 'Combined verification passed for this checkout. Review and package acceptance are recorded separately.'

@@ -1,11 +1,10 @@
 # Laravel/MySQL local health baseline
 
-Local ticket `stage-0-leader/04`; [parent spec #2](https://github.com/Kamunggay/YSP/issues/2).
-This is the backend portion of P01/Q6 (TR-01–TR-05, TR-19–TR-20). Ticket 05 adds the [initial frontend and same-origin connection](../frontend/README.md) with Leader's authorization. Actual nonauthor reproduction, applicable remote CI and reviewed merge remain P01 gates.
+The backend supplies a modular Laravel layout, private intended MySQL, a migration runner and a read-only health endpoint. The React frontend uses the same browser origin. Business workflows and production deployment are developed separately.
 
 ## Prerequisites and pinned versions
 
-Use Git, Docker Engine/Desktop in Linux-container mode with Compose v2/BuildKit, and PowerShell 5.1+ on Windows or PowerShell 7 (`pwsh`) on Linux/macOS. Allow at least 4 GB Docker memory and disk for the PHP/MySQL images. Docker must be running. XAMPP, host PHP/Composer, Node and an existing database are unnecessary.
+Use Git, Docker Engine/Desktop in Linux-container mode with BuildKit and a verified Compose version (2.38.2 or 5.1.3), and PowerShell 5.1+ on Windows or PowerShell 7 (`pwsh`) on Linux/macOS. Allow at least 4 GB Docker memory and disk for the PHP/MySQL images. Docker must be running. XAMPP, host PHP/Composer, Node and an existing database are unnecessary.
 
 Verified 24 October 2026: [Laravel 13 supports PHP 8.3–8.5 and receives security fixes through March 2028](https://laravel.com/docs/13.x/releases), [PHP 8.4 receives security support through December 2028](https://www.php.net/supported-versions.php), and [MySQL 8.4 is an LTS series](https://dev.mysql.com/doc/refman/8.4/en/mysql-releases.html). The Composer lock resolves Laravel 13.38.0 and all PHP packages; its platform is PHP 8.4.27. Dockerfile pins PHP 8.4.27 and Composer 2.10.3; Compose pins official MySQL 8.4 by immutable index digest. The indexes contain Linux amd64/arm64; only the recorded local architecture is tested. When upgrading, verify support, resolve new digests, regenerate the lock and rerun checks. Builds require registry/Packagist access; runtime uses a private network.
 
@@ -35,7 +34,7 @@ Existing MySQL volumes retain first-initialization passwords. Restore the origin
 
 `GET /api/v1/health` is a read-only infrastructure endpoint without session/chapter/business authority. Success: HTTP 200, `{"status":"ok","database":"ok"}`. Failed configuration/connectivity: HTTP 503, `{"status":"unavailable","database":"unavailable"}`. Both use `Cache-Control: no-store, private`. Responses contain no credentials, version/schema/exception details or operational data. GET/HEAD is registered; no business mutation, operation result or session is created. This health contract is separate from business ActionResult and does not fabricate an operation ID. Health establishes configuration/connectivity; schema identity is checked separately.
 
-The PHP built-in server is for local backend reproduction. Ticket 05 supplies frontend/proxy integration. Production serving/TLS, worker/scheduler execution, backup/recovery, four-user capacity and host monitoring remain in their owning packages. Local container resource/restart/log limits are declared; no production readiness is claimed.
+The PHP built-in server is for local backend reproduction. Nginx serves the built frontend and proxies API requests. Production serving/TLS, worker/scheduler execution, backup/recovery, four-user capacity and host monitoring remain in their owning packages. Local container resource/restart/log limits are declared; no production readiness is claimed.
 
 ## Local and CI verification
 
@@ -45,7 +44,7 @@ powershell -NoProfile -File scripts/verify-backend.ps1
 
 The [combined verification entry point](../scripts/README.md), also used by `.github/workflows/backend.yml`, reuses this backend check and adds frontend/contract/browser checks. This backend command builds from the lock; runs strict Composer validation, PHP syntax, Pint, PHPStan level 6, locked dependency audit and config/secret checks; starts a unique disposable project with a fresh MySQL volume and random local HTTP port; migrates twice; verifies MySQL/InnoDB and the baseline checkpoint; runs backend tests once; checks real container/host HTTP; stops MySQL to prove safe 503 and restarts it to prove recovery; checks cached configuration; and removes only its own disposable project/volume. The normal development database is preserved.
 
-The config check verifies private networking, immutable DB identity, ignored/untracked secret paths and that actual generated local secret values are absent from source. These bounded checks do not establish that every possible secret or vulnerability is detectable. Remote CI execution is pending until an authorized push and actual run are recorded.
+The config check verifies private networking, immutable DB identity, ignored/untracked secret paths and that actual generated local secret values are absent from source. These bounded checks do not establish that every possible secret or vulnerability is detectable. The combined GitHub Actions job runs this check together with contracts and the frontend/browser checks. Use the PR check result for the exact submitted revision.
 
 For TDD, target one file. PHPUnit 12 rejects `--bail`; its equivalent is:
 
