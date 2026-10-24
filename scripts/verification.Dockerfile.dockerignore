@@ -1,0 +1,11 @@
+**
+!frontend/
+!frontend/**
+!contracts/
+!contracts/**
+**/node_modules
+**/.env*
+**/dist
+**/test-results
+**/playwright-report
+**/*.log

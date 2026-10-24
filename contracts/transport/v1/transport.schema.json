@@ -1,0 +1,1082 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ysp:transport:v1",
+  "title": "YSP shared transport v1 — review revision 1",
+  "description": "Leader-authored P00 contract for stage-0-leader/01, parent spec https://github.com/Kamunggay/YSP/issues/2. Review candidate dated 2026-10-24; Glenn frontend/query and Efren posting acceptance pending. This describes wire values, not implemented business behavior. TR-02–TR-03, TR-06–TR-10, TR-12, TR-15, DOC-11, UX-01–UX-04; Q3–Q5. Identity/record/evidence payloads belong to ticket 08, IPC/RM acceptance to 02, stock query/hold semantics to 03. No public mutation or balance setter is defined.",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+      "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+    },
+    "Version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295,
+      "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+    },
+    "Quantity": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,6})?$",
+      "description": "Nonnegative DECIMAL(20,6) magnitude: at most fourteen integral and six fractional digits. No exponent, sign, separators or binary floating point. Zero is a transport value; a domain operation may require a positive amount. Fractional trailing zeros are accepted. Canonical fingerprint representation uses six places, so 2 and 2.000000 denote the same exact quantity. Signed ledger deltas require a later explicit domain schema."
+    },
+    "UnitQuantity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "quantity_scale"
+      ],
+      "description": "A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units.",
+      "properties": {
+        "value": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "quantity_scale": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "quantity_scale": {
+                "const": 0
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "pattern": "^[0-9]+(?:\\.0{1,6})?$",
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "quantity_scale": {
+                "const": 1
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "pattern": "^[0-9]+(?:\\.[0-9]{1}0{0,5})?$",
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "quantity_scale": {
+                "const": 2
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "pattern": "^[0-9]+(?:\\.[0-9]{1,2}0{0,4})?$",
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "quantity_scale": {
+                "const": 3
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "pattern": "^[0-9]+(?:\\.[0-9]{1,3}0{0,3})?$",
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "quantity_scale": {
+                "const": 4
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "pattern": "^[0-9]+(?:\\.[0-9]{1,4}0{0,2})?$",
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "quantity_scale": {
+                "const": 5
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "pattern": "^[0-9]+(?:\\.[0-9]{1,5}0?)?$",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "PostedMoney": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "properties": {
+        "currency": {
+          "const": "PHP"
+        },
+        "amount": {
+          "type": "string",
+          "pattern": "^(?:0|[1-9][0-9]{0,17})\\.[0-9]{2}$"
+        }
+      },
+      "description": "Nonnegative DECIMAL(20,2) posted PHP magnitude with exactly two fractional places. Unit costs/intermediate valuations may use Quantity's DECIMAL(20,6) precision; they are NOT posted money. Approved Finance rounding/valuation policy governs final amounts and residual cents across batches. This contract chooses no rounding policy; missing required policy blocks posting. Never round through binary float."
+    },
+    "UtcInstant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+    },
+    "ActionCode": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{0,63}$",
+      "description": "Stable action identity, not a route or an authority grant. Endpoint providers assign action codes; the server rejects a mismatched action. Example names are illustrative until their owning contracts are accepted."
+    },
+    "IdempotencyKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+      "description": "Case-sensitive opaque client key, scoped by server-authorized chapter AND action. No trimming or case folding. Generate once before sending and retain with the original attempt and immutable payload."
+    },
+    "OperationId": {
+      "type": "string",
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "Opaque case-sensitive server public ULID, not the numeric operations table ID. Possession confers no access."
+    },
+    "RecordReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
+        }
+      },
+      "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to ticket 08."
+    },
+    "CommandContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "action_code",
+        "idempotency_key",
+        "record",
+        "expected_row_version"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "action_code": {
+          "$ref": "#/$defs/ActionCode"
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "record": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecordReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_row_version": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        }
+      },
+      "description": "Normalized transport metadata, NOT a public generic command or HTTP body. Adapter derives chapter/action from the authorized route and key from Idempotency-Key; body contributes record reference and explicit expected versions. A body chapter/action/key override is rejected. Domain input is separately validated by ticket 08/02/03 schemas. Existing-record commands require the exact expected_row_version; creation explicitly uses null record and null row version. Approval/evidence-bound operations additionally REQUIRE expected_material_version in their own schema and check both versions at commit. No expected_version alias. Never accept actor authority, balances, approval state, allocation choices or payment verification as trusted client values.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "record": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expected_row_version": {
+                "type": "null"
+              },
+              "expected_material_version": false
+            }
+          },
+          "else": {
+            "properties": {
+              "expected_row_version": {
+                "$ref": "#/$defs/Version"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "OperationLookup": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "chapter_id",
+            "action_code",
+            "idempotency_key"
+          ],
+          "properties": {
+            "chapter_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "action_code": {
+              "$ref": "#/$defs/ActionCode"
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "chapter_id",
+            "operation_id"
+          ],
+          "properties": {
+            "chapter_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            }
+          }
+        }
+      ],
+      "description": "Exactly one lookup selector: action+key within the authorized chapter, or a known public operation ID within that same chapter. No key-only, unscoped-ID or mixed selector. Current membership/duty and record visibility are rechecked before reading or returning any saved result. An absent terminal row is not proof of failure."
+    },
+    "OperationIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "action_code",
+        "idempotency_key"
+      ],
+      "properties": {
+        "operation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OperationId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "action_code": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idempotency_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IdempotencyKey"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "Known attempt identity. Action/key are either both known or both null; ID-only lookup may have no visible action/key. Unknown operation ID stays null. The ID is never fabricated for a request that may not have reached the server.",
+      "oneOf": [
+        {
+          "properties": {
+            "action_code": {
+              "$ref": "#/$defs/ActionCode"
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        {
+          "properties": {
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            },
+            "action_code": {
+              "type": "null"
+            },
+            "idempotency_key": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "Operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "outcome",
+        "committed_at",
+        "replayed"
+      ],
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/OperationIdentity"
+        },
+        "outcome": {
+          "enum": [
+            "committed",
+            "rejected",
+            "unknown"
+          ]
+        },
+        "committed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "description": "Only a durable, authorized terminal result uses committed/rejected. committed_at is the terminal-result transaction commit time, including a recorded rejection; it is not the physical occurrence or posting time. Unknown has no terminal time and cannot be a replay. Pre-operation validation/permission failures may have no operation at all.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "committed_at": {
+                "type": "null"
+              },
+              "replayed": {
+                "const": false
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "identity": {
+                "type": "object",
+                "properties": {
+                  "operation_id": {
+                    "$ref": "#/$defs/OperationId"
+                  }
+                }
+              },
+              "committed_at": {
+                "$ref": "#/$defs/UtcInstant"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "RecordState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference",
+        "row_version",
+        "material_version",
+        "states"
+      ],
+      "properties": {
+        "reference": {
+          "$ref": "#/$defs/RecordReference"
+        },
+        "row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "states": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z_]{0,31}$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        }
+      },
+      "description": "Authorized resulting/current record metadata, not a domain record payload. row_version changes with relevant progress/concurrent writes; material_version pins immutable approved/evidence-bound content. Partial progress can move row 7 to 8 while material remains 3. A material edit increments both and invalidates affected approval with history. Domain schemas enumerate independent approval/fulfillment/payment/exception axes in states; a generic status must not replace them. Returned current state never silently rebases a draft or expected version."
+    },
+    "FieldFeedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "code",
+        "message"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "format": "json-pointer"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "description": "Correctable field feedback. path is an RFC 6901 pointer relative to the endpoint request JSON body (not CommandContext or a translated label). Empty pointer targets the body as a whole. Do not echo sensitive submitted data."
+    },
+    "BlockingReason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "description": "Stable machine reason and scoped human explanation of why the action cannot proceed. Separate from field feedback and from a server-permitted next action. Domain-specific reason codes extend this shape; never disclose another chapter or unauthorized record."
+    },
+    "NextAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "correct_input",
+            "refresh_record",
+            "lookup_operation",
+            "reconcile_activity",
+            "request_access",
+            "review_record"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "description": "Server-permitted next step and readable label; not an authorization token. Recheck current authority when used. No transport outcome authorizes repeating a physical handover; reconciliation is separate from database retry."
+    },
+    "BusinessTimes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "occurred_at",
+        "verified_at",
+        "entered_at",
+        "posted_at"
+      ],
+      "properties": {
+        "occurred_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Actual physical/commercial occurrence, retained separately from entry; client assertion is subject to domain verification."
+        },
+        "verified_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Actual server-accepted verification instant, not inferred from upload time or backdated to gain timely protection."
+        },
+        "entered_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Server time the information was entered; delayed entry does not replace actual occurrence."
+        },
+        "posted_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Server commit instant when the business posting became durable, null until a posting is established. A rejection result can commit without a business posting."
+        }
+      },
+      "description": "Reusable meanings only. Endpoint payload owners choose which times apply; null means unestablished/not applicable, never fabricated equality. Posting/verification/deadline truth remains server-owned. UTC instants are displayed in Asia/Manila without changing elapsed-time comparisons."
+    },
+    "ActionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "chapter_id",
+        "action_result",
+        "operation",
+        "record",
+        "field_feedback",
+        "blocking_reason",
+        "permitted_next_actions",
+        "input_policy",
+        "lookup_state"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "chapter_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "action_result": {
+          "enum": [
+            "success",
+            "blocked",
+            "stale",
+            "forbidden",
+            "uncertain"
+          ]
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Operation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "record": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecordState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "field_feedback": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FieldFeedback"
+          }
+        },
+        "blocking_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BlockingReason"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "permitted_next_actions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/NextAction"
+          }
+        },
+        "input_policy": {
+          "enum": [
+            "preserve",
+            "may_clear"
+          ]
+        },
+        "lookup_state": {
+          "enum": [
+            null,
+            "not_attempted",
+            "pending_or_not_visible",
+            "unavailable"
+          ]
+        },
+        "data": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Optional extension slot only. Endpoint owners MUST constrain/require it with their domain payload schema; this shared slice defines no domain properties. Forbidden and uncertain responses carry no data. Do not use this slot to bypass the owning source operation."
+        }
+      },
+      "description": "Shared v1 result envelope, no identity/evidence/business payload. Human-readable messages/labels accompany stable codes (UX-01/UX-04); color alone is insufficient. Correctable/stale/forbidden/uncertain results preserve the local draft and original attempt separately; no error response replaces the draft. A transport failure or malformed response is handled locally as uncertain even when no server envelope exists. Null record or operation means unavailable/unauthorized metadata, not a claim that no business effect exists.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action_result": {
+                "const": "success"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "chapter_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "input_policy": {
+                "const": "may_clear"
+              },
+              "lookup_state": {
+                "type": "null"
+              },
+              "operation": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Operation"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "outcome": {
+                        "const": "committed"
+                      }
+                    }
+                  }
+                ]
+              },
+              "record": {
+                "$ref": "#/$defs/RecordState"
+              },
+              "blocking_reason": {
+                "type": "null"
+              },
+              "field_feedback": {
+                "type": "array",
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action_result": {
+                "const": "blocked"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "chapter_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "input_policy": {
+                "const": "preserve"
+              },
+              "lookup_state": {
+                "type": "null"
+              },
+              "blocking_reason": {
+                "$ref": "#/$defs/BlockingReason"
+              },
+              "operation": {
+                "anyOf": [
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/Operation"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "outcome": {
+                            "const": "rejected"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action_result": {
+                "const": "stale"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "chapter_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "input_policy": {
+                "const": "preserve"
+              },
+              "lookup_state": {
+                "type": "null"
+              },
+              "blocking_reason": {
+                "$ref": "#/$defs/BlockingReason"
+              },
+              "operation": {
+                "anyOf": [
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/Operation"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "outcome": {
+                            "const": "rejected"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "field_feedback": {
+                "type": "array",
+                "maxItems": 0
+              },
+              "record": {
+                "$ref": "#/$defs/RecordState"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action_result": {
+                "const": "forbidden"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "chapter_id": {
+                "type": "null"
+              },
+              "input_policy": {
+                "const": "preserve"
+              },
+              "lookup_state": {
+                "type": "null"
+              },
+              "blocking_reason": {
+                "$ref": "#/$defs/BlockingReason"
+              },
+              "operation": {
+                "type": "null"
+              },
+              "field_feedback": {
+                "type": "array",
+                "maxItems": 0
+              },
+              "record": {
+                "type": "null"
+              },
+              "data": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action_result": {
+                "const": "uncertain"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "chapter_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "input_policy": {
+                "const": "preserve"
+              },
+              "lookup_state": {
+                "enum": [
+                  "not_attempted",
+                  "pending_or_not_visible",
+                  "unavailable"
+                ]
+              },
+              "blocking_reason": {
+                "$ref": "#/$defs/BlockingReason"
+              },
+              "operation": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Operation"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "outcome": {
+                        "const": "unknown"
+                      }
+                    }
+                  }
+                ]
+              },
+              "field_feedback": {
+                "type": "array",
+                "maxItems": 0
+              },
+              "record": {
+                "type": "null"
+              },
+              "permitted_next_actions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "lookup_operation",
+                        "reconcile_activity"
+                      ]
+                    }
+                  }
+                }
+              },
+              "data": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "LookupTerminal": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action_result": {
+              "enum": [
+                "success",
+                "blocked",
+                "stale"
+              ]
+            },
+            "operation": {
+              "type": "object",
+              "properties": {
+                "replayed": {
+                  "const": true
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": "Authorized durable committed/rejected result returned by lookup. The original terminal identity/time is retained and replayed is true; redact/filter using current authorization."
+    },
+    "LookupPending": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action_result": {
+              "const": "uncertain"
+            },
+            "lookup_state": {
+              "const": "pending_or_not_visible"
+            }
+          }
+        }
+      ],
+      "description": "No terminal result visible after current authorization. Not a negative acknowledgment and not permission to repeat a business or physical action."
+    },
+    "LookupUnavailable": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action_result": {
+              "const": "uncertain"
+            },
+            "lookup_state": {
+              "const": "unavailable"
+            }
+          }
+        }
+      ]
+    },
+    "ForbiddenResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action_result": {
+              "const": "forbidden"
+            }
+          }
+        }
+      ]
+    },
+    "InvalidLookup": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action_result": {
+              "const": "blocked"
+            },
+            "operation": {
+              "type": "null"
+            },
+            "record": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$ref": "#/$defs/ActionResult"
+}

@@ -1,0 +1,4882 @@
+{
+  "query-input": {
+    "definition": "QueryInput",
+    "evidence_state": "expected",
+    "description": "Normalized query, no reservation or posting.",
+    "value": {
+      "chapter_id": "1",
+      "variant_id": "71",
+      "unit_id": "61",
+      "purpose": {
+        "use": "internal",
+        "event_id": null,
+        "requesting_unit_id": "81",
+        "intended_use_at": "2026-10-24T08:00:00.000000Z"
+      },
+      "requested_quantity": {
+        "value": "2",
+        "quantity_scale": 0
+      },
+      "lot_ids": [
+        "1201"
+      ],
+      "location_ids": [
+        "91"
+      ]
+    }
+  },
+  "query-unheld": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Ten accepted usable units, no hold/reservation; expected read only.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "10",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "10",
+          "quantity": {
+            "value": "10",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [],
+      "reservations": [],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "create-hold": {
+    "definition": "CreateHoldInput",
+    "evidence_state": "expected",
+    "description": "Identified [0,3) of ten; never inferred from matching totals.",
+    "value": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "inventory.record_stock_hold",
+        "idempotency_key": "synthetic-hold-A",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "expected_row_version": 9,
+        "expected_material_version": 1
+      },
+      "finding": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+      },
+      "reason_code": "count_investigation",
+      "coverage": [
+        {
+          "lot_id": "1201",
+          "position_id": "1301",
+          "start": "0",
+          "end": "3"
+        }
+      ],
+      "expected_guards": {
+        "variant_id": "71",
+        "eligibility_version": 4,
+        "position_versions": [
+          {
+            "position_id": "1301",
+            "row_version": 4
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "binding_id": "1802",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "hold_finding"
+        }
+      ]
+    }
+  },
+  "clear-hold": {
+    "definition": "ClearHoldInput",
+    "evidence_state": "expected",
+    "description": "Full clearance of hold A; source/evidence/authority checked by provider.",
+    "value": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "inventory.clear_stock_hold",
+        "idempotency_key": "synthetic-clear-A",
+        "record": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "expected_row_version": 2,
+        "expected_material_version": 1
+      },
+      "hold_id": "2101",
+      "expected_hold_row_version": 1,
+      "resolution": {
+        "chapter_id": "1",
+        "record": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "material_version": 1,
+        "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "reason": "Authorized investigation resolved with retained evidence",
+      "expected_guards": {
+        "variant_id": "71",
+        "eligibility_version": 4,
+        "position_versions": [
+          {
+            "position_id": "1301",
+            "row_version": 4
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "binding_id": "1802",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "1801",
+              "kind": "ADJ"
+            },
+            "material_version": 1,
+            "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "hold_clearance"
+        }
+      ]
+    }
+  },
+  "cleared": {
+    "definition": "HoldChangeResult",
+    "evidence_state": "expected",
+    "description": "Hold-only clearance: retained actor/evidence/result/audit, no physical change.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "success",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000002",
+          "action_code": "inventory.clear_stock_hold",
+          "idempotency_key": "synthetic-clear-A"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-24T08:01:00.000000Z",
+        "replayed": false
+      },
+      "record": {
+        "reference": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "row_version": 3,
+        "material_version": 1,
+        "states": {
+          "resolution": "executed"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": null,
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review remaining holds, commitments and restrictions"
+        }
+      ],
+      "input_policy": "may_clear",
+      "lookup_state": null,
+      "data": {
+        "hold_id": "2101",
+        "hold_row_version": 2,
+        "state": "cleared",
+        "source": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "resolution": {
+          "chapter_id": "1",
+          "record": {
+            "id": "1801",
+            "kind": "ADJ"
+          },
+          "material_version": 1,
+          "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "reason": "Authorized investigation resolved with retained evidence",
+        "actor": {
+          "chapter_id": "1",
+          "user_id": "11",
+          "membership_id": "31",
+          "duty_grant_id": "41",
+          "duty_code": "INVENTORY",
+          "actor_name": "Synthetic Inventory Officer",
+          "chapter_name": "Synthetic chapter",
+          "captured_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "evidence": [
+          {
+            "binding_id": "1802",
+            "target": {
+              "chapter_id": "1",
+              "record": {
+                "id": "1801",
+                "kind": "ADJ"
+              },
+              "material_version": 1,
+              "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "evidence": {
+              "chapter_id": "1",
+              "evidence_object_id": "301",
+              "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "object_version": "djE="
+            },
+            "purpose_code": "hold_clearance"
+          }
+        ],
+        "affected_cell_ids": [
+          "2001"
+        ],
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 5,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 5
+            }
+          ]
+        },
+        "physical_quantity_changed": false,
+        "condition_changed": false,
+        "movement_ids": [],
+        "audit_event_id": "2201",
+        "follow_up_task_ids": [
+          "2301"
+        ]
+      }
+    }
+  },
+  "recorded": {
+    "definition": "HoldChangeResult",
+    "evidence_state": "expected",
+    "description": "Independent finding blocks its identified coverage; quantity and condition unchanged.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "success",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000002",
+          "action_code": "inventory.record_stock_hold",
+          "idempotency_key": "synthetic-hold-A"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-24T08:01:00.000000Z",
+        "replayed": false
+      },
+      "record": {
+        "reference": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "row_version": 10,
+        "material_version": 1,
+        "states": {
+          "finding": "recorded"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": null,
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review remaining holds, commitments and restrictions"
+        }
+      ],
+      "input_policy": "may_clear",
+      "lookup_state": null,
+      "data": {
+        "hold_id": "2101",
+        "hold_row_version": 1,
+        "state": "active",
+        "source": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "resolution": null,
+        "reason": "count_investigation",
+        "actor": {
+          "chapter_id": "1",
+          "user_id": "11",
+          "membership_id": "31",
+          "duty_grant_id": "41",
+          "duty_code": "INVENTORY",
+          "actor_name": "Synthetic Inventory Officer",
+          "chapter_name": "Synthetic chapter",
+          "captured_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "evidence": [
+          {
+            "binding_id": "1802",
+            "target": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254740993",
+                "kind": "IPC"
+              },
+              "material_version": 1,
+              "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+            },
+            "evidence": {
+              "chapter_id": "1",
+              "evidence_object_id": "301",
+              "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "object_version": "djE="
+            },
+            "purpose_code": "hold_finding"
+          }
+        ],
+        "affected_cell_ids": [
+          "2001"
+        ],
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 5,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 5
+            }
+          ]
+        },
+        "physical_quantity_changed": false,
+        "condition_changed": false,
+        "movement_ids": [],
+        "audit_event_id": "2201",
+        "follow_up_task_ids": [
+          "2301"
+        ]
+      }
+    }
+  },
+  "replayed": {
+    "definition": "HoldChangeResult",
+    "evidence_state": "expected",
+    "description": "Same chapter/action/key/payload returns original references, not a second clearance.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "success",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000002",
+          "action_code": "inventory.clear_stock_hold",
+          "idempotency_key": "synthetic-clear-A"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-24T08:01:00.000000Z",
+        "replayed": true
+      },
+      "record": {
+        "reference": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "row_version": 3,
+        "material_version": 1,
+        "states": {
+          "resolution": "executed"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": null,
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review remaining holds, commitments and restrictions"
+        }
+      ],
+      "input_policy": "may_clear",
+      "lookup_state": null,
+      "data": {
+        "hold_id": "2101",
+        "hold_row_version": 2,
+        "state": "cleared",
+        "source": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "resolution": {
+          "chapter_id": "1",
+          "record": {
+            "id": "1801",
+            "kind": "ADJ"
+          },
+          "material_version": 1,
+          "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "reason": "Authorized investigation resolved with retained evidence",
+        "actor": {
+          "chapter_id": "1",
+          "user_id": "11",
+          "membership_id": "31",
+          "duty_grant_id": "41",
+          "duty_code": "INVENTORY",
+          "actor_name": "Synthetic Inventory Officer",
+          "chapter_name": "Synthetic chapter",
+          "captured_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "evidence": [
+          {
+            "binding_id": "1802",
+            "target": {
+              "chapter_id": "1",
+              "record": {
+                "id": "1801",
+                "kind": "ADJ"
+              },
+              "material_version": 1,
+              "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "evidence": {
+              "chapter_id": "1",
+              "evidence_object_id": "301",
+              "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "object_version": "djE="
+            },
+            "purpose_code": "hold_clearance"
+          }
+        ],
+        "affected_cell_ids": [
+          "2001"
+        ],
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 5,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 5
+            }
+          ]
+        },
+        "physical_quantity_changed": false,
+        "condition_changed": false,
+        "movement_ids": [],
+        "audit_event_id": "2201",
+        "follow_up_task_ids": [
+          "2301"
+        ]
+      }
+    }
+  },
+  "blocked-evidence": {
+    "definition": "UnchangedResult",
+    "evidence_state": "expected",
+    "description": "Expected rejected/stale attempt with no partial effects. ACTIVE_HOLD applies to allocation, not a successfully cleared independent reason.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000002",
+          "action_code": "inventory.clear_stock_hold",
+          "idempotency_key": "synthetic-clear-A"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-24T08:01:00.000000Z",
+        "replayed": false
+      },
+      "record": {
+        "reference": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "row_version": 3,
+        "material_version": 1,
+        "states": {
+          "resolution": "approved"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "EVIDENCE_NOT_READY",
+        "message": "Refresh authorized facts or resolve the reported blocker; preserve original input."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review current authorized state"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "blocked-remaining-hold": {
+    "definition": "UnchangedResult",
+    "evidence_state": "expected",
+    "description": "Expected rejected/stale attempt with no partial effects. ACTIVE_HOLD applies to allocation, not a successfully cleared independent reason.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "3102",
+          "kind": "SO"
+        },
+        "row_version": 3,
+        "material_version": 1,
+        "states": {
+          "allocation": "blocked"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "ACTIVE_HOLD",
+        "message": "Refresh authorized facts or resolve the reported blocker; preserve original input."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review current authorized state"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "stale": {
+    "definition": "UnchangedResult",
+    "evidence_state": "expected",
+    "description": "Expected rejected/stale attempt with no partial effects. ACTIVE_HOLD applies to allocation, not a successfully cleared independent reason.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "stale",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000002",
+          "action_code": "inventory.clear_stock_hold",
+          "idempotency_key": "synthetic-clear-A"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-24T08:01:00.000000Z",
+        "replayed": false
+      },
+      "record": {
+        "reference": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "row_version": 3,
+        "material_version": 1,
+        "states": {
+          "resolution": "approved"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "STALE_STOCK",
+        "message": "Refresh authorized facts or resolve the reported blocker; preserve original input."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review current authorized state"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "changed-key": {
+    "definition": "UnchangedResult",
+    "evidence_state": "expected",
+    "description": "Expected rejected/stale attempt with no partial effects. ACTIVE_HOLD applies to allocation, not a successfully cleared independent reason.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000002",
+          "action_code": "inventory.clear_stock_hold",
+          "idempotency_key": "synthetic-clear-A"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-24T08:01:00.000000Z",
+        "replayed": false
+      },
+      "record": {
+        "reference": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "row_version": 3,
+        "material_version": 1,
+        "states": {
+          "resolution": "approved"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "IDEMPOTENCY_PAYLOAD_MISMATCH",
+        "message": "Refresh authorized facts or resolve the reported blocker; preserve original input."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review current authorized state"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "forbidden": {
+    "definition": "UnchangedResult",
+    "evidence_state": "expected",
+    "description": "Redacted wrong-chapter, unknown/invisible target or revoked authority.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": null,
+      "action_result": "forbidden",
+      "operation": null,
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "FORBIDDEN",
+        "message": "Requested record or action is unavailable."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "request_access",
+          "label": "Use a currently authorized chapter and duty"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "lookup-no-terminal": {
+    "definition": "UnchangedResult",
+    "evidence_state": "expected",
+    "description": "No terminal result never establishes failed clearance.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "inventory.clear_stock_hold",
+          "idempotency_key": "synthetic-clear-A"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "RESULT_NOT_VISIBLE",
+        "message": "Preserve original attempt, payload and key. No terminal result proves neither failure nor absence of stock."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Look up the original chapter/action/key before any retry"
+        },
+        {
+          "code": "reconcile_activity",
+          "label": "Reconcile physical facts; do not recount or repeat a handover automatically"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "pending_or_not_visible"
+    }
+  },
+  "lookup-unavailable": {
+    "definition": "UnchangedResult",
+    "evidence_state": "expected",
+    "description": "Unavailable lookup remains uncertain.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "inventory.clear_stock_hold",
+          "idempotency_key": "synthetic-clear-A"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "LOOKUP_UNAVAILABLE",
+        "message": "Preserve attempt and key until authorized reconciliation is possible."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Look up the original chapter/action/key before any retry"
+        },
+        {
+          "code": "reconcile_activity",
+          "label": "Reconcile physical facts; do not recount or repeat a handover automatically"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "unavailable"
+    }
+  },
+  "query-rop-ten": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Q1 literal: [0,2) held and RF reserved, [7,9) held only. Ten on hand remains above ROP eight while demand for two has shortage one.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "1",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "4",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "4",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "9",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "1",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "2",
+          "quantity": {
+            "value": "2",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2101"
+          ],
+          "active_reservation_id": "2401",
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD",
+            "RESERVED"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "2",
+          "end": "4",
+          "quantity": {
+            "value": "2",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": "2401",
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "RESERVED"
+          ]
+        },
+        {
+          "cell_id": "2003",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "4",
+          "end": "7",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": "2402",
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "RESERVED"
+          ]
+        },
+        {
+          "cell_id": "2004",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "7",
+          "end": "9",
+          "quantity": {
+            "value": "2",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2101"
+          ],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD"
+          ]
+        },
+        {
+          "cell_id": "2005",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "9",
+          "end": "10",
+          "quantity": {
+            "value": "1",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2101",
+          "row_version": 1,
+          "reason_code": "damage_review",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001",
+            "2004"
+          ],
+          "quantity": {
+            "value": "4",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [
+        {
+          "reservation_id": "2401",
+          "demand_line": {
+            "chapter_id": "1",
+            "record": {
+              "id": "3101",
+              "kind": "RF"
+            },
+            "line_id": "3201",
+            "variant_id": "71"
+          },
+          "kind": "RF",
+          "protection": "rf",
+          "coverage_cell_ids": [
+            "2001",
+            "2002"
+          ],
+          "quantity": {
+            "value": "4",
+            "quantity_scale": 0
+          },
+          "expires_at": null
+        },
+        {
+          "reservation_id": "2402",
+          "demand_line": {
+            "chapter_id": "1",
+            "record": {
+              "id": "3102",
+              "kind": "SO"
+            },
+            "line_id": "3202",
+            "variant_id": "71"
+          },
+          "kind": "SO",
+          "protection": "paid",
+          "coverage_cell_ids": [
+            "2003"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "expires_at": null
+        }
+      ],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "1",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "1",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-same-three": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Q7: two reasons reference the identical cell, not two quantity-three guesses.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2101",
+            "2102"
+          ],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "10",
+          "quantity": {
+            "value": "7",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2101",
+          "row_version": 1,
+          "reason_code": "damage_review",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        },
+        {
+          "hold_id": "2102",
+          "row_version": 1,
+          "reason_code": "count_investigation",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-clear-first": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Q8: clear A, retain B. No movement or condition change.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2102"
+          ],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "10",
+          "quantity": {
+            "value": "7",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2102",
+          "row_version": 1,
+          "reason_code": "count_investigation",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-clear-last": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Clear B after A: ten eligible, no movement.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "10",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "10",
+          "quantity": {
+            "value": "7",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [],
+      "reservations": [],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-reserved-three": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Three paid SO units covered by two independent reasons.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2101",
+            "2102"
+          ],
+          "active_reservation_id": "2402",
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD",
+            "RESERVED"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "10",
+          "quantity": {
+            "value": "7",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2101",
+          "row_version": 1,
+          "reason_code": "damage_review",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        },
+        {
+          "hold_id": "2102",
+          "row_version": 1,
+          "reason_code": "count_investigation",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [
+        {
+          "reservation_id": "2402",
+          "demand_line": {
+            "chapter_id": "1",
+            "record": {
+              "id": "3102",
+              "kind": "SO"
+            },
+            "line_id": "3202",
+            "variant_id": "71"
+          },
+          "kind": "SO",
+          "protection": "paid",
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "expires_at": null
+        }
+      ],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-reserved-clear-first": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Clear A only, retain B and paid reservation.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2102"
+          ],
+          "active_reservation_id": "2402",
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD",
+            "RESERVED"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "10",
+          "quantity": {
+            "value": "7",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2102",
+          "row_version": 1,
+          "reason_code": "count_investigation",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [
+        {
+          "reservation_id": "2402",
+          "demand_line": {
+            "chapter_id": "1",
+            "record": {
+              "id": "3102",
+              "kind": "SO"
+            },
+            "line_id": "3202",
+            "variant_id": "71"
+          },
+          "kind": "SO",
+          "protection": "paid",
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "expires_at": null
+        }
+      ],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-reserved-clear-last": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Clear both reasons, retain paid reservation. Availability stays seven.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": "2402",
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "RESERVED"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "10",
+          "quantity": {
+            "value": "7",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [],
+      "reservations": [
+        {
+          "reservation_id": "2402",
+          "demand_line": {
+            "chapter_id": "1",
+            "record": {
+              "id": "3102",
+              "kind": "SO"
+            },
+            "line_id": "3202",
+            "variant_id": "71"
+          },
+          "kind": "SO",
+          "protection": "paid",
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "expires_at": null
+        }
+      ],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-partial-overlap": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "A [0,3), B [2,4): one unit shared. Held union four, not five.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "6",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "4",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "4",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "6",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "2",
+          "quantity": {
+            "value": "2",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2101"
+          ],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "2",
+          "end": "3",
+          "quantity": {
+            "value": "1",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2101",
+            "2102"
+          ],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD"
+          ]
+        },
+        {
+          "cell_id": "2003",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "4",
+          "quantity": {
+            "value": "1",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2102"
+          ],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD"
+          ]
+        },
+        {
+          "cell_id": "2004",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "4",
+          "end": "10",
+          "quantity": {
+            "value": "6",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2101",
+          "row_version": 1,
+          "reason_code": "damage_review",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001",
+            "2002"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        },
+        {
+          "hold_id": "2102",
+          "row_version": 1,
+          "reason_code": "count_investigation",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2002",
+            "2003"
+          ],
+          "quantity": {
+            "value": "2",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "6",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-partial-clear-A": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Clear A leaves B [2,4), two blocked, eight available.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "8",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "2",
+          "quantity": {
+            "value": "2",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "2",
+          "end": "3",
+          "quantity": {
+            "value": "1",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2102"
+          ],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD"
+          ]
+        },
+        {
+          "cell_id": "2003",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "4",
+          "quantity": {
+            "value": "1",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2102"
+          ],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD"
+          ]
+        },
+        {
+          "cell_id": "2004",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "4",
+          "end": "10",
+          "quantity": {
+            "value": "6",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2102",
+          "row_version": 1,
+          "reason_code": "count_investigation",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2002",
+            "2003"
+          ],
+          "quantity": {
+            "value": "2",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-expiry-before": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Only an unpaid expirable SO reservation can expire at its stored deadline.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2101",
+            "2102"
+          ],
+          "active_reservation_id": "2402",
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD",
+            "RESERVED"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "10",
+          "quantity": {
+            "value": "7",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2101",
+          "row_version": 1,
+          "reason_code": "damage_review",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        },
+        {
+          "hold_id": "2102",
+          "row_version": 1,
+          "reason_code": "count_investigation",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [
+        {
+          "reservation_id": "2402",
+          "demand_line": {
+            "chapter_id": "1",
+            "record": {
+              "id": "3102",
+              "kind": "SO"
+            },
+            "line_id": "3202",
+            "variant_id": "71"
+          },
+          "kind": "SO",
+          "protection": "unpaid_expirable",
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "expires_at": "2026-10-26T08:00:00.000000Z"
+        }
+      ],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-expiry-keeps-holds": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Expiry removes R/intersection, both underlying holds remain; no receipt.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2101",
+            "2102"
+          ],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "10",
+          "quantity": {
+            "value": "7",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2101",
+          "row_version": 1,
+          "reason_code": "damage_review",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        },
+        {
+          "hold_id": "2102",
+          "row_version": 1,
+          "reason_code": "count_investigation",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-funded-protected": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Funded protection is retained through holds, clearance and the unpaid timer.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1201"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1301",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "7",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [
+            "2101",
+            "2102"
+          ],
+          "active_reservation_id": "2402",
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": [
+            "ACTIVE_HOLD",
+            "RESERVED"
+          ]
+        },
+        {
+          "cell_id": "2002",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1201",
+            "position_id": "1301",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "3",
+          "end": "10",
+          "quantity": {
+            "value": "7",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [
+        {
+          "hold_id": "2101",
+          "row_version": 1,
+          "reason_code": "damage_review",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        },
+        {
+          "hold_id": "2102",
+          "row_version": 1,
+          "reason_code": "count_investigation",
+          "source": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          }
+        }
+      ],
+      "reservations": [
+        {
+          "reservation_id": "2402",
+          "demand_line": {
+            "chapter_id": "1",
+            "record": {
+              "id": "3102",
+              "kind": "SO"
+            },
+            "line_id": "3202",
+            "variant_id": "71"
+          },
+          "kind": "SO",
+          "protection": "funded",
+          "coverage_cell_ids": [
+            "2001"
+          ],
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "expires_at": null
+        }
+      ],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "7",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "clear-quarantine": {
+    "definition": "ClearHoldInput",
+    "evidence_state": "expected",
+    "description": "Fresh current pins after the condition transfer; original position1301 pins would be stale.",
+    "value": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "inventory.clear_stock_hold",
+        "idempotency_key": "synthetic-clear-A-after-quarantine",
+        "record": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "expected_row_version": 2,
+        "expected_material_version": 1
+      },
+      "hold_id": "2101",
+      "expected_hold_row_version": 1,
+      "resolution": {
+        "chapter_id": "1",
+        "record": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "material_version": 1,
+        "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "reason": "Authorized investigation resolved with retained evidence",
+      "expected_guards": {
+        "variant_id": "71",
+        "eligibility_version": 6,
+        "position_versions": [
+          {
+            "position_id": "1302",
+            "row_version": 6
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "binding_id": "1802",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "1801",
+              "kind": "ADJ"
+            },
+            "material_version": 1,
+            "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "hold_clearance"
+        }
+      ]
+    }
+  },
+  "quarantine-cleared": {
+    "definition": "HoldChangeResult",
+    "evidence_state": "expected",
+    "description": "Independent reason resolved on current damaged position1302 without movement or condition change.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "success",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000003",
+          "action_code": "inventory.clear_stock_hold",
+          "idempotency_key": "synthetic-clear-A-after-quarantine"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-24T08:01:00.000000Z",
+        "replayed": false
+      },
+      "record": {
+        "reference": {
+          "id": "1801",
+          "kind": "ADJ"
+        },
+        "row_version": 3,
+        "material_version": 1,
+        "states": {
+          "resolution": "executed"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": null,
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review remaining holds, commitments and restrictions"
+        }
+      ],
+      "input_policy": "may_clear",
+      "lookup_state": null,
+      "data": {
+        "hold_id": "2101",
+        "hold_row_version": 2,
+        "state": "cleared",
+        "source": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "resolution": {
+          "chapter_id": "1",
+          "record": {
+            "id": "1801",
+            "kind": "ADJ"
+          },
+          "material_version": 1,
+          "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "reason": "Authorized investigation resolved with retained evidence",
+        "actor": {
+          "chapter_id": "1",
+          "user_id": "11",
+          "membership_id": "31",
+          "duty_grant_id": "41",
+          "duty_code": "INVENTORY",
+          "actor_name": "Synthetic Inventory Officer",
+          "chapter_name": "Synthetic chapter",
+          "captured_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "evidence": [
+          {
+            "binding_id": "1802",
+            "target": {
+              "chapter_id": "1",
+              "record": {
+                "id": "1801",
+                "kind": "ADJ"
+              },
+              "material_version": 1,
+              "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "evidence": {
+              "chapter_id": "1",
+              "evidence_object_id": "301",
+              "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "object_version": "djE="
+            },
+            "purpose_code": "hold_clearance"
+          }
+        ],
+        "affected_cell_ids": [
+          "2001"
+        ],
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 7,
+          "position_versions": [
+            {
+              "position_id": "1302",
+              "row_version": 7
+            }
+          ]
+        },
+        "physical_quantity_changed": false,
+        "condition_changed": false,
+        "movement_ids": [],
+        "audit_event_id": "2201",
+        "follow_up_task_ids": [
+          "2301"
+        ]
+      }
+    }
+  },
+  "query-zero-stock": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Valid approved catalog/variant/policy and guard, no receipt/position/restriction rows. Zero on hand is below the synthetic threshold; no live approval is inferred.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [],
+        "location_ids": []
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": []
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": []
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [],
+      "holds": [],
+      "reservations": [],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "low_stock": true,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        }
+      }
+    }
+  },
+  "query-filtered-rop": {
+    "definition": "EligibilityResult",
+    "evidence_state": "expected",
+    "description": "Separate expected chapter snapshot: selected lot1205 has three at position1305, another lot outside the filter has seven. ROP basis remains all ten, threshold eight, low_stock false.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "query": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "purpose": {
+          "use": "internal",
+          "event_id": null,
+          "requesting_unit_id": "81",
+          "intended_use_at": "2026-10-24T08:00:00.000000Z"
+        },
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "lot_ids": [
+          "1205"
+        ],
+        "location_ids": [
+          "91"
+        ]
+      },
+      "freshness": {
+        "read_at": "2026-10-24T08:00:00.000000Z",
+        "state": "current",
+        "guards": {
+          "variant_id": "71",
+          "eligibility_version": 4,
+          "position_versions": [
+            {
+              "position_id": "1305",
+              "row_version": 4
+            }
+          ]
+        },
+        "policy_version_id": "301",
+        "restriction_version_ids": [
+          "201"
+        ]
+      },
+      "views": {
+        "usable_stockroom_on_hand": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "rf_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "so_reserved": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "booth_custody": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "quarantined_rejected": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "inbound_open_po": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      },
+      "union": {
+        "eligible_before_holds_and_reservations": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "active_held_union": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "reserved_in_eligible": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "held_reserved_intersection": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "blocked_union": {
+          "value": "0",
+          "quantity_scale": 0
+        },
+        "available_to_allocate": {
+          "value": "3",
+          "quantity_scale": 0
+        }
+      },
+      "cells": [
+        {
+          "cell_id": "2001",
+          "dimension": {
+            "chapter_id": "1",
+            "variant_id": "71",
+            "unit_id": "61",
+            "quantity_scale": 0,
+            "lot_id": "1205",
+            "position_id": "1305",
+            "location_id": "91",
+            "custody_assignment_id": "101",
+            "custodian_user_id": null,
+            "custody_kind": "stockroom",
+            "condition_code": "usable",
+            "lot_kind": "accepted",
+            "restriction_version_id": "201",
+            "source": {
+              "chapter_id": "1",
+              "record": {
+                "id": "1901",
+                "kind": "RM"
+              },
+              "line_id": "1902",
+              "line_kind": "RM",
+              "variant_id": "71"
+            }
+          },
+          "start": "0",
+          "end": "3",
+          "quantity": {
+            "value": "3",
+            "quantity_scale": 0
+          },
+          "active_hold_ids": [],
+          "active_reservation_id": null,
+          "non_hold_eligibility": "eligible",
+          "blocking_codes": []
+        }
+      ],
+      "holds": [],
+      "reservations": [],
+      "inbound": [],
+      "rop": {
+        "approved_threshold": {
+          "value": "8",
+          "quantity_scale": 0
+        },
+        "usable_on_hand": {
+          "value": "10",
+          "quantity_scale": 0
+        },
+        "low_stock": false,
+        "basis": {
+          "chapter_id": "1",
+          "variant_id": "71",
+          "unit_id": "61",
+          "scope": "chapter_variant_all_stockroom_locations_and_lots",
+          "item_policy_version_id": "302"
+        }
+      },
+      "shortage": {
+        "requested_quantity": {
+          "value": "2",
+          "quantity_scale": 0
+        },
+        "available_quantity": {
+          "value": "3",
+          "quantity_scale": 0
+        },
+        "uncovered_quantity": {
+          "value": "0",
+          "quantity_scale": 0
+        }
+      }
+    }
+  }
+}

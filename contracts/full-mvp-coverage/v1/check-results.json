@@ -1,0 +1,195 @@
+{
+  "revision": "1.0.0-review.1",
+  "date": "2026-10-24",
+  "actor": "Codex executing Leader-authorized local ticket 10",
+  "runtime": "v24.11.1",
+  "platform": "win32",
+  "scope": "Planning inventory/reference consistency only; no application, MySQL, peer, pilot, live or full-MVP acceptance.",
+  "sourceInventorySha256": "6b62cb5b3677bd2002fc956b0d85f47cc954e1d2397c34ea7ea294aa28f5b52c",
+  "indexSha256": "0ab5f5ed28424e5e3d98dc9a0455266d332dedc0458bf1f2d6d54c49a9665e52",
+  "digestFormat": "sha256-utf8-lf; only CRLF is normalized to LF",
+  "governing": {
+    "command": "node contracts/full-mvp-coverage/check.mjs --source-root C:/xampp/htdocs/YSP",
+    "exitCode": 0,
+    "result": {
+      "revision": "1.0.0-review.1",
+      "mode": "governing-source",
+      "sourceFreshness": "matched",
+      "counts": {
+        "packages": 30,
+        "nodes": 87,
+        "branches": 40,
+        "connectors": 7,
+        "loops": 6,
+        "narrative": 35,
+        "ambiguities": 21,
+        "requirements": 194,
+        "acceptance": 35,
+        "closure": 10,
+        "activation": 11,
+        "settings": 14
+      },
+      "referenceCheck": "passed",
+      "errors": [],
+      "acceptance": "pending",
+      "peerAcceptance": "pending",
+      "liveReadiness": "pending",
+      "warning": "This checks inventory completeness, references and scoped implementation dependencies only. Expected cases, synthetic values, contract checks and screenshots cannot certify real application/peer/pilot/recovery acceptance."
+    }
+  },
+  "snapshot": {
+    "command": "node contracts/full-mvp-coverage/check.mjs --snapshot",
+    "exitCode": 0,
+    "result": {
+      "revision": "1.0.0-review.1",
+      "mode": "snapshot",
+      "sourceFreshness": "not-checked",
+      "counts": {
+        "packages": 30,
+        "nodes": 87,
+        "branches": 40,
+        "connectors": 7,
+        "loops": 6,
+        "narrative": 35,
+        "ambiguities": 21,
+        "requirements": 194,
+        "acceptance": 35,
+        "closure": 10,
+        "activation": 11,
+        "settings": 14
+      },
+      "referenceCheck": "passed",
+      "errors": [],
+      "acceptance": "pending",
+      "peerAcceptance": "pending",
+      "liveReadiness": "pending",
+      "warning": "This checks inventory completeness, references and scoped implementation dependencies only. Expected cases, synthetic values, contract checks and screenshots cannot certify real application/peer/pilot/recovery acceptance."
+    }
+  },
+  "expectedFailureDetection": [
+    {
+      "command": "node contracts/full-mvp-coverage/check.mjs --source-root <temporary copy with altered TRD; deleted after check>",
+      "exitCode": 1,
+      "result": {
+        "revision": "1.0.0-review.1",
+        "mode": "governing-source",
+        "sourceFreshness": "failed",
+        "counts": {
+          "packages": 30,
+          "nodes": 87,
+          "branches": 40,
+          "connectors": 7,
+          "loops": 6,
+          "narrative": 35,
+          "ambiguities": 21,
+          "requirements": 194,
+          "acceptance": 35,
+          "closure": 10,
+          "activation": 11,
+          "settings": 14
+        },
+        "referenceCheck": "failed",
+        "errors": [
+          {
+            "key": "docs/TRD.md",
+            "message": "Governing source drift: reconcile and review the affected mappings before acceptance.",
+            "source": "docs/TRD.md",
+            "packages": [
+              "P00",
+              "P01",
+              "P02",
+              "P03",
+              "P04",
+              "P05",
+              "P06",
+              "P07",
+              "P08",
+              "P09",
+              "P10",
+              "P11",
+              "P12",
+              "P13",
+              "P14",
+              "P15",
+              "P16",
+              "P17",
+              "P18",
+              "P19",
+              "P20",
+              "P21",
+              "P22",
+              "P23",
+              "P24",
+              "P25",
+              "P26",
+              "P27",
+              "P28",
+              "P29"
+            ],
+            "blocksAffectedAcceptance": true
+          },
+          {
+            "key": "source-inventory",
+            "message": "Fresh extraction differs from pinned authoritative inventory.",
+            "source": "v1/source-inventory.json",
+            "packages": [
+              "P00",
+              "P29"
+            ],
+            "blocksAffectedAcceptance": true
+          }
+        ],
+        "acceptance": "pending",
+        "peerAcceptance": "pending",
+        "liveReadiness": "pending",
+        "warning": "This checks inventory completeness, references and scoped implementation dependencies only. Expected cases, synthetic values, contract checks and screenshots cannot certify real application/peer/pilot/recovery acceptance."
+      },
+      "interpretation": "Expected failing source-drift probe in a disposable copy. Governing sources were never changed."
+    },
+    {
+      "command": "node --test contracts/transport/tests/full-mvp-coverage.test.mjs",
+      "exitCode": 0,
+      "result": "Eight public-checker regression cases pass: accepted frozen revision; missing NO branch rejected with source/packages; unknown owner/orphan/dangling evidence rejected; false AC-04 promotion rejected; unsupported owner and dependency cycle rejected; LF/CRLF portability; decision-specific consumers; missing node/AC/Backorder diagnostics retain runtime owners.",
+      "output": "✔ frozen full-MVP index checks mappings without certifying acceptance (243.7069ms)\n✔ missing negative branch fails with its source and affected package (239.2945ms)\n✔ unknown owner, orphan requirement and dangling evidence are rejected (235.5482ms)\n✔ a contract pass cannot promote a pilot acceptance scenario (233.7834ms)\n✔ unsupported owner reassignment and an integration dependency cycle fail (230.9852ms)\n✔ frozen revision and rendered review survive both LF and CRLF checkouts (673.2403ms)\n✔ decision branches retain source-kind skips and the variance-fork consumers (230.8041ms)\n✔ missing node, acceptance and Backorder closure report their affected runtime packages (255.8672ms)\nℹ tests 8\nℹ suites 0\nℹ pass 8\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 2426.1398\n"
+    }
+  ],
+  "rendering": {
+    "command": "node contracts/full-mvp-coverage/render.mjs --check",
+    "exitCode": 0,
+    "result": "Review index matches JSON revision."
+  },
+  "fullContractSuite": {
+    "status": "executed",
+    "command": "npm test",
+    "workingDirectory": "contracts/transport",
+    "date": "2026-10-24",
+    "runtime": "v24.11.1",
+    "exitCode": 0,
+    "tests": 36,
+    "passed": 36,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "All authored transport/identity/evidence/IPC-RM/stock-hold and coverage-checker contracts; no business application, MySQL, actual peer or operational acceptance."
+  },
+  "peerAcceptance": "pending",
+  "p00Acceptance": "pending",
+  "p01Acceptance": "pending",
+  "liveReadiness": "pending",
+  "fullMvpAcceptance": "pending",
+  "review": {
+    "method": "Independent automated Standards and Spec agents; separate from required human Glenn/Efren acceptance.",
+    "initialRevision": "be6f6ce",
+    "fixedPoint": "master (fa0a9f8532fd0379f7b8f04cf67ab463401c8909)",
+    "scope": "Current ticket10 contribution, excluding inherited reviewed Stage0 changes; final staged corrections re-reviewed.",
+    "standards": {
+      "initialFindings": 1,
+      "remainingFindings": 0,
+      "resolution": "Normalize UTF-8/LF text hashes and rendering comparisons; verify LF and CRLF copies."
+    },
+    "spec": {
+      "initialFindings": 3,
+      "remainingFindings": 0,
+      "resolution": "Retain decision-specific package gates; schema predicates plus explicit Backorder closure; source-based missing-row owner diagnostics."
+    }
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "revision": "1.0.0-review.1",
+  "date": "2026-10-24",
+  "scope": "Leader-authored P00 reconciliation; no runtime or peer acceptance",
+  "digestFormat": "sha256-utf8-lf",
+  "consumedIndexRevision": "1.0.0-review.1",
+  "peerAcceptance": "pending",
+  "p00Acceptance": "pending",
+  "artifacts": [
+    {
+      "path": "contracts/transport/v1/api-v1.json",
+      "sha256": "c48ba608095f52f9ff548418277b51a0b895848cebe07340a92d9dba080449b8"
+    },
+    {
+      "path": "contracts/transport/v1/examples.json",
+      "sha256": "c1c5222cf8771a5ade45e967b59f9f165900784b4934037d08634638dc4b6724"
+    },
+    {
+      "path": "contracts/transport/v1/transport.schema.json",
+      "sha256": "858b8bd181f8ea82553d822582d56c3f62e709293e7a9fd27975ac25b5616a6f"
+    },
+    {
+      "path": "contracts/identity-record-evidence/v1/boundary.json",
+      "sha256": "477ba1ccab3f6f8245127b32d577a363bcc9c89e92b170ab61536b9480167515"
+    },
+    {
+      "path": "contracts/identity-record-evidence/v1/canonical-vectors.json",
+      "sha256": "f1f254aa7ed36d0e498476d33aac4013baef392ce988f90995dda81f5511b07f"
+    },
+    {
+      "path": "contracts/identity-record-evidence/v1/cases.json",
+      "sha256": "0eb947c2213b8dca30206a6869f24d2f46fce324c1e3452c0e63de14b0fec74b"
+    },
+    {
+      "path": "contracts/identity-record-evidence/v1/contract.schema.json",
+      "sha256": "4fd7cb678a06715e3690a336618464d055f3478063b7897b050f8d8110784263"
+    },
+    {
+      "path": "contracts/identity-record-evidence/v1/examples.json",
+      "sha256": "1aeaa514b1b30ecfaa2479adb9d79a222e3aa97e0a37300a24377606ef6b2699"
+    },
+    {
+      "path": "contracts/ipc-rm-acceptance/v1/README.md",
+      "sha256": "8300570a86cce5380d02d387aa7fc5a72d689b124f3d061090084d24139485be"
+    },
+    {
+      "path": "contracts/ipc-rm-acceptance/v1/cases.json",
+      "sha256": "7de87737ecd08296858e69849b5d45b0ae59461d732da797a9b2be30bb2e50d3"
+    },
+    {
+      "path": "contracts/ipc-rm-acceptance/v1/contract.schema.json",
+      "sha256": "8e6c15472fb828495f033c381da64a3724eb984ef630615a254184c665db7235"
+    },
+    {
+      "path": "contracts/ipc-rm-acceptance/v1/examples.json",
+      "sha256": "3ece1f0d1b5e852353fffe62cdd46075c9cbdb86bbb44eafd40c2ff3070946b0"
+    },
+    {
+      "path": "contracts/ipc-rm-acceptance/v1/fingerprint-vector.json",
+      "sha256": "5e9d6b997b0b506e4235178a084f01ce3cf2d9a7984eed8197379c63b391fd07"
+    },
+    {
+      "path": "contracts/ipc-rm-acceptance/v1/internal-operations.md",
+      "sha256": "25cc637aababd5470ed4b5843148098f0b7ee42b50eb9a5010c703cfb7b477d6"
+    },
+    {
+      "path": "contracts/ipc-rm-acceptance/v1/schema-change-register.md",
+      "sha256": "3f44a21dc624932d63b032fc5ca6cf442c438c95a41ce88f2e5c2ddccf958a39"
+    },
+    {
+      "path": "contracts/ipc-rm-acceptance/v1/source-and-evidence.json",
+      "sha256": "e4c223573a6f4766cafe6c9fe5ddc1cd3180a26d079d674b3a871ea78b50c1b8"
+    },
+    {
+      "path": "contracts/ipc-rm-acceptance/v1/walkthrough.md",
+      "sha256": "d2851be9be13dd842326fd40dc91a24f490e4544119be7812d105287dd81864c"
+    },
+    {
+      "path": "contracts/stock-holds/v1/README.md",
+      "sha256": "077681e71fea7291dc221875103ba46688dc1c2fc35368afb7ad086aefc8ef85"
+    },
+    {
+      "path": "contracts/stock-holds/v1/cases.json",
+      "sha256": "67b45e7feb6613c8fcff4024552736b560b450e2c3a5a02b83aee43276bc7f50"
+    },
+    {
+      "path": "contracts/stock-holds/v1/contract.schema.json",
+      "sha256": "4035be8189920d75936d103dfd9bf71c30aa48e7dc33bf943f201f50bfe6804b"
+    },
+    {
+      "path": "contracts/stock-holds/v1/coverage-model.md",
+      "sha256": "c4e5ba8d61fb562cb345baa92d0bb1156588b937dd45443d4b2bc41b497a83d1"
+    },
+    {
+      "path": "contracts/stock-holds/v1/examples.json",
+      "sha256": "ba312aa4b0539db8655c23fc61f5d794165d00264eeb8f8e8b32dc4af199c6f9"
+    },
+    {
+      "path": "contracts/stock-holds/v1/internal-operations.md",
+      "sha256": "a8d0955195098aadc542dddf16f5f00bc56e8f4c64cd370e03de1a5e90321f06"
+    },
+    {
+      "path": "contracts/stock-holds/v1/schema-change-register.md",
+      "sha256": "a2e31917a777ec211d0b725a9b28c28b4e03c21413c3b9ccf41e43aa52fcb980"
+    },
+    {
+      "path": "contracts/stock-holds/v1/verification-cases.json",
+      "sha256": "aca97201bba1b392db63c3185cf47b689b1aa9b78da7027710fb0e500e7c2812"
+    },
+    {
+      "path": "contracts/stock-holds/v1/walkthrough.md",
+      "sha256": "459c2d1bbddf4d66879dc7727b9ab4296fb8082b140492ae2501608ac25d7158"
+    },
+    {
+      "path": "contracts/full-mvp-coverage/v1/README.md",
+      "sha256": "34d4439f2e9daf61291345ca073656522085a3a1babccc5752b5f15f0f120eaa"
+    },
+    {
+      "path": "contracts/full-mvp-coverage/v1/check-results.json",
+      "sha256": "28ab670a07e0f7255b4dd66c4954cbf1b41c0cf2df4909f6686506613d7e5e4e"
+    },
+    {
+      "path": "contracts/full-mvp-coverage/v1/index.json",
+      "sha256": "0ab5f5ed28424e5e3d98dc9a0455266d332dedc0458bf1f2d6d54c49a9665e52"
+    },
+    {
+      "path": "contracts/full-mvp-coverage/v1/review-index.md",
+      "sha256": "390f9cf878c49dd4afe99dd66d2189b1626deac7c321a93b9f835b830fa76d5b"
+    },
+    {
+      "path": "contracts/full-mvp-coverage/v1/source-inventory.json",
+      "sha256": "6b62cb5b3677bd2002fc956b0d85f47cc954e1d2397c34ea7ea294aa28f5b52c"
+    }
+  ]
+}
