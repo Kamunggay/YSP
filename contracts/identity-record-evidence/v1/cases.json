@@ -1,0 +1,385 @@
+[
+  {
+    "name": "wrong-chapter",
+    "evidence_state": "expected",
+    "input_definition": "EvidenceCheckInput",
+    "input": {
+      "context": {
+        "chapter_id": "2",
+        "action_code": "documents.bind_evidence",
+        "idempotency_key": "synthetic-bind-01",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "expected_row_version": 7,
+        "expected_material_version": 1
+      },
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "301",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "object_version": "djE="
+      },
+      "purpose_code": "ipc_signed_count_sheet"
+    },
+    "server_fixture": "current-context",
+    "result_example": "wrong-chapter",
+    "expected_action_result": "forbidden",
+    "expected_code": "FORBIDDEN"
+  },
+  {
+    "name": "wrong-parent",
+    "evidence_state": "expected",
+    "input_definition": "EvidenceCheckInput",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "documents.bind_evidence",
+        "idempotency_key": "synthetic-bind-01",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "expected_row_version": 7,
+        "expected_material_version": 1
+      },
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+      },
+      "line": {
+        "chapter_id": "1",
+        "record": {
+          "id": "999",
+          "kind": "IPC"
+        },
+        "line_id": "501",
+        "line_kind": "IPC",
+        "variant_id": "71"
+      },
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "301",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "object_version": "djE="
+      },
+      "purpose_code": "ipc_signed_count_sheet"
+    },
+    "server_fixture": "reviewed-source",
+    "result_example": "wrong-parent",
+    "expected_action_result": "blocked",
+    "expected_code": "EVIDENCE_PARENT_MISMATCH"
+  },
+  {
+    "name": "stale-row",
+    "evidence_state": "expected",
+    "input_definition": "EvidenceCheckInput",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "documents.bind_evidence",
+        "idempotency_key": "synthetic-bind-01",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "expected_row_version": 7,
+        "expected_material_version": 1
+      },
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "301",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "object_version": "djE="
+      },
+      "purpose_code": "ipc_signed_count_sheet"
+    },
+    "server_fixture": "stale-row",
+    "result_example": "stale-row",
+    "expected_action_result": "stale",
+    "expected_code": "STALE_ROW_VERSION"
+  },
+  {
+    "name": "changed-material",
+    "evidence_state": "expected",
+    "input_definition": "EvidenceCheckInput",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "documents.bind_evidence",
+        "idempotency_key": "synthetic-bind-01",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "expected_row_version": 7,
+        "expected_material_version": 1
+      },
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "301",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "object_version": "djE="
+      },
+      "purpose_code": "ipc_signed_count_sheet"
+    },
+    "server_fixture": "revised-source",
+    "result_example": "changed-material",
+    "expected_action_result": "stale",
+    "expected_code": "STALE_MATERIAL_VERSION"
+  },
+  {
+    "name": "unready-evidence",
+    "evidence_state": "expected",
+    "input_definition": "EvidenceCheckInput",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "documents.bind_evidence",
+        "idempotency_key": "synthetic-bind-01",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "expected_row_version": 7,
+        "expected_material_version": 1
+      },
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "301",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "object_version": "djE="
+      },
+      "purpose_code": "ipc_signed_count_sheet"
+    },
+    "server_fixture": "evidence-validating",
+    "result_example": "unready-evidence",
+    "expected_action_result": "blocked",
+    "expected_code": "EVIDENCE_NOT_READY"
+  },
+  {
+    "name": "unavailable-evidence",
+    "evidence_state": "expected",
+    "input_definition": "EvidenceCheckInput",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "documents.bind_evidence",
+        "idempotency_key": "synthetic-bind-01",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "expected_row_version": 7,
+        "expected_material_version": 1
+      },
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "301",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "object_version": "djE="
+      },
+      "purpose_code": "ipc_signed_count_sheet"
+    },
+    "server_fixture": "evidence-missing",
+    "result_example": "unavailable-evidence",
+    "expected_action_result": "blocked",
+    "expected_code": "EVIDENCE_UNAVAILABLE"
+  },
+  {
+    "name": "changed-evidence",
+    "evidence_state": "expected",
+    "input_definition": "EvidenceCheckInput",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "documents.bind_evidence",
+        "idempotency_key": "synthetic-bind-01",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "expected_row_version": 7,
+        "expected_material_version": 1
+      },
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "301",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "object_version": "djI="
+      },
+      "purpose_code": "ipc_signed_count_sheet"
+    },
+    "server_fixture": "evidence-ready",
+    "result_example": "changed-evidence",
+    "expected_action_result": "blocked",
+    "expected_code": "EVIDENCE_IDENTITY_MISMATCH"
+  },
+  {
+    "name": "changed-batch",
+    "evidence_state": "expected",
+    "input_definition": "BatchSnapshot",
+    "input": {
+      "chapter_id": "1",
+      "record": {
+        "id": "601",
+        "kind": "IS_AR"
+      },
+      "material_version": 3,
+      "batch_id": "602",
+      "recipient": {
+        "name": "Synthetic recipient",
+        "user_id": null,
+        "capacity": "Committee recipient"
+      },
+      "lines": [
+        {
+          "line": {
+            "chapter_id": "1",
+            "record": {
+              "id": "601",
+              "kind": "IS_AR"
+            },
+            "line_id": "603",
+            "line_kind": "IS_AR",
+            "variant_id": "71"
+          },
+          "quantity": "3.000000"
+        }
+      ]
+    },
+    "server_fixture": "paper-acknowledgment",
+    "result_example": "changed-batch",
+    "expected_action_result": "blocked",
+    "expected_code": "ACKNOWLEDGMENT_MISMATCH"
+  },
+  {
+    "name": "provider-only",
+    "evidence_state": "expected",
+    "input_definition": "CurrentContext",
+    "input": {
+      "schema_version": "1.0",
+      "user_id": "11",
+      "chapter_id": "1",
+      "chapter_name": "Synthetic chapter A",
+      "membership_id": "111",
+      "authority_version": 3,
+      "checked_at": "2026-10-24T06:00:00.000000Z",
+      "mfa_satisfied": true,
+      "duty_grants": [],
+      "available_actions": [],
+      "provider_roles": [
+        "provisioner"
+      ]
+    },
+    "server_fixture": "current-context",
+    "result_example": "wrong-chapter",
+    "expected_action_result": "forbidden",
+    "expected_code": "FORBIDDEN"
+  },
+  {
+    "name": "unavailable-lookup",
+    "evidence_state": "expected",
+    "input_definition": "EvidenceCheckInput",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "documents.bind_evidence",
+        "idempotency_key": "synthetic-bind-01",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "expected_row_version": 7,
+        "expected_material_version": 1
+      },
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "301",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "object_version": "djE="
+      },
+      "purpose_code": "ipc_signed_count_sheet"
+    },
+    "server_fixture": "reviewed-source",
+    "result_example": "lookup-unavailable",
+    "expected_action_result": "uncertain",
+    "expected_code": "LOOKUP_UNAVAILABLE"
+  }
+]
