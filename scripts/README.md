@@ -1,5 +1,8 @@
 # Combined local verification
 
+For ticket 07's exact-revision clean clone, evidence inventory and independent
+review record, follow [P01 reproduction handoff](P01-REPRODUCTION.md).
+
 Stage 0 ticket `stage-0-leader/09`, [parent spec #2](https://github.com/Kamunggay/YSP/issues/2).
 Requirements: TR-01–TR-05, TR-19–TR-20; UX-01–UX-04. This command checks the
 implemented P01 health baseline. Stage 1 domain execution and P01 acceptance
