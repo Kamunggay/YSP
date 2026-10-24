@@ -14,7 +14,9 @@ FROM base AS local
 ENV COMPOSER_HOME=/tmp/composer
 COPY --from=dependencies /app/vendor ./vendor
 COPY . .
-RUN composer dump-autoload --no-interaction && chown -R 10001:10001 storage bootstrap/cache
+RUN composer dump-autoload --no-interaction \
+    && mkdir -p /tmp/composer \
+    && chown -R 10001:10001 storage bootstrap/cache /tmp/composer
 USER 10001:10001
 EXPOSE 8080
 CMD ["php", "-S", "0.0.0.0:8080", "-t", "public", "public/index.php"]

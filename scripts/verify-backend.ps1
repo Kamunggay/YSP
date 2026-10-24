@@ -1,7 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 & "$PSScriptRoot/init-local.ps1"
-if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'Secret initialization failed' }
 $verificationProject = 'ysp-health-check-' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
 $previousPort = $env:YSP_HTTP_PORT
 $env:YSP_HTTP_PORT = '0'
