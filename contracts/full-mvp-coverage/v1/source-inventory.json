@@ -1,4 +1,5 @@
 {
+  "digestFormat": "sha256-utf8-lf; only CRLF is normalized to LF",
   "sources": [
     {
       "path": "docs/PRD.md",
@@ -7154,6 +7155,12 @@
         "path": "docs/PRD.md",
         "line": 352,
         "text": "| RF | Draft, submitted, returned for revision, approved, reserved/short, partially issued, fulfilled, canceled remainder; booth close-out where applicable | All demand issued/canceled; booth conditions additionally satisfied |"
+      },
+      "schemaExpected": "All accepted approved demand issued or explicitly canceled; booth RF additionally satisfies event custody/stock/money closure.",
+      "schemaSource": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 628,
+        "text": "| RF | All accepted approved demand issued or explicitly canceled; booth RF additionally satisfies event custody/stock/money closure. |"
       }
     },
     {
@@ -7164,6 +7171,12 @@
         "path": "docs/PRD.md",
         "line": 353,
         "text": "| SO/lines | Draft, pending review, returned, approved; available/backordered; awaiting deposit, funded procurement, payment verification hold, expired unpaid reservation; partly/fully paid; ready, partly/fully released; exception resolution | All accepted demand fulfilled/canceled and linked commitments/payments resolved |"
+      },
+      "schemaExpected": "Fully fulfilled means all accepted quantities actually released. A resolved closure with canceled remainder retains that separate result and requires reservations, money and funded procurement obligations resolved.",
+      "schemaSource": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 629,
+        "text": "| SO | Fully fulfilled means all accepted quantities actually released. A resolved closure with canceled remainder retains that separate result and requires reservations, money and funded procurement obligations resolved. |"
       }
     },
     {
@@ -7174,6 +7187,12 @@
         "path": "docs/PRD.md",
         "line": 354,
         "text": "| Reservation | Active unpaid, paid/funded protected, partially consumed, expired, released/canceled, fulfilled | No active outstanding committed quantity |"
+      },
+      "schemaExpected": "`qty=consumed_qty+released_qty`; original expiry/protection history retained.",
+      "schemaSource": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 630,
+        "text": "| Reservation | `qty=consumed_qty+released_qty`; original expiry/protection history retained. |"
       }
     },
     {
@@ -7184,6 +7203,12 @@
         "path": "docs/PRD.md",
         "line": 355,
         "text": "| RepF | Draft, awaiting funding where applicable, budget review, held/returned/rejected, approved, linked PO, revised/canceled | Need ordered/resolved with retained links; does not imply demand fulfilled |"
+      },
+      "schemaExpected": "Covered need ordered or formally resolved; linked shortage may still remain outstanding.",
+      "schemaSource": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 632,
+        "text": "| RepF | Covered need ordered or formally resolved; linked shortage may still remain outstanding. |"
       }
     },
     {
@@ -7194,6 +7219,12 @@
         "path": "docs/PRD.md",
         "line": 356,
         "text": "| PO | Pending approval, issued, acknowledged where available, partially received, outstanding/disputed, receiving complete, authorized change/cancellation | Accepted quantity complete or remainder formally resolved; related discrepancies remain visible |"
+      },
+      "schemaExpected": "Ordered quantity accepted or authorized remainder canceled/resolved; independent discrepancy/supplier claims remain visible even after receiving-complete.",
+      "schemaSource": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 633,
+        "text": "| PO | Ordered quantity accepted or authorized remainder canceled/resolved; independent discrepancy/supplier claims remain visible even after receiving-complete. |"
       }
     },
     {
@@ -7204,6 +7235,12 @@
         "path": "docs/PRD.md",
         "line": 357,
         "text": "| Receipt/RM | Draft inspection, accepted partial/full, held/rejected quantities, posted acceptance | Accepted posting/evidence complete; discrepancies independently tracked |"
+      },
+      "schemaExpected": "Accepted/nonusable posting and required evidence completed; rejected/held/missing resolution remains independently open.",
+      "schemaSource": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 634,
+        "text": "| RM | Accepted/nonusable posting and required evidence completed; rejected/held/missing resolution remains independently open. |"
       }
     },
     {
@@ -7214,6 +7251,12 @@
         "path": "docs/PRD.md",
         "line": 358,
         "text": "| Booth | Approved setup, checked out, trading, manual outage records pending entry, counting, open variance/remittance, reconciled, closed | BTH-14 satisfied |"
+      },
+      "schemaExpected": "Checkout/sales/verified returns/authorized ADJ reconcile all event custody; all damage/variance and collections/float/remittance reconciled; no pending manual range or uncertain facts.",
+      "schemaSource": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 635,
+        "text": "| Booth | Checkout/sales/verified returns/authorized ADJ reconcile all event custody; all damage/variance and collections/float/remittance reconciled; no pending manual range or uncertain facts. |"
       }
     },
     {
@@ -7224,6 +7267,12 @@
         "path": "docs/PRD.md",
         "line": 359,
         "text": "| ADJ | Prepared, inspection/recount, awaiting approvals, returned/rejected, approved, posted, pending financial/supplier follow-up, resolved | Authorized stock action and required related resolution recorded |"
+      },
+      "schemaExpected": "Applicable approved stock action executed, signed replacement/refund actually recorded, required invoice/payment and supplier/variance resolution complete.",
+      "schemaSource": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 636,
+        "text": "| ADJ | Applicable approved stock action executed, signed replacement/refund actually recorded, required invoice/payment and supplier/variance resolution complete. |"
       }
     },
     {
@@ -7234,6 +7283,21 @@
         "path": "docs/PRD.md",
         "line": 360,
         "text": "| Payment/refund | Pending evidence, verified/receipted, allocated, partly applied, adjusted/reversed; refund approved versus actually executed | Actual money movement reconciled with retained evidence |"
+      },
+      "schemaExpected": "Actual verified money matches retained entries and allocations; an approved refund is pending until actual verified execution.",
+      "schemaSource": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 637,
+        "text": "| Payment/refund | Actual verified money matches retained entries and allocations; an approved refund is pending until actual verified execution. |"
+      }
+    },
+    {
+      "key": "Backorder",
+      "expected": "Quantity fulfilled or authorized lapse/cancellation/resolution; funded/partial money and POs separately reconciled.",
+      "source": {
+        "path": "docs/DATABASE-SCHEMA.md",
+        "line": 631,
+        "text": "| Backorder | Quantity fulfilled or authorized lapse/cancellation/resolution; funded/partial money and POs separately reconciled. |"
       }
     }
   ],
@@ -8731,6 +8795,201 @@
       "path": "docs/IMPLEMENTATION-PLAN.md",
       "line": 391,
       "text": "| Provider commercial terms, funded continuation/preservation and actual release date | Approve before offering/activating hosted trial; keep buyer/provider funds separate. No assumed subscription price, paid-through rule or post-grace deletion. |"
+    }
+  ],
+  "decisionOwnership": [
+    {
+      "nodes": [
+        "S1-03",
+        "S1-05"
+      ],
+      "packages": [
+        "P07"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 268,
+        "text": "| S1-03, S1-05 | Approve/return RF; revise-resubmit/cancel. P07 |"
+      }
+    },
+    {
+      "nodes": [
+        "S1-09",
+        "S1-11"
+      ],
+      "packages": [
+        "P12",
+        "P19"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 269,
+        "text": "| S1-09, S1-11 | Approve/return SO; revise-resubmit/cancel with obligations. P12/P19 |"
+      }
+    },
+    {
+      "nodes": [
+        "S1-15",
+        "S1-17"
+      ],
+      "packages": [
+        "P07",
+        "P12",
+        "P15",
+        "P20"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 270,
+        "text": "| S1-15, S1-17 | Full/partial eligible reserve; approved SO D/RF E. P07/P12/P15/P20 |"
+      }
+    },
+    {
+      "nodes": [
+        "S1-21",
+        "S1-22"
+      ],
+      "packages": [
+        "P08",
+        "P14"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 271,
+        "text": "| S1-21, S1-22 | SO funded gate/RF chapter budget; cost-covering verified OR/hold-and-scoped-lapse. P08/P14 |"
+      }
+    },
+    {
+      "nodes": [
+        "S2-03"
+      ],
+      "packages": [
+        "P13",
+        "P14",
+        "P15"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 272,
+        "text": "| S2-03 | Verified payment with separate release coverage/unverified hold and expiry. P13–P15 |"
+      }
+    },
+    {
+      "nodes": [
+        "S2-12"
+      ],
+      "packages": [
+        "P11",
+        "P20"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 273,
+        "text": "| S2-12 | Booth checkout/ordinary internal issue. P11/P20 |"
+      }
+    },
+    {
+      "nodes": [
+        "S2-15"
+      ],
+      "packages": [
+        "P23",
+        "P17"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 274,
+        "text": "| S2-15 | Reconciled usable return/open variance with separately permitted good returns. P23/P17 |"
+      }
+    },
+    {
+      "nodes": [
+        "S2-19"
+      ],
+      "packages": [
+        "P08"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 275,
+        "text": "| S2-19 | Usable≤ROP triggers uncovered-need check/no ROP purchase, without suppressing a demand shortage. P08 |"
+      }
+    },
+    {
+      "nodes": [
+        "S3-04"
+      ],
+      "packages": [
+        "P08",
+        "P09"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 276,
+        "text": "| S3-04 | Budget/purchase approval to quotations/hold-revise-cancel with no PO. P08/P09 |"
+      }
+    },
+    {
+      "nodes": [
+        "S3-14",
+        "S3-17"
+      ],
+      "packages": [
+        "P06",
+        "P10",
+        "P16"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 277,
+        "text": "| S3-14, S3-17 | Valid source/held missing source; acceptable units/discrepancy and held/rejected units, including mixed delivery. P06/P10/P16 |"
+      }
+    },
+    {
+      "nodes": [
+        "S3-20"
+      ],
+      "packages": [
+        "P10",
+        "P06",
+        "P16"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 278,
+        "text": "| S3-20 | PO outstanding follow-up/complete or formally resolved; source-kind skip for DA/IPC. P10/P06/P16 |"
+      }
+    },
+    {
+      "nodes": [
+        "S4-05",
+        "S4-06",
+        "S4-07"
+      ],
+      "packages": [
+        "P17",
+        "P18",
+        "P19"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 279,
+        "text": "| S4-05, S4-06, S4-07 | Claim/count variance; approved/declined ordinary claim; defective/nondefective with resalability inspection still required. P17–P19 |"
+      }
+    },
+    {
+      "nodes": [
+        "S4-12"
+      ],
+      "packages": [
+        "P17",
+        "P23"
+      ],
+      "source": {
+        "path": "docs/IMPLEMENTATION-PLAN.md",
+        "line": 280,
+        "text": "| S4-12 | Full independent variance approval/investigate without ledger effect. P17/P23 |"
+      }
     }
   ]
 }

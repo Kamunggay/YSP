@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 
+// These are Markdown/JSON source identities, not hashes of stored signature objects.
+export const textSha256 = bytes => createHash('sha256').update(bytes.toString('utf8').replaceAll('\r\n', '\n')).digest('hex');
+
 export const sourcePaths = [
   'docs/PRD.md', 'docs/TRD.md', 'docs/IMPLEMENTATION-PLAN.md',
   'docs/APP-FLOW.md', 'docs/DATABASE-SCHEMA.md', 'docs/BACKEND-ARCHITECTURE.MD',
@@ -32,7 +35,7 @@ export const requirementsIn = text => requirementPrefixes.flatMap(prefix => iden
 export function extractInventory(root) {
   const documents = Object.fromEntries(sourcePaths.map(path => {
     const bytes = readFileSync(resolve(root, path));
-    return [path, { path, sha256: createHash('sha256').update(bytes).digest('hex'), lines: bytes.toString('utf8').split(/\r?\n/) }];
+    return [path, { path, sha256: textSha256(bytes), lines: bytes.toString('utf8').split(/\r?\n/) }];
   }));
   const origin = (path, i) => ({ path, line: i + 1, text: documents[path].lines[i] });
   const table = (path, start, end) => {
@@ -99,13 +102,27 @@ export function extractInventory(root) {
   });
   const closure = table(prd, '## 14. State visibility', '## 15.')
     .filter(row => !['Record', '---'].includes(row.cells[0])).map(row => ({ key: row.cells[0], states: row.cells[1], expected: row.cells[2], source: row.source }));
+  const schemaClosure = table('docs/DATABASE-SCHEMA.md', '### 10.3 Separate axes', '### 10.4 Evidence')
+    .filter(row => !['Record', '---'].includes(row.cells[0]));
+  for (const row of schemaClosure) {
+    const key = { SO: 'SO/lines', RM: 'Receipt/RM' }[row.cells[0]] ?? row.cells[0];
+    const existing = closure.find(item => item.key === key);
+    if (existing) Object.assign(existing, { schemaExpected: row.cells[1], schemaSource: row.source });
+    else closure.push({ key, expected: row.cells[1], source: row.source });
+  }
   const activation = table(plan, '## 9. Production readiness', 'For growth')
     .filter(row => !['Gate / activation prerequisite', '---'].includes(row.cells[0])).map(row => ({ key: row.cells[0], expected: row.cells[1], source: row.source }));
   const settings = table(prd, '### 4.1 Required chapter inputs', 'Exact amounts')
     .filter(row => !['Configuration', '---'].includes(row.cells[0])).map(row => ({ key: row.cells[0], expected: row.cells[1], source: row.source }));
   const planningReferences = documents[plan].lines.flatMap((line, i) => /^[#|]/.test(line) ? [origin(plan, i)] : []);
+  const decisionOwnership = table(plan, 'This partitions all', '### Connected loops')
+    .filter(row => /^S[1-4]-\d\d/.test(row.cells[0])).map(row => ({
+      nodes: [1, 2, 3, 4].flatMap(sheet => identifiers(row.cells[0], `S${sheet}`)),
+      packages: identifiers(row.cells[1], 'P'), source: row.source,
+    }));
   return {
+    digestFormat: 'sha256-utf8-lf; only CRLF is normalized to LF',
     sources: Object.values(documents).map(({ path, sha256 }) => ({ path, sha256 })),
-    packages, nodes, branches, connectors, loops, narrative, ambiguities, requirements, acceptance, closure, activation, settings, planningReferences,
+    packages, nodes, branches, connectors, loops, narrative, ambiguities, requirements, acceptance, closure, activation, settings, planningReferences, decisionOwnership,
   };
 }

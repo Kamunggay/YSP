@@ -1,5 +1,6 @@
 {
-  "sourceInventorySha256": "f7d40b5e626bd1134cd35ba14c14bbff9dd3f62b8f2c5aa319ebc3b52d964f3c",
+  "sourceInventorySha256": "6b62cb5b3677bd2002fc956b0d85f47cc954e1d2397c34ea7ea294aa28f5b52c",
+  "digestFormat": "sha256-utf8-lf; only CRLF is normalized to LF",
   "revision": "1.0.0-review.1",
   "date": "2026-10-24",
   "parentSpec": "https://github.com/Kamunggay/YSP/issues/2",
@@ -2673,8 +2674,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 237
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 237
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 268
+            }
+          ]
         }
       },
       {
@@ -2690,8 +2699,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 237
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 237
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 268
+            }
+          ]
         }
       },
       {
@@ -2707,8 +2724,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 237
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 237
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 268
+            }
+          ]
         }
       },
       {
@@ -2724,8 +2749,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 237
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 237
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 268
+            }
+          ]
         }
       },
       {
@@ -2741,8 +2774,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 238
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 238
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 269
+            }
+          ]
         }
       },
       {
@@ -2758,8 +2799,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 238
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 238
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 269
+            }
+          ]
         }
       },
       {
@@ -2775,8 +2824,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 238
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 238
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 269
+            }
+          ]
         }
       },
       {
@@ -2792,8 +2849,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 238
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 238
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 269
+            }
+          ]
         }
       },
       {
@@ -2804,7 +2869,9 @@
           "P12",
           "P14",
           "P16",
-          "P17"
+          "P17",
+          "P15",
+          "P20"
         ],
         "gates": [
           "P05",
@@ -2812,13 +2879,23 @@
           "P12",
           "P14",
           "P16",
-          "P17"
+          "P17",
+          "P15",
+          "P20"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 239
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 239
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 270
+            }
+          ]
         }
       },
       {
@@ -2829,7 +2906,9 @@
           "P12",
           "P14",
           "P16",
-          "P17"
+          "P17",
+          "P15",
+          "P20"
         ],
         "gates": [
           "P05",
@@ -2837,13 +2916,23 @@
           "P12",
           "P14",
           "P16",
-          "P17"
+          "P17",
+          "P15",
+          "P20"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 239
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 239
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 270
+            }
+          ]
         }
       },
       {
@@ -2854,7 +2943,9 @@
           "P12",
           "P14",
           "P16",
-          "P17"
+          "P17",
+          "P15",
+          "P20"
         ],
         "gates": [
           "P05",
@@ -2862,13 +2953,23 @@
           "P12",
           "P14",
           "P16",
-          "P17"
+          "P17",
+          "P15",
+          "P20"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 239
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 239
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 270
+            }
+          ]
         }
       },
       {
@@ -2879,7 +2980,9 @@
           "P12",
           "P14",
           "P16",
-          "P17"
+          "P17",
+          "P15",
+          "P20"
         ],
         "gates": [
           "P05",
@@ -2887,13 +2990,23 @@
           "P12",
           "P14",
           "P16",
-          "P17"
+          "P17",
+          "P15",
+          "P20"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 239
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 239
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 270
+            }
+          ]
         }
       },
       {
@@ -2909,8 +3022,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 242
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 242
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 271
+            }
+          ]
         }
       },
       {
@@ -2926,8 +3047,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 242
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 242
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 271
+            }
+          ]
         }
       },
       {
@@ -2943,8 +3072,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 242
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 242
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 271
+            }
+          ]
         }
       },
       {
@@ -2960,8 +3097,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 242
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 242
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 271
+            }
+          ]
         }
       },
       {
@@ -2983,8 +3128,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 243
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 243
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 272
+            }
+          ]
         }
       },
       {
@@ -3006,8 +3159,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 243
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 243
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 272
+            }
+          ]
         }
       },
       {
@@ -3023,8 +3184,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 245
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 245
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 273
+            }
+          ]
         }
       },
       {
@@ -3040,8 +3209,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 245
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 245
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 273
+            }
+          ]
         }
       },
       {
@@ -3059,8 +3236,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 247
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 247
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 274
+            }
+          ]
         }
       },
       {
@@ -3078,8 +3263,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 247
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 247
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 274
+            }
+          ]
         }
       },
       {
@@ -3095,8 +3288,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 249
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 249
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 275
+            }
+          ]
         }
       },
       {
@@ -3112,8 +3313,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 249
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 249
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 275
+            }
+          ]
         }
       },
       {
@@ -3131,8 +3340,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 251
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 251
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 276
+            }
+          ]
         }
       },
       {
@@ -3150,8 +3367,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 251
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 251
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 276
+            }
+          ]
         }
       },
       {
@@ -3169,8 +3394,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 255
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 255
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 277
+            }
+          ]
         }
       },
       {
@@ -3188,8 +3421,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 255
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 255
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 277
+            }
+          ]
         }
       },
       {
@@ -3207,8 +3448,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 255
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 255
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 277
+            }
+          ]
         }
       },
       {
@@ -3226,140 +3475,232 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 255
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 255
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 277
+            }
+          ]
         }
       },
       {
         "key": "S3-20:YES",
         "packages": [
-          "P10"
+          "P10",
+          "P06",
+          "P16"
         ],
         "gates": [
-          "P10"
+          "P10",
+          "P06",
+          "P16"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 256
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 256
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 278
+            }
+          ]
         }
       },
       {
         "key": "S3-20:NO",
         "packages": [
-          "P10"
+          "P10",
+          "P06",
+          "P16"
         ],
         "gates": [
-          "P10"
+          "P10",
+          "P06",
+          "P16"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 256
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 256
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 278
+            }
+          ]
         }
       },
       {
         "key": "S4-05:YES",
         "packages": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "gates": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 260
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 260
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 279
+            }
+          ]
         }
       },
       {
         "key": "S4-05:NO",
         "packages": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "gates": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 260
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 260
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 279
+            }
+          ]
         }
       },
       {
         "key": "S4-06:YES",
         "packages": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "gates": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 260
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 260
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 279
+            }
+          ]
         }
       },
       {
         "key": "S4-06:NO",
         "packages": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "gates": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 260
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 260
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 279
+            }
+          ]
         }
       },
       {
         "key": "S4-07:YES",
         "packages": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "gates": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 260
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 260
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 279
+            }
+          ]
         }
       },
       {
         "key": "S4-07:NO",
         "packages": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "gates": [
           "P18",
-          "P19"
+          "P19",
+          "P17"
         ],
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 260
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 260
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 279
+            }
+          ]
         }
       },
       {
@@ -3375,8 +3716,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 261
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 261
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 280
+            }
+          ]
         }
       },
       {
@@ -3392,8 +3741,16 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "path": "docs/IMPLEMENTATION-PLAN.md",
-          "line": 261
+          "sources": [
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 261
+            },
+            {
+              "path": "docs/IMPLEMENTATION-PLAN.md",
+              "line": 280
+            }
+          ]
         }
       }
     ],
@@ -11306,8 +11663,11 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "rule": "Individual refinement of existing package ownership, using the original row and governing package outcomes.",
           "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 628
+          },
+          "continuity": {
             "path": "docs/IMPLEMENTATION-PLAN.md",
             "line": 297
           }
@@ -11330,8 +11690,11 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "rule": "Individual refinement of existing package ownership, using the original row and governing package outcomes.",
           "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 629
+          },
+          "continuity": {
             "path": "docs/IMPLEMENTATION-PLAN.md",
             "line": 297
           }
@@ -11356,8 +11719,11 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "rule": "Individual refinement of existing package ownership, using the original row and governing package outcomes.",
           "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 630
+          },
+          "continuity": {
             "path": "docs/IMPLEMENTATION-PLAN.md",
             "line": 297
           }
@@ -11378,8 +11744,11 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "rule": "Individual refinement of existing package ownership, using the original row and governing package outcomes.",
           "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 632
+          },
+          "continuity": {
             "path": "docs/IMPLEMENTATION-PLAN.md",
             "line": 297
           }
@@ -11400,8 +11769,11 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "rule": "Individual refinement of existing package ownership, using the original row and governing package outcomes.",
           "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 633
+          },
+          "continuity": {
             "path": "docs/IMPLEMENTATION-PLAN.md",
             "line": 297
           }
@@ -11422,8 +11794,11 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "rule": "Individual refinement of existing package ownership, using the original row and governing package outcomes.",
           "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 634
+          },
+          "continuity": {
             "path": "docs/IMPLEMENTATION-PLAN.md",
             "line": 297
           }
@@ -11446,8 +11821,11 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "rule": "Individual refinement of existing package ownership, using the original row and governing package outcomes.",
           "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 635
+          },
+          "continuity": {
             "path": "docs/IMPLEMENTATION-PLAN.md",
             "line": 297
           }
@@ -11470,8 +11848,11 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "rule": "Individual refinement of existing package ownership, using the original row and governing package outcomes.",
           "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 636
+          },
+          "continuity": {
             "path": "docs/IMPLEMENTATION-PLAN.md",
             "line": 297
           }
@@ -11494,8 +11875,38 @@
         "status": "pending",
         "relatedEvidence": [],
         "basis": {
-          "rule": "Individual refinement of existing package ownership, using the original row and governing package outcomes.",
           "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 637
+          },
+          "continuity": {
+            "path": "docs/IMPLEMENTATION-PLAN.md",
+            "line": 297
+          }
+        }
+      },
+      {
+        "key": "Backorder",
+        "packages": [
+          "P09",
+          "P14",
+          "P15",
+          "P19"
+        ],
+        "gates": [
+          "P09",
+          "P14",
+          "P15",
+          "P19"
+        ],
+        "status": "pending",
+        "relatedEvidence": [],
+        "basis": {
+          "source": {
+            "path": "docs/DATABASE-SCHEMA.md",
+            "line": 631
+          },
+          "continuity": {
             "path": "docs/IMPLEMENTATION-PLAN.md",
             "line": 297
           }
@@ -12079,7 +12490,8 @@
       "trackingRecord": ".scratch/stage-0-leader/01-transport-results.md",
       "localTicket": ".scratch/stage-0-leader/issues/01-first-slice-transport-outcomes.md",
       "artifact": "contracts/transport/v1/api-v1.json",
-      "artifactSha256": "99d1828f64bc50cd28439ec73d87a3303f40ae2c1a86f3120aa532d0cd28d58d",
+      "artifactSha256": "c48ba608095f52f9ff548418277b51a0b895848cebe07340a92d9dba080449b8",
+      "digestFormat": "sha256-utf8-lf; authored contract source text only, not stored evidence bytes",
       "integrationAcceptance": "pending",
       "peerAcceptance": "pending"
     },
@@ -12094,6 +12506,7 @@
       "localTicket": ".scratch/stage-0-leader/issues/08-identity-record-evidence-contract.md",
       "artifact": "contracts/identity-record-evidence/v1/boundary.json",
       "artifactSha256": "477ba1ccab3f6f8245127b32d577a363bcc9c89e92b170ab61536b9480167515",
+      "digestFormat": "sha256-utf8-lf; authored contract source text only, not stored evidence bytes",
       "integrationAcceptance": "pending",
       "peerAcceptance": "pending"
     },
@@ -12108,6 +12521,7 @@
       "localTicket": ".scratch/stage-0-leader/issues/02-ipc-rm-acceptance-contract.md",
       "artifact": "contracts/ipc-rm-acceptance/v1/cases.json",
       "artifactSha256": "7de87737ecd08296858e69849b5d45b0ae59461d732da797a9b2be30bb2e50d3",
+      "digestFormat": "sha256-utf8-lf; authored contract source text only, not stored evidence bytes",
       "integrationAcceptance": "pending",
       "peerAcceptance": "pending"
     },
@@ -12121,7 +12535,8 @@
       "trackingRecord": ".scratch/stage-0-leader/03-stock-hold-results.md",
       "localTicket": ".scratch/stage-0-leader/issues/03-stock-hold-coverage-clearance.md",
       "artifact": "contracts/stock-holds/v1/verification-cases.json",
-      "artifactSha256": "50578e5b93a4af8346c96322641da261bf0e3b1bfad85bd9dfa7225e089abb4a",
+      "artifactSha256": "aca97201bba1b392db63c3185cf47b689b1aa9b78da7027710fb0e500e7c2812",
+      "digestFormat": "sha256-utf8-lf; authored contract source text only, not stored evidence bytes",
       "integrationAcceptance": "pending",
       "peerAcceptance": "pending"
     }

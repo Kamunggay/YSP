@@ -6,10 +6,11 @@ Start at [review-index.md](review-index.md): each original node, branch, connect
 
 ## Files and reproducible checks
 
-- [source-inventory.json](source-inventory.json): exact extracted governing rows, original paths/branch endpoints and SHA-256 identities for 14 source files. This reuses TRD Appendix C, the historical source inventory and the staged roadmap. It creates no new requirement baseline or IDs.
+- [source-inventory.json](source-inventory.json): exact extracted governing rows, original paths/branch endpoints and SHA-256 text identities for 14 source files. Only CRLF is normalized to LF so Git checkout line endings cannot produce false drift. Stored signature/evidence-object byte hashes are unaffected. This reuses TRD Appendix C, the historical source inventory and the staged roadmap. It creates no new requirement baseline or IDs.
 - [index.json](index.json): row-by-row ownership, evidence states, qualified dependency edges, existing corrections and pending handoffs.
 - [check-results.json](check-results.json): retained actual checker results and failure-detection evidence for this revision. Command identities and interpretation limits are included.
 - `../inventory.mjs`: deterministic extraction from an explicitly selected governing workspace.
+- `../ownership.mjs`: individual acceptance/closure refinements and source-derived node/decision owners. Orphan diagnostics use these retained assignments independently of a missing index row. Both broad node owners and explicit decision consumers remain gates; all PRD and schema §10.3 closure predicates are retained, including Backorder.
 - `../check.mjs`: completeness/reference checker; failure exits 1 with source and affected packages. It fails on missing/duplicate/orphan rows, missing or unknown owners/gates, unsupported node ownership, source drift, lost dependencies, implementation cycles, dangling/stale evidence, unresolved conflicts or unsupported acceptance promotion.
 - `../render.mjs`: regenerates the readable index from the JSON revision; `--check` detects stale rendering.
 

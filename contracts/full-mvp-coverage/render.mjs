@@ -47,7 +47,9 @@ for (const [category, rows] of Object.entries(index.mappings)) {
     if (category === 'branches') expected = `${original.outcome} → ${original.destination}. Corrected obligation: ${original.expected}`;
     if (original.requirements?.length) expected += ` Requirements: ${original.requirements.join(', ')}.`;
     if (original.acceptance?.length) expected += ` Acceptance: ${original.acceptance.join(', ')}.`;
-    lines.push(`${escape(row.key)}<br>${sourceLink(original.source)} | ${escape(expected)} | ${packages(row.packages)} | **pending**${related}`);
+    if (original.schemaExpected) expected += ` Schema closure: ${original.schemaExpected}`;
+    const extraSource = original.schemaSource ? `<br>${sourceLink(original.schemaSource)}` : '';
+    lines.push(`${escape(row.key)}<br>${sourceLink(original.source)}${extraSource} | ${escape(expected)} | ${packages(row.packages)} | **pending**${related}`);
   }
   lines.push('');
 }
@@ -66,7 +68,7 @@ lines.push('', 'Ticket 06 consumes this revision, its complete individual rows a
 const content = lines.join('\n');
 const path = resolve(directory, 'v1/review-index.md');
 if (process.argv.includes('--check')) {
-  if (readFileSync(path, 'utf8') !== content) { process.stderr.write('Review index differs from the JSON revision; rerun render.mjs.\n'); process.exitCode = 1; }
+  if (readFileSync(path, 'utf8').replaceAll('\r\n', '\n') !== content) { process.stderr.write('Review index differs from the JSON revision; rerun render.mjs.\n'); process.exitCode = 1; }
   else process.stdout.write('Review index matches JSON revision.\n');
 } else {
   writeFileSync(path, content);

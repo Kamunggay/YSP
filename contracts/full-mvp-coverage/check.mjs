@@ -1,13 +1,13 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { extractInventory, identifiers, requirementsIn } from './inventory.mjs';
+import { extractInventory, identifiers, requirementsIn, textSha256 } from './inventory.mjs';
+import { affectedPackages, nodeOwners, branchOwners, acceptanceOwners, closureOwners } from './ownership.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const checkout = resolve(directory, '../..');
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+const sha256 = textSha256;
 const args = process.argv.slice(2);
 const option = name => {
   const position = args.indexOf(name);
@@ -35,13 +35,13 @@ function run() {
   const evidenceMap = byKey(index.evidence);
   const allowedScopes = ['contract', 'integration', 'inherited', 'rehearsal', 'activation'];
   const sameSet = (a, b) => isDeepStrictEqual([...new Set(a)].sort(), [...new Set(b)].sort());
-  const requiredCounts = { packages: 30, nodes: 87, branches: 40, connectors: 7, loops: 6, narrative: 35, ambiguities: 21, requirements: 194, acceptance: 35, closure: 9, activation: 11, settings: 14 };
+  const requiredCounts = { packages: 30, nodes: 87, branches: 40, connectors: 7, loops: 6, narrative: 35, ambiguities: 21, requirements: 194, acceptance: 35, closure: 10, activation: 11, settings: 14 };
   for (const [category, count] of Object.entries(requiredCounts)) {
     if (baseline[category]?.length !== count) error(category, `Pinned inventory must retain ${count} rows; deliberate inventory changes require a reviewed revision.`, 'v1/source-inventory.json', ['P00', 'P29']);
   }
   if (index.sourceInventorySha256 !== sha256(bytes)) error('inventory', 'Frozen source inventory digest mismatch.', 'v1/source-inventory.json', ['P00', 'P29']);
   const origins = new Map([
-    ...Object.values(baseline).filter(Array.isArray).flatMap(rows => rows.flatMap(row => [row.source, row.interpretation, row.original?.source].filter(Boolean))),
+    ...Object.values(baseline).filter(Array.isArray).flatMap(rows => rows.flatMap(row => [row.source, row.interpretation, row.original?.source, row.schemaSource].filter(Boolean))),
     ...baseline.planningReferences,
   ].map(origin => [`${origin.path}:${origin.line}`, origin]));
 
@@ -90,16 +90,6 @@ function run() {
     visited.add(key);
   }
   for (const key of packageMap.keys()) visit(key);
-  const expectedNodePackages = key => {
-    const row = baseline.nodes.find(row => row.key === key);
-    const map = index.mappings.nodes.find(map => map.key === key);
-    const basis = origins.get(`${map?.basis?.path}:${map?.basis?.line}`);
-    if (!basis?.text) return [];
-    const cells = basis.text.split('|').slice(1, -1).map(s => s.trim());
-    if (!identifiers(cells[0] ?? '', key.slice(0, 2)).includes(row.key)) return [];
-    return identifiers(cells[1] ?? '', 'P');
-  };
-
   for (const category of Object.keys(index.mappings)) if (!(category in requiredCounts) || category === 'packages') error(category, 'Unrecognized mapping category.', 'v1/index.json', ['P00']);
   for (const category of Object.keys(requiredCounts).filter(category => category !== 'packages')) {
     const originals = byKey(baseline[category]);
@@ -108,8 +98,7 @@ function run() {
     const mapped = byKey(rows);
     for (const original of originals.values()) {
       if (!mapped.has(original.key)) {
-        const affected = category === 'branches' ? index.mappings.nodes.find(row => row.key === original.node)?.packages
-          : category === 'requirements' ? baseline.packages.filter(p => requirementsIn(p.requirementStatement).includes(original.key)).map(p => p.key) : ['P00', 'P29'];
+        const affected = affectedPackages(baseline, category, original);
         error(original.key, `Orphan ${category} row: missing mapping.`, original.source, affected);
       }
       for (const requirement of original.requirements ?? []) if (!baseline.requirements.some(row => row.key === requirement)) error(original.key, `Unknown source requirement ${requirement}.`, original.source, mapped.get(original.key)?.packages);
@@ -123,12 +112,13 @@ function run() {
       if (!sameSet(row.gates, row.packages) || row.gates.length !== row.packages.length) error(row.key, 'Every owning package must retain its verification gate exactly once.', original.source, row.packages);
       if (row.status !== 'pending') error(row.key, 'Acceptance status must remain pending; contract consistency cannot promote integration or live acceptance.', original.source, row.packages);
       for (const key of row.relatedEvidence) if (!evidenceMap.has(key)) error(row.key, `Dangling evidence reference ${key}.`, original.source, row.packages);
-      if (category === 'nodes' && !sameSet(row.packages, expectedNodePackages(row.key))) error(row.key, 'Unsupported node ownership; retain the exact section 8 node allocation.', original.source, row.packages);
+      if (category === 'nodes' && !sameSet(row.packages, nodeOwners(baseline, row.key))) error(row.key, 'Unsupported node ownership; retain the exact section 8 node allocation.', original.source, row.packages);
       if (category === 'branches') {
-        const node = index.mappings.nodes.find(row => row.key === original.node);
-        if (!sameSet(row.packages, node?.packages ?? [])) error(row.key, 'Branch lost its owning node packages.', original.source, row.packages);
+        if (!sameSet(row.packages, branchOwners(baseline, row.key))) error(row.key, 'Branch must retain both node and decision-specific package gates.', original.source, branchOwners(baseline, row.key));
         if (!baseline.nodes.some(node => node.key === original.destination)) error(row.key, 'Branch destination is not an inventoried source node.', original.source, row.packages);
       }
+      if (category === 'acceptance' && !sameSet(row.packages, acceptanceOwners(row.key))) error(row.key, 'Acceptance owners differ from the individual roadmap ledger refinement.', original.source, acceptanceOwners(row.key));
+      if (category === 'closure' && !sameSet(row.packages, closureOwners(row.key))) error(row.key, 'Closure owners must retain the PRD and schema obligations.', original.source, closureOwners(row.key));
       if (category === 'requirements') {
         for (const p of baseline.packages.filter(p => requirementsIn(p.requirementStatement).includes(row.key))) if (!row.packages.includes(p.key)) error(row.key, `Lost explicit roadmap requirement owner ${p.key}.`, original.source, [p.key]);
       }
@@ -153,7 +143,7 @@ function run() {
     const fresh = extractInventory(resolve(sourceRoot));
     for (const source of baseline.sources) if (fresh.sources.find(item => item.path === source.path)?.sha256 !== source.sha256) {
       const affected = new Set(index.conflicts.filter(row => row.source.path === source.path).flatMap(row => row.packages));
-      for (const category of Object.keys(index.mappings)) for (const row of baseline[category]) if (row.source.path === source.path || row.original?.source.path === source.path) for (const p of index.mappings[category].find(map => map.key === row.key)?.packages ?? []) affected.add(p);
+      for (const category of Object.keys(index.mappings)) for (const row of baseline[category]) if (row.source.path === source.path || row.original?.source.path === source.path || row.schemaSource?.path === source.path) for (const p of affectedPackages(baseline, category, row)) affected.add(p);
       error(source.path, 'Governing source drift: reconcile and review the affected mappings before acceptance.', source.path, affected.size ? [...affected].sort() : baseline.packages.map(p => p.key));
     }
     if (!isDeepStrictEqual(fresh, baseline)) error('source-inventory', 'Fresh extraction differs from pinned authoritative inventory.', 'v1/source-inventory.json', ['P00', 'P29']);
