@@ -5,7 +5,7 @@ $verificationProject = 'ysp-health-check-' + [Guid]::NewGuid().ToString('N').Sub
 $previousPort = $env:YSP_HTTP_PORT
 $env:YSP_HTTP_PORT = '0'
 function Invoke-Compose {
-    & docker compose -f compose.yaml -f compose.backend.yaml --project-name $verificationProject @args
+    & docker compose --env-file backend/.env -f compose.yaml -f compose.backend.yaml --project-name $verificationProject @args
     if ($LASTEXITCODE -ne 0) { throw "Compose command failed: $args" }
 }
 try {
@@ -21,7 +21,7 @@ try {
     Invoke-Compose exec -T backend php artisan baseline:verify
     Invoke-Compose exec -T backend php artisan migrate --force
     Invoke-Compose exec -T backend php scripts/http-smoke.php
-    $published = & docker compose -f compose.yaml -f compose.backend.yaml --project-name $verificationProject port backend 8080
+    $published = & docker compose --env-file backend/.env -f compose.yaml -f compose.backend.yaml --project-name $verificationProject port backend 8080
     if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve HTTP port' }
     $response = Invoke-WebRequest -UseBasicParsing -Uri ("http://" + $published.Trim() + "/api/v1/health")
     if ($response.StatusCode -ne 200 -or $response.Content -notmatch '"status":"ok"') {
@@ -37,7 +37,7 @@ try {
     Invoke-Compose exec -T backend php artisan test
     Write-Output 'Backend verification passed on a fresh disposable MySQL volume.'
 } finally {
-    & docker compose -f compose.yaml -f compose.backend.yaml --project-name $verificationProject down --volumes --remove-orphans
+    & docker compose --env-file backend/.env -f compose.yaml -f compose.backend.yaml --project-name $verificationProject down --volumes --remove-orphans
     $cleanupStatus = $LASTEXITCODE
     $env:YSP_HTTP_PORT = $previousPort
     if ($cleanupStatus -ne 0) { throw 'Disposable verification cleanup failed' }

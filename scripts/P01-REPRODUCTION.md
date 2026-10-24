@@ -30,7 +30,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Handoff revision unavailable' }
 git rev-parse HEAD
 git status --short
 if ((git status --porcelain)) { throw 'Expected a clean checkout' }
-if (Test-Path .runtime) { throw 'Expected no preexisting local configuration' }
+if ((Test-Path backend/.env) -or (Test-Path frontend/.env)) { throw 'Expected no preexisting local configuration' }
 ```
 
 The clone must have no host dependencies, generated frontend, credentials or
@@ -49,7 +49,7 @@ Run serially because verification shares local Docker image tags.
 
 Create an evidence directory outside the checkout. Record reviewer name/role,
 date/time, OS/architecture, Docker resources, source/hash, initial clean status,
-commands, process exit codes and any deviations. Never copy `.runtime` or dump
+commands, process exit codes and any deviations. Never copy populated `.env` files or dump
 environment/Compose secret values. Capture the combined console output:
 
 ```powershell
@@ -98,7 +98,7 @@ use the actual process exit and checker results to distinguish a failure.
 | Application/runtime/dependencies | Committed Dockerfiles, Compose digests, Composer and both npm locks |
 | Backend nonsecret configuration | `backend/.env.example`, loaded by Compose; no host `.env` required |
 | Database | Intended private MySQL, `ysp_local`, application user `ysp_app`; fresh disposable volumes, no fixtures/live data |
-| Local secrets | `init-local.ps1` generates `.runtime/app_key`, `db_password`, `db_root_password`; independent local values, never evidence artifacts |
+| Local secrets | `init-local.ps1` creates `backend/.env` and `frontend/.env` from their committed examples; backend holds APP_KEY, DB_PASSWORD and MYSQL_ROOT_PASSWORD; never evidence artifacts |
 | Frontend | Relative `/api`; no frontend environment/secrets or API URL input |
 | Port | Verification selects ephemeral loopback ports and restores `YSP_HTTP_PORT` |
 | Browser | Locked verifier container; scripts manage/restore `YSP_BROWSER_URL` and `YSP_EXPECT_HEALTH` |
@@ -108,7 +108,7 @@ Each verification script removes only its own uniquely named project/network/
 volume in `finally`. Verify the logged cleanup succeeded. Do not remove normal
 development volumes. On interruption, identify the exact project name from the
 log and inspect its containers/volumes before cleaning that project only.
-Ignored `.runtime` stays private in the reproduction checkout. Review logs
+Ignored populated `.env` files stay private in the reproduction checkout. Review logs
 before sharing; do not package credentials or an entire runtime directory.
 For optional interactive startup after verification, follow
 [frontend setup](../frontend/README.md); the automated projects have exited.

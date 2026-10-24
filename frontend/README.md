@@ -8,13 +8,13 @@ Use Git, Docker Engine/Desktop in Linux-container mode with Compose v2/BuildKit 
 
 ```powershell
 powershell -NoProfile -File scripts/init-local.ps1
-docker compose build backend frontend
-docker compose up -d --wait --wait-timeout 180
-docker compose exec -T backend php artisan migrate --force
-docker compose exec -T backend php artisan baseline:verify
+docker compose --env-file backend/.env build backend frontend
+docker compose --env-file backend/.env up -d --wait --wait-timeout 180
+docker compose --env-file backend/.env exec -T backend php artisan migrate --force
+docker compose --env-file backend/.env exec -T backend php artisan baseline:verify
 ```
 
-Open `http://localhost:8080`. If occupied, set `$env:YSP_HTTP_PORT = '18084'` before Compose and use that port. Nginx serves built React and proxies relative `/api` requests to Laravel. Unknown API paths never fall back to HTML. Only the proxy publishes a loopback port; backend/MySQL have none. MySQL joins only the internal network. `docker compose down` retains the database volume; never remove volumes containing data you intend to keep.
+Open `http://localhost:8080`. If occupied, set `$env:YSP_HTTP_PORT = '18084'` before Compose and use that port. Nginx serves built React and proxies relative `/api` requests to Laravel. Unknown API paths never fall back to HTML. Only the proxy publishes a loopback port; backend/MySQL have none. MySQL joins only the internal network. `docker compose --env-file backend/.env down` retains the database volume; never remove volumes containing data you intend to keep.
 
 The frontend receives no backend environment or secrets. It has no `VITE_*` values, API URL configuration, external fonts, analytics or live datasets. Build context excludes dotenv, host dependencies and generated output. Static serving is unprivileged with a read-only filesystem and bounded temporary storage. Local HTTP is development only; TLS/deployment remain later work. See [backend setup](../backend/README.md) for credential initialization and database-volume recovery rules.
 

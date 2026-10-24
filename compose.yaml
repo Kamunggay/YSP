@@ -88,8 +88,8 @@ volumes:
   mysql_data:
 secrets:
   app_key:
-    file: ./.runtime/app_key
+    environment: APP_KEY
   db_password:
-    file: ./.runtime/db_password
+    environment: DB_PASSWORD
   db_root_password:
-    file: ./.runtime/db_root_password
+    environment: MYSQL_ROOT_PASSWORD

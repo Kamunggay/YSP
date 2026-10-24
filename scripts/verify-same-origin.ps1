@@ -7,10 +7,10 @@ $previousPort = $env:YSP_HTTP_PORT
 $previousBrowserUrl = $env:YSP_BROWSER_URL
 $previousExpectation = $env:YSP_EXPECT_HEALTH
 $env:YSP_HTTP_PORT = '0'
-$overrideFile = Join-Path (Get-Location) ('.runtime/' + $verificationProject + '.yaml')
+$overrideFile = [IO.Path]::GetTempFileName()
 [IO.File]::WriteAllText($overrideFile, "services:`n  backend:`n    environment:`n      APP_KEY_FILE: /run/secrets/not-provided`n")
 function Invoke-Compose {
-    & docker compose --project-name $verificationProject @args
+    & docker compose --env-file backend/.env --project-name $verificationProject @args
     if ($LASTEXITCODE -ne 0) { throw "Compose command failed: $args" }
 }
 function Invoke-Browser([string] $Expected, [switch] $ConnectivityOnly) {
@@ -41,7 +41,7 @@ try {
     Invoke-Compose up -d --wait --wait-timeout 180
     Invoke-Compose exec -T backend php artisan migrate --force
     Invoke-Compose exec -T backend php artisan baseline:verify
-    $published = & docker compose --project-name $verificationProject port frontend 8080
+    $published = & docker compose --env-file backend/.env --project-name $verificationProject port frontend 8080
     if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve frontend HTTP port' }
     $env:YSP_BROWSER_URL = 'http://' + $published.Trim()
     Write-Output 'Same-origin success and browser behavior checks'
@@ -60,7 +60,7 @@ try {
     Invoke-Browser '200' -ConnectivityOnly
 
     Write-Output 'Missing application key through the client'
-    & docker compose -f compose.yaml -f $overrideFile --project-name $verificationProject up -d --no-deps backend
+    & docker compose --env-file backend/.env -f compose.yaml -f $overrideFile --project-name $verificationProject up -d --no-deps backend
     if ($LASTEXITCODE -ne 0) { throw 'Cannot start configuration failure probe' }
     Invoke-Compose exec -T -e HEALTH_EXPECT_STATUS=503 backend php scripts/http-smoke.php
     Invoke-Browser '503' -ConnectivityOnly
@@ -74,7 +74,7 @@ try {
     Invoke-Compose exec -T frontend sh -c 'sha256sum /usr/share/nginx/html/index.html /usr/share/nginx/html/assets/*'
     Write-Output 'Same-origin connection, outage, configuration and recovery checks passed on disposable MySQL.'
 } finally {
-    & docker compose --project-name $verificationProject down --volumes --remove-orphans
+    & docker compose --env-file backend/.env --project-name $verificationProject down --volumes --remove-orphans
     $cleanupStatus = $LASTEXITCODE
     Remove-Item -LiteralPath $overrideFile -ErrorAction SilentlyContinue
     $env:YSP_HTTP_PORT = $previousPort

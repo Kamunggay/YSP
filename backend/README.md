@@ -15,23 +15,23 @@ Run from repository root. On Linux/macOS replace `powershell -NoProfile -File` w
 
 ```powershell
 powershell -NoProfile -File scripts/init-local.ps1
-docker compose build backend frontend
-docker compose up -d --wait --wait-timeout 180
-docker compose exec -T backend php artisan migrate --force
-docker compose exec -T backend php artisan baseline:verify
-docker compose exec -T backend php scripts/http-smoke.php
+docker compose --env-file backend/.env build backend frontend
+docker compose --env-file backend/.env up -d --wait --wait-timeout 180
+docker compose --env-file backend/.env exec -T backend php artisan migrate --force
+docker compose --env-file backend/.env exec -T backend php artisan baseline:verify
+docker compose --env-file backend/.env exec -T backend php scripts/http-smoke.php
 Invoke-RestMethod http://localhost:8080/api/v1/health
 ```
 
-If 8080 is busy, set `$env:YSP_HTTP_PORT = '18080'` before Compose. Only the frontend gateway loopback port is published; `/api` is proxied to Laravel. Laravel joins a local bridge shared with the gateway and an internal network shared with MySQL. MySQL joins only that internal network and has no host port. `docker compose down` retains the named database volume. Do not run `down --volumes` on a database you intend to keep. Standalone backend diagnostics may opt into `compose.backend.yaml`; `scripts/verify-backend.ps1` uses that override on its isolated project and starts only backend/MySQL.
+If 8080 is busy, set `$env:YSP_HTTP_PORT = '18080'` before Compose. Only the frontend gateway loopback port is published; `/api` is proxied to Laravel. Laravel joins a local bridge shared with the gateway and an internal network shared with MySQL. MySQL joins only that internal network and has no host port. `docker compose --env-file backend/.env down` retains the named database volume. Do not run `down --volumes` on a database you intend to keep. Standalone backend diagnostics may opt into `compose.backend.yaml`; `scripts/verify-backend.ps1` uses that override on its isolated project and starts only backend/MySQL.
 
-`init-local.ps1` generates independent random application/root DB passwords and a Laravel key in ignored `.runtime/`, preserving existing values. Keep that directory private to your local account and Docker; never share, upload or commit it. Compose mounts only needed secrets; Laravel never receives root credentials. Secrets are excluded from the image build context. This is local development configuration; production credential deployment is a later package. The application account has privileges scoped to `ysp_local.*`, including migration DDL, and has no global/root grants. Production runtime/migration credential separation remains a deployment responsibility.
+`init-local.ps1` creates ignored `backend/.env` and `frontend/.env` from their committed `.env.example` files. Backend credentials are generated once; existing files are preserved. When migrating an older checkout, existing `.runtime` credentials are reused so its database remains accessible. Keep populated `.env` files private and uncommitted. Compose reads `backend/.env` via `--env-file` and provides only the required values as mounted secrets; Laravel never receives the root password. The frontend currently needs no variables; never put secrets in `VITE_*` values, which are public browser configuration. Secrets are excluded from the image build context. This is local development configuration; production credential deployment is a later package. The application account has privileges scoped to `ysp_local.*`, including migration DDL, and has no global/root grants. Production runtime/migration credential separation remains a deployment responsibility.
 
 Existing MySQL volumes retain first-initialization passwords. Restore the original files if lost, or explicitly recreate a disposable local project/volume; regenerating files alone cannot rotate an existing database. Never use live data here.
 
 ## Configuration and HTTP contract
 
-`backend/.env.example` is the complete nonsecret inventory loaded by Compose: local environment, localhost:8080 URL, UTC, MySQL at `mysql:3306`, database `ysp_local`, user `ysp_app`, mounted key/password paths, database session/job adapter selections, file cache and stderr logs. Debug is hard disabled. MySQL root's secret path exists only on its service. No host `.env`, operational data or approved business policy is required. `YSP_HTTP_PORT` changes the host port; `APP_URL` is informational.
+`backend/.env.example` is the complete nonsecret inventory loaded by Compose: local environment, localhost:8080 URL, UTC, MySQL at `mysql:3306`, database `ysp_local`, user `ysp_app`, mounted key/password paths, database session/job adapter selections, file cache and stderr logs. Debug is hard disabled. MySQL root's secret path exists only on its service. No root `.env`, operational data or approved business policy is required. Blank credential fields in the example are populated only in the ignored backend `.env`; the example itself is safe to commit. `YSP_HTTP_PORT` changes the host port; `APP_URL` is informational.
 
 `GET /api/v1/health` is a read-only infrastructure endpoint without session/chapter/business authority. Success: HTTP 200, `{"status":"ok","database":"ok"}`. Failed configuration/connectivity: HTTP 503, `{"status":"unavailable","database":"unavailable"}`. Both use `Cache-Control: no-store, private`. Responses contain no credentials, version/schema/exception details or operational data. GET/HEAD is registered; no business mutation, operation result or session is created. This health contract is separate from business ActionResult and does not fabricate an operation ID. Health establishes configuration/connectivity; schema identity is checked separately.
 
@@ -50,7 +50,7 @@ The config check verifies private networking, immutable DB identity, ignored/unt
 For TDD, target one file. PHPUnit 12 rejects `--bail`; its equivalent is:
 
 ```powershell
-docker compose exec -T backend php artisan test --stop-on-failure tests/Feature/HealthTest.php
+docker compose --env-file backend/.env exec -T backend php artisan test --stop-on-failure tests/Feature/HealthTest.php
 ```
 
 Images contain source: rebuild/recreate after edits, or copy changed files into a disposable development container before targeted tests. Do not use a host vendor tree as reproduction evidence. Use `composer install`, never `composer update`, to reproduce the lock.

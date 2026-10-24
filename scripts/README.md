@@ -57,7 +57,7 @@ hashes and the backend schema/runtime identity. Save the console output outside
 source control for ticket 07, along with OS/architecture and whether the checkout
 was clean. Container browser traces disappear on exit; the existing host-browser
 mode of `verify-same-origin.ps1` retains traces in ignored frontend/test-results.
-Do not upload `.runtime/`, credentials or live data as CI artifacts.
+Do not upload populated `.env` files, credentials or live data as CI artifacts. Setup creates separate ignored `backend/.env` and `frontend/.env` from safe committed examples; no `.runtime` directory is required.
 
 Contracts under transport/identity/receiving/stock holds remain review candidates.
 Their tests validate examples and frozen coverage evidence, not current governing

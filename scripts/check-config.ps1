@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
-$configText = & docker compose config --format json
+$configText = & docker compose --env-file backend/.env config --format json
 if ($LASTEXITCODE -ne 0) { throw 'Compose configuration failed' }
 $config = $configText | ConvertFrom-Json
 if ($config.services.mysql.ports) { throw 'MySQL must not publish ports' }
@@ -17,7 +17,7 @@ foreach ($port in $config.services.frontend.ports) {
 if ($config.services.frontend.secrets -or $config.services.frontend.environment) {
     throw 'Frontend must not receive backend credentials or environment'
 }
-foreach ($secret in @('.runtime/app_key', '.runtime/db_password', '.runtime/db_root_password', 'backend/.env', 'backend/vendor/autoload.php', 'frontend/node_modules/', 'frontend/dist/', 'frontend/.env')) {
+foreach ($secret in @('backend/.env', 'backend/vendor/autoload.php', 'frontend/node_modules/', 'frontend/dist/', 'frontend/.env')) {
     & git check-ignore --quiet -- $secret
     if ($LASTEXITCODE -ne 0) { throw "Private/generated path is not ignored: $secret" }
 }
@@ -29,9 +29,10 @@ foreach ($path in $tracked) {
     }
 }
 $sourceFiles = Get-ChildItem backend, frontend, scripts, .github -Recurse -File -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -notmatch '[\\/](vendor|storage|cache|node_modules|test-results|playwright-report)[\\/]' -and $_.Extension -in @('.php', '.json', '.yaml', '.yml', '.ps1', '.ts', '.tsx', '.js', '.css', '.html', '.conf', '.md') }
-foreach ($secretName in @('app_key', 'db_password', 'db_root_password')) {
-    $value = [IO.File]::ReadAllText((Join-Path '.runtime' $secretName)).Trim()
+    Where-Object { $_.FullName -notmatch '[\\/](vendor|storage|cache|node_modules|test-results|playwright-report)[\\/]' -and $_.Name -ne '.env' -and $_.Extension -in @('.php', '.json', '.yaml', '.yml', '.ps1', '.ts', '.tsx', '.js', '.css', '.html', '.conf', '.md') }
+foreach ($secretName in @('APP_KEY', 'DB_PASSWORD', 'MYSQL_ROOT_PASSWORD')) {
+    $match = [regex]::Match([IO.File]::ReadAllText((Join-Path (Get-Location) 'backend/.env')), ('(?m)^' + $secretName + '=([^\r\n]*)'))
+    $value = $match.Groups[1].Value.Trim()
     if ($value.Length -lt 32) { throw 'Missing or weak local secret' }
     foreach ($sourceFile in $sourceFiles) {
         if ([IO.File]::ReadAllText($sourceFile.FullName).Contains($value)) { throw 'Local secret copied into source' }
