@@ -1,0 +1,74 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+
+const checker = fileURLToPath(new URL('../../full-mvp-coverage/check.mjs', import.meta.url));
+const indexPath = fileURLToPath(new URL('../../full-mvp-coverage/v1/index.json', import.meta.url));
+
+function checkMutation(mutate) {
+  const directory = mkdtempSync(join(tmpdir(), 'ysp-coverage-'));
+  try {
+    const index = JSON.parse(readFileSync(indexPath, 'utf8'));
+    mutate(index);
+    const path = join(directory, 'index.json');
+    writeFileSync(path, JSON.stringify(index));
+    return spawnSync(process.execPath, [checker, '--snapshot', '--index', path], { encoding: 'utf8' });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+test('frozen full-MVP index checks mappings without certifying acceptance', () => {
+  const result = checkMutation(() => {});
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.mode, 'snapshot');
+  assert.equal(report.sourceFreshness, 'not-checked');
+  assert.equal(report.counts.nodes, 87);
+  assert.equal(report.counts.branches, 40);
+  assert.equal(report.counts.acceptance, 35);
+  assert.equal(report.acceptance, 'pending');
+});
+
+test('missing negative branch fails with its source and affected package', () => {
+  const result = checkMutation(index => {
+    index.mappings.branches = index.mappings.branches.filter(row => row.key !== 'S4-12:NO');
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /S4-12:NO/);
+  assert.match(result.stdout, /P17/);
+  assert.match(result.stdout, /FLOWCHART-SOURCE-INVENTORY/);
+});
+
+test('unknown owner, orphan requirement and dangling evidence are rejected', () => {
+  const result = checkMutation(index => {
+    index.mappings.nodes.find(row => row.key === 'S1-01').packages = ['P99'];
+    index.mappings.requirements = index.mappings.requirements.filter(row => row.key !== 'TR-29');
+    index.mappings.acceptance.find(row => row.key === 'AC-22').relatedEvidence = ['missing-evidence'];
+  });
+  assert.equal(result.status, 1);
+  for (const text of ['P99', 'TR-29', 'missing-evidence', 'AC-22']) assert.ok(result.stdout.includes(text), result.stdout);
+});
+
+test('a contract pass cannot promote a pilot acceptance scenario', () => {
+  const result = checkMutation(index => {
+    index.mappings.acceptance.find(row => row.key === 'AC-04').status = 'passed';
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /AC-04/);
+  assert.match(result.stdout, /pending/);
+});
+
+test('unsupported owner reassignment and an integration dependency cycle fail', () => {
+  const result = checkMutation(index => {
+    index.mappings.nodes.find(row => row.key === 'S1-02').packages = ['P28'];
+    index.packages.find(row => row.key === 'P01').dependencies.push({ provider: 'P29', scope: 'integration', reason: 'invalid future prerequisite' });
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /S1-02/);
+  assert.match(result.stdout, /cycle/);
+});
