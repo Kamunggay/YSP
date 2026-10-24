@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:ysp:identity-record-evidence:v1",
   "title": "Identity, record and evidence boundary - 1.0.0-review.1",
-  "description": "P00 stage-0-leader/08, 2026-10-24. Parent https://github.com/Kamunggay/YSP/issues/2. Leader-authored review candidate; Glenn/Efren acceptance pending. Shared refs require urn:ysp:transport:v1 registration from ../../transport/v1/transport.schema.json. This schema validates wire shape; boundary.json defines mandatory server relationship/authority/hash checks. No authentication, approval, evidence validation or stock provider is implemented. Requirements GOV-01-GOV-09, DOC-01-DOC-11, TR-03/TR-06-TR-10/TR-15-TR-18, SEC-01-SEC-04; Q4-Q5. PRD/TRD candidates are not promoted.",
+  "description": "P00 identity, record and evidence, 2026-10-24. Parent https://github.com/Kamunggay/YSP/issues/2. Leader-authored review candidate; Glenn/Efren acceptance pending. Shared refs require urn:ysp:transport:v1 registration from ../../transport/v1/transport.schema.json. This schema validates wire shape; boundary.json defines mandatory server relationship/authority/hash checks. No authentication, approval, evidence validation or stock provider is implemented. Requirements GOV-01-GOV-09, DOC-01-DOC-11, TR-03/TR-06-TR-10/TR-15-TR-18, SEC-01-SEC-04; Q4-Q5. PRD/TRD candidates are not promoted.",
   "$defs": {
     "Hash": {
       "type": "string",
@@ -465,7 +465,7 @@
           "$ref": "urn:ysp:transport:v1#/$defs/Id"
         }
       },
-      "description": "IPC source content only. Scale, location/custody, condition, restrictions and valuation are approved server metadata, not client allocation authority. Full IPC/RM/lot enforcement belongs to ticket 02/P06."
+      "description": "IPC source content only. Scale, location/custody, condition, restrictions and valuation are approved server metadata, not client allocation authority. Full IPC/RM/lot enforcement belongs to the IPC/RM acceptance contract/P06."
     },
     "OpeningMaterial": {
       "type": "object",

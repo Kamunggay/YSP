@@ -1,6 +1,6 @@
 # Coverage schema integration reservations
 
-Revision `1.0.0-review.1`. Extend ticket 02's [shared ordered register](../../ipc-rm-acceptance/v1/schema-change-register.md); this is not a second migration runner, implemented DDL or a reservation of guessed timestamp filenames. Leader coordinates the single dependency order. Glenn owns query/reservation projections and Efren receipt/physical posting; Access/Documents own shared attribution/records/evidence. Exact DDL must be reviewed together on the intended pinned MySQL before its consumer is enabled.
+Revision `1.0.0-review.1`. Extend the IPC/RM acceptance contract's [shared ordered register](../../ipc-rm-acceptance/v1/schema-change-register.md); this is not a second migration runner, implemented DDL or a reservation of guessed timestamp filenames. Leader coordinates the single dependency order. Glenn owns query/reservation projections and Efren receipt/physical posting; Access/Documents own shared attribution/records/evidence. Exact DDL must be reviewed together on the intended pinned MySQL before its consumer is enabled.
 
 ## Order and enablement
 
@@ -32,7 +32,7 @@ All chapter-owned keys include `chapter_id`; every tuple component needed for a 
 | Existing `hold_reservation_links` | Derived compatibility projection only: for each reason/reservation sum their shared live cells once, retain events for history. If kept, composite FK chapter/hold/variant and chapter/reservation/variant plus exact reconciliation under guards. It cannot prove hold/hold overlap or replace `stock_hold_cells`/`reservation_cells`. No pairwise-link sum may become the aggregate intersection. |
 | Query/position aggregates | Controlled read models only, reconcilable to immutable events/movements and exact current cells. Store row/version scope if cached. Fail closed on a mismatch; report an integrity blocker for authorized repair rather than a fabricated zero/positive balance. |
 
-Cells retain an explicit `unit_id` and FK to the lot/variant's unit. A cell source never becomes a generic registry record: its lot already has ticket 02's valid typed RM/line/variant or authorized gain-ADJ source. Hold/resolution sources and optional line associations enforce record chapter/parent/material and same target, independently of geometry. A global record FK or a nullable composite missing its required discriminator is insufficient.
+Cells retain an explicit `unit_id` and FK to the lot/variant's unit. A cell source never becomes a generic registry record: its lot already has the IPC/RM acceptance contract's valid typed RM/line/variant or authorized gain-ADJ source. Hold/resolution sources and optional line associations enforce record chapter/parent/material and same target, independently of geometry. A global record FK or a nullable composite missing its required discriminator is insufficient.
 
 ## Database constraints versus serialized checks
 

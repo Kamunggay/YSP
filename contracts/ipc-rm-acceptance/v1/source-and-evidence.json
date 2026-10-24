@@ -1,6 +1,6 @@
 {
   "evidence_state": "expected",
-  "description": "Synthetic two-line IPC compatible with ticket 08; illustrative hashes/signatures are not real stored files or officer acceptance.",
+  "description": "Synthetic two-line IPC compatible with the identity, record and evidence contract; illustrative hashes/signatures are not real stored files or officer acceptance.",
   "source": {
     "state": {
       "reference": {

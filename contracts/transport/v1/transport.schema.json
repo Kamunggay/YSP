@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:ysp:transport:v1",
   "title": "YSP shared transport v1 — review revision 1",
-  "description": "Leader-authored P00 contract for stage-0-leader/01, parent spec https://github.com/Kamunggay/YSP/issues/2. Review candidate dated 2026-10-24; Glenn frontend/query and Efren posting acceptance pending. This describes wire values, not implemented business behavior. TR-02–TR-03, TR-06–TR-10, TR-12, TR-15, DOC-11, UX-01–UX-04; Q3–Q5. Identity/record/evidence payloads belong to ticket 08, IPC/RM acceptance to 02, stock query/hold semantics to 03. No public mutation or balance setter is defined.",
+  "description": "Leader-authored P00 contract for shared transport, parent spec https://github.com/Kamunggay/YSP/issues/2. Review candidate dated 2026-10-24; Glenn frontend/query and Efren posting acceptance pending. This describes wire values, not implemented business behavior. TR-02–TR-03, TR-06–TR-10, TR-12, TR-15, DOC-11, UX-01–UX-04; Q3–Q5. Identity/record/evidence payloads belong to the identity, record and evidence contract, IPC/RM acceptance to the receiving contract, stock query/hold semantics to the stock-hold contract. No public mutation or balance setter is defined.",
   "$defs": {
     "Id": {
       "type": "string",
@@ -198,7 +198,7 @@
           "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
         }
       },
-      "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to ticket 08."
+      "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
     },
     "CommandContext": {
       "type": "object",
@@ -244,7 +244,7 @@
           "$ref": "#/$defs/Version"
         }
       },
-      "description": "Normalized transport metadata, NOT a public generic command or HTTP body. Adapter derives chapter/action from the authorized route and key from Idempotency-Key; body contributes record reference and explicit expected versions. A body chapter/action/key override is rejected. Domain input is separately validated by ticket 08/02/03 schemas. Existing-record commands require the exact expected_row_version; creation explicitly uses null record and null row version. Approval/evidence-bound operations additionally REQUIRE expected_material_version in their own schema and check both versions at commit. No expected_version alias. Never accept actor authority, balances, approval state, allocation choices or payment verification as trusted client values.",
+      "description": "Normalized transport metadata, NOT a public generic command or HTTP body. Adapter derives chapter/action from the authorized route and key from Idempotency-Key; body contributes record reference and explicit expected versions. A body chapter/action/key override is rejected. Domain input is separately validated by the identity/evidence, IPC/RM and stock-hold schemas. Existing-record commands require the exact expected_row_version; creation explicitly uses null record and null row version. Approval/evidence-bound operations additionally REQUIRE expected_material_version in their own schema and check both versions at commit. No expected_version alias. Never accept actor authority, balances, approval state, allocation choices or payment verification as trusted client values.",
       "allOf": [
         {
           "if": {

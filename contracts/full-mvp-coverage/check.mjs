@@ -128,7 +128,7 @@ function run() {
     }
   }
   for (const row of index.evidence) {
-    if (row.kind !== 'authored-contract-consistency' || row.status !== 'executed' || row.integrationAcceptance !== 'pending' || row.peerAcceptance !== 'pending') error(row.key, 'This revision records executed contract checks only, with integration and peer acceptance pending.', row.trackingRecord, ['P00']);
+    if (row.kind !== 'authored-contract-consistency' || row.status !== 'executed' || row.integrationAcceptance !== 'pending' || row.peerAcceptance !== 'pending') error(row.key, 'This revision records executed contract checks only, with integration and peer acceptance pending.', row.artifact, ['P00']);
     const path = resolve(checkout, row.artifact);
     const rel = relative(checkout, path);
     if (rel.startsWith('..') || isAbsolute(rel) || !existsSync(path) || sha256(readFileSync(path)) !== row.artifactSha256) error(row.key, 'Evidence artifact is missing, outside checkout, or has changed since its recorded check.', row.artifact, ['P00']);

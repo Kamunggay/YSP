@@ -10,10 +10,10 @@ const sourceLink = source => `[${source.path}:${source.line}](../../../${source.
 const packages = keys => keys.map(key => `[${key}](#${key.toLowerCase()})`).join(', ');
 const lines = [
   '# Full-MVP coverage and dependency index', '',
-  `Revision **${index.revision}**, ${index.date}. [Parent Stage 0 specification](${index.parentSpec}); local Leader ticket 10.`, '',
+  `Revision **${index.revision}**, ${index.date}. [Parent Stage 0 specification](${index.parentSpec}).`, '',
   index.requirementAuthority, '',
-  '**All package, source, acceptance, peer and live gates remain pending.** This is the entire team’s roadmap ownership index; the Leader-only local ticket list implements a subset of Stage 0. Glenn retains frontend, queries/reservations and demand intake. Efren retains Inventory physical posting, Finance, fulfillment, booths and ADJ. Leader coordinates architecture/contracts/schema/CI and Purchasing/Receiving. These assignments confer no officer duty.', '',
-  'The governing main workspace has existing uncommitted requirement revisions. The source links below are navigation aids; use [source-inventory.json](source-inventory.json) for the exact pinned rows and hashes. The older documentation in the shared checkout is not the pinned governing revision. A snapshot check does not establish source freshness. See [README](README.md) for verification commands and [check-results.json](check-results.json) for actual checks.', '',
+  '**All package, source, acceptance, peer and live gates remain pending.** This is the entire team’s roadmap ownership index; the authored Stage 0 baseline implements a subset of this roadmap. Glenn retains frontend, queries/reservations and demand intake. Efren retains Inventory physical posting, Finance, fulfillment, booths and ADJ. Leader coordinates architecture/contracts/schema/CI and Purchasing/Receiving. These assignments confer no officer duty.', '',
+  'The governing requirements may include revisions absent from a particular checkout. The source links below are navigation aids; use [source-inventory.json](source-inventory.json) for the exact pinned rows and hashes. The source inventory identifies the pinned governing revision. A snapshot check does not establish source freshness. See [README](README.md) for verification commands and [check-results.json](check-results.json) for actual checks.', '',
   '## Package ownership, provider dependencies and verification gates', '',
   index.dependencySemantics, '', index.commonGate, '',
 ];
@@ -54,17 +54,17 @@ for (const [category, rows] of Object.entries(index.mappings)) {
   lines.push('');
 }
 lines.push('## Executed evidence and limits', '',
-  'These retained local records describe checks already executed during earlier authored contributions. The current ticket’s actual checker runs are in [check-results.json](check-results.json). Neither source proves peer acceptance, real DDL/locking, signed stock acceptance or package completion.', '',
-  'Evidence | Artifact / retained local record | Executed scope | Outstanding acceptance', '--- | --- | --- | ---');
-for (const row of index.evidence) lines.push(`${row.key} | [${row.artifact}](../../${row.artifact.replace(/^contracts\//, '')})<br>Local record: ${row.trackingRecord} | ${row.scope}; ${row.date}; ${row.status} | Peer and integration **pending**`);
+  'These versioned records describe checks already executed during earlier authored contributions. The retained checker runs are in [check-results.json](check-results.json). Neither source proves peer acceptance, real DDL/locking, signed stock acceptance or package completion.', '',
+  'Evidence | Artifact / verification command | Executed scope | Outstanding acceptance', '--- | --- | --- | ---');
+for (const row of index.evidence) lines.push(`${row.key} | [${row.artifact}](../../${row.artifact.replace(/^contracts\//, '')})<br>Check: ${row.validationCommand} | ${row.scope}; ${row.date}; ${row.status} | Peer and integration **pending**`);
 lines.push('', '## Conflicts and corrections retained', '',
   'A material unresolved mapping conflict fails the checker and blocks affected acceptance. These documented resolutions govern mapping; their implementation evidence remains pending.', '',
   'Finding | Source / affected packages | Mapping treatment', '--- | --- | ---');
 for (const row of index.conflicts) lines.push(`${row.key}: ${row.status} | ${sourceLink(row.source)}; ${packages(row.packages)} | ${escape(row.resolution)}`);
-lines.push('', '## Handoff to ticket 06 and actual reviewers', '',
+lines.push('', '## Handoff to the P00 reconciliation bundle and actual reviewers', '',
   'Consumer | Current state | Required work', '--- | --- | ---');
 for (const row of index.pendingHandoffs) lines.push(`${row.consumer} | ${row.status} | ${escape(row.scope)}`);
-lines.push('', 'Ticket 06 consumes this revision, its complete individual rows and actual check report. Preserve findings, source drift and unreceived reviews rather than marking gates passed. No infrastructure, account values, operational approvals, next-ticket implementation, push or PR is authorized by this index.', '');
+lines.push('', 'the P00 reconciliation bundle consumes this revision, its complete individual rows and actual check report. Preserve findings, source drift and unreceived reviews rather than marking gates passed. The index does not authorize infrastructure changes or operational approvals.', '');
 const content = lines.join('\n');
 const path = resolve(directory, 'v1/review-index.md');
 if (process.argv.includes('--check')) {

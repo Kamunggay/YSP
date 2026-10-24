@@ -9,7 +9,7 @@
   "artifacts": [
     {
       "path": "contracts/transport/v1/api-v1.json",
-      "sha256": "c48ba608095f52f9ff548418277b51a0b895848cebe07340a92d9dba080449b8"
+      "sha256": "0d03c7b7ab376e628240d6595224835dc0f27d871642e3bcdd10ac954b60864a"
     },
     {
       "path": "contracts/transport/v1/examples.json",
@@ -17,11 +17,11 @@
     },
     {
       "path": "contracts/transport/v1/transport.schema.json",
-      "sha256": "858b8bd181f8ea82553d822582d56c3f62e709293e7a9fd27975ac25b5616a6f"
+      "sha256": "510d98963345e219c88a09ca89fc6179b2d3729727d47af57f555b0a7839c88e"
     },
     {
       "path": "contracts/identity-record-evidence/v1/boundary.json",
-      "sha256": "477ba1ccab3f6f8245127b32d577a363bcc9c89e92b170ab61536b9480167515"
+      "sha256": "657556ab24ff27ba447022f76082c11bc4d3d8c024df2e387d9b55ed490ba07b"
     },
     {
       "path": "contracts/identity-record-evidence/v1/canonical-vectors.json",
@@ -33,15 +33,15 @@
     },
     {
       "path": "contracts/identity-record-evidence/v1/contract.schema.json",
-      "sha256": "4fd7cb678a06715e3690a336618464d055f3478063b7897b050f8d8110784263"
+      "sha256": "4cd2ab151f433ea13d621204468a92a24ba6126da0ea7276f794b8ecc18611ee"
     },
     {
       "path": "contracts/identity-record-evidence/v1/examples.json",
-      "sha256": "1aeaa514b1b30ecfaa2479adb9d79a222e3aa97e0a37300a24377606ef6b2699"
+      "sha256": "ce32e015d29b81f7e919c67135b4c530510bd0aed862c7fcd9f57a8354b4a8f8"
     },
     {
       "path": "contracts/ipc-rm-acceptance/v1/README.md",
-      "sha256": "8300570a86cce5380d02d387aa7fc5a72d689b124f3d061090084d24139485be"
+      "sha256": "ff0cc6970f1f4e7e225ec6996f64e633ab755d8a1b0d87faa2d687666995b6ce"
     },
     {
       "path": "contracts/ipc-rm-acceptance/v1/cases.json",
@@ -49,7 +49,7 @@
     },
     {
       "path": "contracts/ipc-rm-acceptance/v1/contract.schema.json",
-      "sha256": "8e6c15472fb828495f033c381da64a3724eb984ef630615a254184c665db7235"
+      "sha256": "7a0e2fb649be685c242a848ef6ea3e0ed5709f8e4e772ae07e92af06bbf448c3"
     },
     {
       "path": "contracts/ipc-rm-acceptance/v1/examples.json",
@@ -61,7 +61,7 @@
     },
     {
       "path": "contracts/ipc-rm-acceptance/v1/internal-operations.md",
-      "sha256": "25cc637aababd5470ed4b5843148098f0b7ee42b50eb9a5010c703cfb7b477d6"
+      "sha256": "07163cb2261ada2681f14de1aa33d7b0a7d1f73145d0d32530004435a407b3a2"
     },
     {
       "path": "contracts/ipc-rm-acceptance/v1/schema-change-register.md",
@@ -69,15 +69,15 @@
     },
     {
       "path": "contracts/ipc-rm-acceptance/v1/source-and-evidence.json",
-      "sha256": "e4c223573a6f4766cafe6c9fe5ddc1cd3180a26d079d674b3a871ea78b50c1b8"
+      "sha256": "83990b1a6dcca4c65df8b6bf805317fe1176dd6cd539dbd3e9b17db752b61e36"
     },
     {
       "path": "contracts/ipc-rm-acceptance/v1/walkthrough.md",
-      "sha256": "d2851be9be13dd842326fd40dc91a24f490e4544119be7812d105287dd81864c"
+      "sha256": "e398c9eaf739e15aba9d2cd3f9c85cf9e2000e9852a92a3eb9ca7cb10c09a23a"
     },
     {
       "path": "contracts/stock-holds/v1/README.md",
-      "sha256": "077681e71fea7291dc221875103ba46688dc1c2fc35368afb7ad086aefc8ef85"
+      "sha256": "c7e16e48c1a5d29744a1856558dbd4c56d75e95a29bbcbea29f492eb3ce80795"
     },
     {
       "path": "contracts/stock-holds/v1/cases.json",
@@ -85,11 +85,11 @@
     },
     {
       "path": "contracts/stock-holds/v1/contract.schema.json",
-      "sha256": "4035be8189920d75936d103dfd9bf71c30aa48e7dc33bf943f201f50bfe6804b"
+      "sha256": "f989986882bcd474f66ddafcde1ce5198e20ac14556e6e139947c4e3eba43e16"
     },
     {
       "path": "contracts/stock-holds/v1/coverage-model.md",
-      "sha256": "c4e5ba8d61fb562cb345baa92d0bb1156588b937dd45443d4b2bc41b497a83d1"
+      "sha256": "4024467e1ecae908e2b5a0288e22fa93e8ebeaad5f943a8137a46fc7a1f73db9"
     },
     {
       "path": "contracts/stock-holds/v1/examples.json",
@@ -97,11 +97,11 @@
     },
     {
       "path": "contracts/stock-holds/v1/internal-operations.md",
-      "sha256": "a8d0955195098aadc542dddf16f5f00bc56e8f4c64cd370e03de1a5e90321f06"
+      "sha256": "c7bc47ed8e980da03b2a6881c51eca449239e303ecea635142812840704a80a9"
     },
     {
       "path": "contracts/stock-holds/v1/schema-change-register.md",
-      "sha256": "a2e31917a777ec211d0b725a9b28c28b4e03c21413c3b9ccf41e43aa52fcb980"
+      "sha256": "81b422c989d652f1f48ab13652379dcf57295dba14df243c9050da42ca4ebfd5"
     },
     {
       "path": "contracts/stock-holds/v1/verification-cases.json",
@@ -109,27 +109,28 @@
     },
     {
       "path": "contracts/stock-holds/v1/walkthrough.md",
-      "sha256": "459c2d1bbddf4d66879dc7727b9ab4296fb8082b140492ae2501608ac25d7158"
+      "sha256": "ff397fe960c5c2dfa74eb610f3fee058a432a3d2d0a1a54510ca7a4694543e24"
     },
     {
       "path": "contracts/full-mvp-coverage/v1/README.md",
-      "sha256": "34d4439f2e9daf61291345ca073656522085a3a1babccc5752b5f15f0f120eaa"
+      "sha256": "8c6b4c04378a31b0b98716042e01abeef55dde3703aa096e409728af2eb3376a"
     },
     {
       "path": "contracts/full-mvp-coverage/v1/check-results.json",
-      "sha256": "28ab670a07e0f7255b4dd66c4954cbf1b41c0cf2df4909f6686506613d7e5e4e"
+      "sha256": "2de463f59483319278963ea88d678f531cd82aa9325031175e29a651598561b3"
     },
     {
       "path": "contracts/full-mvp-coverage/v1/index.json",
-      "sha256": "0ab5f5ed28424e5e3d98dc9a0455266d332dedc0458bf1f2d6d54c49a9665e52"
+      "sha256": "23e35ab739d22844867c647ac8940c30ab956f797bdd859bf90feee64d470eaa"
     },
     {
       "path": "contracts/full-mvp-coverage/v1/review-index.md",
-      "sha256": "390f9cf878c49dd4afe99dd66d2189b1626deac7c321a93b9f835b830fa76d5b"
+      "sha256": "a0373db4fc560fc524c59f64b9d8bc968a0fa79d9eb2e0e2cf201355ca692457"
     },
     {
       "path": "contracts/full-mvp-coverage/v1/source-inventory.json",
       "sha256": "6b62cb5b3677bd2002fc956b0d85f47cc954e1d2397c34ea7ea294aa28f5b52c"
     }
-  ]
+  ],
+  "publicationNote": "Private planning references removed from publication metadata and explanatory text; current UTF-8/LF hashes refreshed. Wire validation rules, requirement mappings and pending human/integration acceptance are unchanged."
 }

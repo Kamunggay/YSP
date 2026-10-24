@@ -4,7 +4,7 @@ Revision `1.0.0-review.1`. Every quantity, actor, evidence pin, threshold and sc
 
 ## Source to screen to owning operation
 
-Start with ticket 02's **expected** signed IPC → inspected RM: RM `901`, accepted line `601`, variant `71`, lot `1201`, usable stockroom position `1301`, ten accepted pieces. That source-linked receipt would create the root coverage `[0,10)` in its own transaction. Its separate damaged line `602`/nonusable lot `1202` does not enter these ten usable units. Query fixtures retain that RM line as provenance; a direct balance seed is not an admissible later integrated test setup.
+Start with the IPC/RM acceptance contract's **expected** signed IPC → inspected RM: RM `901`, accepted line `601`, variant `71`, lot `1201`, usable stockroom position `1301`, ten accepted pieces. That source-linked receipt would create the root coverage `[0,10)` in its own transaction. Its separate damaged line `602`/nonusable lot `1202` does not enter these ten usable units. Query fixtures retain that RM line as provenance; a direct balance seed is not an admissible later integrated test setup.
 
 An authorized screen requests `QueryInput` for chapter/variant/unit, intended purpose/time, event/requesting-unit context, requested **new-allocation** quantity and optional lot/location constraints. It displays `EligibilityResult`'s seven quantities separately, with source/lot/location/custodian/condition/restriction context, each active independent reason, reservation protection and union explanation. It displays `read_at`, freshness, current guard/policy/restriction versions and stable blocking codes. A failed/unavailable read preserves the last labeled stale view or shows an error, never zero stock. It cannot infer commitment success from these values.
 

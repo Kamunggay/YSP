@@ -1,12 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
 const root = new URL('../../../', import.meta.url);
 const bundle = new URL('contracts/p00-review/v1/', root);
 const manifest = JSON.parse(readFileSync(new URL('manifest.json', bundle), 'utf8'));
 const digest = text => createHash('sha256').update(text.replaceAll('\r\n', '\n')).digest('hex');
+
+test('Published contract artifacts use portable references', () => {
+  const privateReference = /\.scratch[/\\]|stage-0-leader[/\\]|local[_-]?ticket|trackingRecord|\btickets?\s*(?:0[1-9]|10)\b|[A-Z]:[/\\](?:xampp|Users)[/\\]|!\[\[/i;
+  function inspect(directory) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (['node_modules', 'tests'].includes(entry.name)) continue;
+      const path = new URL(entry.name + (entry.isDirectory() ? '/' : ''), directory);
+      if (entry.isDirectory()) inspect(path);
+      else if (/\.(md|json|mjs)$/.test(entry.name)) {
+        assert.doesNotMatch(readFileSync(path, 'utf8'), privateReference, path.pathname);
+      }
+    }
+  }
+  inspect(new URL('contracts/', root));
+});
 
 test('P00 handoff pins all consumed first-slice and index artifacts without changing acceptance', () => {
   assert.equal(manifest.revision, '1.0.0-review.1');

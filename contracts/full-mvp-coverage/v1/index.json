@@ -4,7 +4,6 @@
   "revision": "1.0.0-review.1",
   "date": "2026-10-24",
   "parentSpec": "https://github.com/Kamunggay/YSP/issues/2",
-  "localTicket": ".scratch/stage-0-leader/issues/10-full-mvp-coverage-dependency-index.md",
   "status": "review-ready planning contribution; all application, package, pilot, peer, live and full-MVP acceptance pending",
   "requirementAuthority": "PRD 1.2 and TRD 2.1 remain review candidates; Appendix C and existing source inventories supply original IDs. P labels, YES/NO keys and row labels are locators, not new requirements.",
   "commonGate": "Each application package requires intended-MySQL integrity, connected real UI/API, current chapter/duty/policy/version checks, branch/retry/negative evidence, traceable history, nonauthor review, green applicable CI, reviewed merge and repeatable demonstration. Critical postings additionally require atomic rollback, duplicate/lost-response lookup and races with real evidence/stock/money participants. Source-row mapping proves none of these execution gates.",
@@ -12486,14 +12485,13 @@
       "kind": "authored-contract-consistency",
       "date": "2026-10-24",
       "scope": "transport and operation outcome schema/examples only",
-      "provenance": "Existing locally recorded execution, not a new peer sign-off; see retained results and commit references in the tracking record.",
-      "trackingRecord": ".scratch/stage-0-leader/01-transport-results.md",
-      "localTicket": ".scratch/stage-0-leader/issues/01-first-slice-transport-outcomes.md",
+      "provenance": "Authored contract consistency only; rerun the stated command for the reviewed revision. Peer and integration acceptance remain pending.",
       "artifact": "contracts/transport/v1/api-v1.json",
-      "artifactSha256": "c48ba608095f52f9ff548418277b51a0b895848cebe07340a92d9dba080449b8",
+      "artifactSha256": "0d03c7b7ab376e628240d6595224835dc0f27d871642e3bcdd10ac954b60864a",
       "digestFormat": "sha256-utf8-lf; authored contract source text only, not stored evidence bytes",
       "integrationAcceptance": "pending",
-      "peerAcceptance": "pending"
+      "peerAcceptance": "pending",
+      "validationCommand": "node --test contracts/transport/tests/transport.test.mjs"
     },
     {
       "key": "identity-evidence-consistency",
@@ -12501,14 +12499,13 @@
       "kind": "authored-contract-consistency",
       "date": "2026-10-24",
       "scope": "authored identity/record/evidence schemas, exact bytes and examples only",
-      "provenance": "Existing locally recorded execution, not a new peer sign-off; see retained results and commit references in the tracking record.",
-      "trackingRecord": ".scratch/stage-0-leader/08-identity-record-evidence-results.md",
-      "localTicket": ".scratch/stage-0-leader/issues/08-identity-record-evidence-contract.md",
+      "provenance": "Authored contract consistency only; rerun the stated command for the reviewed revision. Peer and integration acceptance remain pending.",
       "artifact": "contracts/identity-record-evidence/v1/boundary.json",
-      "artifactSha256": "477ba1ccab3f6f8245127b32d577a363bcc9c89e92b170ab61536b9480167515",
+      "artifactSha256": "657556ab24ff27ba447022f76082c11bc4d3d8c024df2e387d9b55ed490ba07b",
       "digestFormat": "sha256-utf8-lf; authored contract source text only, not stored evidence bytes",
       "integrationAcceptance": "pending",
-      "peerAcceptance": "pending"
+      "peerAcceptance": "pending",
+      "validationCommand": "node --test contracts/transport/tests/identity-record-evidence.test.mjs"
     },
     {
       "key": "ipc-rm-consistency",
@@ -12516,14 +12513,13 @@
       "kind": "authored-contract-consistency",
       "date": "2026-10-24",
       "scope": "authored opening-source transaction walkthrough/schema/examples only",
-      "provenance": "Existing locally recorded execution, not a new peer sign-off; see retained results and commit references in the tracking record.",
-      "trackingRecord": ".scratch/stage-0-leader/02-ipc-rm-acceptance-results.md",
-      "localTicket": ".scratch/stage-0-leader/issues/02-ipc-rm-acceptance-contract.md",
+      "provenance": "Authored contract consistency only; rerun the stated command for the reviewed revision. Peer and integration acceptance remain pending.",
       "artifact": "contracts/ipc-rm-acceptance/v1/cases.json",
       "artifactSha256": "7de87737ecd08296858e69849b5d45b0ae59461d732da797a9b2be30bb2e50d3",
       "digestFormat": "sha256-utf8-lf; authored contract source text only, not stored evidence bytes",
       "integrationAcceptance": "pending",
-      "peerAcceptance": "pending"
+      "peerAcceptance": "pending",
+      "validationCommand": "node --test contracts/transport/tests/ipc-rm-acceptance.test.mjs"
     },
     {
       "key": "stock-hold-consistency",
@@ -12531,14 +12527,13 @@
       "kind": "authored-contract-consistency",
       "date": "2026-10-24",
       "scope": "authored seven-view, hold-union and clearance examples only",
-      "provenance": "Existing locally recorded execution, not a new peer sign-off; see retained results and commit references in the tracking record.",
-      "trackingRecord": ".scratch/stage-0-leader/03-stock-hold-results.md",
-      "localTicket": ".scratch/stage-0-leader/issues/03-stock-hold-coverage-clearance.md",
+      "provenance": "Authored contract consistency only; rerun the stated command for the reviewed revision. Peer and integration acceptance remain pending.",
       "artifact": "contracts/stock-holds/v1/verification-cases.json",
       "artifactSha256": "aca97201bba1b392db63c3185cf47b689b1aa9b78da7027710fb0e500e7c2812",
       "digestFormat": "sha256-utf8-lf; authored contract source text only, not stored evidence bytes",
       "integrationAcceptance": "pending",
-      "peerAcceptance": "pending"
+      "peerAcceptance": "pending",
+      "validationCommand": "node --test contracts/transport/tests/stock-holds.test.mjs"
     }
   ],
   "pendingHandoffs": [
@@ -12560,7 +12555,7 @@
     {
       "consumer": "P01",
       "status": "pending",
-      "scope": "04/05/09/07 plus supplied Glenn client, intended MySQL, nonauthor clean-checkout reproduction, applicable CI and whole-spec reviewed merge."
+      "scope": "Backend, same-origin frontend client, combined verification and reproduction handoff, intended MySQL, nonauthor clean-checkout reproduction, applicable CI and whole-spec reviewed merge."
     },
     {
       "consumer": "Later contracts",
@@ -12647,7 +12642,7 @@
       "packages": [
         "P00"
       ],
-      "resolution": "Governing main-workspace files contain pre-existing uncommitted revisions absent from the shared checkout. Pin their byte hashes and extracted inventory here; source verification requires --source-root pointing at that governing workspace. --snapshot alone explicitly does not check freshness."
+      "resolution": "The pinned governing requirements may differ from files in a reviewer checkout. Their exact hashes and extracted rows are retained; source verification requires --source-root selecting matching governing documents. --snapshot alone does not check freshness."
     }
   ]
 }

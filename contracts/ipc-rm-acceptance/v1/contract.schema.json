@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:ysp:ipc-rm-acceptance:v1",
   "title": "IPC/RM acceptance - Leader review revision 1",
-  "description": "P00 stage-0-leader/02, revision 1.0.0-review.1, 2026-10-24. Internal Purchasing/Receiving command and participant/read/result contracts. Register transport and identity-record-evidence v1 first. No runtime endpoint, authorization, evidence validation, DDL or posting implementation is supplied. Cross-value relationships and commit-time rules in internal-operations.md are mandatory server checks; schema validity is insufficient. Actual Inventory/Documents/Glenn review and P06/AC-04 execution remain pending.",
+  "description": "P00 IPC/RM acceptance, revision 1.0.0-review.1, 2026-10-24. Internal Purchasing/Receiving command and participant/read/result contracts. Register transport and identity-record-evidence v1 first. No runtime endpoint, authorization, evidence validation, DDL or posting implementation is supplied. Cross-value relationships and commit-time rules in internal-operations.md are mandatory server checks; schema validity is insufficient. Actual Inventory/Documents/Glenn review and P06/AC-04 execution remain pending.",
   "$defs": {
     "IpcReference": {
       "allOf": [

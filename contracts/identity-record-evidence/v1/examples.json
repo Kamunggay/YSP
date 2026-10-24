@@ -1101,7 +1101,7 @@
   "lookup-unavailable": {
     "definition": "RejectedEvidenceResult",
     "evidence_state": "expected",
-    "description": "Reuse ticket 01 uncertainty semantics for a lost binding response; lookup by original scoped action/key before deciding any new attempt.",
+    "description": "Reuse the shared transport contract uncertainty semantics for a lost binding response; lookup by original scoped action/key before deciding any new attempt.",
     "value": {
       "schema_version": "1.0",
       "chapter_id": "1",

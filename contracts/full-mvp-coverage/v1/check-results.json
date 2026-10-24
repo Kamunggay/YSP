@@ -1,15 +1,14 @@
 {
   "revision": "1.0.0-review.1",
   "date": "2026-10-24",
-  "actor": "Codex executing Leader-authorized local ticket 10",
+  "actor": "Codex executing Leader-authorized local the full-MVP coverage index",
   "runtime": "v24.11.1",
   "platform": "win32",
   "scope": "Planning inventory/reference consistency only; no application, MySQL, peer, pilot, live or full-MVP acceptance.",
   "sourceInventorySha256": "6b62cb5b3677bd2002fc956b0d85f47cc954e1d2397c34ea7ea294aa28f5b52c",
-  "indexSha256": "0ab5f5ed28424e5e3d98dc9a0455266d332dedc0458bf1f2d6d54c49a9665e52",
   "digestFormat": "sha256-utf8-lf; only CRLF is normalized to LF",
   "governing": {
-    "command": "node contracts/full-mvp-coverage/check.mjs --source-root C:/xampp/htdocs/YSP",
+    "command": "node contracts/full-mvp-coverage/check.mjs --source-root <governing-source-root>",
     "exitCode": 0,
     "result": {
       "revision": "1.0.0-review.1",
@@ -180,7 +179,7 @@
     "method": "Independent automated Standards and Spec agents; separate from required human Glenn/Efren acceptance.",
     "initialRevision": "be6f6ce",
     "fixedPoint": "master (fa0a9f8532fd0379f7b8f04cf67ab463401c8909)",
-    "scope": "Current ticket10 contribution, excluding inherited reviewed Stage0 changes; final staged corrections re-reviewed.",
+    "scope": "Current full-MVP coverage contribution, excluding inherited reviewed Stage0 changes; final staged corrections re-reviewed.",
     "standards": {
       "initialFindings": 1,
       "remainingFindings": 0,
@@ -191,5 +190,7 @@
       "remainingFindings": 0,
       "resolution": "Retain decision-specific package gates; schema predicates plus explicit Backorder closure; source-based missing-row owner diagnostics."
     }
-  }
+  },
+  "historicalIndexSha256": "0ab5f5ed28424e5e3d98dc9a0455266d332dedc0458bf1f2d6d54c49a9665e52",
+  "publicationNote": "Historical author execution records are retained. Machine-specific source-root paths are redacted. Publication cleanup removes private planning references and refreshes current artifact identities; historical counts and outputs are not new acceptance."
 }

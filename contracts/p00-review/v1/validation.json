@@ -25,7 +25,7 @@
       "stderr": ""
     },
     {
-      "command": "node contracts/full-mvp-coverage/check.mjs --source-root C:/xampp/htdocs/YSP",
+      "command": "node contracts/full-mvp-coverage/check.mjs --source-root <governing-source-root>",
       "exitCode": 0,
       "stdout": "{\n  \"revision\": \"1.0.0-review.1\",\n  \"mode\": \"governing-source\",\n  \"sourceFreshness\": \"matched\",\n  \"counts\": {\n    \"packages\": 30,\n    \"nodes\": 87,\n    \"branches\": 40,\n    \"connectors\": 7,\n    \"loops\": 6,\n    \"narrative\": 35,\n    \"ambiguities\": 21,\n    \"requirements\": 194,\n    \"acceptance\": 35,\n    \"closure\": 10,\n    \"activation\": 11,\n    \"settings\": 14\n  },\n  \"referenceCheck\": \"passed\",\n  \"errors\": [],\n  \"acceptance\": \"pending\",\n  \"peerAcceptance\": \"pending\",\n  \"liveReadiness\": \"pending\",\n  \"warning\": \"This checks inventory completeness, references and scoped implementation dependencies only. Expected cases, synthetic values, contract checks and screenshots cannot certify real application/peer/pilot/recovery acceptance.\"\n}\n",
       "stderr": ""
@@ -47,7 +47,7 @@
     "date": "2026-10-24",
     "fixedPoint": "master fa0a9f8532fd0379f7b8f04cf67ab463401c8909",
     "reviewedCommit": "335993265c016d57313a133bf5afbc5c13f75cdd",
-    "scope": "git diff master...HEAD; ticket 06 additions distinguished from inherited commits",
+    "scope": "git diff master...HEAD; the P00 reconciliation bundle additions distinguished from inherited commits",
     "standards": {
       "findings": 0
     },
@@ -55,5 +55,19 @@
       "findings": 0
     },
     "limit": "Independent automated reviews; not actual Glenn/Efren/Documents acceptance."
+  },
+  "publicationCleanupValidation": {
+    "scope": "Documentation and publication metadata cleanup; no wire validation rule, requirement mapping or acceptance promotion.",
+    "command": "npm --prefix contracts/transport test",
+    "exitCode": 0,
+    "tests": 42,
+    "passed": 42,
+    "referenceRegression": "The portability check failed against the prior published contract files and passed after cleanup.",
+    "snapshot": "Passed; 30 packages and 460 mapped rows retained. Rendered index and refreshed manifest match.",
+    "governingSourceFreshness": {
+      "status": "failed-existing-mismatch",
+      "source": "docs/APP-FLOW.md",
+      "finding": "The current checkout does not match the pinned historical source digest. The unchanged pre-cleanup baseline reports the same mismatch. Source inventory and governing documents were not altered to hide the discrepancy; reconciliation remains required before affected acceptance."
+    }
   }
 }

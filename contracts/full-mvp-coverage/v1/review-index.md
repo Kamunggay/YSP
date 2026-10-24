@@ -1,12 +1,12 @@
 # Full-MVP coverage and dependency index
 
-Revision **1.0.0-review.1**, 2026-10-24. [Parent Stage 0 specification](https://github.com/Kamunggay/YSP/issues/2); local Leader ticket 10.
+Revision **1.0.0-review.1**, 2026-10-24. [Parent Stage 0 specification](https://github.com/Kamunggay/YSP/issues/2).
 
 PRD 1.2 and TRD 2.1 remain review candidates; Appendix C and existing source inventories supply original IDs. P labels, YES/NO keys and row labels are locators, not new requirements.
 
-**All package, source, acceptance, peer and live gates remain pending.** This is the entire team’s roadmap ownership index; the Leader-only local ticket list implements a subset of Stage 0. Glenn retains frontend, queries/reservations and demand intake. Efren retains Inventory physical posting, Finance, fulfillment, booths and ADJ. Leader coordinates architecture/contracts/schema/CI and Purchasing/Receiving. These assignments confer no officer duty.
+**All package, source, acceptance, peer and live gates remain pending.** This is the entire team’s roadmap ownership index; the authored Stage 0 baseline implements a subset of this roadmap. Glenn retains frontend, queries/reservations and demand intake. Efren retains Inventory physical posting, Finance, fulfillment, booths and ADJ. Leader coordinates architecture/contracts/schema/CI and Purchasing/Receiving. These assignments confer no officer duty.
 
-The governing main workspace has existing uncommitted requirement revisions. The source links below are navigation aids; use [source-inventory.json](source-inventory.json) for the exact pinned rows and hashes. The older documentation in the shared checkout is not the pinned governing revision. A snapshot check does not establish source freshness. See [README](README.md) for verification commands and [check-results.json](check-results.json) for actual checks.
+The governing requirements may include revisions absent from a particular checkout. The source links below are navigation aids; use [source-inventory.json](source-inventory.json) for the exact pinned rows and hashes. The source inventory identifies the pinned governing revision. A snapshot check does not establish source freshness. See [README](README.md) for verification commands and [check-results.json](check-results.json) for actual checks.
 
 ## Package ownership, provider dependencies and verification gates
 
@@ -1117,14 +1117,14 @@ Document retention, archival and authorized disposal/resolution rules<br>[docs/P
 
 ## Executed evidence and limits
 
-These retained local records describe checks already executed during earlier authored contributions. The current ticket’s actual checker runs are in [check-results.json](check-results.json). Neither source proves peer acceptance, real DDL/locking, signed stock acceptance or package completion.
+These versioned records describe checks already executed during earlier authored contributions. The retained checker runs are in [check-results.json](check-results.json). Neither source proves peer acceptance, real DDL/locking, signed stock acceptance or package completion.
 
-Evidence | Artifact / retained local record | Executed scope | Outstanding acceptance
+Evidence | Artifact / verification command | Executed scope | Outstanding acceptance
 --- | --- | --- | ---
-transport-consistency | [contracts/transport/v1/api-v1.json](../../transport/v1/api-v1.json)<br>Local record: .scratch/stage-0-leader/01-transport-results.md | transport and operation outcome schema/examples only; 2026-10-24; executed | Peer and integration **pending**
-identity-evidence-consistency | [contracts/identity-record-evidence/v1/boundary.json](../../identity-record-evidence/v1/boundary.json)<br>Local record: .scratch/stage-0-leader/08-identity-record-evidence-results.md | authored identity/record/evidence schemas, exact bytes and examples only; 2026-10-24; executed | Peer and integration **pending**
-ipc-rm-consistency | [contracts/ipc-rm-acceptance/v1/cases.json](../../ipc-rm-acceptance/v1/cases.json)<br>Local record: .scratch/stage-0-leader/02-ipc-rm-acceptance-results.md | authored opening-source transaction walkthrough/schema/examples only; 2026-10-24; executed | Peer and integration **pending**
-stock-hold-consistency | [contracts/stock-holds/v1/verification-cases.json](../../stock-holds/v1/verification-cases.json)<br>Local record: .scratch/stage-0-leader/03-stock-hold-results.md | authored seven-view, hold-union and clearance examples only; 2026-10-24; executed | Peer and integration **pending**
+transport-consistency | [contracts/transport/v1/api-v1.json](../../transport/v1/api-v1.json)<br>Check: node --test contracts/transport/tests/transport.test.mjs | transport and operation outcome schema/examples only; 2026-10-24; executed | Peer and integration **pending**
+identity-evidence-consistency | [contracts/identity-record-evidence/v1/boundary.json](../../identity-record-evidence/v1/boundary.json)<br>Check: node --test contracts/transport/tests/identity-record-evidence.test.mjs | authored identity/record/evidence schemas, exact bytes and examples only; 2026-10-24; executed | Peer and integration **pending**
+ipc-rm-consistency | [contracts/ipc-rm-acceptance/v1/cases.json](../../ipc-rm-acceptance/v1/cases.json)<br>Check: node --test contracts/transport/tests/ipc-rm-acceptance.test.mjs | authored opening-source transaction walkthrough/schema/examples only; 2026-10-24; executed | Peer and integration **pending**
+stock-hold-consistency | [contracts/stock-holds/v1/verification-cases.json](../../stock-holds/v1/verification-cases.json)<br>Check: node --test contracts/transport/tests/stock-holds.test.mjs | authored seven-view, hold-union and clearance examples only; 2026-10-24; executed | Peer and integration **pending**
 
 ## Conflicts and corrections retained
 
@@ -1137,16 +1137,16 @@ legacy-product-reference: resolved-for-mapping | [specs/ysp-chapter-operations/F
 hold-condition-shorthand: resolved-for-mapping | [docs/IMPLEMENTATION-PLAN.md:29](../../../docs/IMPLEMENTATION-PLAN.md); [P05](#p05), [P06](#p06), [P24](#p24) | Q1/Q7/Q8 preserve usable on-hand and ROP, union overlapping holds, and allow authorized hold-only clearance without movement. Actual DDL/race and peer gates remain pending.
 four-officers-three-developers: resolved-for-mapping | [docs/IMPLEMENTATION-PLAN.md:26](../../../docs/IMPLEMENTATION-PLAN.md); [P02](#p02), [P17](#p17), [P23](#p23), [P26](#p26) | Preserve three developer owners and four individually authorized officer test profile; neither developer assignment nor synthetic persona confers operational authority.
 candidate-final-wording: resolved-for-mapping | [docs/TRD.md:7](../../../docs/TRD.md); [P00](#p00), [P29](#p29) | Review-candidate metadata governs; no document promotion, executed acceptance or production authorization is inferred.
-governing-workspace-revisions: resolved-for-mapping | [docs/IMPLEMENTATION-PLAN.md:1](../../../docs/IMPLEMENTATION-PLAN.md); [P00](#p00) | Governing main-workspace files contain pre-existing uncommitted revisions absent from the shared checkout. Pin their byte hashes and extracted inventory here; source verification requires --source-root pointing at that governing workspace. --snapshot alone explicitly does not check freshness.
+governing-workspace-revisions: resolved-for-mapping | [docs/IMPLEMENTATION-PLAN.md:1](../../../docs/IMPLEMENTATION-PLAN.md); [P00](#p00) | The pinned governing requirements may differ from files in a reviewer checkout. Their exact hashes and extracted rows are retained; source verification requires --source-root selecting matching governing documents. --snapshot alone does not check freshness.
 
-## Handoff to ticket 06 and actual reviewers
+## Handoff to the P00 reconciliation bundle and actual reviewers
 
 Consumer | Current state | Required work
 --- | --- | ---
 06 | pending | Reconcile this index and 01/08/02/03 into a first-slice review bundle; record changed source links and actual findings.
 Glenn | pending | Actual revision/date/scope validation of query/reservation, UI and typed consumers.
 Efren | pending | Actual revision/date/scope validation of physical-posting, Finance and transaction participants.
-P01 | pending | 04/05/09/07 plus supplied Glenn client, intended MySQL, nonauthor clean-checkout reproduction, applicable CI and whole-spec reviewed merge.
+P01 | pending | Backend, same-origin frontend client, combined verification and reproduction handoff, intended MySQL, nonauthor clean-checkout reproduction, applicable CI and whole-spec reviewed merge.
 Later contracts | pending | Sales/Finance/fulfillment/booth proposals remain proposals; extend them at their documented consumer gates without delaying existing roadmap ownership.
 
-Ticket 06 consumes this revision, its complete individual rows and actual check report. Preserve findings, source drift and unreceived reviews rather than marking gates passed. No infrastructure, account values, operational approvals, next-ticket implementation, push or PR is authorized by this index.
+the P00 reconciliation bundle consumes this revision, its complete individual rows and actual check report. Preserve findings, source drift and unreceived reviews rather than marking gates passed. The index does not authorize infrastructure changes or operational approvals.
