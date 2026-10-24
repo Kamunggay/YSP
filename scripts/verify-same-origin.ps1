@@ -1,3 +1,4 @@
+param([string] $BrowserImage = '')
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 & "$PSScriptRoot/init-local.ps1"
@@ -14,6 +15,15 @@ function Invoke-Compose {
 }
 function Invoke-Browser([string] $Expected, [switch] $ConnectivityOnly) {
     $env:YSP_EXPECT_HEALTH = $Expected
+    if ($BrowserImage) {
+        $browserArguments = @('run', '--rm', '--init', '--shm-size=256m', '--network', ($verificationProject + '_local'),
+            '-e', 'YSP_BROWSER_URL=http://frontend:8080', '-e', ('YSP_EXPECT_HEALTH=' + $Expected), $BrowserImage,
+            'npx', '--no-install', 'playwright', 'test')
+        if ($ConnectivityOnly) { $browserArguments += @('tests/health.spec.ts', '--grep', 'checks the real API', '--max-failures=1') }
+        & docker @browserArguments
+        if ($LASTEXITCODE -ne 0) { throw 'Container browser integration check failed' }
+        return
+    }
     Push-Location frontend
     try {
         if ($ConnectivityOnly) {

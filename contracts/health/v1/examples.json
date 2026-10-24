@@ -1,0 +1,10 @@
+[
+  {
+    "response": { "status": 200, "body": { "status": "ok", "database": "ok" } },
+    "clientResult": { "status": "connected" }
+  },
+  {
+    "response": { "status": 503, "body": { "status": "unavailable", "database": "unavailable" } },
+    "clientResult": { "status": "unavailable" }
+  }
+]

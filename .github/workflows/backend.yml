@@ -1,4 +1,4 @@
-name: Backend health baseline
+name: Combined application and contract checks
 on:
   pull_request:
   push:
@@ -8,11 +8,11 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           persist-credentials: false
-      - name: Build, static checks, fresh MySQL migrations and HTTP smoke
+      - name: Combined builds, contracts, fresh MySQL migrations and browser checks
         shell: pwsh
-        run: ./scripts/verify-backend.ps1
+        run: ./scripts/verify.ps1
