@@ -118,6 +118,19 @@ test('TR-03/DOC-11/UX-02: examples distinguish terminal outcomes, corrections an
   assert.equal(replay.operation.replayed, true);
 });
 
+test('TR-03: standalone Operation cannot contradict terminal or unknown outcome', async () => {
+  const examples = await readJson('../v1/examples.json');
+  const validate = validator('Operation');
+  const terminal = examples.success.value.operation;
+  const unknown = examples['uncertain-not-visible'].value.operation;
+  assert.ok(validate(terminal));
+  assert.ok(validate(unknown));
+  assert.equal(validate({ ...terminal, committed_at: null }), false);
+  assert.equal(validate({ ...terminal, identity: { ...terminal.identity, operation_id: null } }), false);
+  assert.equal(validate({ ...unknown, committed_at: terminal.committed_at }), false);
+  assert.equal(validate({ ...unknown, replayed: true }), false);
+});
+
 test('P00 consumer walkthrough: field address, exact input, versions and Manila display remain usable', async () => {
   const examples = await readJson('../v1/examples.json');
   const value = (name) => examples[name].value;
@@ -130,15 +143,18 @@ test('P00 consumer walkthrough: field address, exact input, versions and Manila 
 
   // Illustrative body only: no endpoint/client/posting implementation is claimed.
   const draft = { quantity: '2.5', notes: 'Retain the entered explanation' };
-  const frozenAttempt = JSON.stringify({ context: attempt, body: draft });
   const blocked = value('blocked-field');
   const fieldName = blocked.field_feedback[0].path.slice(1);
   assert.equal(draft[fieldName], '2.5', 'feedback addresses the existing form field');
   assert.equal(blocked.input_policy, 'preserve');
   assert.equal(blocked.permitted_next_actions[0].code, 'correct_input');
   for (const example of Object.values(examples).filter((entry) => entry['x-definition'] === 'ActionResult')) {
-    assert.ok(validator('ActionResult')(example.value));
-    assert.equal(JSON.stringify({ context: attempt, body: draft }), frozenAttempt);
+    const validate = validator('ActionResult');
+    assert.ok(validate(example.value));
+    if (example.value.action_result !== 'success') {
+      assert.equal(validate({ ...example.value, input_policy: 'may_clear' }), false,
+        `${example.summary} must require preserving client input`);
+    }
   }
 
   const times = value('business-times');

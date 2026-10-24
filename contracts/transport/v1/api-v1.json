@@ -70,12 +70,7 @@
             "description": "Authorized terminal result, or uncertain when no terminal result is visible. An absent terminal result is never reported as confirmed failure.",
             "headers": {
               "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
+                "$ref": "#/components/headers/OperationCacheControl"
               }
             },
             "content": {
@@ -102,104 +97,16 @@
             }
           },
           "400": {
-            "description": "Invalid lookup selector after chapter authorization; no operation is executed.",
-            "headers": {
-              "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "./transport.schema.json#/$defs/InvalidLookup"
-                },
-                "examples": {
-                  "lookup-invalid": {
-                    "$ref": "./examples.json#/lookup-invalid"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/InvalidLookup"
           },
           "401": {
-            "description": "Current authentication required. No stored operation or record details are returned.",
-            "headers": {
-              "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "./transport.schema.json#/$defs/ForbiddenResult"
-                },
-                "examples": {
-                  "forbidden": {
-                    "$ref": "./examples.json#/forbidden"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/AuthenticationRequired"
           },
           "403": {
-            "description": "Current chapter/duty/record authority does not permit lookup. No details are disclosed, including whether a supplied other-chapter ID exists.",
-            "headers": {
-              "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "./transport.schema.json#/$defs/ForbiddenResult"
-                },
-                "examples": {
-                  "forbidden": {
-                    "$ref": "./examples.json#/forbidden"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/ForbiddenLookup"
           },
           "503": {
-            "description": "Authorized lookup could not establish a terminal result. Proxies/network failures may provide no JSON at all; the client retains uncertainty locally.",
-            "headers": {
-              "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "./transport.schema.json#/$defs/LookupUnavailable"
-                },
-                "examples": {
-                  "uncertain-unavailable": {
-                    "$ref": "./examples.json#/uncertain-unavailable"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/UnavailableLookup"
           }
         }
       }
@@ -234,12 +141,7 @@
             "description": "Authorized terminal result, or uncertain when no terminal result is visible. An absent terminal result is never reported as confirmed failure.",
             "headers": {
               "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
+                "$ref": "#/components/headers/OperationCacheControl"
               }
             },
             "content": {
@@ -269,104 +171,16 @@
             }
           },
           "400": {
-            "description": "Invalid lookup selector after chapter authorization; no operation is executed.",
-            "headers": {
-              "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "./transport.schema.json#/$defs/InvalidLookup"
-                },
-                "examples": {
-                  "lookup-invalid": {
-                    "$ref": "./examples.json#/lookup-invalid"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/InvalidLookup"
           },
           "401": {
-            "description": "Current authentication required. No stored operation or record details are returned.",
-            "headers": {
-              "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "./transport.schema.json#/$defs/ForbiddenResult"
-                },
-                "examples": {
-                  "forbidden": {
-                    "$ref": "./examples.json#/forbidden"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/AuthenticationRequired"
           },
           "403": {
-            "description": "Current chapter/duty/record authority does not permit lookup. No details are disclosed, including whether a supplied other-chapter ID exists.",
-            "headers": {
-              "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "./transport.schema.json#/$defs/ForbiddenResult"
-                },
-                "examples": {
-                  "forbidden": {
-                    "$ref": "./examples.json#/forbidden"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/ForbiddenLookup"
           },
           "503": {
-            "description": "Authorized lookup could not establish a terminal result. Proxies/network failures may provide no JSON at all; the client retains uncertainty locally.",
-            "headers": {
-              "Cache-Control": {
-                "required": true,
-                "description": "Do not cache scoped operation results or uncertainty.",
-                "schema": {
-                  "type": "string",
-                  "const": "no-store"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "./transport.schema.json#/$defs/LookupUnavailable"
-                },
-                "examples": {
-                  "uncertain-unavailable": {
-                    "$ref": "./examples.json#/uncertain-unavailable"
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/UnavailableLookup"
           }
         }
       }
@@ -456,6 +270,98 @@
       },
       "InvalidLookup": {
         "$ref": "./transport.schema.json#/$defs/InvalidLookup"
+      }
+    },
+    "responses": {
+      "InvalidLookup": {
+        "description": "Invalid lookup selector after chapter authorization; no operation is executed.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/OperationCacheControl"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/InvalidLookup"
+            },
+            "examples": {
+              "lookup-invalid": {
+                "$ref": "./examples.json#/lookup-invalid"
+              }
+            }
+          }
+        }
+      },
+      "AuthenticationRequired": {
+        "description": "Current authentication required. No stored operation or record details are returned.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/OperationCacheControl"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ForbiddenResult"
+            },
+            "examples": {
+              "forbidden": {
+                "$ref": "./examples.json#/forbidden"
+              }
+            }
+          }
+        }
+      },
+      "ForbiddenLookup": {
+        "description": "Current chapter/duty/record authority does not permit lookup. No details are disclosed, including whether a supplied other-chapter ID exists.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/OperationCacheControl"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ForbiddenResult"
+            },
+            "examples": {
+              "forbidden": {
+                "$ref": "./examples.json#/forbidden"
+              }
+            }
+          }
+        }
+      },
+      "UnavailableLookup": {
+        "description": "Authorized lookup could not establish a terminal result. Proxies/network failures may provide no JSON at all; the client retains uncertainty locally.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/OperationCacheControl"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/LookupUnavailable"
+            },
+            "examples": {
+              "uncertain-unavailable": {
+                "$ref": "./examples.json#/uncertain-unavailable"
+              }
+            }
+          }
+        }
+      }
+    },
+    "headers": {
+      "OperationCacheControl": {
+        "required": true,
+        "description": "Do not cache scoped operation results or uncertainty.",
+        "schema": {
+          "type": "string",
+          "const": "no-store"
+        }
       }
     }
   },

@@ -414,7 +414,43 @@
           "type": "boolean"
         }
       },
-      "description": "Only a durable, authorized terminal result uses committed/rejected. committed_at is the terminal-result transaction commit time, including a recorded rejection; it is not the physical occurrence or posting time. Unknown has no terminal time and cannot be a replay. Pre-operation validation/permission failures may have no operation at all."
+      "description": "Only a durable, authorized terminal result uses committed/rejected. committed_at is the terminal-result transaction commit time, including a recorded rejection; it is not the physical occurrence or posting time. Unknown has no terminal time and cannot be a replay. Pre-operation validation/permission failures may have no operation at all.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "committed_at": {
+                "type": "null"
+              },
+              "replayed": {
+                "const": false
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "identity": {
+                "type": "object",
+                "properties": {
+                  "operation_id": {
+                    "$ref": "#/$defs/OperationId"
+                  }
+                }
+              },
+              "committed_at": {
+                "$ref": "#/$defs/UtcInstant"
+              }
+            }
+          }
+        }
+      ]
     },
     "RecordState": {
       "type": "object",
@@ -713,17 +749,6 @@
                     "properties": {
                       "outcome": {
                         "const": "committed"
-                      },
-                      "committed_at": {
-                        "$ref": "#/$defs/UtcInstant"
-                      },
-                      "identity": {
-                        "type": "object",
-                        "properties": {
-                          "operation_id": {
-                            "$ref": "#/$defs/OperationId"
-                          }
-                        }
                       }
                     }
                   }
@@ -776,17 +801,6 @@
                         "properties": {
                           "outcome": {
                             "const": "rejected"
-                          },
-                          "committed_at": {
-                            "$ref": "#/$defs/UtcInstant"
-                          },
-                          "identity": {
-                            "type": "object",
-                            "properties": {
-                              "operation_id": {
-                                "$ref": "#/$defs/OperationId"
-                              }
-                            }
                           }
                         }
                       }
@@ -834,17 +848,6 @@
                         "properties": {
                           "outcome": {
                             "const": "rejected"
-                          },
-                          "committed_at": {
-                            "$ref": "#/$defs/UtcInstant"
-                          },
-                          "identity": {
-                            "type": "object",
-                            "properties": {
-                              "operation_id": {
-                                "$ref": "#/$defs/OperationId"
-                              }
-                            }
                           }
                         }
                       }
@@ -939,12 +942,6 @@
                     "properties": {
                       "outcome": {
                         "const": "unknown"
-                      },
-                      "committed_at": {
-                        "type": "null"
-                      },
-                      "replayed": {
-                        "const": false
                       }
                     }
                   }
