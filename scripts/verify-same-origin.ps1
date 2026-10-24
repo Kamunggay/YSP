@@ -50,13 +50,14 @@ try {
     Write-Output 'Real MySQL outage through the client'
     Invoke-Compose stop mysql
     Invoke-Browser '503' -ConnectivityOnly
-    Invoke-Compose start --wait mysql
+    # Preserve the stopped container/volume while waiting with Compose v2.
+    Invoke-Compose up -d --no-deps --no-recreate --wait --wait-timeout 180 mysql
     Invoke-Browser '200' -ConnectivityOnly
 
     Write-Output 'Real backend outage through the client'
     Invoke-Compose stop backend
     Invoke-Browser '503' -ConnectivityOnly
-    Invoke-Compose start --wait backend
+    Invoke-Compose up -d --no-deps --no-recreate --wait --wait-timeout 180 backend
     Invoke-Browser '200' -ConnectivityOnly
 
     Write-Output 'Missing application key through the client'

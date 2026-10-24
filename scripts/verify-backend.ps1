@@ -29,7 +29,8 @@ try {
     }
     Invoke-Compose stop mysql
     Invoke-Compose exec -T -e HEALTH_EXPECT_STATUS=503 backend php scripts/http-smoke.php
-    Invoke-Compose start --wait mysql
+    # Compose v2 supports health waits on up, but not on start.
+    Invoke-Compose up -d --no-deps --no-recreate --wait --wait-timeout 180 mysql
     Invoke-Compose exec -T backend php scripts/http-smoke.php
     Invoke-Compose exec -T backend php artisan config:cache
     Invoke-Compose exec -T backend php scripts/http-smoke.php
