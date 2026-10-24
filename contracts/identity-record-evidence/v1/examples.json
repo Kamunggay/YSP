@@ -97,7 +97,7 @@
           "kind": "IPC"
         },
         "material_version": 1,
-        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+        "material_hash": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
       },
       "previous_version": null,
       "material": {
@@ -106,6 +106,7 @@
           "id": "9007199254740993",
           "kind": "IPC"
         },
+        "cutoff_at": "2026-10-23T23:00:00.000000Z",
         "counted_at": "2026-10-24T06:00:00.000000Z",
         "purpose": "Synthetic opening count; contract example only",
         "policy_version_id": "42",
@@ -182,7 +183,7 @@
               "kind": "IPC"
             },
             "material_version": 1,
-            "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+            "material_hash": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
           },
           "policy": {
             "chapter_id": "1",
@@ -225,7 +226,7 @@
               "kind": "IPC"
             },
             "material_version": 1,
-            "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+            "material_hash": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
           },
           "policy": {
             "chapter_id": "1",
@@ -287,7 +288,7 @@
           "kind": "IPC"
         },
         "material_version": 1,
-        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+        "material_hash": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
       },
       "previous_version": null,
       "material": {
@@ -296,6 +297,7 @@
           "id": "9007199254740993",
           "kind": "IPC"
         },
+        "cutoff_at": "2026-10-23T23:00:00.000000Z",
         "counted_at": "2026-10-24T06:00:00.000000Z",
         "purpose": "Synthetic opening count; contract example only",
         "policy_version_id": "42",
@@ -372,7 +374,7 @@
               "kind": "IPC"
             },
             "material_version": 1,
-            "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+            "material_hash": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
           },
           "policy": {
             "chapter_id": "1",
@@ -434,7 +436,7 @@
           "kind": "IPC"
         },
         "material_version": 2,
-        "material_hash": "f90d4733eb54371b73303cb545e1a3a0efa720ebb734749c0fab24b6c4b7f86f"
+        "material_hash": "9c06b5086935545c4c42104f22c3584d90a70b1654b97149ec0b976950e2ec13"
       },
       "previous_version": {
         "chapter_id": "1",
@@ -443,7 +445,7 @@
           "kind": "IPC"
         },
         "material_version": 1,
-        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+        "material_hash": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
       },
       "material": {
         "chapter_id": "1",
@@ -451,6 +453,7 @@
           "id": "9007199254740993",
           "kind": "IPC"
         },
+        "cutoff_at": "2026-10-23T23:00:00.000000Z",
         "counted_at": "2026-10-24T06:00:00.000000Z",
         "purpose": "Synthetic revised opening count purpose",
         "policy_version_id": "42",
@@ -543,7 +546,7 @@
           "kind": "IPC"
         },
         "material_version": 1,
-        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+        "material_hash": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
       },
       "line": null,
       "evidence": {
@@ -673,7 +676,7 @@
           "kind": "IPC"
         },
         "material_version": 1,
-        "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+        "material_hash": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
       },
       "line": null,
       "evidence": {
@@ -748,7 +751,7 @@
               "kind": "IPC"
             },
             "material_version": 1,
-            "material_hash": "a682ef71387862acb1513b8c718d1aaf2f8f384a7b8ba14d51155ee4248c197e"
+            "material_hash": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
           },
           "line": null,
           "evidence": {

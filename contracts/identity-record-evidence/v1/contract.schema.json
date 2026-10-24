@@ -61,12 +61,14 @@
         "actor_name": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 160
+          "maxLength": 160,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         },
         "chapter_name": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 160
+          "maxLength": 160,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         },
         "captured_at": {
           "$ref": "urn:ysp:transport:v1#/$defs/UtcInstant"
@@ -189,7 +191,8 @@
         "chapter_name": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 160
+          "maxLength": 160,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         },
         "membership_id": {
           "$ref": "urn:ysp:transport:v1#/$defs/Id"
@@ -411,7 +414,8 @@
         "reason": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 2000
+          "maxLength": 2000,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         }
       },
       "description": "Append-only review against a requirement for this exact record/material/policy. Required steps and actual distinct identities are checked by the owning decision; possessing multiple duties does not create multiple people. A receiving preparer may post an inspected RM when authorized: no global preparer/poster inequality."
@@ -442,7 +446,8 @@
         "condition_code": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 24
+          "maxLength": 24,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         },
         "counted_quantity": {
           "$ref": "urn:ysp:transport:v1#/$defs/UnitQuantity"
@@ -453,7 +458,8 @@
         "valuation_basis": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 2000
+          "maxLength": 2000,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         },
         "restriction_version_id": {
           "$ref": "urn:ysp:transport:v1#/$defs/Id"
@@ -467,6 +473,7 @@
       "required": [
         "chapter_id",
         "record",
+        "cutoff_at",
         "counted_at",
         "purpose",
         "policy_version_id",
@@ -492,13 +499,17 @@
             }
           ]
         },
+        "cutoff_at": {
+          "$ref": "urn:ysp:transport:v1#/$defs/UtcInstant"
+        },
         "counted_at": {
           "$ref": "urn:ysp:transport:v1#/$defs/UtcInstant"
         },
         "purpose": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 2000
+          "maxLength": 2000,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         },
         "policy_version_id": {
           "$ref": "urn:ysp:transport:v1#/$defs/Id"
@@ -531,7 +542,7 @@
           }
         }
       },
-      "description": "Canonical IPC material snapshot for the opening walkthrough. Validate complete source content before publication; count participants must include at least two people and one independent of the regular custodian. Required counter and Head/Finance signatures are separate evidence and checked by P06."
+      "description": "Canonical IPC material snapshot for the opening walkthrough. cutoff_at pins the approved opening cutoff independently of counted_at (actual count occurrence); changing either is a material revision. Validate complete source content before publication; count participants must include at least two people and one independent of the regular custodian. Required counter and Head/Finance signatures are separate evidence and checked by P06."
     },
     "VersionedSource": {
       "type": "object",
@@ -779,12 +790,14 @@
             "validator_version": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 64
+              "maxLength": 64,
+              "pattern": "^[^\\uD800-\\uDFFF]*$"
             },
             "mime_type": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 100
+              "maxLength": 100,
+              "pattern": "^[^\\uD800-\\uDFFF]*$"
             },
             "byte_size": {
               "$ref": "urn:ysp:transport:v1#/$defs/Id"
@@ -937,7 +950,8 @@
         "purpose_code": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 40
+          "maxLength": 40,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         },
         "bound_by": {
           "$ref": "#/$defs/Attribution"
@@ -1005,7 +1019,8 @@
         "purpose_code": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 40
+          "maxLength": 40,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         }
       },
       "description": "Normalized internal consumer input, not a generic HTTP posting command. Adapter supplies chapter/action/key; expected row AND material version are mandatory for existing targets. Client may propose references; Access/P03/P04 resolve and verify them. No actor/grant/policy/ready flag is accepted as authority. Purchasing/Receiving owns IPC/RM acceptance; Documents participates without a nested commit."
@@ -1022,7 +1037,8 @@
         "name": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 160
+          "maxLength": 160,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         },
         "user_id": {
           "anyOf": [
@@ -1037,7 +1053,8 @@
         "capacity": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 100
+          "maxLength": 100,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
         }
       },
       "description": "Exact recipient facts confirmed by the capturing officer. A buyer/recipient is not implicitly an authenticated chapter member."

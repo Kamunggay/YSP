@@ -104,6 +104,11 @@ test('P00 walkthrough: approved setup and stable IPC source lead to ready eviden
   assert.deepEqual(revised.decisions, [], 'affected old approval is not copied');
   assert.deepEqual(revised.previous_version, target);
   assert.equal(revised.state.states.approval, 'requires_review');
+  assert.equal(material.cutoff_at, '2026-10-23T23:00:00.000000Z');
+  assert.notEqual(digest({ ...material, cutoff_at: '2026-10-24T00:00:00.000000Z' }), target.material_hash);
+  const withoutCutoff = structuredClone(material);
+  delete withoutCutoff.cutoff_at;
+  assert.equal(validator('OpeningMaterial')(withoutCutoff), false, 'approved cutoff cannot be omitted');
 });
 
 test('DOC-08: both capture methods pin recipient and actual batch independently of file bytes', () => {
@@ -164,4 +169,16 @@ test('P00 negative cases: typed mismatches pair with redacted, stale, blocked an
   assert.equal(value('lookup-unavailable').operation.outcome, 'unknown');
   assert.equal(value('lookup-unavailable').operation.identity.action_code, value('bind-input').context.action_code);
   assert.equal(value('lookup-unavailable').operation.identity.idempotency_key, value('bind-input').context.idempotency_key);
+});
+
+test('TR-15 canonical vectors: exact escaping and Unicode agree with literal PHP-compatible bytes', async () => {
+  const vectors = await readJson('../../identity-record-evidence/v1/canonical-vectors.json');
+  for (const vector of vectors.valid) {
+    assert.equal(JSON.stringify(vector.value), vector.canonical_json, vector.name);
+    assert.equal(createHash('sha256').update(vector.canonical_json, 'utf8').digest('hex'), vector.sha256, vector.name);
+    assert.ok(validator(vector.definition)(vector.value), vector.name);
+  }
+  for (const vector of vectors.invalid) {
+    assert.equal(validator('Recipient')(JSON.parse(vector.input_json)), false, vector.name);
+  }
 });
