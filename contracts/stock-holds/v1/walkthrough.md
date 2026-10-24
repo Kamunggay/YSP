@@ -12,7 +12,7 @@ For a finding/clearance the screen preserves input/attempt, submits to the futur
 
 ## Seven quantities and context
 
-All rows in one result use the **same committed snapshot**, authorized chapter, variant/base unit, lot/location filter scope and approved precision. No mixed-unit totals or addition across variants. Lot/location filters restrict physical views and cell explanations. Inbound PO lines apply the variant, intended receiving location and compatible source constraints; when a query explicitly selects existing receipt lot IDs, inbound is zero because an unreceived PO has no such lot. The unrestricted lot-filter query can show matching inbound. This explicit scope avoids implying that inbound is a receipt of a selected lot. Implement an authorized read-only consistent snapshot across arrays/aggregates; `read_at` alone does not make separate reads consistent.
+All rows in one result use the **same committed snapshot**, authorized chapter, variant/base unit and approved precision. No mixed-unit totals or addition across variants. Lot/location filters restrict the seven physical/reporting views and cell explanations. **ROP is explicitly broader:** `rop.basis` identifies all usable stockroom positions for that chapter/variant/unit and the approved item-policy version, regardless of those filters. Deny a result if the caller cannot see its complete ROP basis; never infer low stock from a partial scope. Inbound PO lines apply the variant, intended receiving location and compatible source constraints; when a query explicitly selects existing receipt lot IDs, inbound is zero because an unreceived PO has no such lot. The unrestricted lot-filter query can show matching inbound. Implement an authorized read-only consistent snapshot across arrays/aggregates/ROP; `read_at` alone does not make separate reads consistent. The existing variant guard covers changes outside the selected positions too. A valid empty-stock or zero-match read retains that guard but may have empty position/restriction arrays; mutation inputs still require their actual current position pins.
 
 | Wire view | Exact reporting basis |
 | --- | --- |
@@ -45,6 +45,8 @@ Predicate: allowed intended use AND required event permission AND required reque
 | `funded-protected` | 10 | 0 / 3 | 3 / 3 | 7 | Funded protection is retained; unpaid expiry cannot consume it. |
 
 `verification-cases.json` adds exact fractional and split vectors, a mixed seven-view result, remaining restriction after clearance, actual quarantine, forbidden/stale/evidence cases and both race orders. Numerical checks are authored specification consistency only; the concurrency schedules are not a simulated runtime or executed lock proof.
+
+Review regressions in `examples.json`: `query-zero-stock` has no position/restriction rows and returns truthful zeros with an existing variant/policy guard; `query-filtered-rop` selects a separate three-unit lot while another seven usable units remain outside its filter. Its visible filtered on-hand is three, but chapter-variant ROP basis is ten, so threshold eight does not trigger. `clear-quarantine` and `quarantine-cleared` explicitly pin current position1302/version6→7. In the allocation-first creation schedule, the old pins first produce a confirmed stale rejection; only a refreshed intentional attempt can record the hold on that now-reserved coverage.
 
 ## Later acceptance and actual reviews
 

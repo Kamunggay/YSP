@@ -229,7 +229,7 @@
               }
             }
           },
-          "minItems": 1,
+          "minItems": 0,
           "uniqueItems": true
         }
       },
@@ -266,7 +266,7 @@
           "items": {
             "$ref": "urn:ysp:transport:v1#/$defs/Id"
           },
-          "minItems": 1,
+          "minItems": 0,
           "uniqueItems": true
         }
       },
@@ -679,7 +679,8 @@
           "required": [
             "approved_threshold",
             "usable_on_hand",
-            "low_stock"
+            "low_stock",
+            "basis"
           ],
           "properties": {
             "approved_threshold": {
@@ -690,6 +691,35 @@
             },
             "low_stock": {
               "type": "boolean"
+            },
+            "basis": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "chapter_id",
+                "variant_id",
+                "unit_id",
+                "scope",
+                "item_policy_version_id"
+              ],
+              "properties": {
+                "chapter_id": {
+                  "$ref": "urn:ysp:transport:v1#/$defs/Id"
+                },
+                "variant_id": {
+                  "$ref": "urn:ysp:transport:v1#/$defs/Id"
+                },
+                "unit_id": {
+                  "$ref": "urn:ysp:transport:v1#/$defs/Id"
+                },
+                "scope": {
+                  "const": "chapter_variant_all_stockroom_locations_and_lots"
+                },
+                "item_policy_version_id": {
+                  "$ref": "urn:ysp:transport:v1#/$defs/Id"
+                }
+              },
+              "description": "ROP uses all current usable stockroom positions for the chapter/variant/unit, independently of optional query lot/location filters and purpose eligibility. Required complete authorized scope; deny if unavailable rather than sum a partial view."
             }
           }
         },
@@ -821,7 +851,20 @@
           "uniqueItems": true
         },
         "expected_guards": {
-          "$ref": "#/$defs/GuardPin"
+          "allOf": [
+            {
+              "$ref": "#/$defs/GuardPin"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "position_versions": {
+                  "type": "array",
+                  "minItems": 1
+                }
+              }
+            }
+          ]
         },
         "evidence": {
           "type": "array",
@@ -901,7 +944,20 @@
           "maxLength": 1000
         },
         "expected_guards": {
-          "$ref": "#/$defs/GuardPin"
+          "allOf": [
+            {
+              "$ref": "#/$defs/GuardPin"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "position_versions": {
+                  "type": "array",
+                  "minItems": 1
+                }
+              }
+            }
+          ]
         },
         "evidence": {
           "type": "array",

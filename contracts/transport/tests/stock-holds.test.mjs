@@ -80,8 +80,9 @@ function checkQuery(result) {
   assert.equal(amount(views.booth_custody), sum(cells.filter((c) => c.dimension.custody_kind === 'booth')));
   assert.equal(amount(views.quarantined_rejected), sum(cells.filter((c) => c.dimension.condition_code !== 'usable' || c.dimension.lot_kind === 'nonusable')));
   assert.equal(amount(views.inbound_open_po), result.inbound.reduce((total, line) => total + amount(line.open_quantity), 0n));
-  assert.equal(amount(result.rop.usable_on_hand), sum(usable));
-  assert.equal(result.rop.low_stock, sum(usable) <= amount(result.rop.approved_threshold));
+  assert.ok(amount(result.rop.usable_on_hand) >= sum(usable), 'chapter-wide ROP basis includes the filtered stock subset');
+  if (!result.query.lot_ids.length && !result.query.location_ids.length) assert.equal(amount(result.rop.usable_on_hand), sum(usable));
+  assert.equal(result.rop.low_stock, amount(result.rop.usable_on_hand) <= amount(result.rop.approved_threshold));
   assert.equal(amount(result.shortage.available_quantity), sum(available));
   const shortage = amount(result.shortage.requested_quantity) - sum(available);
   assert.equal(amount(result.shortage.uncovered_quantity), shortage > 0n ? shortage : 0n);
@@ -126,6 +127,7 @@ test('TR-06/07/09/10: commands require explicit versions and evidence without tr
       assert.equal(validate({ ...value, [key]: true }), false, key);
     }
     assert.equal(validate({ ...value, evidence: [] }), false);
+    assert.equal(validate({ ...value, expected_guards: { ...value.expected_guards, position_versions: [] } }), false, 'mutations still require current position pins');
     const invalid = structuredClone(value);
     delete invalid.evidence[0].evidence.content_hash;
     assert.equal(validate(invalid), false, 'immutable evidence byte pin');
@@ -166,8 +168,9 @@ test('INV-03/TR-08: restrictions, booth custody, nonusable and inbound views ret
   assert.equal(cases.evidence_state, 'expected');
   assert.ok(validator('EligibilityResult')(result), ajv.errorsText(validator('EligibilityResult').errors));
   checkQuery(result);
-  assert.deepEqual(Object.values(result.views).map((q) => q.value), ['10', '2', '2', '3', '4', '3', '5']);
-  assert.deepEqual(Object.values(result.union).map((q) => q.value), ['7', '2', '4', '1', '5', '2']);
+  const quantities = (values) => Object.fromEntries(Object.entries(values).map(([key, q]) => [key, q.value]));
+  assert.deepEqual(quantities(result.views), { usable_stockroom_on_hand: '10', available_to_allocate: '2', rf_reserved: '2', so_reserved: '3', booth_custody: '4', quarantined_rejected: '3', inbound_open_po: '5' });
+  assert.deepEqual(quantities(result.union), { eligible_before_holds_and_reservations: '7', active_held_union: '2', reserved_in_eligible: '4', held_reserved_intersection: '1', blocked_union: '5', available_to_allocate: '2' });
   assert.equal(result.reservations.filter((r) => r.kind === 'SO').reduce((total, r) => total + amount(r.quantity), 0n), 3000000n);
   assert.equal(result.union.reserved_in_eligible.value, '4', 'restricted reserved cells are not subtracted from eligible stock twice');
   const fractional = cases.fractional_stock_view;
@@ -223,6 +226,14 @@ test('TR-10/12: failure, quarantine and both race orders are explicit future ope
     for (const schedule of scenario.schedules) assert.ok(schedule.expected.length > 0);
   }
   assert.equal(cases.operations.find((c) => c.name === 'quarantine').server_facts.condition_after_clearance, 'damaged');
+  const quarantine = cases.operations.find((c) => c.name === 'quarantine');
+  const input = examples[quarantine.input_example].value;
+  const result = examples[quarantine.result_example].value;
+  assert.deepEqual(input.expected_guards.position_versions, [{ position_id: '1302', row_version: 6 }]);
+  assert.deepEqual(result.data.guards.position_versions, [{ position_id: '1302', row_version: 7 }]);
+  assert.equal(input.expected_guards.eligibility_version, quarantine.server_facts.eligibility_version_before_clearance);
+  assert.equal(result.data.guards.eligibility_version, quarantine.server_facts.eligibility_version_after_clearance);
+  assert.equal(input.context.idempotency_key, result.operation.identity.idempotency_key);
 });
 
 test('TR-12/Q8: clearance replay preserves original result and uncertain lookup carries no inferred stock', () => {
@@ -242,4 +253,21 @@ test('TR-12/Q8: clearance replay preserves original result and uncertain lookup 
   }
   assert.equal(examples.forbidden.value.chapter_id, null);
   assert.equal(examples.forbidden.value.operation, null);
+});
+
+test('INV-10/TR-08 review: empty and filtered reads retain a truthful chapter-wide ROP basis', () => {
+  const validate = validator('EligibilityResult');
+  const empty = examples['query-zero-stock'].value;
+  assert.ok(validate(empty), ajv.errorsText(validate.errors));
+  checkQuery(empty);
+  assert.deepEqual(empty.freshness.guards.position_versions, []);
+  assert.deepEqual(empty.freshness.restriction_version_ids, []);
+  const filtered = examples['query-filtered-rop'].value;
+  assert.ok(validate(filtered));
+  checkQuery(filtered);
+  assert.deepEqual(filtered.query.lot_ids, ['1205']);
+  assert.equal(filtered.views.usable_stockroom_on_hand.value, '3');
+  assert.equal(filtered.rop.basis.scope, 'chapter_variant_all_stockroom_locations_and_lots');
+  assert.equal(filtered.rop.usable_on_hand.value, '10');
+  assert.equal(filtered.rop.low_stock, false, 'a three-unit lot filter cannot trigger ROP eight when chapter-variant usable stock is ten');
 });

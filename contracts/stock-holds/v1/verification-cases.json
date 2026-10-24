@@ -638,7 +638,14 @@
         "value": "10",
         "quantity_scale": 0
       },
-      "low_stock": false
+      "low_stock": false,
+      "basis": {
+        "chapter_id": "1",
+        "variant_id": "71",
+        "unit_id": "61",
+        "scope": "chapter_variant_all_stockroom_locations_and_lots",
+        "item_policy_version_id": "302"
+      }
     },
     "shortage": {
       "requested_quantity": {
@@ -960,7 +967,14 @@
         "value": "1.250",
         "quantity_scale": 3
       },
-      "low_stock": false
+      "low_stock": false,
+      "basis": {
+        "chapter_id": "1",
+        "variant_id": "72",
+        "unit_id": "62",
+        "scope": "chapter_variant_all_stockroom_locations_and_lots",
+        "item_policy_version_id": "303"
+      }
     },
     "shortage": {
       "requested_quantity": {
@@ -1090,7 +1104,7 @@
         },
         {
           "first": "allocation_or_handover",
-          "expected": "Allocation commits first; hold attaches to the reserved cells, availability stays seven, release is blocked and reservation/protection remains."
+          "expected": "Allocation commits first and changes eligibility/position pins. The original create-hold attempt is stale with no partial effects. After its confirmed rejection, refresh and intentionally submit a new key/current pins for the same identified subset; that hold attaches to reserved cells, availability stays seven, release is blocked and reservation/protection remains."
         }
       ]
     },
@@ -1152,16 +1166,19 @@
       "name": "quarantine",
       "evidence_state": "expected",
       "verification_boundary": "owning_application_operation",
-      "setup": "Approved source-linked ADJ movement has transferred [0,3) to damaged position1302; clearance now resolves A only.",
+      "setup": "Approved source-linked ADJ movement has transferred [0,3) to damaged position1302; a refreshed intentional clearance now resolves A only.",
       "server_facts": {
         "condition_before_clearance": "damaged",
         "condition_after_clearance": "damaged",
         "physical_movement_id": "2601",
+        "current_position_id": "1302",
+        "eligibility_version_before_clearance": 6,
+        "eligibility_version_after_clearance": 7,
         "clearance_movement_ids": []
       },
-      "expected": "Clearance creates no movement, leaves quarantine/condition intact and creates no accepted supply. Only a separate approved source-linked treatment can make it usable. Protected demand is retained and physical coverage reconciled before the transfer.",
-      "input_example": "clear-hold",
-      "result_example": "cleared"
+      "expected": "The original position1301 pins would be stale. The concrete refreshed position1302 input below clears only the reason: no movement/condition change/accepted supply. Separate approved source-linked treatment is still required for usable stock; protected demand is retained and physical coverage reconciled before transfer.",
+      "input_example": "clear-quarantine",
+      "result_example": "quarantine-cleared"
     },
     {
       "name": "restricted-after-clear",
