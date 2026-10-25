@@ -562,7 +562,8 @@ export const consumerExamples = [
     "operationId": "prepareAuthenticatorEnrollment",
     "request": {
       "body": {
-        "intent": "begin"
+        "intent": "replace_unconfirmed",
+        "enrollment_id": "enr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       }
     },
     "response": {
@@ -578,7 +579,8 @@ export const consumerExamples = [
     "operationId": "prepareAuthenticatorEnrollment",
     "request": {
       "body": {
-        "intent": "begin"
+        "intent": "replace_unconfirmed",
+        "enrollment_id": "enr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       }
     },
     "response": {
@@ -594,7 +596,8 @@ export const consumerExamples = [
     "operationId": "prepareAuthenticatorEnrollment",
     "request": {
       "body": {
-        "intent": "begin"
+        "intent": "replace_unconfirmed",
+        "enrollment_id": "enr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       }
     },
     "response": {
@@ -610,7 +613,8 @@ export const consumerExamples = [
     "operationId": "prepareAuthenticatorEnrollment",
     "request": {
       "body": {
-        "intent": "begin"
+        "intent": "replace_unconfirmed",
+        "enrollment_id": "enr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       }
     },
     "response": {
@@ -775,7 +779,7 @@ export const consumerExamples = [
     "operationId": "confirmAuthenticatorEnrollment",
     "request": {
       "body": {
-        "enrollment_id": "enr_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "enrollment_id": "enr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         "authenticator_code": "123456"
       }
     },

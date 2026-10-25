@@ -11,6 +11,15 @@ test('SEC-01/TR-16: enrollment preparation and confirmation are distinct validat
   assert.equal(api.paths['/session/mfa/enrollment/confirm']?.post.operationId, 'confirmAuthenticatorEnrollment');
   const exchanges = await readJson('enrollment-exchanges');
   for (const exchange of exchanges) validateExchange(api, ajv, exchange);
+  const named = Object.fromEntries(exchanges.map(e => [e.name, e]));
+  const predecessor = named['enrollment-begin'].response.body.enrollment;
+  const replacement = named['enrollment-replace'].response.body.enrollment;
+  assert.equal(named['enrollment-replace'].request.body.enrollment_id, predecessor.id);
+  assert.notEqual(replacement.id, predecessor.id);
+  assert.notEqual(replacement.manual_key, predecessor.manual_key);
+  assert.equal(named['confirmAuthenticatorEnrollment-stale'].request.body.enrollment_id, predecessor.id);
+  assert.equal(named['confirmAuthenticatorEnrollment-stale'].response.status, 409);
+  assert.equal(named['enrollment-confirm-live'].request.body.enrollment_id, replacement.id);
   for (const id of ['prepareAuthenticatorEnrollment', 'confirmAuthenticatorEnrollment']) {
     const operation = Object.values(api.paths).map(p => p.post).find(p => p?.operationId === id);
     assert.deepEqual(new Set(exchanges.filter(e => e.operationId === id).map(e => e.response.status)),
