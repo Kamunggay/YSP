@@ -14,6 +14,7 @@ export function dutyGrantCommitMatches(result: Success, attempt: Attempt): boole
 }
 
 type Lookup = components['schemas']['DutyGrantLookupTerminal'] | components['schemas']['DutyGrantLookupRejected']
+  | components['schemas']['PolicyLookupTerminal'] | components['schemas']['PolicyLookupRejected']
   | components['schemas']['LookupPending'] | components['schemas']['LookupUnavailable']
   | components['schemas']['MembershipLookupTerminal'] | components['schemas']['MembershipLookupRejected']
   | components['schemas']['LookupTerminal'];

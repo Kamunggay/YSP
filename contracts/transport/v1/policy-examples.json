@@ -1,0 +1,2760 @@
+{
+  "readPolicyStatus-success": {
+    "summary": "readPolicyStatus-success (synthetic)",
+    "value": {
+      "chapter_id": "1",
+      "evaluated_at": "2026-10-25T06:00:00.123456Z",
+      "affected_action": "records.submit",
+      "blockers": [
+        {
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "state": "missing",
+          "affected_action": "records.submit",
+          "message": "Required operational policy is missing.",
+          "permitted_next_steps": [
+            "prepare_permitted_draft",
+            "request_responsible_duty"
+          ]
+        }
+      ]
+    }
+  },
+  "readPolicyStatus-400": {
+    "summary": "readPolicyStatus-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "readPolicyStatus-401": {
+    "summary": "readPolicyStatus-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "readPolicyStatus-403": {
+    "summary": "readPolicyStatus-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "readPolicyStatus-404": {
+    "summary": "readPolicyStatus-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "readPolicyStatus-409": {
+    "summary": "readPolicyStatus-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "readPolicyStatus-429": {
+    "summary": "readPolicyStatus-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "readPolicyStatus-503": {
+    "summary": "readPolicyStatus-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "listPolicyRoots-success": {
+    "summary": "listPolicyRoots-success (synthetic)",
+    "value": {
+      "items": [
+        {
+          "id": "9007199254740998",
+          "chapter_id": "1",
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "row_version": 4,
+          "latest_version_id": "9007199254740999",
+          "created": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          }
+        }
+      ],
+      "next_cursor": null
+    }
+  },
+  "listPolicyRoots-400": {
+    "summary": "listPolicyRoots-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "listPolicyRoots-401": {
+    "summary": "listPolicyRoots-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "listPolicyRoots-403": {
+    "summary": "listPolicyRoots-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "listPolicyRoots-404": {
+    "summary": "listPolicyRoots-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "listPolicyRoots-409": {
+    "summary": "listPolicyRoots-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "listPolicyRoots-429": {
+    "summary": "listPolicyRoots-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "listPolicyRoots-503": {
+    "summary": "listPolicyRoots-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "readPolicyRoot-success": {
+    "summary": "readPolicyRoot-success (synthetic)",
+    "value": {
+      "id": "9007199254740998",
+      "chapter_id": "1",
+      "policy_code": "OPERATIONAL_ROOT",
+      "category": "operational",
+      "responsible_duty": "CHAPTER_HEAD",
+      "row_version": 4,
+      "latest_version_id": "9007199254740999",
+      "created": {
+        "user_id": "9007199254740996",
+        "at": "2026-10-25T06:00:00.123456Z"
+      },
+      "last_changed": {
+        "user_id": "9007199254740996",
+        "at": "2026-10-25T06:00:00.123456Z"
+      }
+    }
+  },
+  "readPolicyRoot-400": {
+    "summary": "readPolicyRoot-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "readPolicyRoot-401": {
+    "summary": "readPolicyRoot-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "readPolicyRoot-403": {
+    "summary": "readPolicyRoot-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "readPolicyRoot-404": {
+    "summary": "readPolicyRoot-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "readPolicyRoot-409": {
+    "summary": "readPolicyRoot-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "readPolicyRoot-429": {
+    "summary": "readPolicyRoot-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "readPolicyRoot-503": {
+    "summary": "readPolicyRoot-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "listPolicyVersions-success": {
+    "summary": "listPolicyVersions-success (synthetic)",
+    "value": {
+      "items": [
+        {
+          "id": "9007199254740999",
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "version_no": 2,
+          "row_version": 4,
+          "metadata": {
+            "name": "Synthetic operational policy",
+            "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+            "schema_version": 1,
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "supersedes_version_id": null
+          },
+          "material": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "schema_support": "registered_reference",
+          "review_state": "reviewed",
+          "effective_state": "not_approved",
+          "reason": "Synthetic complete material reference",
+          "created": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "decisions": [],
+          "approved_policy": null
+        }
+      ],
+      "next_cursor": null
+    }
+  },
+  "listPolicyVersions-400": {
+    "summary": "listPolicyVersions-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "listPolicyVersions-401": {
+    "summary": "listPolicyVersions-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "listPolicyVersions-403": {
+    "summary": "listPolicyVersions-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "listPolicyVersions-404": {
+    "summary": "listPolicyVersions-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "listPolicyVersions-409": {
+    "summary": "listPolicyVersions-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "listPolicyVersions-429": {
+    "summary": "listPolicyVersions-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "listPolicyVersions-503": {
+    "summary": "listPolicyVersions-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "readPolicyVersion-success": {
+    "summary": "readPolicyVersion-success (synthetic)",
+    "value": {
+      "id": "9007199254740999",
+      "chapter_id": "1",
+      "policy_id": "9007199254740998",
+      "policy_code": "OPERATIONAL_ROOT",
+      "category": "operational",
+      "responsible_duty": "CHAPTER_HEAD",
+      "version_no": 2,
+      "row_version": 4,
+      "metadata": {
+        "name": "Synthetic operational policy",
+        "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+        "schema_version": 1,
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null,
+        "supersedes_version_id": null
+      },
+      "material": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254741010",
+          "kind": "CONFIG"
+        },
+        "material_version": 3,
+        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "schema_support": "registered_reference",
+      "review_state": "reviewed",
+      "effective_state": "not_approved",
+      "reason": "Synthetic complete material reference",
+      "created": {
+        "user_id": "9007199254740996",
+        "at": "2026-10-25T06:00:00.123456Z"
+      },
+      "last_changed": {
+        "user_id": "9007199254740996",
+        "at": "2026-10-25T06:00:00.123456Z"
+      },
+      "decisions": [],
+      "approved_policy": null
+    }
+  },
+  "readPolicyVersion-400": {
+    "summary": "readPolicyVersion-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "readPolicyVersion-401": {
+    "summary": "readPolicyVersion-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "readPolicyVersion-403": {
+    "summary": "readPolicyVersion-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "readPolicyVersion-404": {
+    "summary": "readPolicyVersion-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "readPolicyVersion-409": {
+    "summary": "readPolicyVersion-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "readPolicyVersion-429": {
+    "summary": "readPolicyVersion-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "readPolicyVersion-503": {
+    "summary": "readPolicyVersion-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "savePolicyDraft-success": {
+    "summary": "savePolicyDraft-success (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": null,
+        "schema_support": "missing",
+        "review_state": "draft",
+        "effective_state": "not_approved",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [],
+        "approved_policy": null
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.prepare",
+          "idempotency_key": "policy-attempt-savePolicyDraft"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      }
+    }
+  },
+  "savePolicyDraft-400": {
+    "summary": "savePolicyDraft-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "savePolicyDraft-401": {
+    "summary": "savePolicyDraft-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "savePolicyDraft-403": {
+    "summary": "savePolicyDraft-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "savePolicyDraft-404": {
+    "summary": "savePolicyDraft-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "savePolicyDraft-409": {
+    "summary": "savePolicyDraft-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "savePolicyDraft-429": {
+    "summary": "savePolicyDraft-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "savePolicyDraft-503": {
+    "summary": "savePolicyDraft-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "savePolicyDraft-419": {
+    "summary": "savePolicyDraft-419 (synthetic)",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "savePolicyDraft-422": {
+    "summary": "savePolicyDraft-422 (synthetic)",
+    "value": {
+      "code": "validation_failed",
+      "message": "Review marked fields.",
+      "field_feedback": [
+        {
+          "path": "/reason",
+          "code": "REQUIRED",
+          "message": "Reason is required."
+        }
+      ],
+      "next_action": "correct_fields"
+    }
+  },
+  "submitPolicyVersion-success": {
+    "summary": "submitPolicyVersion-success (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "submitted",
+        "effective_state": "not_approved",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [],
+        "approved_policy": null
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.prepare",
+          "idempotency_key": "policy-attempt-submitPolicyVersion"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      }
+    }
+  },
+  "submitPolicyVersion-400": {
+    "summary": "submitPolicyVersion-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "submitPolicyVersion-401": {
+    "summary": "submitPolicyVersion-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "submitPolicyVersion-403": {
+    "summary": "submitPolicyVersion-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "submitPolicyVersion-404": {
+    "summary": "submitPolicyVersion-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "submitPolicyVersion-409": {
+    "summary": "submitPolicyVersion-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "submitPolicyVersion-429": {
+    "summary": "submitPolicyVersion-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "submitPolicyVersion-503": {
+    "summary": "submitPolicyVersion-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "submitPolicyVersion-419": {
+    "summary": "submitPolicyVersion-419 (synthetic)",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "submitPolicyVersion-422": {
+    "summary": "submitPolicyVersion-422 (synthetic)",
+    "value": {
+      "code": "validation_failed",
+      "message": "Review marked fields.",
+      "field_feedback": [
+        {
+          "path": "/reason",
+          "code": "REQUIRED",
+          "message": "Reason is required."
+        }
+      ],
+      "next_action": "correct_fields"
+    }
+  },
+  "reviewPolicyVersion-success": {
+    "summary": "reviewPolicyVersion-success (synthetic)",
+    "value": {
+      "id": "9007199254740999",
+      "chapter_id": "1",
+      "policy_id": "9007199254740998",
+      "policy_code": "OPERATIONAL_ROOT",
+      "category": "operational",
+      "responsible_duty": "CHAPTER_HEAD",
+      "version_no": 2,
+      "row_version": 4,
+      "metadata": {
+        "name": "Synthetic operational policy",
+        "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+        "schema_version": 1,
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null,
+        "supersedes_version_id": null
+      },
+      "material": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254741010",
+          "kind": "CONFIG"
+        },
+        "material_version": 3,
+        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "schema_support": "registered_reference",
+      "review_state": "reviewed",
+      "effective_state": "not_approved",
+      "reason": "Synthetic complete material reference",
+      "created": {
+        "user_id": "9007199254740996",
+        "at": "2026-10-25T06:00:00.123456Z"
+      },
+      "last_changed": {
+        "user_id": "9007199254740996",
+        "at": "2026-10-25T06:00:00.123456Z"
+      },
+      "decisions": [],
+      "approved_policy": null
+    }
+  },
+  "reviewPolicyVersion-400": {
+    "summary": "reviewPolicyVersion-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "reviewPolicyVersion-401": {
+    "summary": "reviewPolicyVersion-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "reviewPolicyVersion-403": {
+    "summary": "reviewPolicyVersion-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "reviewPolicyVersion-404": {
+    "summary": "reviewPolicyVersion-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "reviewPolicyVersion-409": {
+    "summary": "reviewPolicyVersion-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "reviewPolicyVersion-429": {
+    "summary": "reviewPolicyVersion-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "reviewPolicyVersion-503": {
+    "summary": "reviewPolicyVersion-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "approvePolicyVersion-success": {
+    "summary": "approvePolicyVersion-success (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "approved",
+        "effective_state": "scheduled",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [
+          {
+            "decision": "approve",
+            "material": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254741010",
+                "kind": "CONFIG"
+              },
+              "material_version": 3,
+              "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "authority_version": 9,
+            "duty_grant_id": "9007199254741000",
+            "duty": "CHAPTER_HEAD",
+            "reason": "Synthetic exact material approval",
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "actor": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            }
+          }
+        ],
+        "approved_policy": {
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_version_id": "9007199254740999",
+          "version_no": 2,
+          "settings_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "approval": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null
+        }
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-attempt-approvePolicyVersion"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      }
+    }
+  },
+  "approvePolicyVersion-400": {
+    "summary": "approvePolicyVersion-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "approvePolicyVersion-401": {
+    "summary": "approvePolicyVersion-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "approvePolicyVersion-403": {
+    "summary": "approvePolicyVersion-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "approvePolicyVersion-404": {
+    "summary": "approvePolicyVersion-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "approvePolicyVersion-409": {
+    "summary": "approvePolicyVersion-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "approvePolicyVersion-429": {
+    "summary": "approvePolicyVersion-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "approvePolicyVersion-503": {
+    "summary": "approvePolicyVersion-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "approvePolicyVersion-419": {
+    "summary": "approvePolicyVersion-419 (synthetic)",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "approvePolicyVersion-422": {
+    "summary": "approvePolicyVersion-422 (synthetic)",
+    "value": {
+      "code": "validation_failed",
+      "message": "Review marked fields.",
+      "field_feedback": [
+        {
+          "path": "/reason",
+          "code": "REQUIRED",
+          "message": "Reason is required."
+        }
+      ],
+      "next_action": "correct_fields"
+    }
+  },
+  "returnPolicyVersion-success": {
+    "summary": "returnPolicyVersion-success (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "returned",
+        "effective_state": "not_approved",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [
+          {
+            "decision": "return",
+            "material": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254741010",
+                "kind": "CONFIG"
+              },
+              "material_version": 3,
+              "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "authority_version": 9,
+            "duty_grant_id": "9007199254741000",
+            "duty": "CHAPTER_HEAD",
+            "reason": "Synthetic exact material approval",
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "actor": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            }
+          }
+        ],
+        "approved_policy": null
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-attempt-returnPolicyVersion"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      }
+    }
+  },
+  "returnPolicyVersion-400": {
+    "summary": "returnPolicyVersion-400 (synthetic)",
+    "value": {
+      "code": "invalid_selector",
+      "message": "Use only the documented single-valued selectors."
+    }
+  },
+  "returnPolicyVersion-401": {
+    "summary": "returnPolicyVersion-401 (synthetic)",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "returnPolicyVersion-403": {
+    "summary": "returnPolicyVersion-403 (synthetic)",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "returnPolicyVersion-404": {
+    "summary": "returnPolicyVersion-404 (synthetic)",
+    "value": {
+      "code": "policy_not_visible",
+      "message": "Policy reference is not visible."
+    }
+  },
+  "returnPolicyVersion-409": {
+    "summary": "returnPolicyVersion-409 (synthetic)",
+    "value": {
+      "code": "policy_row_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "returnPolicyVersion-429": {
+    "summary": "returnPolicyVersion-429 (synthetic)",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "returnPolicyVersion-503": {
+    "summary": "returnPolicyVersion-503 (synthetic)",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "returnPolicyVersion-419": {
+    "summary": "returnPolicyVersion-419 (synthetic)",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "returnPolicyVersion-422": {
+    "summary": "returnPolicyVersion-422 (synthetic)",
+    "value": {
+      "code": "validation_failed",
+      "message": "Review marked fields.",
+      "field_feedback": [
+        {
+          "path": "/reason",
+          "code": "REQUIRED",
+          "message": "Reason is required."
+        }
+      ],
+      "next_action": "correct_fields"
+    }
+  },
+  "savePolicyDraft-replay": {
+    "summary": "savePolicyDraft-replay (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": null,
+        "schema_support": "missing",
+        "review_state": "draft",
+        "effective_state": "not_approved",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [],
+        "approved_policy": null
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.prepare",
+          "idempotency_key": "policy-attempt-savePolicyDraft"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": true
+      }
+    }
+  },
+  "savePolicyDraft-policy_material_stale": {
+    "summary": "savePolicyDraft-policy_material_stale (synthetic)",
+    "value": {
+      "code": "policy_material_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "savePolicyDraft-authority_stale": {
+    "summary": "savePolicyDraft-authority_stale (synthetic)",
+    "value": {
+      "code": "authority_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "savePolicyDraft-chapter_context_stale": {
+    "summary": "savePolicyDraft-chapter_context_stale (synthetic)",
+    "value": {
+      "code": "chapter_context_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "savePolicyDraft-idempotency_conflict": {
+    "summary": "savePolicyDraft-idempotency_conflict (synthetic)",
+    "value": {
+      "code": "idempotency_conflict",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "submitPolicyVersion-replay": {
+    "summary": "submitPolicyVersion-replay (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "submitted",
+        "effective_state": "not_approved",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [],
+        "approved_policy": null
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.prepare",
+          "idempotency_key": "policy-attempt-submitPolicyVersion"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": true
+      }
+    }
+  },
+  "submitPolicyVersion-policy_material_stale": {
+    "summary": "submitPolicyVersion-policy_material_stale (synthetic)",
+    "value": {
+      "code": "policy_material_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "submitPolicyVersion-authority_stale": {
+    "summary": "submitPolicyVersion-authority_stale (synthetic)",
+    "value": {
+      "code": "authority_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "submitPolicyVersion-chapter_context_stale": {
+    "summary": "submitPolicyVersion-chapter_context_stale (synthetic)",
+    "value": {
+      "code": "chapter_context_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "submitPolicyVersion-idempotency_conflict": {
+    "summary": "submitPolicyVersion-idempotency_conflict (synthetic)",
+    "value": {
+      "code": "idempotency_conflict",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "approvePolicyVersion-replay": {
+    "summary": "approvePolicyVersion-replay (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "approved",
+        "effective_state": "scheduled",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [
+          {
+            "decision": "approve",
+            "material": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254741010",
+                "kind": "CONFIG"
+              },
+              "material_version": 3,
+              "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "authority_version": 9,
+            "duty_grant_id": "9007199254741000",
+            "duty": "CHAPTER_HEAD",
+            "reason": "Synthetic exact material approval",
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "actor": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            }
+          }
+        ],
+        "approved_policy": {
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_version_id": "9007199254740999",
+          "version_no": 2,
+          "settings_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "approval": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null
+        }
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-attempt-approvePolicyVersion"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": true
+      }
+    }
+  },
+  "approvePolicyVersion-policy_material_stale": {
+    "summary": "approvePolicyVersion-policy_material_stale (synthetic)",
+    "value": {
+      "code": "policy_material_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "approvePolicyVersion-authority_stale": {
+    "summary": "approvePolicyVersion-authority_stale (synthetic)",
+    "value": {
+      "code": "authority_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "approvePolicyVersion-chapter_context_stale": {
+    "summary": "approvePolicyVersion-chapter_context_stale (synthetic)",
+    "value": {
+      "code": "chapter_context_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "approvePolicyVersion-idempotency_conflict": {
+    "summary": "approvePolicyVersion-idempotency_conflict (synthetic)",
+    "value": {
+      "code": "idempotency_conflict",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "returnPolicyVersion-replay": {
+    "summary": "returnPolicyVersion-replay (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "returned",
+        "effective_state": "not_approved",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [
+          {
+            "decision": "return",
+            "material": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254741010",
+                "kind": "CONFIG"
+              },
+              "material_version": 3,
+              "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "authority_version": 9,
+            "duty_grant_id": "9007199254741000",
+            "duty": "CHAPTER_HEAD",
+            "reason": "Synthetic exact material approval",
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "actor": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            }
+          }
+        ],
+        "approved_policy": null
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-attempt-returnPolicyVersion"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": true
+      }
+    }
+  },
+  "returnPolicyVersion-policy_material_stale": {
+    "summary": "returnPolicyVersion-policy_material_stale (synthetic)",
+    "value": {
+      "code": "policy_material_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "returnPolicyVersion-authority_stale": {
+    "summary": "returnPolicyVersion-authority_stale (synthetic)",
+    "value": {
+      "code": "authority_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "returnPolicyVersion-chapter_context_stale": {
+    "summary": "returnPolicyVersion-chapter_context_stale (synthetic)",
+    "value": {
+      "code": "chapter_context_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "returnPolicyVersion-idempotency_conflict": {
+    "summary": "returnPolicyVersion-idempotency_conflict (synthetic)",
+    "value": {
+      "code": "idempotency_conflict",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "listPolicyRoots-empty": {
+    "summary": "listPolicyRoots-empty (synthetic)",
+    "value": {
+      "items": [],
+      "next_cursor": null
+    }
+  },
+  "listPolicyRoots-page": {
+    "summary": "listPolicyRoots-page (synthetic)",
+    "value": {
+      "items": [
+        {
+          "id": "9007199254740998",
+          "chapter_id": "1",
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "row_version": 4,
+          "latest_version_id": "9007199254740999",
+          "created": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          }
+        }
+      ],
+      "next_cursor": "cur_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+    }
+  },
+  "listPolicyVersions-empty": {
+    "summary": "listPolicyVersions-empty (synthetic)",
+    "value": {
+      "items": [],
+      "next_cursor": null
+    }
+  },
+  "listPolicyVersions-page": {
+    "summary": "listPolicyVersions-page (synthetic)",
+    "value": {
+      "items": [
+        {
+          "id": "9007199254740999",
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "version_no": 2,
+          "row_version": 4,
+          "metadata": {
+            "name": "Synthetic operational policy",
+            "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+            "schema_version": 1,
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "supersedes_version_id": null
+          },
+          "material": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "schema_support": "registered_reference",
+          "review_state": "reviewed",
+          "effective_state": "not_approved",
+          "reason": "Synthetic complete material reference",
+          "created": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "decisions": [],
+          "approved_policy": null
+        }
+      ],
+      "next_cursor": "cur_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+    }
+  },
+  "approve-financial": {
+    "summary": "approve-financial (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "FINANCIAL_ROOT",
+        "category": "financial",
+        "responsible_duty": "FINANCE",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "FINANCIAL_ROOT",
+        "category": "financial",
+        "responsible_duty": "FINANCE",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "approved",
+        "effective_state": "scheduled",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [
+          {
+            "decision": "approve",
+            "material": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254741010",
+                "kind": "CONFIG"
+              },
+              "material_version": 3,
+              "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "authority_version": 9,
+            "duty_grant_id": "9007199254741000",
+            "duty": "FINANCE",
+            "reason": "Synthetic exact material approval",
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "actor": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            }
+          }
+        ],
+        "approved_policy": {
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_version_id": "9007199254740999",
+          "version_no": 2,
+          "settings_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "approval": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null
+        }
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.financial.approve",
+          "idempotency_key": "policy-approve-financial"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      }
+    }
+  },
+  "approve-current": {
+    "summary": "approve-current (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-24T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "approved",
+        "effective_state": "current",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [
+          {
+            "decision": "approve",
+            "material": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254741010",
+                "kind": "CONFIG"
+              },
+              "material_version": 3,
+              "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "authority_version": 9,
+            "duty_grant_id": "9007199254741000",
+            "duty": "CHAPTER_HEAD",
+            "reason": "Synthetic exact material approval",
+            "effective_from": "2026-10-24T00:00:00.000000Z",
+            "effective_until": null,
+            "actor": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            }
+          }
+        ],
+        "approved_policy": {
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_version_id": "9007199254740999",
+          "version_no": 2,
+          "settings_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "approval": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "effective_from": "2026-10-24T00:00:00.000000Z",
+          "effective_until": null
+        }
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-approve-current"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      }
+    }
+  },
+  "status-unsupported": {
+    "summary": "status-unsupported (synthetic)",
+    "value": {
+      "chapter_id": "1",
+      "evaluated_at": "2026-10-25T06:00:00.123456Z",
+      "affected_action": "records.submit",
+      "blockers": [
+        {
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "state": "unsupported",
+          "affected_action": "records.submit",
+          "message": "Required operational policy is missing.",
+          "permitted_next_steps": [
+            "request_responsible_duty"
+          ]
+        }
+      ]
+    }
+  },
+  "status-unapproved": {
+    "summary": "status-unapproved (synthetic)",
+    "value": {
+      "chapter_id": "1",
+      "evaluated_at": "2026-10-25T06:00:00.123456Z",
+      "affected_action": "records.submit",
+      "blockers": [
+        {
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "state": "unapproved",
+          "affected_action": "records.submit",
+          "message": "Required operational policy is missing.",
+          "permitted_next_steps": [
+            "request_responsible_duty"
+          ]
+        }
+      ]
+    }
+  },
+  "status-not_yet_effective": {
+    "summary": "status-not_yet_effective (synthetic)",
+    "value": {
+      "chapter_id": "1",
+      "evaluated_at": "2026-10-25T06:00:00.123456Z",
+      "affected_action": "records.submit",
+      "blockers": [
+        {
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "state": "not_yet_effective",
+          "affected_action": "records.submit",
+          "message": "Required operational policy is missing.",
+          "permitted_next_steps": [
+            "request_responsible_duty"
+          ]
+        }
+      ]
+    }
+  },
+  "status-expired": {
+    "summary": "status-expired (synthetic)",
+    "value": {
+      "chapter_id": "1",
+      "evaluated_at": "2026-10-25T06:00:00.123456Z",
+      "affected_action": "records.submit",
+      "blockers": [
+        {
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "state": "expired",
+          "affected_action": "records.submit",
+          "message": "Required operational policy is missing.",
+          "permitted_next_steps": [
+            "request_responsible_duty"
+          ]
+        }
+      ]
+    }
+  },
+  "approve-policy_unsupported": {
+    "summary": "approve-policy_unsupported (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "blocked",
+      "chapter_id": "1",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-approve-policy_unsupported"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      },
+      "code": "policy_unsupported",
+      "message": "Policy cannot accept this action.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "approve-policy_missing_material": {
+    "summary": "approve-policy_missing_material (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "blocked",
+      "chapter_id": "1",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-approve-policy_missing_material"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      },
+      "code": "policy_missing_material",
+      "message": "Policy cannot accept this action.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "approve-policy_unapproved": {
+    "summary": "approve-policy_unapproved (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "blocked",
+      "chapter_id": "1",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-approve-policy_unapproved"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      },
+      "code": "policy_unapproved",
+      "message": "Policy cannot accept this action.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "approve-policy_state_conflict": {
+    "summary": "approve-policy_state_conflict (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "blocked",
+      "chapter_id": "1",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-approve-policy_state_conflict"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      },
+      "code": "policy_state_conflict",
+      "message": "Policy cannot accept this action.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "approve-policy_interval_conflict": {
+    "summary": "approve-policy_interval_conflict (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "blocked",
+      "chapter_id": "1",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-approve-policy_interval_conflict"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      },
+      "code": "policy_interval_conflict",
+      "message": "Policy cannot accept this action.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "lookupOperationByKey-policy": {
+    "summary": "lookupOperationByKey-policy (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "approved",
+        "effective_state": "scheduled",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [
+          {
+            "decision": "approve",
+            "material": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254741010",
+                "kind": "CONFIG"
+              },
+              "material_version": 3,
+              "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "authority_version": 9,
+            "duty_grant_id": "9007199254741000",
+            "duty": "CHAPTER_HEAD",
+            "reason": "Synthetic exact material approval",
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "actor": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            }
+          }
+        ],
+        "approved_policy": {
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_version_id": "9007199254740999",
+          "version_no": 2,
+          "settings_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "approval": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null
+        }
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-attempt-approvePolicyVersion"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": true
+      }
+    }
+  },
+  "lookupOperationByKey-policy-rejected": {
+    "summary": "lookupOperationByKey-policy-rejected (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "blocked",
+      "chapter_id": "1",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-attempt-approvePolicyVersion"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": true
+      },
+      "code": "policy_unsupported",
+      "message": "Policy cannot accept this action.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "lookupOperationByKey-policy-pending": {
+    "summary": "lookupOperationByKey-policy-pending (synthetic)",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "duty_grants.authorize",
+          "idempotency_key": "duty-attempt-authorizeDutyGrant"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "NO_VISIBLE_TERMINAL_RESULT",
+        "message": "Original membership outcome is not confirmed. Preserve original attempt."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Check original chapter and attempt after current access review"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "pending_or_not_visible"
+    }
+  },
+  "lookupOperationByKey-policy-unavailable": {
+    "summary": "lookupOperationByKey-policy-unavailable (synthetic)",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "duty_grants.authorize",
+          "idempotency_key": "duty-attempt-authorizeDutyGrant"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "LOOKUP_UNAVAILABLE",
+        "message": "Original membership outcome is not confirmed. Preserve original attempt."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Check original chapter and attempt after current access review"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "unavailable"
+    }
+  },
+  "lookupOperationById-policy": {
+    "summary": "lookupOperationById-policy (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 4,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 2,
+        "row_version": 4,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "schema_support": "registered_reference",
+        "review_state": "approved",
+        "effective_state": "scheduled",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [
+          {
+            "decision": "approve",
+            "material": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254741010",
+                "kind": "CONFIG"
+              },
+              "material_version": 3,
+              "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "authority_version": 9,
+            "duty_grant_id": "9007199254741000",
+            "duty": "CHAPTER_HEAD",
+            "reason": "Synthetic exact material approval",
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "actor": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            }
+          }
+        ],
+        "approved_policy": {
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_version_id": "9007199254740999",
+          "version_no": 2,
+          "settings_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "approval": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null
+        }
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-attempt-approvePolicyVersion"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": true
+      }
+    }
+  },
+  "lookupOperationById-policy-rejected": {
+    "summary": "lookupOperationById-policy-rejected (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "blocked",
+      "chapter_id": "1",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.approve",
+          "idempotency_key": "policy-attempt-approvePolicyVersion"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": true
+      },
+      "code": "policy_unsupported",
+      "message": "Policy cannot accept this action.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "lookupOperationById-policy-pending": {
+    "summary": "lookupOperationById-policy-pending (synthetic)",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "duty_grants.authorize",
+          "idempotency_key": "duty-attempt-authorizeDutyGrant"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "NO_VISIBLE_TERMINAL_RESULT",
+        "message": "Original membership outcome is not confirmed. Preserve original attempt."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Check original chapter and attempt after current access review"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "pending_or_not_visible"
+    }
+  },
+  "lookupOperationById-policy-unavailable": {
+    "summary": "lookupOperationById-policy-unavailable (synthetic)",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "duty_grants.authorize",
+          "idempotency_key": "duty-attempt-authorizeDutyGrant"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "LOOKUP_UNAVAILABLE",
+        "message": "Original membership outcome is not confirmed. Preserve original attempt."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Check original chapter and attempt after current access review"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "unavailable"
+    }
+  },
+  "review-material-stale": {
+    "summary": "review-material-stale (synthetic)",
+    "value": {
+      "code": "policy_material_stale",
+      "message": "Review the original attempt and current authorized versions.",
+      "next_action": "review_original_attempt"
+    }
+  },
+  "save-settings-rejected": {
+    "summary": "save-settings-rejected (synthetic)",
+    "value": {
+      "code": "validation_failed",
+      "message": "Review marked fields.",
+      "field_feedback": [
+        {
+          "path": "/settings",
+          "code": "UNSUPPORTED",
+          "message": "Settings writes are not available in P02."
+        }
+      ],
+      "next_action": "correct_fields"
+    }
+  },
+  "save-absent-root": {
+    "summary": "save-absent-root (synthetic)",
+    "value": {
+      "resource_type": "policy",
+      "action_result": "success",
+      "chapter_id": "1",
+      "root": {
+        "id": "9007199254740998",
+        "chapter_id": "1",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "row_version": 1,
+        "latest_version_id": "9007199254740999",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        }
+      },
+      "version": {
+        "id": "9007199254740999",
+        "chapter_id": "1",
+        "policy_id": "9007199254740998",
+        "policy_code": "OPERATIONAL_ROOT",
+        "category": "operational",
+        "responsible_duty": "CHAPTER_HEAD",
+        "version_no": 1,
+        "row_version": 1,
+        "metadata": {
+          "name": "Synthetic operational policy",
+          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+          "schema_version": 1,
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "supersedes_version_id": null
+        },
+        "material": null,
+        "schema_support": "missing",
+        "review_state": "draft",
+        "effective_state": "not_approved",
+        "reason": "Synthetic complete material reference",
+        "created": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "decisions": [],
+        "approved_policy": null
+      },
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "policy.operational.prepare",
+          "idempotency_key": "policy-save-absent-root"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-25T06:00:00.123456Z",
+        "replayed": false
+      }
+    }
+  },
+  "material-change-reapproval": {
+    "summary": "material-change-reapproval (synthetic)",
+    "value": {
+      "id": "9007199254741011",
+      "chapter_id": "1",
+      "policy_id": "9007199254740998",
+      "policy_code": "OPERATIONAL_ROOT",
+      "category": "operational",
+      "responsible_duty": "CHAPTER_HEAD",
+      "version_no": 3,
+      "row_version": 5,
+      "metadata": {
+        "name": "Synthetic operational policy",
+        "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+        "schema_version": 1,
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null,
+        "supersedes_version_id": "9007199254740999"
+      },
+      "material": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254741010",
+          "kind": "CONFIG"
+        },
+        "material_version": 4,
+        "material_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "schema_support": "registered_reference",
+      "review_state": "draft",
+      "effective_state": "not_approved",
+      "reason": "Synthetic changed material requires reapproval",
+      "created": {
+        "user_id": "9007199254740996",
+        "at": "2026-10-25T06:00:00.123456Z"
+      },
+      "last_changed": {
+        "user_id": "9007199254740996",
+        "at": "2026-10-25T06:00:00.123456Z"
+      },
+      "decisions": [
+        {
+          "decision": "approve",
+          "material": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authority_version": 9,
+          "duty_grant_id": "9007199254741000",
+          "duty": "CHAPTER_HEAD",
+          "reason": "Synthetic exact material approval",
+          "effective_from": "2026-10-26T00:00:00.000000Z",
+          "effective_until": null,
+          "actor": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          }
+        }
+      ],
+      "approved_policy": null
+    }
+  },
+  "status-approved-future": {
+    "summary": "status-approved-future (synthetic)",
+    "value": {
+      "chapter_id": "1",
+      "evaluated_at": "2026-10-25T06:00:00.123456Z",
+      "affected_action": "records.submit",
+      "blockers": [
+        {
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "state": "not_yet_effective",
+          "affected_action": "records.submit",
+          "message": "Required operational policy is missing.",
+          "permitted_next_steps": [
+            "request_responsible_duty"
+          ]
+        }
+      ]
+    }
+  },
+  "status-ready-for-requested-action": {
+    "summary": "status-ready-for-requested-action (synthetic)",
+    "value": {
+      "chapter_id": "1",
+      "evaluated_at": "2026-10-25T06:00:00.123456Z",
+      "affected_action": "records.submit",
+      "blockers": []
+    }
+  },
+  "requester-redacted": {
+    "summary": "requester-redacted (synthetic)",
+    "value": {
+      "chapter_id": "1",
+      "evaluated_at": "2026-10-25T06:00:00.123456Z",
+      "affected_action": "records.submit",
+      "blockers": [
+        {
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "state": "missing",
+          "affected_action": "records.submit",
+          "message": "Required operational policy is missing.",
+          "permitted_next_steps": [
+            "request_responsible_duty"
+          ]
+        }
+      ]
+    }
+  }
+}

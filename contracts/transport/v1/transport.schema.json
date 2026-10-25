@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:ysp:transport:v1",
-  "title": "YSP shared transport v1 — review revision 1",
-  "description": "Leader-authored P00 contract for shared transport, parent spec https://github.com/Kamunggay/YSP/issues/2. Review candidate dated 2026-10-24; Glenn frontend/query and Efren posting acceptance pending. This describes wire values, not implemented business behavior. TR-02–TR-03, TR-06–TR-10, TR-12, TR-15, DOC-11, UX-01–UX-04; Q3–Q5. Identity/record/evidence payloads belong to the identity, record and evidence contract, IPC/RM acceptance to the receiving contract, stock query/hold semantics to the stock-hold contract. No public mutation or balance setter is defined.",
+  "title": "YSP shared transport v1 \u00e2\u20ac\u201d review revision 1",
+  "description": "Leader-authored P00 contract for shared transport, parent spec https://github.com/Kamunggay/YSP/issues/2. Review candidate dated 2026-10-24; Glenn frontend/query and Efren posting acceptance pending. This describes wire values, not implemented business behavior. TR-02\u00e2\u20ac\u201cTR-03, TR-06\u00e2\u20ac\u201cTR-10, TR-12, TR-15, DOC-11, UX-01\u00e2\u20ac\u201cUX-04; Q3\u00e2\u20ac\u201cQ5. Identity/record/evidence payloads belong to the identity, record and evidence contract, IPC/RM acceptance to the receiving contract, stock query/hold semantics to the stock-hold contract. No public mutation or balance setter is defined.",
   "$defs": {
     "Id": {
       "type": "string",
@@ -27,7 +27,7 @@
         "value",
         "quantity_scale"
       ],
-      "description": "A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units.",
+      "description": "A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0\u00e2\u20ac\u201c6 follow DATABASE-SCHEMA \u00c2\u00a72.1/\u00c2\u00a72.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units.",
       "properties": {
         "value": {
           "$ref": "#/$defs/Quantity"
@@ -4182,6 +4182,1314 @@
           "const": "review_original_attempt"
         }
       }
+    },
+    "Hash": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
+    },
+    "MaterialReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "record",
+        "material_version",
+        "material_hash"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "record": {
+          "$ref": "#/$defs/RecordReference"
+        },
+        "material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "material_hash": {
+          "$ref": "#/$defs/Hash"
+        }
+      },
+      "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
+    },
+    "PolicyReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "policy_id",
+        "policy_version_id",
+        "version_no",
+        "settings_hash",
+        "approval",
+        "effective_from",
+        "effective_until"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "policy_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "policy_version_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "version_no": {
+          "$ref": "#/$defs/Version"
+        },
+        "settings_hash": {
+          "$ref": "#/$defs/Hash"
+        },
+        "approval": {
+          "$ref": "#/$defs/MaterialReference"
+        },
+        "effective_from": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "effective_until": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "Server-resolved approved CONFIG version, not a trusted approved flag. Access owns policy validity; P03 owns its CONFIG material snapshot/approval history. Consumer checks current effective interval, approval duties and scoped version at execution. New policy never silently recalculates completed records."
+    },
+    "PolicyCategory": {
+      "enum": [
+        "operational",
+        "financial"
+      ]
+    },
+    "PolicyCode": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{0,47}$"
+    },
+    "PolicySchemaId": {
+      "type": "string",
+      "pattern": "^urn:ysp:policy:[a-z][a-z0-9-]{0,63}$"
+    },
+    "PolicyMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "schema_id",
+        "schema_version",
+        "effective_from",
+        "effective_until",
+        "supersedes_version_id"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "schema_id": {
+          "$ref": "#/$defs/PolicySchemaId"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "effective_from": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effective_until": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supersedes_version_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PolicyRoot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "chapter_id",
+        "policy_code",
+        "category",
+        "responsible_duty",
+        "row_version",
+        "latest_version_id",
+        "created",
+        "last_changed"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "policy_code": {
+          "$ref": "#/$defs/PolicyCode"
+        },
+        "category": {
+          "$ref": "#/$defs/PolicyCategory"
+        },
+        "responsible_duty": {
+          "enum": [
+            "CHAPTER_HEAD",
+            "FINANCE"
+          ]
+        },
+        "row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "latest_version_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created": {
+          "$ref": "#/$defs/MembershipAttribution"
+        },
+        "last_changed": {
+          "$ref": "#/$defs/MembershipAttribution"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "operational"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "responsible_duty": {
+                "const": "CHAPTER_HEAD"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "responsible_duty": {
+                "const": "FINANCE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "PolicyDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "material",
+        "authority_version",
+        "duty_grant_id",
+        "duty",
+        "reason",
+        "effective_from",
+        "effective_until",
+        "actor"
+      ],
+      "properties": {
+        "decision": {
+          "enum": [
+            "review",
+            "approve",
+            "return"
+          ]
+        },
+        "material": {
+          "$ref": "#/$defs/PolicyConfigMaterial"
+        },
+        "authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "duty_grant_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "duty": {
+          "enum": [
+            "CHAPTER_HEAD",
+            "FINANCE"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "effective_from": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "effective_until": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actor": {
+          "$ref": "#/$defs/MembershipAttribution"
+        }
+      }
+    },
+    "PolicyVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "chapter_id",
+        "policy_id",
+        "policy_code",
+        "category",
+        "responsible_duty",
+        "version_no",
+        "row_version",
+        "metadata",
+        "material",
+        "schema_support",
+        "review_state",
+        "effective_state",
+        "reason",
+        "created",
+        "last_changed",
+        "decisions",
+        "approved_policy"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "policy_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "policy_code": {
+          "$ref": "#/$defs/PolicyCode"
+        },
+        "category": {
+          "$ref": "#/$defs/PolicyCategory"
+        },
+        "responsible_duty": {
+          "enum": [
+            "CHAPTER_HEAD",
+            "FINANCE"
+          ]
+        },
+        "version_no": {
+          "$ref": "#/$defs/Version"
+        },
+        "row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "metadata": {
+          "$ref": "#/$defs/PolicyMetadata"
+        },
+        "material": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PolicyConfigMaterial"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_support": {
+          "enum": [
+            "missing",
+            "unsupported",
+            "registered_reference"
+          ]
+        },
+        "review_state": {
+          "enum": [
+            "draft",
+            "submitted",
+            "reviewed",
+            "returned",
+            "approved"
+          ]
+        },
+        "effective_state": {
+          "enum": [
+            "not_approved",
+            "scheduled",
+            "current",
+            "expired",
+            "superseded"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "created": {
+          "$ref": "#/$defs/MembershipAttribution"
+        },
+        "last_changed": {
+          "$ref": "#/$defs/MembershipAttribution"
+        },
+        "decisions": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/PolicyDecision"
+          }
+        },
+        "approved_policy": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PolicyReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "operational"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "responsible_duty": {
+                "const": "CHAPTER_HEAD"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "responsible_duty": {
+                "const": "FINANCE"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "review_state": {
+                "enum": [
+                  "submitted",
+                  "reviewed",
+                  "approved"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "material": {
+                "$ref": "#/$defs/PolicyConfigMaterial"
+              },
+              "schema_support": {
+                "const": "registered_reference"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "review_state": {
+                "const": "approved"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "approved_policy": {
+                "$ref": "#/$defs/PolicyReference"
+              },
+              "effective_state": {
+                "enum": [
+                  "scheduled",
+                  "current",
+                  "expired",
+                  "superseded"
+                ]
+              },
+              "decisions": {
+                "type": "array",
+                "minItems": 1,
+                "contains": {
+                  "type": "object",
+                  "properties": {
+                    "decision": {
+                      "const": "approve"
+                    }
+                  },
+                  "required": [
+                    "decision"
+                  ]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "approved_policy": {
+                "type": "null"
+              },
+              "effective_state": {
+                "const": "not_approved"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "PolicyRootPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/PolicyRoot"
+          }
+        },
+        "next_cursor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MembershipCursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PolicyVersionPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/PolicyVersion"
+          }
+        },
+        "next_cursor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MembershipCursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PolicyBlocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_code",
+        "category",
+        "responsible_duty",
+        "state",
+        "affected_action",
+        "message",
+        "permitted_next_steps"
+      ],
+      "properties": {
+        "policy_code": {
+          "$ref": "#/$defs/PolicyCode"
+        },
+        "category": {
+          "$ref": "#/$defs/PolicyCategory"
+        },
+        "responsible_duty": {
+          "enum": [
+            "CHAPTER_HEAD",
+            "FINANCE"
+          ]
+        },
+        "state": {
+          "enum": [
+            "missing",
+            "unsupported",
+            "unapproved",
+            "not_yet_effective",
+            "expired"
+          ]
+        },
+        "affected_action": {
+          "$ref": "#/$defs/ActionCode"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "permitted_next_steps": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "prepare_permitted_draft",
+              "request_responsible_duty",
+              "review_policy_metadata"
+            ]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "operational"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "responsible_duty": {
+                "const": "CHAPTER_HEAD"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "responsible_duty": {
+                "const": "FINANCE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "PolicyStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "evaluated_at",
+        "affected_action",
+        "blockers"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "affected_action": {
+          "$ref": "#/$defs/ActionCode"
+        },
+        "blockers": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/PolicyBlocker"
+          }
+        }
+      }
+    },
+    "SavePolicyDraftRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_row_version",
+        "expected_material_version",
+        "reason",
+        "metadata"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_row_version": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_material_version": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "metadata": {
+          "$ref": "#/$defs/PolicyMetadata"
+        }
+      }
+    },
+    "SubmitPolicyVersionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_row_version",
+        "expected_material_version",
+        "reason",
+        "material",
+        "effective_from",
+        "effective_until"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "material": {
+          "$ref": "#/$defs/PolicyConfigMaterial"
+        },
+        "effective_from": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "effective_until": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ReviewPolicyVersionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_row_version",
+        "expected_material_version",
+        "reason",
+        "material",
+        "effective_from",
+        "effective_until"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "material": {
+          "$ref": "#/$defs/PolicyConfigMaterial"
+        },
+        "effective_from": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "effective_until": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ApprovePolicyVersionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_row_version",
+        "expected_material_version",
+        "reason",
+        "material",
+        "effective_from",
+        "effective_until"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "material": {
+          "$ref": "#/$defs/PolicyConfigMaterial"
+        },
+        "effective_from": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "effective_until": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ReturnPolicyVersionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_row_version",
+        "expected_material_version",
+        "reason",
+        "material",
+        "effective_from",
+        "effective_until"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "material": {
+          "$ref": "#/$defs/PolicyConfigMaterial"
+        },
+        "effective_from": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "effective_until": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PolicyConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "idempotency_conflict",
+            "chapter_context_stale",
+            "authority_stale",
+            "policy_row_stale",
+            "policy_material_stale",
+            "policy_snapshot_stale"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
+    },
+    "PolicyNotVisible": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "const": "policy_not_visible"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "PolicyCommittedOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "outcome",
+        "committed_at",
+        "replayed"
+      ],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "action_code",
+            "idempotency_key"
+          ],
+          "properties": {
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            },
+            "action_code": {
+              "enum": [
+                "policy.operational.prepare",
+                "policy.operational.approve",
+                "policy.financial.prepare",
+                "policy.financial.approve"
+              ]
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        "outcome": {
+          "const": "committed"
+        },
+        "committed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "PolicyRejectedOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "outcome",
+        "committed_at",
+        "replayed"
+      ],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "action_code",
+            "idempotency_key"
+          ],
+          "properties": {
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            },
+            "action_code": {
+              "enum": [
+                "policy.operational.prepare",
+                "policy.operational.approve",
+                "policy.financial.prepare",
+                "policy.financial.approve"
+              ]
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        "outcome": {
+          "const": "rejected"
+        },
+        "committed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "PolicySuccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "root",
+        "version",
+        "operation"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "policy"
+        },
+        "action_result": {
+          "const": "success"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "root": {
+          "$ref": "#/$defs/PolicyRoot"
+        },
+        "version": {
+          "$ref": "#/$defs/PolicyVersion"
+        },
+        "operation": {
+          "$ref": "#/$defs/PolicyCommittedOperation"
+        }
+      }
+    },
+    "PolicyRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "operation",
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "policy"
+        },
+        "action_result": {
+          "const": "blocked"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "operation": {
+          "$ref": "#/$defs/PolicyRejectedOperation"
+        },
+        "code": {
+          "enum": [
+            "policy_missing_material",
+            "policy_unsupported",
+            "policy_unapproved",
+            "policy_state_conflict",
+            "policy_interval_conflict"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
+    },
+    "PolicyLookupTerminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "root",
+        "version",
+        "operation"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "policy"
+        },
+        "action_result": {
+          "const": "success"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "root": {
+          "$ref": "#/$defs/PolicyRoot"
+        },
+        "version": {
+          "$ref": "#/$defs/PolicyVersion"
+        },
+        "operation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity",
+            "outcome",
+            "committed_at",
+            "replayed"
+          ],
+          "properties": {
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "action_code",
+                "idempotency_key"
+              ],
+              "properties": {
+                "operation_id": {
+                  "$ref": "#/$defs/OperationId"
+                },
+                "action_code": {
+                  "enum": [
+                    "policy.operational.prepare",
+                    "policy.operational.approve",
+                    "policy.financial.prepare",
+                    "policy.financial.approve"
+                  ]
+                },
+                "idempotency_key": {
+                  "$ref": "#/$defs/IdempotencyKey"
+                }
+              }
+            },
+            "outcome": {
+              "const": "committed"
+            },
+            "committed_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "replayed": {
+              "const": true
+            }
+          }
+        }
+      }
+    },
+    "PolicyLookupRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "operation",
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "policy"
+        },
+        "action_result": {
+          "const": "blocked"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "operation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity",
+            "outcome",
+            "committed_at",
+            "replayed"
+          ],
+          "properties": {
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "action_code",
+                "idempotency_key"
+              ],
+              "properties": {
+                "operation_id": {
+                  "$ref": "#/$defs/OperationId"
+                },
+                "action_code": {
+                  "enum": [
+                    "policy.operational.prepare",
+                    "policy.operational.approve",
+                    "policy.financial.prepare",
+                    "policy.financial.approve"
+                  ]
+                },
+                "idempotency_key": {
+                  "$ref": "#/$defs/IdempotencyKey"
+                }
+              }
+            },
+            "outcome": {
+              "const": "rejected"
+            },
+            "committed_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "replayed": {
+              "const": true
+            }
+          }
+        },
+        "code": {
+          "enum": [
+            "policy_missing_material",
+            "policy_unsupported",
+            "policy_unapproved",
+            "policy_state_conflict",
+            "policy_interval_conflict"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
+    },
+    "PolicyConfigMaterial": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MaterialReference"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "CONFIG"
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "$ref": "#/$defs/ActionResult"

@@ -94,6 +94,12 @@
                     },
                     {
                       "$ref": "./transport.schema.json#/$defs/DutyGrantLookupRejected"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyLookupTerminal"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyLookupRejected"
                     }
                   ]
                 },
@@ -121,6 +127,15 @@
                   },
                   "lookupOperationByKey-duty-grant-pending": {
                     "$ref": "./duty-grant-examples.json#/lookupOperationByKey-duty-grant-pending"
+                  },
+                  "lookupOperationByKey-policy": {
+                    "$ref": "./policy-examples.json#/lookupOperationByKey-policy"
+                  },
+                  "lookupOperationByKey-policy-rejected": {
+                    "$ref": "./policy-examples.json#/lookupOperationByKey-policy-rejected"
+                  },
+                  "lookupOperationByKey-policy-pending": {
+                    "$ref": "./policy-examples.json#/lookupOperationByKey-policy-pending"
                   }
                 }
               }
@@ -156,6 +171,9 @@
                   },
                   "lookupOperationByKey-duty-grant-unavailable": {
                     "$ref": "./duty-grant-examples.json#/lookupOperationByKey-duty-grant-unavailable"
+                  },
+                  "lookupOperationByKey-policy-unavailable": {
+                    "$ref": "./policy-examples.json#/lookupOperationByKey-policy-unavailable"
                   }
                 }
               }
@@ -219,6 +237,12 @@
                     },
                     {
                       "$ref": "./transport.schema.json#/$defs/DutyGrantLookupRejected"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyLookupTerminal"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyLookupRejected"
                     }
                   ]
                 },
@@ -249,6 +273,15 @@
                   },
                   "lookupOperationById-duty-grant-pending": {
                     "$ref": "./duty-grant-examples.json#/lookupOperationById-duty-grant-pending"
+                  },
+                  "lookupOperationById-policy": {
+                    "$ref": "./policy-examples.json#/lookupOperationById-policy"
+                  },
+                  "lookupOperationById-policy-rejected": {
+                    "$ref": "./policy-examples.json#/lookupOperationById-policy-rejected"
+                  },
+                  "lookupOperationById-policy-pending": {
+                    "$ref": "./policy-examples.json#/lookupOperationById-policy-pending"
                   }
                 }
               }
@@ -284,6 +317,9 @@
                   },
                   "lookupOperationById-duty-grant-unavailable": {
                     "$ref": "./duty-grant-examples.json#/lookupOperationById-duty-grant-unavailable"
+                  },
+                  "lookupOperationById-policy-unavailable": {
+                    "$ref": "./policy-examples.json#/lookupOperationById-policy-unavailable"
                   }
                 }
               }
@@ -7848,6 +7884,3402 @@
           "ADD-AC-09"
         ]
       }
+    },
+    "/chapters/{chapter_id}/policy-status": {
+      "get": {
+        "operationId": "readPolicyStatus",
+        "summary": "readPolicyStatus",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "query",
+            "name": "affected_action",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ActionCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyStatus"
+                },
+                "examples": {
+                  "readPolicyStatus-success": {
+                    "$ref": "./policy-examples.json#/readPolicyStatus-success"
+                  },
+                  "status-unsupported": {
+                    "$ref": "./policy-examples.json#/status-unsupported"
+                  },
+                  "status-unapproved": {
+                    "$ref": "./policy-examples.json#/status-unapproved"
+                  },
+                  "status-not_yet_effective": {
+                    "$ref": "./policy-examples.json#/status-not_yet_effective"
+                  },
+                  "status-expired": {
+                    "$ref": "./policy-examples.json#/status-expired"
+                  },
+                  "status-approved-future": {
+                    "$ref": "./policy-examples.json#/status-approved-future"
+                  },
+                  "status-ready-for-requested-action": {
+                    "$ref": "./policy-examples.json#/status-ready-for-requested-action"
+                  },
+                  "requester-redacted": {
+                    "$ref": "./policy-examples.json#/requester-redacted"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "readPolicyStatus-400": {
+                    "$ref": "./policy-examples.json#/readPolicyStatus-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "readPolicyStatus-401": {
+                    "$ref": "./policy-examples.json#/readPolicyStatus-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "readPolicyStatus-403": {
+                    "$ref": "./policy-examples.json#/readPolicyStatus-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "readPolicyStatus-404": {
+                    "$ref": "./policy-examples.json#/readPolicyStatus-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                },
+                "examples": {
+                  "readPolicyStatus-409": {
+                    "$ref": "./policy-examples.json#/readPolicyStatus-409"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "readPolicyStatus-429": {
+                    "$ref": "./policy-examples.json#/readPolicyStatus-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "readPolicyStatus-503": {
+                    "$ref": "./policy-examples.json#/readPolicyStatus-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.status.read",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ]
+      }
+    },
+    "/chapters/{chapter_id}/policies/{category}": {
+      "get": {
+        "operationId": "listPolicyRoots",
+        "summary": "listPolicyRoots",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/MembershipCursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "policy_code",
+            "required": false,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyRootPage"
+                },
+                "examples": {
+                  "listPolicyRoots-success": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-success"
+                  },
+                  "listPolicyRoots-empty": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-empty"
+                  },
+                  "listPolicyRoots-page": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-page"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "listPolicyRoots-400": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "listPolicyRoots-401": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "listPolicyRoots-403": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "listPolicyRoots-404": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                },
+                "examples": {
+                  "listPolicyRoots-409": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-409"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "listPolicyRoots-429": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "listPolicyRoots-503": {
+                    "$ref": "./policy-examples.json#/listPolicyRoots-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.{category}.read",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ]
+      }
+    },
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}": {
+      "get": {
+        "operationId": "readPolicyRoot",
+        "summary": "readPolicyRoot",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_code",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCode"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyRoot"
+                },
+                "examples": {
+                  "readPolicyRoot-success": {
+                    "$ref": "./policy-examples.json#/readPolicyRoot-success"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "readPolicyRoot-400": {
+                    "$ref": "./policy-examples.json#/readPolicyRoot-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "readPolicyRoot-401": {
+                    "$ref": "./policy-examples.json#/readPolicyRoot-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "readPolicyRoot-403": {
+                    "$ref": "./policy-examples.json#/readPolicyRoot-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "readPolicyRoot-404": {
+                    "$ref": "./policy-examples.json#/readPolicyRoot-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                },
+                "examples": {
+                  "readPolicyRoot-409": {
+                    "$ref": "./policy-examples.json#/readPolicyRoot-409"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "readPolicyRoot-429": {
+                    "$ref": "./policy-examples.json#/readPolicyRoot-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "readPolicyRoot-503": {
+                    "$ref": "./policy-examples.json#/readPolicyRoot-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.{category}.read",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ]
+      }
+    },
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions": {
+      "get": {
+        "operationId": "listPolicyVersions",
+        "summary": "listPolicyVersions",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_code",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCode"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/MembershipCursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "review_state",
+            "required": false,
+            "schema": {
+              "enum": [
+                "draft",
+                "submitted",
+                "reviewed",
+                "returned",
+                "approved"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "effective_state",
+            "required": false,
+            "schema": {
+              "enum": [
+                "not_approved",
+                "scheduled",
+                "current",
+                "expired",
+                "superseded"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyVersionPage"
+                },
+                "examples": {
+                  "listPolicyVersions-success": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-success"
+                  },
+                  "listPolicyVersions-empty": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-empty"
+                  },
+                  "listPolicyVersions-page": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-page"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "listPolicyVersions-400": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "listPolicyVersions-401": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "listPolicyVersions-403": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "listPolicyVersions-404": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                },
+                "examples": {
+                  "listPolicyVersions-409": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-409"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "listPolicyVersions-429": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "listPolicyVersions-503": {
+                    "$ref": "./policy-examples.json#/listPolicyVersions-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.{category}.read",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ]
+      }
+    },
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}": {
+      "get": {
+        "operationId": "readPolicyVersion",
+        "summary": "readPolicyVersion",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_code",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCode"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyVersion"
+                },
+                "examples": {
+                  "readPolicyVersion-success": {
+                    "$ref": "./policy-examples.json#/readPolicyVersion-success"
+                  },
+                  "material-change-reapproval": {
+                    "$ref": "./policy-examples.json#/material-change-reapproval"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "readPolicyVersion-400": {
+                    "$ref": "./policy-examples.json#/readPolicyVersion-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "readPolicyVersion-401": {
+                    "$ref": "./policy-examples.json#/readPolicyVersion-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "readPolicyVersion-403": {
+                    "$ref": "./policy-examples.json#/readPolicyVersion-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "readPolicyVersion-404": {
+                    "$ref": "./policy-examples.json#/readPolicyVersion-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                },
+                "examples": {
+                  "readPolicyVersion-409": {
+                    "$ref": "./policy-examples.json#/readPolicyVersion-409"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "readPolicyVersion-429": {
+                    "$ref": "./policy-examples.json#/readPolicyVersion-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "readPolicyVersion-503": {
+                    "$ref": "./policy-examples.json#/readPolicyVersion-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.{category}.read",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ]
+      }
+    },
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/draft": {
+      "post": {
+        "operationId": "savePolicyDraft",
+        "summary": "savePolicyDraft",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_code",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCode"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicySuccess"
+                },
+                "examples": {
+                  "savePolicyDraft-success": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-success"
+                  },
+                  "savePolicyDraft-replay": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-replay"
+                  },
+                  "save-absent-root": {
+                    "$ref": "./policy-examples.json#/save-absent-root"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "savePolicyDraft-400": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "savePolicyDraft-401": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "savePolicyDraft-403": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "savePolicyDraft-404": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyRejected"
+                    }
+                  ]
+                },
+                "examples": {
+                  "savePolicyDraft-409": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-409"
+                  },
+                  "savePolicyDraft-policy_material_stale": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-policy_material_stale"
+                  },
+                  "savePolicyDraft-authority_stale": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-authority_stale"
+                  },
+                  "savePolicyDraft-chapter_context_stale": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-chapter_context_stale"
+                  },
+                  "savePolicyDraft-idempotency_conflict": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-idempotency_conflict"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "savePolicyDraft-429": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "savePolicyDraft-503": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-503"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "savePolicyDraft-419": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-419"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "savePolicyDraft-422": {
+                    "$ref": "./policy-examples.json#/savePolicyDraft-422"
+                  },
+                  "save-settings-rejected": {
+                    "$ref": "./policy-examples.json#/save-settings-rejected"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.{category}.prepare",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/SavePolicyDraftRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
+    },
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/submit": {
+      "post": {
+        "operationId": "submitPolicyVersion",
+        "summary": "submitPolicyVersion",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_code",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCode"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicySuccess"
+                },
+                "examples": {
+                  "submitPolicyVersion-success": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-success"
+                  },
+                  "submitPolicyVersion-replay": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-replay"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "submitPolicyVersion-400": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "submitPolicyVersion-401": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "submitPolicyVersion-403": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "submitPolicyVersion-404": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyRejected"
+                    }
+                  ]
+                },
+                "examples": {
+                  "submitPolicyVersion-409": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-409"
+                  },
+                  "submitPolicyVersion-policy_material_stale": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-policy_material_stale"
+                  },
+                  "submitPolicyVersion-authority_stale": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-authority_stale"
+                  },
+                  "submitPolicyVersion-chapter_context_stale": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-chapter_context_stale"
+                  },
+                  "submitPolicyVersion-idempotency_conflict": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-idempotency_conflict"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "submitPolicyVersion-429": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "submitPolicyVersion-503": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-503"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "submitPolicyVersion-419": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-419"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "submitPolicyVersion-422": {
+                    "$ref": "./policy-examples.json#/submitPolicyVersion-422"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.{category}.prepare",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/SubmitPolicyVersionRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
+    },
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review": {
+      "get": {
+        "operationId": "reviewPolicyVersion",
+        "summary": "reviewPolicyVersion",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_code",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCode"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_material_version",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Version"
+            }
+          },
+          {
+            "in": "query",
+            "name": "material_hash",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyVersion"
+                },
+                "examples": {
+                  "reviewPolicyVersion-success": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-success"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "reviewPolicyVersion-400": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "reviewPolicyVersion-401": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "reviewPolicyVersion-403": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "reviewPolicyVersion-404": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                },
+                "examples": {
+                  "reviewPolicyVersion-409": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-409"
+                  },
+                  "review-material-stale": {
+                    "$ref": "./policy-examples.json#/review-material-stale"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "reviewPolicyVersion-429": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "reviewPolicyVersion-503": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.{category}.read",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ]
+      }
+    },
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/approve": {
+      "post": {
+        "operationId": "approvePolicyVersion",
+        "summary": "approvePolicyVersion",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_code",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCode"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicySuccess"
+                },
+                "examples": {
+                  "approvePolicyVersion-success": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-success"
+                  },
+                  "approvePolicyVersion-replay": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-replay"
+                  },
+                  "approve-financial": {
+                    "$ref": "./policy-examples.json#/approve-financial"
+                  },
+                  "approve-current": {
+                    "$ref": "./policy-examples.json#/approve-current"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "approvePolicyVersion-400": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "approvePolicyVersion-401": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "approvePolicyVersion-403": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "approvePolicyVersion-404": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyRejected"
+                    }
+                  ]
+                },
+                "examples": {
+                  "approvePolicyVersion-409": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-409"
+                  },
+                  "approvePolicyVersion-policy_material_stale": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-policy_material_stale"
+                  },
+                  "approvePolicyVersion-authority_stale": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-authority_stale"
+                  },
+                  "approvePolicyVersion-chapter_context_stale": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-chapter_context_stale"
+                  },
+                  "approvePolicyVersion-idempotency_conflict": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-idempotency_conflict"
+                  },
+                  "approve-policy_unsupported": {
+                    "$ref": "./policy-examples.json#/approve-policy_unsupported"
+                  },
+                  "approve-policy_missing_material": {
+                    "$ref": "./policy-examples.json#/approve-policy_missing_material"
+                  },
+                  "approve-policy_unapproved": {
+                    "$ref": "./policy-examples.json#/approve-policy_unapproved"
+                  },
+                  "approve-policy_state_conflict": {
+                    "$ref": "./policy-examples.json#/approve-policy_state_conflict"
+                  },
+                  "approve-policy_interval_conflict": {
+                    "$ref": "./policy-examples.json#/approve-policy_interval_conflict"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "approvePolicyVersion-429": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "approvePolicyVersion-503": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-503"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "approvePolicyVersion-419": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-419"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "approvePolicyVersion-422": {
+                    "$ref": "./policy-examples.json#/approvePolicyVersion-422"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.{category}.approve",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/ApprovePolicyVersionRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
+    },
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/return": {
+      "post": {
+        "operationId": "returnPolicyVersion",
+        "summary": "returnPolicyVersion",
+        "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
+        "security": [
+          {
+            "chapterSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "path",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policy_code",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/PolicyCode"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicySuccess"
+                },
+                "examples": {
+                  "returnPolicyVersion-success": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-success"
+                  },
+                  "returnPolicyVersion-replay": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-replay"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "returnPolicyVersion-400": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "returnPolicyVersion-401": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "returnPolicyVersion-403": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+                },
+                "examples": {
+                  "returnPolicyVersion-404": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyRejected"
+                    }
+                  ]
+                },
+                "examples": {
+                  "returnPolicyVersion-409": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-409"
+                  },
+                  "returnPolicyVersion-policy_material_stale": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-policy_material_stale"
+                  },
+                  "returnPolicyVersion-authority_stale": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-authority_stale"
+                  },
+                  "returnPolicyVersion-chapter_context_stale": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-chapter_context_stale"
+                  },
+                  "returnPolicyVersion-idempotency_conflict": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-idempotency_conflict"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "returnPolicyVersion-429": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "returnPolicyVersion-503": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-503"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "returnPolicyVersion-419": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-419"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "returnPolicyVersion-422": {
+                    "$ref": "./policy-examples.json#/returnPolicyVersion-422"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true,
+        "x-action-code": "policy.{category}.approve",
+        "x-requirements": [
+          "GOV-08",
+          "GOV-09",
+          "DOC-03",
+          "DOC-05",
+          "DOC-10",
+          "DOC-11",
+          "SEC-03",
+          "TR-03",
+          "TR-06",
+          "TR-07",
+          "TR-09",
+          "TR-12",
+          "TR-17",
+          "UX-01",
+          "UX-02",
+          "UX-03",
+          "UX-04",
+          "ADD-08",
+          "F-01",
+          "F-11",
+          "S-21"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/ReturnPolicyVersionRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
     }
   },
   "components": {
@@ -8195,6 +11627,90 @@
       },
       "DutyGrantLookupRejected": {
         "$ref": "./transport.schema.json#/$defs/DutyGrantLookupRejected"
+      },
+      "Hash": {
+        "$ref": "./transport.schema.json#/$defs/Hash"
+      },
+      "MaterialReference": {
+        "$ref": "./transport.schema.json#/$defs/MaterialReference"
+      },
+      "PolicyReference": {
+        "$ref": "./transport.schema.json#/$defs/PolicyReference"
+      },
+      "PolicyCategory": {
+        "$ref": "./transport.schema.json#/$defs/PolicyCategory"
+      },
+      "PolicyCode": {
+        "$ref": "./transport.schema.json#/$defs/PolicyCode"
+      },
+      "PolicySchemaId": {
+        "$ref": "./transport.schema.json#/$defs/PolicySchemaId"
+      },
+      "PolicyMetadata": {
+        "$ref": "./transport.schema.json#/$defs/PolicyMetadata"
+      },
+      "PolicyRoot": {
+        "$ref": "./transport.schema.json#/$defs/PolicyRoot"
+      },
+      "PolicyDecision": {
+        "$ref": "./transport.schema.json#/$defs/PolicyDecision"
+      },
+      "PolicyVersion": {
+        "$ref": "./transport.schema.json#/$defs/PolicyVersion"
+      },
+      "PolicyRootPage": {
+        "$ref": "./transport.schema.json#/$defs/PolicyRootPage"
+      },
+      "PolicyVersionPage": {
+        "$ref": "./transport.schema.json#/$defs/PolicyVersionPage"
+      },
+      "PolicyBlocker": {
+        "$ref": "./transport.schema.json#/$defs/PolicyBlocker"
+      },
+      "PolicyStatus": {
+        "$ref": "./transport.schema.json#/$defs/PolicyStatus"
+      },
+      "SavePolicyDraftRequest": {
+        "$ref": "./transport.schema.json#/$defs/SavePolicyDraftRequest"
+      },
+      "SubmitPolicyVersionRequest": {
+        "$ref": "./transport.schema.json#/$defs/SubmitPolicyVersionRequest"
+      },
+      "ReviewPolicyVersionRequest": {
+        "$ref": "./transport.schema.json#/$defs/ReviewPolicyVersionRequest"
+      },
+      "ApprovePolicyVersionRequest": {
+        "$ref": "./transport.schema.json#/$defs/ApprovePolicyVersionRequest"
+      },
+      "ReturnPolicyVersionRequest": {
+        "$ref": "./transport.schema.json#/$defs/ReturnPolicyVersionRequest"
+      },
+      "PolicyConflict": {
+        "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+      },
+      "PolicyNotVisible": {
+        "$ref": "./transport.schema.json#/$defs/PolicyNotVisible"
+      },
+      "PolicyCommittedOperation": {
+        "$ref": "./transport.schema.json#/$defs/PolicyCommittedOperation"
+      },
+      "PolicyRejectedOperation": {
+        "$ref": "./transport.schema.json#/$defs/PolicyRejectedOperation"
+      },
+      "PolicySuccess": {
+        "$ref": "./transport.schema.json#/$defs/PolicySuccess"
+      },
+      "PolicyRejected": {
+        "$ref": "./transport.schema.json#/$defs/PolicyRejected"
+      },
+      "PolicyLookupTerminal": {
+        "$ref": "./transport.schema.json#/$defs/PolicyLookupTerminal"
+      },
+      "PolicyLookupRejected": {
+        "$ref": "./transport.schema.json#/$defs/PolicyLookupRejected"
+      },
+      "PolicyConfigMaterial": {
+        "$ref": "./transport.schema.json#/$defs/PolicyConfigMaterial"
       }
     },
     "responses": {
@@ -8598,5 +12114,34 @@
     "lifecycle": "End/revoke/substitution removes only grant authority at its effective boundary; membership, global identity, other grants and other chapters remain independently authorized. Membership disable/revoke instead removes all authority from that membership. Preserve original actor attribution, effective grant history and durable results. Every protected action, replay/lookup, queued job, export and delivery rechecks effective interval, revocation, membership, immutable individual independence, MFA, approved scope and limits; suppress now-unauthorized protected output without erasing a prior committed result.",
     "feedback": "Reuse MembershipInvalid and FieldFeedback RFC6901 paths relative to actual body, e.g. /grant/ends_at. Keep correct nonsecret edits separate from frozen original attempt; interruption conceals edits and resume needs same identity, current access and version review. Chapter switching never retargets attempt; timeout/lost connection/HTML/malformed/redirect does not establish failure. No secret/offline/reload persistence promised.",
     "server_checks": "JSON Schema validates closed structures, exact IDs/times/money, required versions and scope/reference compatibility. Interval comparisons, duplicate overlap, same-chapter and same-duty alternate relationships, authority/limit approval, two-person independence, atomic fingerprint/replay/history, cursor binding/order and revocation/queued output require future P03/server checks. No runtime enforcement, persistence or human acceptance is established."
+  },
+  "x-policy-contract": {
+    "revision": "p02.08-review.1",
+    "review_status": "Proposed interfaces; actual Glenn/Efren/security review of variants, visibility, safe status and P03 provider agreement are freeze blockers. No approved executable policy values or runtime acceptance.",
+    "writable_metadata": [
+      "name",
+      "schema_id",
+      "schema_version",
+      "effective_from",
+      "effective_until",
+      "supersedes_version_id",
+      "reason"
+    ],
+    "concrete_settings_payload_variants": [],
+    "metadata": "PolicyMetadata contains P02 writable draft metadata; PolicyRoot/PolicyVersion contain server-owned category, policy code, responsible duty, attribution and version state. A root is lazily created by save with null expected_row_version only when absent; existing root requires its current row version. Save appends a new draft PolicyVersion, never edits approved material. No settings property, arbitrary JSON, empty placeholder or approved flag is accepted. Schema metadata is a request for owner resolution, not evidence of support or approval.",
+    "authorization": "Current chapter membership, required MFA and X-Chapter-Context for all operations. Safe status accepts policy.status.read for any current chapter duty, filters to requested affected_action and server-permitted next steps; it is no authority to perform that action. Operational read/prepare/approve requires CHAPTER_HEAD; financial equivalents require FINANCE. Neither implies the other. No provider access. Category path maps read/list/review to policy.{category}.read, save/submit to .prepare, approve/return to .approve. Review is a read only pinned material presentation and writes no decision; prior recorded review decisions may be returned by P03. Submit records no approval.",
+    "visibility": "Status exposes only relevant safe blockers, responsible duty and permitted steps for requested action; no values, material hashes, policy IDs, reasons or actor details. All category root/version details require own read authority, financial details default Finance only. Version values/settings are omitted in every HTTP representation, including complete-material review. Authorized reviewer can inspect exact material/schema identity without executable payload. Unknown, cross-chapter and inaccessible target/reference use identical 404 policy_not_visible. 403 contains no private data; stale replies disclose no replacement versions.",
+    "pagination": "Root and version lists use PolicyRoot and PolicyVersion exactly as reads, limit default50 bounded1..100, cursor; roots filter policy_code, versions filter review_state/effective_state. All filters conjunctive. Root order immutable id numeric ascending using decimal comparison; versions version_no then id ascending. next_cursor:null means end, nonnull means remaining page. Empty succeeds. Opaque cursor binds actor/chapter/category/parent, normalized filters, limit and snapshot UTC; malformed/expired/mismatched 400, changed snapshot 409 policy_snapshot_stale. No silent restart or global enumeration.",
+    "material": "Reuse canonical MaterialReference and PolicyReference from identity-record-evidence. Material must be same-chapter CONFIG; compare complete tuple/hash, expected_material_version separately from row. registered_reference means P03 resolves complete immutable material against an owning-domain registered constrained schema, not client attestation. No owning-domain concrete payload write variants reviewed here. Missing/unsupported material blocks submit/approval; approval of arbitrary JSON or empty payload is impossible. Complete material fixtures model a P03-owned pre-existing registered reference, not a newly approved domain schema. Until owner registry/validator exists real settings approval remains disabled.",
+    "approval": "Operational approval CHAPTER_HEAD, financial FINANCE, with currently effective grant/authority independently checked. Bind exact material/hash/schema, authority_version, duty_grant_id, actor, reason and half-open effective interval [from,until); null until open. Require reviewed current submitted material and valid nonoverlapping interval under parent lock. P03 supplies append-only decisions/history. Material change invalidates affected approval, creates new material/version and requires reapproval; never erase old decisions. New policy does not recalculate completed/issued records. Future approved versions remain scheduled and cannot satisfy current action; selected effective version resolved at execution UTC.",
+    "attempt": "Reuse canonical x-membership-contract attempts/results. Server RFC8785 fingerprint {chapter_id,category,policy_code,version_id,command,context_revision,body}; version_id null only save; command distinguishes save/submit/approve/return sharing action codes. Original actor bound server side. Key uniqueness chapter/action/key; changed command/body/target/context conflicts. Recheck original-scope access before authorized identical replay; return original operation/time/root/version and decisions, replayed:true before new-attempt version guards. New attempt checks row, material, authority, context separately; stale has no effect. Never automatic mutation retry/new key while uncertain.",
+    "durable_results": "Both existing chapter lookup selectors extend with PolicyLookupTerminal/Rejected, preserving record/membership/grant results and pending/unavailable. Current original chapter/category read access required, including financial scope; no fabricated CONFIG success record. Additive discriminant is explicit exhaustive-consumer migration; consumers dispatch resource_type. Lost response, HTML, malformed JSON, redirect, pending, unavailable or unknown key remain uncertain; only authorized durable committed/rejected result establishes outcome.",
+    "feedback": "MembershipInvalid/FieldFeedback actual RFC6901 request pointers; no echoed secrets. Keep corrected nonsecret draft separate from immutable sent attempt. On expiry conceal edits, resume only same identity/current scope after context and version review. Switching chapter never retargets attempt. P02 PolicyBlocker owns responsible_duty/policy_code/permitted_next_steps; original closed BlockingReason/NextAction are unchanged. Missing input blocks affected action only; other drafts/setup remain available. No ready_for_live boolean.",
+    "p03_interfaces": [
+      "CONFIG registry: chapter/policy/version scoped immutable MaterialReference, schema identity/version and complete registered-schema validation; no HTTP material writer here",
+      "Approval provider: current duty/authority, exact material binding, append-only decision attribution and approved PolicyReference with interval/supersession serialization",
+      "Durable result provider: atomic original-scope actor/action/key fingerprint, terminal snapshots/rejection, replay/lookup access and queued-output reauthorization"
+    ],
+    "runtime_limits": "Schema validates exact strings/UTC/versions, closed fields and state shapes. Tuple equality, interval order/overlap, approval authority, registered schema completeness, cursor binding/order, material-change invalidation, append-only persistence and transactional replay require P03/backend. Synthetic tests prove no runtime enforcement or human review."
   }
 }

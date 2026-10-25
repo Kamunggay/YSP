@@ -319,6 +319,206 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chapters/{chapter_id}/policies/{category}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * listPolicyRoots
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        get: operations["listPolicyRoots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readPolicyRoot
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        get: operations["readPolicyRoot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * savePolicyDraft
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        post: operations["savePolicyDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * listPolicyVersions
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        get: operations["listPolicyVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readPolicyVersion
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        get: operations["readPolicyVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * approvePolicyVersion
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        post: operations["approvePolicyVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * returnPolicyVersion
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        post: operations["returnPolicyVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * reviewPolicyVersion
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        get: operations["reviewPolicyVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * submitPolicyVersion
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        post: operations["submitPolicyVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/policy-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readPolicyStatus
+         * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
+         */
+        get: operations["readPolicyStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/csrf-cookie": {
         parameters: {
             query?: never;
@@ -656,6 +856,16 @@ export interface components {
             expected_membership_version: components["schemas"]["Version"];
             grant: components["schemas"]["DutyGrantTerms"];
             idempotency_key: components["schemas"]["IdempotencyKey"];
+            reason: string;
+        };
+        ApprovePolicyVersionRequest: {
+            effective_from: components["schemas"]["UtcInstant"];
+            effective_until: components["schemas"]["UtcInstant"] | null;
+            expected_authority_version: components["schemas"]["Version"];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            material: components["schemas"]["PolicyConfigMaterial"];
             reason: string;
         };
         AssistedRecoveryGuidance: {
@@ -1013,6 +1223,8 @@ export interface components {
             /** @constant */
             action_result?: "forbidden";
         };
+        /** @description Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority. */
+        Hash: string;
         /** @description Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types. */
         Id: string;
         /** @description Case-sensitive opaque client key, scoped by server-authorized chapter AND action. No trimming or case folding. Generate once before sending and retain with the original attempt and immutable payload. */
@@ -1044,6 +1256,13 @@ export interface components {
             action_result?: "uncertain";
             /** @constant */
             lookup_state?: "unavailable";
+        };
+        /** @description Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID. */
+        MaterialReference: {
+            chapter_id: components["schemas"]["Id"];
+            material_hash: components["schemas"]["Hash"];
+            material_version: components["schemas"]["Version"];
+            record: components["schemas"]["RecordReference"];
         };
         MembershipAttribution: {
             at: components["schemas"]["UtcInstant"];
@@ -1226,6 +1445,215 @@ export interface components {
         P02Action: "memberships.read" | "memberships.prepare" | "memberships.authorize" | "memberships.revoke" | "duty_grants.read" | "duty_grants.prepare" | "duty_grants.authorize" | "duty_grants.revoke" | "alternates.read" | "alternates.prepare" | "alternates.authorize" | "alternates.revoke" | "memberships.disable" | "policy.status.read" | "policy.operational.read" | "policy.operational.prepare" | "policy.operational.approve" | "policy.financial.read" | "policy.financial.prepare" | "policy.financial.approve" | "identities.reference.read" | "provider.identities.reference.read" | "provider.chapters.prepare" | "provider.chapters.create" | "provider.initial_head.appoint" | "identity.disable";
         /** @enum {string} */
         P02ChapterAction: "memberships.read" | "memberships.prepare" | "memberships.authorize" | "memberships.revoke" | "duty_grants.read" | "duty_grants.prepare" | "duty_grants.authorize" | "duty_grants.revoke" | "alternates.read" | "alternates.prepare" | "alternates.authorize" | "alternates.revoke" | "memberships.disable" | "policy.status.read" | "policy.operational.read" | "policy.operational.prepare" | "policy.operational.approve" | "policy.financial.read" | "policy.financial.prepare" | "policy.financial.approve" | "identities.reference.read";
+        PolicyBlocker: {
+            affected_action: components["schemas"]["ActionCode"];
+            category: components["schemas"]["PolicyCategory"];
+            message: string;
+            permitted_next_steps: ("prepare_permitted_draft" | "request_responsible_duty" | "review_policy_metadata")[];
+            policy_code: components["schemas"]["PolicyCode"];
+            /** @enum {unknown} */
+            responsible_duty: "CHAPTER_HEAD" | "FINANCE";
+            /** @enum {unknown} */
+            state: "missing" | "unsupported" | "unapproved" | "not_yet_effective" | "expired";
+        } & unknown;
+        /** @enum {unknown} */
+        PolicyCategory: "operational" | "financial";
+        PolicyCode: string;
+        PolicyCommittedOperation: {
+            committed_at: components["schemas"]["UtcInstant"];
+            identity: {
+                /** @enum {unknown} */
+                action_code: "policy.operational.prepare" | "policy.operational.approve" | "policy.financial.prepare" | "policy.financial.approve";
+                idempotency_key: components["schemas"]["IdempotencyKey"];
+                operation_id: components["schemas"]["OperationId"];
+            };
+            /** @constant */
+            outcome: "committed";
+            replayed: boolean;
+        };
+        PolicyConfigMaterial: components["schemas"]["MaterialReference"] & {
+            record?: {
+                /** @constant */
+                kind?: "CONFIG";
+            };
+        };
+        PolicyConflict: {
+            /** @enum {unknown} */
+            code: "idempotency_conflict" | "chapter_context_stale" | "authority_stale" | "policy_row_stale" | "policy_material_stale" | "policy_snapshot_stale";
+            message: string;
+            /** @constant */
+            next_action: "review_original_attempt";
+        };
+        PolicyDecision: {
+            actor: components["schemas"]["MembershipAttribution"];
+            authority_version: components["schemas"]["Version"];
+            /** @enum {unknown} */
+            decision: "review" | "approve" | "return";
+            /** @enum {unknown} */
+            duty: "CHAPTER_HEAD" | "FINANCE";
+            duty_grant_id: components["schemas"]["Id"];
+            effective_from: components["schemas"]["UtcInstant"];
+            effective_until: components["schemas"]["UtcInstant"] | null;
+            material: components["schemas"]["PolicyConfigMaterial"];
+            reason: string;
+        };
+        PolicyLookupRejected: {
+            /** @constant */
+            action_result: "blocked";
+            chapter_id: components["schemas"]["Id"];
+            /** @enum {unknown} */
+            code: "policy_missing_material" | "policy_unsupported" | "policy_unapproved" | "policy_state_conflict" | "policy_interval_conflict";
+            message: string;
+            /** @constant */
+            next_action: "review_original_attempt";
+            operation: {
+                committed_at: components["schemas"]["UtcInstant"];
+                identity: {
+                    /** @enum {unknown} */
+                    action_code: "policy.operational.prepare" | "policy.operational.approve" | "policy.financial.prepare" | "policy.financial.approve";
+                    idempotency_key: components["schemas"]["IdempotencyKey"];
+                    operation_id: components["schemas"]["OperationId"];
+                };
+                /** @constant */
+                outcome: "rejected";
+                /** @constant */
+                replayed: true;
+            };
+            /** @constant */
+            resource_type: "policy";
+        };
+        PolicyLookupTerminal: {
+            /** @constant */
+            action_result: "success";
+            chapter_id: components["schemas"]["Id"];
+            operation: {
+                committed_at: components["schemas"]["UtcInstant"];
+                identity: {
+                    /** @enum {unknown} */
+                    action_code: "policy.operational.prepare" | "policy.operational.approve" | "policy.financial.prepare" | "policy.financial.approve";
+                    idempotency_key: components["schemas"]["IdempotencyKey"];
+                    operation_id: components["schemas"]["OperationId"];
+                };
+                /** @constant */
+                outcome: "committed";
+                /** @constant */
+                replayed: true;
+            };
+            /** @constant */
+            resource_type: "policy";
+            root: components["schemas"]["PolicyRoot"];
+            version: components["schemas"]["PolicyVersion"];
+        };
+        PolicyMetadata: {
+            effective_from: components["schemas"]["UtcInstant"] | null;
+            effective_until: components["schemas"]["UtcInstant"] | null;
+            name: string;
+            schema_id: components["schemas"]["PolicySchemaId"];
+            schema_version: components["schemas"]["Version"];
+            supersedes_version_id: components["schemas"]["Id"] | null;
+        };
+        PolicyNotVisible: {
+            /** @constant */
+            code: "policy_not_visible";
+            message: string;
+        };
+        /** @description Server-resolved approved CONFIG version, not a trusted approved flag. Access owns policy validity; P03 owns its CONFIG material snapshot/approval history. Consumer checks current effective interval, approval duties and scoped version at execution. New policy never silently recalculates completed records. */
+        PolicyReference: {
+            approval: components["schemas"]["MaterialReference"];
+            chapter_id: components["schemas"]["Id"];
+            effective_from: components["schemas"]["UtcInstant"];
+            effective_until: components["schemas"]["UtcInstant"] | null;
+            policy_id: components["schemas"]["Id"];
+            policy_version_id: components["schemas"]["Id"];
+            settings_hash: components["schemas"]["Hash"];
+            version_no: components["schemas"]["Version"];
+        };
+        PolicyRejected: {
+            /** @constant */
+            action_result: "blocked";
+            chapter_id: components["schemas"]["Id"];
+            /** @enum {unknown} */
+            code: "policy_missing_material" | "policy_unsupported" | "policy_unapproved" | "policy_state_conflict" | "policy_interval_conflict";
+            message: string;
+            /** @constant */
+            next_action: "review_original_attempt";
+            operation: components["schemas"]["PolicyRejectedOperation"];
+            /** @constant */
+            resource_type: "policy";
+        };
+        PolicyRejectedOperation: {
+            committed_at: components["schemas"]["UtcInstant"];
+            identity: {
+                /** @enum {unknown} */
+                action_code: "policy.operational.prepare" | "policy.operational.approve" | "policy.financial.prepare" | "policy.financial.approve";
+                idempotency_key: components["schemas"]["IdempotencyKey"];
+                operation_id: components["schemas"]["OperationId"];
+            };
+            /** @constant */
+            outcome: "rejected";
+            replayed: boolean;
+        };
+        PolicyRoot: {
+            category: components["schemas"]["PolicyCategory"];
+            chapter_id: components["schemas"]["Id"];
+            created: components["schemas"]["MembershipAttribution"];
+            id: components["schemas"]["Id"];
+            last_changed: components["schemas"]["MembershipAttribution"];
+            latest_version_id: components["schemas"]["Id"] | null;
+            policy_code: components["schemas"]["PolicyCode"];
+            /** @enum {unknown} */
+            responsible_duty: "CHAPTER_HEAD" | "FINANCE";
+            row_version: components["schemas"]["Version"];
+        } & unknown;
+        PolicyRootPage: {
+            items: components["schemas"]["PolicyRoot"][];
+            next_cursor: components["schemas"]["MembershipCursor"] | null;
+        };
+        PolicySchemaId: string;
+        PolicyStatus: {
+            affected_action: components["schemas"]["ActionCode"];
+            blockers: components["schemas"]["PolicyBlocker"][];
+            chapter_id: components["schemas"]["Id"];
+            evaluated_at: components["schemas"]["UtcInstant"];
+        };
+        PolicySuccess: {
+            /** @constant */
+            action_result: "success";
+            chapter_id: components["schemas"]["Id"];
+            operation: components["schemas"]["PolicyCommittedOperation"];
+            /** @constant */
+            resource_type: "policy";
+            root: components["schemas"]["PolicyRoot"];
+            version: components["schemas"]["PolicyVersion"];
+        };
+        PolicyVersion: {
+            approved_policy: components["schemas"]["PolicyReference"] | null;
+            category: components["schemas"]["PolicyCategory"];
+            chapter_id: components["schemas"]["Id"];
+            created: components["schemas"]["MembershipAttribution"];
+            decisions: components["schemas"]["PolicyDecision"][];
+            /** @enum {unknown} */
+            effective_state: "not_approved" | "scheduled" | "current" | "expired" | "superseded";
+            id: components["schemas"]["Id"];
+            last_changed: components["schemas"]["MembershipAttribution"];
+            material: components["schemas"]["PolicyConfigMaterial"] | null;
+            metadata: components["schemas"]["PolicyMetadata"];
+            policy_code: components["schemas"]["PolicyCode"];
+            policy_id: components["schemas"]["Id"];
+            reason: string;
+            /** @enum {unknown} */
+            responsible_duty: "CHAPTER_HEAD" | "FINANCE";
+            /** @enum {unknown} */
+            review_state: "draft" | "submitted" | "reviewed" | "returned" | "approved";
+            row_version: components["schemas"]["Version"];
+            /** @enum {unknown} */
+            schema_support: "missing" | "unsupported" | "registered_reference";
+            version_no: components["schemas"]["Version"];
+        } & (unknown & unknown & unknown);
+        PolicyVersionPage: {
+            items: components["schemas"]["PolicyVersion"][];
+            next_cursor: components["schemas"]["MembershipCursor"] | null;
+        };
         /** @description Nonnegative DECIMAL(20,2) posted PHP magnitude with exactly two fractional places. Unit costs/intermediate valuations may use Quantity's DECIMAL(20,6) precision; they are NOT posted money. Approved Finance rounding/valuation policy governs final amounts and residual cents across batches. This contract chooses no rounding policy; missing required policy blocks posting. Never round through binary float. */
         PostedMoney: {
             amount: string;
@@ -1325,12 +1753,40 @@ export interface components {
             authenticator_code: components["schemas"]["AuthenticatorCode"];
             password: string;
         };
+        ReturnPolicyVersionRequest: {
+            effective_from: components["schemas"]["UtcInstant"];
+            effective_until: components["schemas"]["UtcInstant"] | null;
+            expected_authority_version: components["schemas"]["Version"];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            material: components["schemas"]["PolicyConfigMaterial"];
+            reason: string;
+        };
+        ReviewPolicyVersionRequest: {
+            effective_from: components["schemas"]["UtcInstant"];
+            effective_until: components["schemas"]["UtcInstant"] | null;
+            expected_authority_version: components["schemas"]["Version"];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            material: components["schemas"]["PolicyConfigMaterial"];
+            reason: string;
+        };
         /** @description Immediate revocation at server commit time; never erases the grant or historical attribution, and does not remove membership. */
         RevokeDutyGrantRequest: {
             expected_authority_version: components["schemas"]["Version"];
             expected_grant_version: components["schemas"]["Version"];
             expected_membership_version: components["schemas"]["Version"];
             idempotency_key: components["schemas"]["IdempotencyKey"];
+            reason: string;
+        };
+        SavePolicyDraftRequest: {
+            expected_authority_version: components["schemas"]["Version"];
+            expected_material_version: components["schemas"]["Version"] | null;
+            expected_row_version: components["schemas"]["Version"] | null;
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            metadata: components["schemas"]["PolicyMetadata"];
             reason: string;
         };
         SelectChapterRequest: {
@@ -1416,6 +1872,16 @@ export interface components {
             email: string;
             password: string;
         };
+        SubmitPolicyVersionRequest: {
+            effective_from: components["schemas"]["UtcInstant"];
+            effective_until: components["schemas"]["UtcInstant"] | null;
+            expected_authority_version: components["schemas"]["Version"];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            material: components["schemas"]["PolicyConfigMaterial"];
+            reason: string;
+        };
         /** @description Atomic alternate replacement: path grant is original; target is an existing authorized membership in same chapter belonging to a different immutable individual. New grant keeps duty/scope of original; original ends at new start. No automatic restoration after alternate end; further explicit authorization is required. Both membership/resource guards and duplicate/authority checks apply atomically. */
         SubstituteDutyGrantRequest: {
             expected_authority_version: components["schemas"]["Version"];
@@ -1427,7 +1893,7 @@ export interface components {
             reason: string;
             target_membership_id: components["schemas"]["Id"];
         };
-        /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
+        /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0â€“6 follow DATABASE-SCHEMA Â§2.1/Â§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
         UnitQuantity: {
             quantity_scale: number;
             value: components["schemas"]["Quantity"];
@@ -3103,7 +3569,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LookupTerminal"] | components["schemas"]["LookupPending"] | components["schemas"]["MembershipLookupTerminal"] | components["schemas"]["MembershipLookupRejected"] | components["schemas"]["DutyGrantLookupTerminal"] | components["schemas"]["DutyGrantLookupRejected"];
+                    "application/json": components["schemas"]["LookupTerminal"] | components["schemas"]["LookupPending"] | components["schemas"]["MembershipLookupTerminal"] | components["schemas"]["MembershipLookupRejected"] | components["schemas"]["DutyGrantLookupTerminal"] | components["schemas"]["DutyGrantLookupRejected"] | components["schemas"]["PolicyLookupTerminal"] | components["schemas"]["PolicyLookupRejected"];
                 };
             };
             400: components["responses"]["InvalidLookup"];
@@ -3143,7 +3609,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LookupTerminal"] | components["schemas"]["LookupPending"] | components["schemas"]["MembershipLookupTerminal"] | components["schemas"]["MembershipLookupRejected"] | components["schemas"]["DutyGrantLookupTerminal"] | components["schemas"]["DutyGrantLookupRejected"];
+                    "application/json": components["schemas"]["LookupTerminal"] | components["schemas"]["LookupPending"] | components["schemas"]["MembershipLookupTerminal"] | components["schemas"]["MembershipLookupRejected"] | components["schemas"]["DutyGrantLookupTerminal"] | components["schemas"]["DutyGrantLookupRejected"] | components["schemas"]["PolicyLookupTerminal"] | components["schemas"]["PolicyLookupRejected"];
                 };
             };
             400: components["responses"]["InvalidLookup"];
@@ -3157,6 +3623,1122 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LookupUnavailable"];
+                };
+            };
+        };
+    };
+    listPolicyRoots: {
+        parameters: {
+            query?: {
+                cursor?: components["schemas"]["MembershipCursor"];
+                limit?: number;
+                policy_code?: components["schemas"]["PolicyCode"];
+            };
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+            };
+            path: {
+                category: components["schemas"]["PolicyCategory"];
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyRootPage"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    readPolicyRoot: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+            };
+            path: {
+                category: components["schemas"]["PolicyCategory"];
+                chapter_id: components["schemas"]["Id"];
+                policy_code: components["schemas"]["PolicyCode"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyRoot"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    savePolicyDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                category: components["schemas"]["PolicyCategory"];
+                chapter_id: components["schemas"]["Id"];
+                policy_code: components["schemas"]["PolicyCode"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavePolicyDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicySuccess"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"] | components["schemas"]["PolicyRejected"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    listPolicyVersions: {
+        parameters: {
+            query?: {
+                cursor?: components["schemas"]["MembershipCursor"];
+                effective_state?: "not_approved" | "scheduled" | "current" | "expired" | "superseded";
+                limit?: number;
+                review_state?: "draft" | "submitted" | "reviewed" | "returned" | "approved";
+            };
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+            };
+            path: {
+                category: components["schemas"]["PolicyCategory"];
+                chapter_id: components["schemas"]["Id"];
+                policy_code: components["schemas"]["PolicyCode"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyVersionPage"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    readPolicyVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+            };
+            path: {
+                category: components["schemas"]["PolicyCategory"];
+                chapter_id: components["schemas"]["Id"];
+                policy_code: components["schemas"]["PolicyCode"];
+                version_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyVersion"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    approvePolicyVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                category: components["schemas"]["PolicyCategory"];
+                chapter_id: components["schemas"]["Id"];
+                policy_code: components["schemas"]["PolicyCode"];
+                version_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovePolicyVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicySuccess"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"] | components["schemas"]["PolicyRejected"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    returnPolicyVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                category: components["schemas"]["PolicyCategory"];
+                chapter_id: components["schemas"]["Id"];
+                policy_code: components["schemas"]["PolicyCode"];
+                version_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnPolicyVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicySuccess"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"] | components["schemas"]["PolicyRejected"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    reviewPolicyVersion: {
+        parameters: {
+            query: {
+                expected_material_version: components["schemas"]["Version"];
+                material_hash: components["schemas"]["Hash"];
+            };
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+            };
+            path: {
+                category: components["schemas"]["PolicyCategory"];
+                chapter_id: components["schemas"]["Id"];
+                policy_code: components["schemas"]["PolicyCode"];
+                version_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyVersion"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    submitPolicyVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                category: components["schemas"]["PolicyCategory"];
+                chapter_id: components["schemas"]["Id"];
+                policy_code: components["schemas"]["PolicyCode"];
+                version_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitPolicyVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicySuccess"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"] | components["schemas"]["PolicyRejected"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    readPolicyStatus: {
+        parameters: {
+            query: {
+                affected_action: components["schemas"]["ActionCode"];
+            };
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyStatus"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyNotVisible"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyConflict"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
                 };
             };
         };

@@ -1,5 +1,5 @@
 {
-  "revision": "p02.05-review.1",
+  "revision": "p02.08-review.1",
   "duties": [
     "COMMITTEE_REQUESTER",
     "RF_APPROVER",
@@ -143,8 +143,20 @@
       "action": "policy.status.read",
       "category": "safe_read",
       "chapter_duties": [
-        "CHAPTER_HEAD",
-        "FINANCE"
+        "COMMITTEE_REQUESTER",
+        "RF_APPROVER",
+        "SALES_OFFICER",
+        "SALES_REVIEWER",
+        "FINANCE",
+        "INVENTORY",
+        "PURCHASING",
+        "BUDGET_APPROVER",
+        "RECEIVING",
+        "DISPATCH",
+        "BOOTH_CUSTODIAN",
+        "BOOTH_CASHIER",
+        "INDEPENDENT_REVIEWER",
+        "CHAPTER_HEAD"
       ],
       "provider_authorities": [],
       "enabled_boundary": true

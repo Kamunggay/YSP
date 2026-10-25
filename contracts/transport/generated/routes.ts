@@ -111,5 +111,45 @@ export const routes = {
   "substituteDutyGrant": {
     "method": "POST",
     "path": "/api/v1/chapters/{chapter_id}/duty-grants/{grant_id}/substitute"
+  },
+  "readPolicyStatus": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/policy-status"
+  },
+  "listPolicyRoots": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/policies/{category}"
+  },
+  "readPolicyRoot": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}"
+  },
+  "listPolicyVersions": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/versions"
+  },
+  "readPolicyVersion": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}"
+  },
+  "savePolicyDraft": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/draft"
+  },
+  "submitPolicyVersion": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/submit"
+  },
+  "reviewPolicyVersion": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review"
+  },
+  "approvePolicyVersion": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/approve"
+  },
+  "returnPolicyVersion": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/return"
   }
 } as const;

@@ -1,0 +1,467 @@
+[
+  {
+    "id": "authorized-metadata",
+    "verification": "declarative_server_review",
+    "precondition": "A current Chapter Head has operational preparation authority.",
+    "exchanges": [
+      "save-absent-root",
+      "savePolicyDraft-success"
+    ],
+    "obligation": "Only the listed metadata is saved, no material or approval is invented. Other authorized drafts remain available.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "complete-review",
+    "verification": "declarative_server_review",
+    "precondition": "P03 supplies a complete immutable CONFIG under a registered owning-domain schema; the reviewer has category read authority.",
+    "exchanges": [
+      "reviewPolicyVersion-success"
+    ],
+    "obligation": "Present exact material/version/hash and schema identity, omitting settings; verify supplied material query pin. Review GET has no durable side effect.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "unsupported-domain",
+    "verification": "declarative_server_review",
+    "precondition": "An owning domain has not supplied a constrained schema.",
+    "exchanges": [
+      "status-unsupported",
+      "save-settings-rejected",
+      "approve-policy_unsupported"
+    ],
+    "obligation": "Reject arbitrary/empty settings and settings approval; metadata/status remain available. No registered-reference attestation may be fabricated.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "financial-ownership",
+    "verification": "declarative_server_review",
+    "precondition": "Finance has financial read/approval; Head alone has only operational authority.",
+    "exchanges": [
+      "approve-financial",
+      "approvePolicyVersion-403"
+    ],
+    "obligation": "Use financial FINANCE decision; Head cannot approve/read financial details solely through Head authority, nor Finance operational through Finance authority.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "approved-material",
+    "verification": "declarative_server_review",
+    "precondition": "The exact reviewed CONFIG and schema are complete, with currently eligible authority.",
+    "exchanges": [
+      "approvePolicyVersion-success"
+    ],
+    "obligation": "Bind material/hash, reason, effective interval and current grant/authority. Settings hash is server-resolved, never trusted from draft metadata.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "effective-now-versus-future",
+    "verification": "declarative_server_review",
+    "precondition": "Two independent synthetic interval fixtures are evaluated at their server instants.",
+    "exchanges": [
+      "approve-current",
+      "approvePolicyVersion-success",
+      "status-approved-future",
+      "status-ready-for-requested-action"
+    ],
+    "obligation": "Future approved policy cannot satisfy current affected action. Current policy satisfies only that action and grants no global live readiness. Already-approved interval is never edited/backdated by ordinary save.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "missing-policy",
+    "verification": "declarative_server_review",
+    "precondition": "No approved material satisfies the requested action.",
+    "exchanges": [
+      "readPolicyStatus-success",
+      "approve-policy_missing_material",
+      "approve-policy_unapproved"
+    ],
+    "obligation": "Block only affected action; expose safe responsible duty and permitted drafts without an override.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "material-change",
+    "verification": "declarative_server_review",
+    "precondition": "An approved version exists; P03 creates a new material snapshot.",
+    "exchanges": [
+      "approvePolicyVersion-success",
+      "material-change-reapproval"
+    ],
+    "obligation": "Invalidate affected approval on changed material; retain historical decision bound to material3. New material4 needs fresh submit/review/approval. Existing issued/completed transaction pins remain unchanged.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "row-versus-material",
+    "verification": "declarative_server_review",
+    "precondition": "A fresh attempt sees conflicting row or material guards independently.",
+    "exchanges": [
+      "approvePolicyVersion-409",
+      "approvePolicyVersion-policy_material_stale",
+      "approvePolicyVersion-authority_stale",
+      "approvePolicyVersion-chapter_context_stale"
+    ],
+    "obligation": "Distinct 409; no mutation or replacement version leakage. Refresh authorized original-scope state before a new reviewed attempt.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "denial-redaction",
+    "verification": "declarative_server_review",
+    "precondition": "Requester can read safe relevant blockers, but has no financial read authority.",
+    "exchanges": [
+      "requester-redacted",
+      "readPolicyVersion-403",
+      "readPolicyVersion-404"
+    ],
+    "obligation": "Only affected-action metadata and allowed next step; no financial values, reasons, actor, IDs/hash or hidden target existence.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "field-correction",
+    "verification": "declarative_server_review",
+    "precondition": "A draft save omits reason or sends unsupported settings.",
+    "exchanges": [
+      "savePolicyDraft-422",
+      "save-settings-rejected",
+      "savePolicyDraft-success"
+    ],
+    "obligation": "Feedback points at /reason or /settings. Retain nonsecret corrected draft separate from frozen sent attempt; resume requires same identity, current authority/context and reviewed versions.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "immutable-replay",
+    "verification": "declarative_server_review",
+    "precondition": "The actor remains authorized in the original scope after a lost reply.",
+    "exchanges": [
+      "approvePolicyVersion-success",
+      "approvePolicyVersion-replay",
+      "approvePolicyVersion-idempotency_conflict",
+      "lookupOperationByKey-policy",
+      "lookupOperationById-policy-rejected"
+    ],
+    "obligation": "Identical authorized replay returns original operation/time/snapshots before new-attempt stale checks. Changed target/body/command/context with same chapter/action/key conflicts. Never retarget on chapter switch.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "uncertain-attempt",
+    "verification": "declarative_server_review",
+    "precondition": "A reply is lost or result lookup is pending/unavailable.",
+    "exchanges": [
+      "approvePolicyVersion-503",
+      "lookupOperationByKey-policy-pending",
+      "lookupOperationById-policy-unavailable"
+    ],
+    "obligation": "Unknown/lost HTML/malformed/redirect and pending/unavailable never prove rejection; keep original chapter/action/key, offer original-scope lookup after reauthentication, no automatic unsafe retry or new key.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "return-history",
+    "verification": "declarative_server_review",
+    "precondition": "An appropriate reviewer returns submitted exact material with a reason.",
+    "exchanges": [
+      "returnPolicyVersion-success",
+      "submitPolicyVersion-success"
+    ],
+    "obligation": "Append return decision and retain original material/history. Correction creates new material and invalidates affected approval; return grants no permission to change approved values.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "cursor-snapshot",
+    "verification": "declarative_server_review",
+    "precondition": "An authorized list has a scoped immutable snapshot.",
+    "exchanges": [
+      "listPolicyRoots-page",
+      "listPolicyVersions-page",
+      "listPolicyRoots-empty",
+      "listPolicyVersions-empty",
+      "listPolicyRoots-400"
+    ],
+    "obligation": "Bind category/parent/filter/limit/snapshot/actor; deterministic numeric order. Null ends; snapshot change must conflict, no silent restart.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "SEC-03",
+      "DOC-11",
+      "TR-12"
+    ],
+    "limitations": "Synthetic contract evidence only. P03 persistence, registry validation, authorization, concurrency, interval comparison, cursor binding and effect enforcement remain future backend obligations; human review is not asserted."
+  },
+  {
+    "id": "interval-order",
+    "operationId": "approvePolicyVersion",
+    "verification": "declarative_server_review",
+    "precondition": "Request is structurally valid but current server facts reject it.",
+    "schema_valid_request": {
+      "idempotency_key": "policy-attempt-approvePolicyVersion",
+      "expected_authority_version": 9,
+      "expected_row_version": 4,
+      "expected_material_version": 3,
+      "reason": "Synthetic reviewed policy interface",
+      "material": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254741010",
+          "kind": "CONFIG"
+        },
+        "material_version": 3,
+        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "effective_from": "2026-10-26T00:00:00.000000Z",
+      "effective_until": "2026-10-25T00:00:00.000000Z"
+    },
+    "expected_server_response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "policy",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "policy.operational.approve",
+            "idempotency_key": "policy-approve-policy_interval_conflict"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "policy_interval_conflict",
+        "message": "Policy cannot accept this action.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "exchanges": [
+      "approve-policy_interval_conflict"
+    ],
+    "obligation": "Reject under current authority, registered-schema and material/interval guards without mutation.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "TR-06",
+      "TR-12"
+    ],
+    "limitations": "JSON Schema cannot establish this cross-value/server-state predicate; requires future P03/backend integration test."
+  },
+  {
+    "id": "stale-material-tuple",
+    "operationId": "approvePolicyVersion",
+    "verification": "declarative_server_review",
+    "precondition": "Request is structurally valid but current server facts reject it.",
+    "schema_valid_request": {
+      "idempotency_key": "policy-attempt-approvePolicyVersion",
+      "expected_authority_version": 9,
+      "expected_row_version": 4,
+      "expected_material_version": 3,
+      "reason": "Synthetic reviewed policy interface",
+      "material": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254741010",
+          "kind": "CONFIG"
+        },
+        "material_version": 4,
+        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "effective_from": "2026-10-26T00:00:00.000000Z",
+      "effective_until": null
+    },
+    "expected_server_response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "policy_material_stale",
+        "message": "Review the original attempt and current authorized versions.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "exchanges": [
+      "approvePolicyVersion-policy_material_stale"
+    ],
+    "obligation": "Reject under current authority, registered-schema and material/interval guards without mutation.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "TR-06",
+      "TR-12"
+    ],
+    "limitations": "JSON Schema cannot establish this cross-value/server-state predicate; requires future P03/backend integration test."
+  },
+  {
+    "id": "unregistered-schema",
+    "operationId": "approvePolicyVersion",
+    "verification": "declarative_server_review",
+    "precondition": "Request is structurally valid but current server facts reject it.",
+    "schema_valid_request": {
+      "idempotency_key": "policy-attempt-approvePolicyVersion",
+      "expected_authority_version": 9,
+      "expected_row_version": 4,
+      "expected_material_version": 3,
+      "reason": "Synthetic reviewed policy interface",
+      "material": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254741010",
+          "kind": "CONFIG"
+        },
+        "material_version": 3,
+        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "effective_from": "2026-10-26T00:00:00.000000Z",
+      "effective_until": null
+    },
+    "expected_server_response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "policy",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "policy.operational.approve",
+            "idempotency_key": "policy-approve-policy_unsupported"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "policy_unsupported",
+        "message": "Policy cannot accept this action.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "exchanges": [
+      "approve-policy_unsupported"
+    ],
+    "obligation": "Reject under current authority, registered-schema and material/interval guards without mutation.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-08",
+      "TR-06",
+      "TR-12"
+    ],
+    "limitations": "JSON Schema cannot establish this cross-value/server-state predicate; requires future P03/backend integration test."
+  }
+]
