@@ -14,6 +14,9 @@ RUN npx --no-install playwright install --with-deps chromium \
     && chmod -R a+rX /opt/playwright
 COPY contracts /workspace/contracts
 COPY --chown=node:node frontend /workspace/frontend
+# Check the validation consumer against the application's compiler as well as the
+# generator-compatible compiler pinned in contracts/transport.
+RUN node node_modules/typescript/bin/tsc -p ../contracts/transport/consumer/tsconfig.json
 RUN chown -R node:node /workspace/frontend
 USER node
 CMD ["npm", "run", "test:browser"]

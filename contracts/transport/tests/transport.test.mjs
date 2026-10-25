@@ -88,7 +88,10 @@ test('TR-03: OpenAPI and every reusable definition compile, including HTTP looku
       }
     }
   }
-  const exchanges = await readJson('../v1/operation-examples.json');
+  const exchanges = [
+    ...await readJson('../v1/operation-examples.json'),
+    ...await readJson('../v1/session-exchanges.json'),
+  ];
   assert.equal(new Set(exchanges.map(e => e.name)).size, exchanges.length, 'unique exchange names');
   for (const example of exchanges) validateExchange(api, operationAjv, example);
   for (const [path, item] of Object.entries(api.paths)) {

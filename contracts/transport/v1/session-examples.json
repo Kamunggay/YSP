@@ -1,0 +1,287 @@
+{
+  "bootstrap-signed-out": {
+    "summary": "bootstrap-signed-out",
+    "value": {
+      "state": "signed_out"
+    }
+  },
+  "bootstrap-expired": {
+    "summary": "bootstrap-expired",
+    "value": {
+      "state": "signed_out"
+    }
+  },
+  "bootstrap-revoked": {
+    "summary": "bootstrap-revoked",
+    "value": {
+      "state": "signed_out"
+    }
+  },
+  "bootstrap-disabled": {
+    "summary": "bootstrap-disabled",
+    "value": {
+      "state": "signed_out"
+    }
+  },
+  "bootstrap-enrollment": {
+    "summary": "bootstrap-enrollment",
+    "value": {
+      "state": "mfa_enrollment_required"
+    }
+  },
+  "bootstrap-challenge": {
+    "summary": "bootstrap-challenge",
+    "value": {
+      "state": "mfa_challenge_required"
+    }
+  },
+  "bootstrap-requester": {
+    "summary": "bootstrap-requester",
+    "value": {
+      "state": "authenticated",
+      "user": {
+        "id": "9007199254740993",
+        "display_name": "Synthetic requester"
+      },
+      "mfa": {
+        "status": "not_required"
+      },
+      "provider_destinations": []
+    }
+  },
+  "bootstrap-approver": {
+    "summary": "bootstrap-approver",
+    "value": {
+      "state": "authenticated",
+      "user": {
+        "id": "9007199254740994",
+        "display_name": "Synthetic approver"
+      },
+      "mfa": {
+        "status": "verified",
+        "verified_at": "2026-10-25T06:00:00.000000Z"
+      },
+      "provider_destinations": []
+    }
+  },
+  "bootstrap-provider-only": {
+    "summary": "bootstrap-provider-only",
+    "value": {
+      "state": "authenticated",
+      "user": {
+        "id": "9007199254740995",
+        "display_name": "Synthetic provider"
+      },
+      "mfa": {
+        "status": "verified",
+        "verified_at": "2026-10-25T06:00:00.000000Z"
+      },
+      "provider_destinations": [
+        {
+          "kind": "chapter_provisioning",
+          "scope": {
+            "kind": "organization",
+            "organization_id": "1"
+          }
+        }
+      ]
+    }
+  },
+  "sign-in-enrollment": {
+    "summary": "sign-in-enrollment",
+    "value": {
+      "state": "mfa_enrollment_required"
+    }
+  },
+  "sign-in-challenge": {
+    "summary": "sign-in-challenge",
+    "value": {
+      "state": "mfa_challenge_required"
+    }
+  },
+  "sign-in-requester": {
+    "summary": "sign-in-requester",
+    "value": {
+      "state": "authenticated",
+      "user": {
+        "id": "9007199254740993",
+        "display_name": "Synthetic requester"
+      },
+      "mfa": {
+        "status": "not_required"
+      },
+      "provider_destinations": []
+    }
+  },
+  "sign-in-approver": {
+    "summary": "sign-in-approver",
+    "value": {
+      "state": "authenticated",
+      "user": {
+        "id": "9007199254740994",
+        "display_name": "Synthetic approver"
+      },
+      "mfa": {
+        "status": "verified",
+        "verified_at": "2026-10-25T06:00:00.000000Z"
+      },
+      "provider_destinations": []
+    }
+  },
+  "sign-in-provider-only": {
+    "summary": "sign-in-provider-only",
+    "value": {
+      "state": "authenticated",
+      "user": {
+        "id": "9007199254740995",
+        "display_name": "Synthetic provider"
+      },
+      "mfa": {
+        "status": "verified",
+        "verified_at": "2026-10-25T06:00:00.000000Z"
+      },
+      "provider_destinations": [
+        {
+          "kind": "chapter_provisioning",
+          "scope": {
+            "kind": "organization",
+            "organization_id": "1"
+          }
+        }
+      ]
+    }
+  },
+  "sign-in-wrong-password": {
+    "summary": "sign-in-wrong-password",
+    "value": {
+      "code": "invalid_credentials",
+      "message": "Unable to sign in."
+    }
+  },
+  "sign-in-unknown-email": {
+    "summary": "sign-in-unknown-email",
+    "value": {
+      "code": "invalid_credentials",
+      "message": "Unable to sign in."
+    }
+  },
+  "sign-in-disabled-identity": {
+    "summary": "sign-in-disabled-identity",
+    "value": {
+      "code": "invalid_credentials",
+      "message": "Unable to sign in."
+    }
+  },
+  "sign-in-fields": {
+    "summary": "sign-in-fields",
+    "value": {
+      "code": "invalid_input",
+      "message": "Check the submitted fields.",
+      "field_errors": [
+        {
+          "pointer": "/email",
+          "code": "invalid",
+          "message": "Check this field."
+        }
+      ]
+    }
+  },
+  "getSession-403": {
+    "summary": "getSession-403",
+    "value": {
+      "code": "origin_forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "getSession-429": {
+    "summary": "getSession-429",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "getSession-503": {
+    "summary": "getSession-503",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "signIn-403": {
+    "summary": "signIn-403",
+    "value": {
+      "code": "origin_forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "signIn-419": {
+    "summary": "signIn-419",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "signIn-429": {
+    "summary": "signIn-429",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "signIn-503": {
+    "summary": "signIn-503",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "signOut-403": {
+    "summary": "signOut-403",
+    "value": {
+      "code": "origin_forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "signOut-419": {
+    "summary": "signOut-419",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "signOut-429": {
+    "summary": "signOut-429",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "signOut-503": {
+    "summary": "signOut-503",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "initializeCsrf-403": {
+    "summary": "initializeCsrf-403",
+    "value": {
+      "code": "origin_forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "initializeCsrf-429": {
+    "summary": "initializeCsrf-429",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "initializeCsrf-503": {
+    "summary": "initializeCsrf-503",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  }
+}

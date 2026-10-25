@@ -74,8 +74,14 @@ export function validateExchange(api, ajv, exchange) {
       if (Object.hasOwn(values, p.name)) checkValue(ajv, p.schema, values[p.name], `${location} ${p.name}`);
     }
   }
-  checkBody(ajv, operation.requestBody, exchange.request, 'request');
   const status = exchange.response.status;
+  if (operation['x-invalid-request-statuses']?.includes(status)) {
+    // An operation-linked validation rejection must actually contain invalid input.
+    assert.equal(exchange.request.mediaType, 'application/json', 'invalid request media type');
+    assert.ok(Object.hasOwn(exchange.request, 'body'), 'invalid request body missing');
+    assert.throws(() => checkBody(ajv, operation.requestBody, exchange.request, 'request'),
+      'validation rejection requires invalid request input');
+  } else checkBody(ajv, operation.requestBody, exchange.request, 'request');
   assert.ok(Number.isInteger(status) && status >= 100 && status <= 599, 'invalid response status');
   const response = operation.responses[status] ?? operation.responses[`${Math.floor(status / 100)}XX`] ?? operation.responses.default;
   assert.ok(response, `undocumented response status ${status}`);
