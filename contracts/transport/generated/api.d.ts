@@ -1,4 +1,164 @@
 export interface paths {
+    "/chapters/{chapter_id}/duty-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * listDutyGrants
+         * @description Chapter Head only. See x-duty-grant-contract for scope, visibility, limits, effective history, version guards and original-scope results.
+         */
+        get: operations["listDutyGrants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/duty-grants/{grant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readDutyGrant
+         * @description Chapter Head only. See x-duty-grant-contract for scope, visibility, limits, effective history, version guards and original-scope results.
+         */
+        get: operations["readDutyGrant"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/duty-grants/{grant_id}/amend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * amendDutyGrant
+         * @description Chapter Head only. See x-duty-grant-contract for scope, visibility, limits, effective history, version guards and original-scope results.
+         */
+        post: operations["amendDutyGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/duty-grants/{grant_id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * endDutyGrant
+         * @description Chapter Head only. See x-duty-grant-contract for scope, visibility, limits, effective history, version guards and original-scope results.
+         */
+        post: operations["endDutyGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/duty-grants/{grant_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * revokeDutyGrant
+         * @description Chapter Head only. See x-duty-grant-contract for scope, visibility, limits, effective history, version guards and original-scope results.
+         */
+        post: operations["revokeDutyGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/duty-grants/{grant_id}/substitute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * substituteDutyGrant
+         * @description Chapter Head only. See x-duty-grant-contract for scope, visibility, limits, effective history, version guards and original-scope results.
+         */
+        post: operations["substituteDutyGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/duty-grants/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * authorizeDutyGrant
+         * @description Chapter Head only. See x-duty-grant-contract for scope, visibility, limits, effective history, version guards and original-scope results.
+         */
+        post: operations["authorizeDutyGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/duty-grants/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readDutyCatalogue
+         * @description Chapter Head only. See x-duty-grant-contract for scope, visibility, limits, effective history, version guards and original-scope results.
+         */
+        get: operations["readDutyCatalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chapters/{chapter_id}/memberships": {
         parameters: {
             query?: never;
@@ -424,6 +584,29 @@ export interface components {
             /** @constant */
             schema_version: "1.0";
         } & (unknown & unknown & unknown & unknown & unknown);
+        /** @description Canonical read/list/result projection; expands existing internal DutyGrant concepts without changing that Stage 0 projection. identity is immutable individual, not a duty persona. authorized retains original grant actor/time; last_changed is latest event. Opaque history reference retains all previous snapshots, reasons, actors and effectivity; not an unguarded history URL. Membership versions describe the resulting/observed target membership, independently of grant row version. */
+        AdminDutyGrant: {
+            authority_version: components["schemas"]["Version"];
+            authorized: components["schemas"]["MembershipAttribution"];
+            chapter_id: components["schemas"]["Id"];
+            duty_code: components["schemas"]["ChapterDuty"];
+            ends_at: components["schemas"]["UtcInstant"] | null;
+            history_reference: string;
+            id: components["schemas"]["Id"];
+            identity: components["schemas"]["ExistingIdentityReference"];
+            is_alternate: boolean;
+            last_changed: components["schemas"]["MembershipAttribution"];
+            membership_id: components["schemas"]["Id"];
+            membership_version: components["schemas"]["Version"];
+            monetary_limit: components["schemas"]["PostedMoney"] | null;
+            replaces_grant_id: components["schemas"]["Id"] | null;
+            requesting_unit_id: components["schemas"]["Id"] | null;
+            revoked_at: components["schemas"]["UtcInstant"] | null;
+            /** @enum {unknown} */
+            scope_kind: "chapter" | "unit";
+            starts_at: components["schemas"]["UtcInstant"];
+            version: components["schemas"]["Version"];
+        } & (unknown & unknown);
         /** @description One closed projection for scoped read, list and mutation result. Stable membership identity survives disable/revoke and reauthorization; history_reference is opaque and is not an unguarded audit endpoint. Current epoch authorization plus retained historical attribution. version is resource concurrency; authority_version is target membership authority revision. */
         AdminMembership: {
             authority_version: components["schemas"]["Version"];
@@ -466,6 +649,15 @@ export interface components {
             items: components["schemas"]["AdminMembership"][];
             next_cursor: components["schemas"]["MembershipCursor"] | null;
         };
+        /** @description Amends future/current effectivity and limit under explicit Chapter Head authority; cannot rewrite past effective history or change membership, duty or scope. Server checks unchanged duty/scope and independent approved limit authority; use a distinct authorize/end operation when changing duty or scope. */
+        AmendDutyGrantRequest: {
+            expected_authority_version: components["schemas"]["Version"];
+            expected_grant_version: components["schemas"]["Version"];
+            expected_membership_version: components["schemas"]["Version"];
+            grant: components["schemas"]["DutyGrantTerms"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            reason: string;
+        };
         AssistedRecoveryGuidance: {
             /** @constant */
             availability: "unavailable";
@@ -485,6 +677,15 @@ export interface components {
         };
         /** @description Transient authenticator proof, never a recovery code or browser draft. */
         AuthenticatorCode: string;
+        AuthorizeDutyGrantRequest: {
+            expected_authority_version: components["schemas"]["Version"];
+            expected_grant_version: null;
+            expected_membership_version: components["schemas"]["Version"];
+            grant: components["schemas"]["DutyGrantTerms"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            membership_id: components["schemas"]["Id"];
+            reason: string;
+        };
         /** @description expected_membership_version is required: null asserts no membership ever existed; otherwise exact retained membership version. Reauthorization updates the stable existing membership, never inserts a second identity/chapter association. No duties are implicitly granted. */
         AuthorizeMembershipRequest: {
             expected_authority_version: components["schemas"]["Version"];
@@ -631,6 +832,141 @@ export interface components {
         ConfirmEnrollmentRequest: {
             authenticator_code: components["schemas"]["AuthenticatorCode"];
             enrollment_id: components["schemas"]["EnrollmentId"];
+        };
+        DutyCatalogue: {
+            items: {
+                duty_code: components["schemas"]["ChapterDuty"];
+            }[];
+        };
+        DutyGrantCommittedOperation: {
+            committed_at: components["schemas"]["UtcInstant"];
+            identity: {
+                /** @enum {unknown} */
+                action_code: "duty_grants.authorize" | "duty_grants.prepare" | "duty_grants.revoke" | "alternates.authorize";
+                idempotency_key: components["schemas"]["IdempotencyKey"];
+                operation_id: components["schemas"]["OperationId"];
+            };
+            /** @constant */
+            outcome: "committed";
+            replayed: boolean;
+        };
+        DutyGrantConflict: {
+            /** @enum {unknown} */
+            code: "idempotency_conflict" | "chapter_context_stale" | "authority_stale" | "membership_stale" | "grant_stale";
+            message: string;
+            /** @constant */
+            next_action: "review_original_attempt";
+        };
+        DutyGrantInvalid: components["schemas"]["MembershipInvalid"];
+        DutyGrantLookupRejected: {
+            /** @constant */
+            action_result: "blocked";
+            chapter_id: components["schemas"]["Id"];
+            /** @constant */
+            code: "duty_grant_state_conflict";
+            message: string;
+            /** @constant */
+            next_action: "review_original_attempt";
+            operation: {
+                committed_at: components["schemas"]["UtcInstant"];
+                identity: {
+                    /** @enum {unknown} */
+                    action_code: "duty_grants.authorize" | "duty_grants.prepare" | "duty_grants.revoke" | "alternates.authorize";
+                    idempotency_key: components["schemas"]["IdempotencyKey"];
+                    operation_id: components["schemas"]["OperationId"];
+                };
+                /** @constant */
+                outcome: "rejected";
+                /** @constant */
+                replayed: true;
+            };
+            /** @constant */
+            resource_type: "duty_grant";
+        };
+        DutyGrantLookupTerminal: {
+            /** @constant */
+            action_result: "success";
+            chapter_id: components["schemas"]["Id"];
+            grant: components["schemas"]["AdminDutyGrant"];
+            operation: {
+                committed_at: components["schemas"]["UtcInstant"];
+                identity: {
+                    /** @enum {unknown} */
+                    action_code: "duty_grants.authorize" | "duty_grants.prepare" | "duty_grants.revoke" | "alternates.authorize";
+                    idempotency_key: components["schemas"]["IdempotencyKey"];
+                    operation_id: components["schemas"]["OperationId"];
+                };
+                /** @constant */
+                outcome: "committed";
+                /** @constant */
+                replayed: true;
+            };
+            replaced_grant: components["schemas"]["AdminDutyGrant"] | null;
+            /** @constant */
+            resource_type: "duty_grant";
+        } & unknown;
+        DutyGrantNotVisible: {
+            /** @constant */
+            code: "duty_grant_not_visible";
+            message: string;
+        };
+        DutyGrantPage: {
+            items: components["schemas"]["AdminDutyGrant"][];
+            next_cursor: components["schemas"]["MembershipCursor"] | null;
+        };
+        DutyGrantRejected: {
+            /** @constant */
+            action_result: "blocked";
+            chapter_id: components["schemas"]["Id"];
+            /** @constant */
+            code: "duty_grant_state_conflict";
+            message: string;
+            /** @constant */
+            next_action: "review_original_attempt";
+            operation: components["schemas"]["DutyGrantRejectedOperation"];
+            /** @constant */
+            resource_type: "duty_grant";
+        };
+        DutyGrantRejectedOperation: {
+            committed_at: components["schemas"]["UtcInstant"];
+            identity: {
+                /** @enum {unknown} */
+                action_code: "duty_grants.authorize" | "duty_grants.prepare" | "duty_grants.revoke" | "alternates.authorize";
+                idempotency_key: components["schemas"]["IdempotencyKey"];
+                operation_id: components["schemas"]["OperationId"];
+            };
+            /** @constant */
+            outcome: "rejected";
+            replayed: boolean;
+        };
+        DutyGrantSuccess: {
+            /** @constant */
+            action_result: "success";
+            chapter_id: components["schemas"]["Id"];
+            grant: components["schemas"]["AdminDutyGrant"];
+            operation: components["schemas"]["DutyGrantCommittedOperation"];
+            replaced_grant: components["schemas"]["AdminDutyGrant"] | null;
+            /** @constant */
+            resource_type: "duty_grant";
+        } & unknown;
+        /** @description Inclusive starts_at, exclusive ends_at; null end is open. Server requires end > start. PHP limit is maximum per applicable protected action, never aggregate spending permission. null means no monetary authority from this grant (not unlimited); zero explicitly permits only zero monetary value. Nonmonetary actions may remain allowed. Applicable approved policy and action-specific limits can further restrict, never silently widen. Actual officer limits are not approved by synthetic fixtures. */
+        DutyGrantTerms: {
+            duty_code: components["schemas"]["ChapterDuty"];
+            ends_at: components["schemas"]["UtcInstant"] | null;
+            monetary_limit: components["schemas"]["PostedMoney"] | null;
+            requesting_unit_id: components["schemas"]["Id"] | null;
+            /** @enum {unknown} */
+            scope_kind: "chapter" | "unit";
+            starts_at: components["schemas"]["UtcInstant"];
+        } & unknown;
+        /** @description Schedule an exclusive end strictly after start and no earlier than commit; cannot extend an existing end. Earlier changes use revoke now, never backdate history. */
+        EndDutyGrantRequest: {
+            ends_at: components["schemas"]["UtcInstant"];
+            expected_authority_version: components["schemas"]["Version"];
+            expected_grant_version: components["schemas"]["Version"];
+            expected_membership_version: components["schemas"]["Version"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            reason: string;
         };
         EndMembershipRequest: {
             expected_authority_version: components["schemas"]["Version"];
@@ -989,6 +1325,14 @@ export interface components {
             authenticator_code: components["schemas"]["AuthenticatorCode"];
             password: string;
         };
+        /** @description Immediate revocation at server commit time; never erases the grant or historical attribution, and does not remove membership. */
+        RevokeDutyGrantRequest: {
+            expected_authority_version: components["schemas"]["Version"];
+            expected_grant_version: components["schemas"]["Version"];
+            expected_membership_version: components["schemas"]["Version"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            reason: string;
+        };
         SelectChapterRequest: {
             chapter_id: components["schemas"]["Id"];
             expected_membership_version: components["schemas"]["Version"];
@@ -1071,6 +1415,17 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
+        };
+        /** @description Atomic alternate replacement: path grant is original; target is an existing authorized membership in same chapter belonging to a different immutable individual. New grant keeps duty/scope of original; original ends at new start. No automatic restoration after alternate end; further explicit authorization is required. Both membership/resource guards and duplicate/authority checks apply atomically. */
+        SubstituteDutyGrantRequest: {
+            expected_authority_version: components["schemas"]["Version"];
+            expected_grant_version: components["schemas"]["Version"];
+            expected_membership_version: components["schemas"]["Version"];
+            expected_target_membership_version: components["schemas"]["Version"];
+            grant: components["schemas"]["DutyGrantTerms"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            reason: string;
+            target_membership_id: components["schemas"]["Id"];
         };
         /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
         UnitQuantity: {
@@ -1170,6 +1525,918 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listDutyGrants: {
+        parameters: {
+            query?: {
+                cursor?: components["schemas"]["MembershipCursor"];
+                duty_code?: components["schemas"]["ChapterDuty"];
+                limit?: number;
+                membership_id?: components["schemas"]["Id"];
+                requesting_unit_id?: components["schemas"]["Id"];
+                scope_kind?: "chapter" | "unit";
+                status?: "effective" | "scheduled" | "ended" | "revoked";
+            };
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized scoped result; mutation success requires durable committed operation. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantPage"];
+                };
+            };
+            /** @description Invalid selectors/headers. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Unknown, cross-chapter or nonvisible target/reference, indistinguishable. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantNotVisible"];
+                };
+            };
+            /** @description Distinct stale context/authority/membership/grant or immutable-payload conflict; durable rejection only for mutation. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantConflict"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    readDutyGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                grant_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized scoped result; mutation success requires durable committed operation. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDutyGrant"];
+                };
+            };
+            /** @description Invalid selectors/headers. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Unknown, cross-chapter or nonvisible target/reference, indistinguishable. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantNotVisible"];
+                };
+            };
+            /** @description Distinct stale context/authority/membership/grant or immutable-payload conflict; durable rejection only for mutation. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantConflict"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    amendDutyGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                grant_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AmendDutyGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized scoped result; mutation success requires durable committed operation. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantSuccess"];
+                };
+            };
+            /** @description Invalid selectors/headers. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Unknown, cross-chapter or nonvisible target/reference, indistinguishable. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantNotVisible"];
+                };
+            };
+            /** @description Distinct stale context/authority/membership/grant or immutable-payload conflict; durable rejection only for mutation. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantConflict"] | components["schemas"]["DutyGrantRejected"];
+                };
+            };
+            /** @description CSRF failure; no automatic unsafe retry. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Invalid closed body; endpoint-relative field feedback. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    endDutyGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                grant_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndDutyGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized scoped result; mutation success requires durable committed operation. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantSuccess"];
+                };
+            };
+            /** @description Invalid selectors/headers. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Unknown, cross-chapter or nonvisible target/reference, indistinguishable. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantNotVisible"];
+                };
+            };
+            /** @description Distinct stale context/authority/membership/grant or immutable-payload conflict; durable rejection only for mutation. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantConflict"] | components["schemas"]["DutyGrantRejected"];
+                };
+            };
+            /** @description CSRF failure; no automatic unsafe retry. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Invalid closed body; endpoint-relative field feedback. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    revokeDutyGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                grant_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeDutyGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized scoped result; mutation success requires durable committed operation. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantSuccess"];
+                };
+            };
+            /** @description Invalid selectors/headers. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Unknown, cross-chapter or nonvisible target/reference, indistinguishable. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantNotVisible"];
+                };
+            };
+            /** @description Distinct stale context/authority/membership/grant or immutable-payload conflict; durable rejection only for mutation. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantConflict"] | components["schemas"]["DutyGrantRejected"];
+                };
+            };
+            /** @description CSRF failure; no automatic unsafe retry. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Invalid closed body; endpoint-relative field feedback. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    substituteDutyGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                grant_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstituteDutyGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized scoped result; mutation success requires durable committed operation. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantSuccess"];
+                };
+            };
+            /** @description Invalid selectors/headers. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Unknown, cross-chapter or nonvisible target/reference, indistinguishable. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantNotVisible"];
+                };
+            };
+            /** @description Distinct stale context/authority/membership/grant or immutable-payload conflict; durable rejection only for mutation. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantConflict"] | components["schemas"]["DutyGrantRejected"];
+                };
+            };
+            /** @description CSRF failure; no automatic unsafe retry. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Invalid closed body; endpoint-relative field feedback. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    authorizeDutyGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthorizeDutyGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Authorized scoped result; mutation success requires durable committed operation. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantSuccess"];
+                };
+            };
+            /** @description Invalid selectors/headers. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Unknown, cross-chapter or nonvisible target/reference, indistinguishable. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantNotVisible"];
+                };
+            };
+            /** @description Distinct stale context/authority/membership/grant or immutable-payload conflict; durable rejection only for mutation. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantConflict"] | components["schemas"]["DutyGrantRejected"];
+                };
+            };
+            /** @description CSRF failure; no automatic unsafe retry. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Invalid closed body; endpoint-relative field feedback. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    readDutyCatalogue: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized scoped result; mutation success requires durable committed operation. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyCatalogue"];
+                };
+            };
+            /** @description Invalid selectors/headers. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Distinct stale context/authority/membership/grant or immutable-payload conflict; durable rejection only for mutation. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DutyGrantConflict"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Current access/transport failure; never proves earlier mutation failure. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
     listMemberships: {
         parameters: {
             query?: {
@@ -1836,7 +3103,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LookupTerminal"] | components["schemas"]["LookupPending"] | components["schemas"]["MembershipLookupTerminal"] | components["schemas"]["MembershipLookupRejected"];
+                    "application/json": components["schemas"]["LookupTerminal"] | components["schemas"]["LookupPending"] | components["schemas"]["MembershipLookupTerminal"] | components["schemas"]["MembershipLookupRejected"] | components["schemas"]["DutyGrantLookupTerminal"] | components["schemas"]["DutyGrantLookupRejected"];
                 };
             };
             400: components["responses"]["InvalidLookup"];
@@ -1876,7 +3143,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LookupTerminal"] | components["schemas"]["LookupPending"] | components["schemas"]["MembershipLookupTerminal"] | components["schemas"]["MembershipLookupRejected"];
+                    "application/json": components["schemas"]["LookupTerminal"] | components["schemas"]["LookupPending"] | components["schemas"]["MembershipLookupTerminal"] | components["schemas"]["MembershipLookupRejected"] | components["schemas"]["DutyGrantLookupTerminal"] | components["schemas"]["DutyGrantLookupRejected"];
                 };
             };
             400: components["responses"]["InvalidLookup"];

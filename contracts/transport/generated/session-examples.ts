@@ -4795,6 +4795,4285 @@ export const consumerExamples = [
         "next_action": "review_original_attempt"
       }
     }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "duty_code": "BOOTH_CASHIER"
+          },
+          {
+            "duty_code": "BOOTH_CUSTODIAN"
+          },
+          {
+            "duty_code": "BUDGET_APPROVER"
+          },
+          {
+            "duty_code": "CHAPTER_HEAD"
+          },
+          {
+            "duty_code": "COMMITTEE_REQUESTER"
+          },
+          {
+            "duty_code": "DISPATCH"
+          },
+          {
+            "duty_code": "FINANCE"
+          },
+          {
+            "duty_code": "INDEPENDENT_REVIEWER"
+          },
+          {
+            "duty_code": "INVENTORY"
+          },
+          {
+            "duty_code": "PURCHASING"
+          },
+          {
+            "duty_code": "RECEIVING"
+          },
+          {
+            "duty_code": "RF_APPROVER"
+          },
+          {
+            "duty_code": "SALES_OFFICER"
+          },
+          {
+            "duty_code": "SALES_REVIEWER"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "grant_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "9007199254741001",
+            "chapter_id": "1",
+            "membership_id": "9007199254740995",
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic member"
+            },
+            "duty_code": "RF_APPROVER",
+            "scope_kind": "chapter",
+            "requesting_unit_id": null,
+            "starts_at": "2026-10-26T00:00:00.000000Z",
+            "ends_at": null,
+            "monetary_limit": {
+              "currency": "PHP",
+              "amount": "1000.00"
+            },
+            "version": 1,
+            "membership_version": 4,
+            "authority_version": 5,
+            "is_alternate": false,
+            "replaces_grant_id": null,
+            "revoked_at": null,
+            "authorized": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "last_changed": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        ],
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "duty_grant_not_visible",
+        "message": "Reference unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "grant_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "id": "9007199254741001",
+        "chapter_id": "1",
+        "membership_id": "9007199254740995",
+        "identity": {
+          "user_id": "9007199254740994",
+          "display_name": "Synthetic member"
+        },
+        "duty_code": "RF_APPROVER",
+        "scope_kind": "chapter",
+        "requesting_unit_id": null,
+        "starts_at": "2026-10-26T00:00:00.000000Z",
+        "ends_at": null,
+        "monetary_limit": {
+          "currency": "PHP",
+          "amount": "1000.00"
+        },
+        "version": 1,
+        "membership_version": 4,
+        "authority_version": 5,
+        "is_alternate": false,
+        "replaces_grant_id": null,
+        "revoked_at": null,
+        "authorized": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "last_changed": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "duty_grant_not_visible",
+        "message": "Reference unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "grant_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 1,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 1,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "duty_grant_not_visible",
+        "message": "Reference unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "grant_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "duty_grant_state_conflict",
+        "message": "Current grant state cannot accept this change.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          },
+          "version": 3,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.prepare",
+            "idempotency_key": "duty-attempt-amendDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          },
+          "version": 3,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.prepare",
+            "idempotency_key": "duty-attempt-amendDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "duty_grant_not_visible",
+        "message": "Reference unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "grant_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "500.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.prepare",
+            "idempotency_key": "duty-attempt-amendDutyGrant"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "duty_grant_state_conflict",
+        "message": "Current grant state cannot accept this change.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 3,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.revoke",
+            "idempotency_key": "duty-attempt-endDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 3,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.revoke",
+            "idempotency_key": "duty-attempt-endDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "duty_grant_not_visible",
+        "message": "Reference unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "grant_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-endDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "ends_at": "2026-11-01T00:00:00.000000Z"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.revoke",
+            "idempotency_key": "duty-attempt-endDutyGrant"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "duty_grant_state_conflict",
+        "message": "Current grant state cannot accept this change.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 3,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": "2026-10-25T06:00:00.123456Z",
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.revoke",
+            "idempotency_key": "duty-attempt-revokeDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 3,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": "2026-10-25T06:00:00.123456Z",
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.revoke",
+            "idempotency_key": "duty-attempt-revokeDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "duty_grant_not_visible",
+        "message": "Reference unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "grant_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-revokeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization"
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.revoke",
+            "idempotency_key": "duty-attempt-revokeDutyGrant"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "duty_grant_state_conflict",
+        "message": "Current grant state cannot accept this change.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741011",
+          "chapter_id": "1",
+          "membership_id": "9007199254741010",
+          "identity": {
+            "user_id": "9007199254741012",
+            "display_name": "Synthetic independent alternate"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 1,
+          "membership_version": 3,
+          "authority_version": 4,
+          "is_alternate": true,
+          "replaces_grant_id": "9007199254741001",
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": "2026-10-27T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 3,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "alternates.authorize",
+            "idempotency_key": "duty-attempt-substituteDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741011",
+          "chapter_id": "1",
+          "membership_id": "9007199254741010",
+          "identity": {
+            "user_id": "9007199254741012",
+            "display_name": "Synthetic independent alternate"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 1,
+          "membership_version": 3,
+          "authority_version": 4,
+          "is_alternate": true,
+          "replaces_grant_id": "9007199254741001",
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": "2026-10-27T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 3,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "alternates.authorize",
+            "idempotency_key": "duty-attempt-substituteDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "duty_grant_not_visible",
+        "message": "Reference unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "grant_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741010",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "alternates.authorize",
+            "idempotency_key": "duty-attempt-substituteDutyGrant"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "duty_grant_state_conflict",
+        "message": "Current grant state cannot accept this change.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "unit",
+          "requesting_unit_id": "12",
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "unit",
+          "requesting_unit_id": "12",
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 1,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-authorizeDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": null,
+        "reason": "Synthetic explicit chapter authorization",
+        "membership_id": "9007199254740995",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": null
+        }
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": null,
+          "version": 1,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [],
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 1,
+        "duty_code": "RF_APPROVER"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "9007199254741001",
+            "chapter_id": "1",
+            "membership_id": "9007199254740995",
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic member"
+            },
+            "duty_code": "RF_APPROVER",
+            "scope_kind": "chapter",
+            "requesting_unit_id": null,
+            "starts_at": "2026-10-26T00:00:00.000000Z",
+            "ends_at": null,
+            "monetary_limit": {
+              "currency": "PHP",
+              "amount": "1000.00"
+            },
+            "version": 1,
+            "membership_version": 4,
+            "authority_version": 5,
+            "is_alternate": false,
+            "replaces_grant_id": null,
+            "revoked_at": null,
+            "authorized": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "last_changed": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        ],
+        "next_cursor": "cur_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "request": {
+      "query": {
+        "limit": 50
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "9007199254741001",
+            "chapter_id": "1",
+            "membership_id": "9007199254740995",
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic member"
+            },
+            "duty_code": "RF_APPROVER",
+            "scope_kind": "chapter",
+            "requesting_unit_id": null,
+            "starts_at": "2026-10-26T00:00:00.000000Z",
+            "ends_at": null,
+            "monetary_limit": {
+              "currency": "PHP",
+              "amount": "1000.00"
+            },
+            "version": 1,
+            "membership_version": 4,
+            "authority_version": 5,
+            "is_alternate": false,
+            "replaces_grant_id": null,
+            "revoked_at": null,
+            "authorized": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "last_changed": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          {
+            "id": "9007199254741002",
+            "chapter_id": "1",
+            "membership_id": "9007199254740995",
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic member"
+            },
+            "duty_code": "RECEIVING",
+            "scope_kind": "chapter",
+            "requesting_unit_id": null,
+            "starts_at": "2026-10-26T00:00:00.000000Z",
+            "ends_at": null,
+            "monetary_limit": {
+              "currency": "PHP",
+              "amount": "1000.00"
+            },
+            "version": 1,
+            "membership_version": 4,
+            "authority_version": 5,
+            "is_alternate": false,
+            "replaces_grant_id": null,
+            "revoked_at": null,
+            "authorized": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "last_changed": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        ],
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-substituteDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "target_membership_id": "9007199254741020",
+        "expected_target_membership_version": 2,
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-27T00:00:00.000000Z",
+          "ends_at": "2026-11-01T00:00:00.000000Z",
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "duty_grant_not_visible",
+        "message": "Reference unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "request": {
+      "body": {
+        "idempotency_key": "duty-attempt-amendDutyGrant",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3,
+        "expected_grant_version": 2,
+        "reason": "Synthetic explicit chapter authorization",
+        "grant": {
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "2000.00"
+          }
+        }
+      },
+      "path": {
+        "chapter_id": "1",
+        "grant_id": "9007199254741001"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "query": {
+        "action_code": "duty_grants.authorize",
+        "idempotency_key": "duty-attempt-authorizeDutyGrant"
+      },
+      "path": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 1,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "query": {
+        "action_code": "duty_grants.authorize",
+        "idempotency_key": "duty-attempt-authorizeDutyGrant"
+      },
+      "path": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        },
+        "code": "duty_grant_state_conflict",
+        "message": "Current grant state cannot accept this change.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "query": {
+        "action_code": "duty_grants.authorize",
+        "idempotency_key": "duty-attempt-authorizeDutyGrant"
+      },
+      "path": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "NO_VISIBLE_TERMINAL_RESULT",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "pending_or_not_visible"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "query": {
+        "action_code": "duty_grants.authorize",
+        "idempotency_key": "duty-attempt-authorizeDutyGrant"
+      },
+      "path": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "LOOKUP_UNAVAILABLE",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "unavailable"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "success",
+        "chapter_id": "1",
+        "grant": {
+          "id": "9007199254741001",
+          "chapter_id": "1",
+          "membership_id": "9007199254740995",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "duty_code": "RF_APPROVER",
+          "scope_kind": "chapter",
+          "requesting_unit_id": null,
+          "starts_at": "2026-10-26T00:00:00.000000Z",
+          "ends_at": null,
+          "monetary_limit": {
+            "currency": "PHP",
+            "amount": "1000.00"
+          },
+          "version": 1,
+          "membership_version": 4,
+          "authority_version": 5,
+          "is_alternate": false,
+          "replaces_grant_id": null,
+          "revoked_at": null,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "gh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "replaced_grant": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        },
+        "code": "duty_grant_state_conflict",
+        "message": "Current grant state cannot accept this change.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "NO_VISIBLE_TERMINAL_RESULT",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "pending_or_not_visible"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "LOOKUP_UNAVAILABLE",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "unavailable"
+      }
+    }
   }
 ] as const satisfies readonly ConsumerExample[];
 export const rejectedRequestResponses = [
@@ -5064,6 +9343,189 @@ export const rejectedRequestResponses = [
   },
   {
     "operationId": "revokeMembership",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "readDutyCatalogue",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "listDutyGrants",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "readDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "amendDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "endDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "revokeDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "substituteDutyGrant",
     "response": {
       "kind": "response",
       "status": 422,

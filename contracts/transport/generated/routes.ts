@@ -79,5 +79,37 @@ export const routes = {
   "revokeMembership": {
     "method": "POST",
     "path": "/api/v1/chapters/{chapter_id}/memberships/{membership_id}/revoke"
+  },
+  "readDutyCatalogue": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/duty-grants/catalogue"
+  },
+  "listDutyGrants": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/duty-grants"
+  },
+  "readDutyGrant": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/duty-grants/{grant_id}"
+  },
+  "authorizeDutyGrant": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/duty-grants/authorize"
+  },
+  "amendDutyGrant": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/duty-grants/{grant_id}/amend"
+  },
+  "endDutyGrant": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/duty-grants/{grant_id}/end"
+  },
+  "revokeDutyGrant": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/duty-grants/{grant_id}/revoke"
+  },
+  "substituteDutyGrant": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/duty-grants/{grant_id}/substitute"
   }
 } as const;

@@ -3225,6 +3225,963 @@
           "const": "review_original_attempt"
         }
       }
+    },
+    "DutyGrantTerms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duty_code",
+        "scope_kind",
+        "requesting_unit_id",
+        "starts_at",
+        "ends_at",
+        "monetary_limit"
+      ],
+      "properties": {
+        "duty_code": {
+          "$ref": "#/$defs/ChapterDuty"
+        },
+        "scope_kind": {
+          "enum": [
+            "chapter",
+            "unit"
+          ]
+        },
+        "requesting_unit_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "starts_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "ends_at": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "monetary_limit": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PostedMoney"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope_kind": {
+                "const": "unit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "requesting_unit_id": {
+                "$ref": "#/$defs/Id"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "requesting_unit_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "description": "Inclusive starts_at, exclusive ends_at; null end is open. Server requires end > start. PHP limit is maximum per applicable protected action, never aggregate spending permission. null means no monetary authority from this grant (not unlimited); zero explicitly permits only zero monetary value. Nonmonetary actions may remain allowed. Applicable approved policy and action-specific limits can further restrict, never silently widen. Actual officer limits are not approved by synthetic fixtures."
+    },
+    "AdminDutyGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duty_code",
+        "scope_kind",
+        "requesting_unit_id",
+        "starts_at",
+        "ends_at",
+        "monetary_limit",
+        "id",
+        "chapter_id",
+        "membership_id",
+        "identity",
+        "version",
+        "membership_version",
+        "authority_version",
+        "is_alternate",
+        "replaces_grant_id",
+        "revoked_at",
+        "authorized",
+        "last_changed",
+        "history_reference"
+      ],
+      "properties": {
+        "duty_code": {
+          "$ref": "#/$defs/ChapterDuty"
+        },
+        "scope_kind": {
+          "enum": [
+            "chapter",
+            "unit"
+          ]
+        },
+        "requesting_unit_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "starts_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "ends_at": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "monetary_limit": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PostedMoney"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "membership_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "identity": {
+          "$ref": "#/$defs/ExistingIdentityReference"
+        },
+        "version": {
+          "$ref": "#/$defs/Version"
+        },
+        "membership_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "is_alternate": {
+          "type": "boolean"
+        },
+        "replaces_grant_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revoked_at": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "authorized": {
+          "$ref": "#/$defs/MembershipAttribution"
+        },
+        "last_changed": {
+          "$ref": "#/$defs/MembershipAttribution"
+        },
+        "history_reference": {
+          "type": "string",
+          "pattern": "^gh_[A-Za-z0-9_-]{32,96}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope_kind": {
+                "const": "unit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "requesting_unit_id": {
+                "$ref": "#/$defs/Id"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "requesting_unit_id": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "is_alternate": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "replaces_grant_id": {
+                "$ref": "#/$defs/Id"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "replaces_grant_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "description": "Canonical read/list/result projection; expands existing internal DutyGrant concepts without changing that Stage 0 projection. identity is immutable individual, not a duty persona. authorized retains original grant actor/time; last_changed is latest event. Opaque history reference retains all previous snapshots, reasons, actors and effectivity; not an unguarded history URL. Membership versions describe the resulting/observed target membership, independently of grant row version."
+    },
+    "DutyGrantPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/AdminDutyGrant"
+          }
+        },
+        "next_cursor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MembershipCursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "DutyCatalogue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "duty_code"
+            ],
+            "properties": {
+              "duty_code": {
+                "$ref": "#/$defs/ChapterDuty"
+              }
+            }
+          }
+        }
+      }
+    },
+    "AuthorizeDutyGrantRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_membership_version",
+        "expected_grant_version",
+        "reason",
+        "membership_id",
+        "grant"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_membership_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_grant_version": {
+          "type": "null"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "membership_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "grant": {
+          "$ref": "#/$defs/DutyGrantTerms"
+        }
+      }
+    },
+    "AmendDutyGrantRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_membership_version",
+        "expected_grant_version",
+        "reason",
+        "grant"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_membership_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_grant_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "grant": {
+          "$ref": "#/$defs/DutyGrantTerms"
+        }
+      },
+      "description": "Amends future/current effectivity and limit under explicit Chapter Head authority; cannot rewrite past effective history or change membership, duty or scope. Server checks unchanged duty/scope and independent approved limit authority; use a distinct authorize/end operation when changing duty or scope."
+    },
+    "EndDutyGrantRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_membership_version",
+        "expected_grant_version",
+        "reason",
+        "ends_at"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_membership_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_grant_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "ends_at": {
+          "$ref": "#/$defs/UtcInstant"
+        }
+      },
+      "description": "Schedule an exclusive end strictly after start and no earlier than commit; cannot extend an existing end. Earlier changes use revoke now, never backdate history."
+    },
+    "RevokeDutyGrantRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_membership_version",
+        "expected_grant_version",
+        "reason"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_membership_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_grant_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "description": "Immediate revocation at server commit time; never erases the grant or historical attribution, and does not remove membership."
+    },
+    "SubstituteDutyGrantRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_membership_version",
+        "expected_grant_version",
+        "reason",
+        "target_membership_id",
+        "expected_target_membership_version",
+        "grant"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_membership_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_grant_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "target_membership_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "expected_target_membership_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "grant": {
+          "$ref": "#/$defs/DutyGrantTerms"
+        }
+      },
+      "description": "Atomic alternate replacement: path grant is original; target is an existing authorized membership in same chapter belonging to a different immutable individual. New grant keeps duty/scope of original; original ends at new start. No automatic restoration after alternate end; further explicit authorization is required. Both membership/resource guards and duplicate/authority checks apply atomically."
+    },
+    "DutyGrantConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "idempotency_conflict",
+            "chapter_context_stale",
+            "authority_stale",
+            "membership_stale",
+            "grant_stale"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
+    },
+    "DutyGrantInvalid": {
+      "$ref": "#/$defs/MembershipInvalid"
+    },
+    "DutyGrantNotVisible": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "const": "duty_grant_not_visible"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "DutyGrantCommittedOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "outcome",
+        "committed_at",
+        "replayed"
+      ],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "action_code",
+            "idempotency_key"
+          ],
+          "properties": {
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            },
+            "action_code": {
+              "enum": [
+                "duty_grants.authorize",
+                "duty_grants.prepare",
+                "duty_grants.revoke",
+                "alternates.authorize"
+              ]
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        "outcome": {
+          "const": "committed"
+        },
+        "committed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "DutyGrantSuccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "grant",
+        "replaced_grant",
+        "operation"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "duty_grant"
+        },
+        "action_result": {
+          "const": "success"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "grant": {
+          "$ref": "#/$defs/AdminDutyGrant"
+        },
+        "replaced_grant": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AdminDutyGrant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operation": {
+          "$ref": "#/$defs/DutyGrantCommittedOperation"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "properties": {
+                  "identity": {
+                    "properties": {
+                      "action_code": {
+                        "const": "alternates.authorize"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "replaced_grant": {
+                "$ref": "#/$defs/AdminDutyGrant"
+              },
+              "grant": {
+                "properties": {
+                  "is_alternate": {
+                    "const": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "replaced_grant": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "DutyGrantLookupTerminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "grant",
+        "replaced_grant",
+        "operation"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "duty_grant"
+        },
+        "action_result": {
+          "const": "success"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "grant": {
+          "$ref": "#/$defs/AdminDutyGrant"
+        },
+        "replaced_grant": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AdminDutyGrant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity",
+            "outcome",
+            "committed_at",
+            "replayed"
+          ],
+          "properties": {
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "action_code",
+                "idempotency_key"
+              ],
+              "properties": {
+                "operation_id": {
+                  "$ref": "#/$defs/OperationId"
+                },
+                "action_code": {
+                  "enum": [
+                    "duty_grants.authorize",
+                    "duty_grants.prepare",
+                    "duty_grants.revoke",
+                    "alternates.authorize"
+                  ]
+                },
+                "idempotency_key": {
+                  "$ref": "#/$defs/IdempotencyKey"
+                }
+              }
+            },
+            "outcome": {
+              "const": "committed"
+            },
+            "committed_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "replayed": {
+              "const": true
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "properties": {
+                  "identity": {
+                    "properties": {
+                      "action_code": {
+                        "const": "alternates.authorize"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "replaced_grant": {
+                "$ref": "#/$defs/AdminDutyGrant"
+              },
+              "grant": {
+                "properties": {
+                  "is_alternate": {
+                    "const": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "replaced_grant": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "DutyGrantRejectedOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "outcome",
+        "committed_at",
+        "replayed"
+      ],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "action_code",
+            "idempotency_key"
+          ],
+          "properties": {
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            },
+            "action_code": {
+              "enum": [
+                "duty_grants.authorize",
+                "duty_grants.prepare",
+                "duty_grants.revoke",
+                "alternates.authorize"
+              ]
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        "outcome": {
+          "const": "rejected"
+        },
+        "committed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "DutyGrantRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "operation",
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "duty_grant"
+        },
+        "action_result": {
+          "const": "blocked"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "operation": {
+          "$ref": "#/$defs/DutyGrantRejectedOperation"
+        },
+        "code": {
+          "const": "duty_grant_state_conflict"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
+    },
+    "DutyGrantLookupRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "operation",
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "duty_grant"
+        },
+        "action_result": {
+          "const": "blocked"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "operation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity",
+            "outcome",
+            "committed_at",
+            "replayed"
+          ],
+          "properties": {
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "action_code",
+                "idempotency_key"
+              ],
+              "properties": {
+                "operation_id": {
+                  "$ref": "#/$defs/OperationId"
+                },
+                "action_code": {
+                  "enum": [
+                    "duty_grants.authorize",
+                    "duty_grants.prepare",
+                    "duty_grants.revoke",
+                    "alternates.authorize"
+                  ]
+                },
+                "idempotency_key": {
+                  "$ref": "#/$defs/IdempotencyKey"
+                }
+              }
+            },
+            "outcome": {
+              "const": "rejected"
+            },
+            "committed_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "replayed": {
+              "const": true
+            }
+          }
+        },
+        "code": {
+          "const": "duty_grant_state_conflict"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
     }
   },
   "$ref": "#/$defs/ActionResult"

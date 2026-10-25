@@ -1,0 +1,372 @@
+[
+  {
+    "id": "interval-order",
+    "verification": "declarative_server_review",
+    "precondition": "A submitted end is equal to or before start.",
+    "obligation": "Reject 422 /grant/ends_at INVALID_INTERVAL. Shape validation cannot compare timestamps.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "authorizeDutyGrant-success"
+    ],
+    "operationId": "authorizeDutyGrant",
+    "schema_valid_request": {
+      "idempotency_key": "duty-attempt-authorizeDutyGrant",
+      "expected_authority_version": 9,
+      "expected_membership_version": 3,
+      "expected_grant_version": null,
+      "reason": "Synthetic explicit chapter authorization",
+      "membership_id": "9007199254740995",
+      "grant": {
+        "duty_code": "RF_APPROVER",
+        "scope_kind": "chapter",
+        "requesting_unit_id": null,
+        "starts_at": "2026-10-26T00:00:00.000000Z",
+        "ends_at": "2026-10-26T00:00:00.000000Z",
+        "monetary_limit": {
+          "currency": "PHP",
+          "amount": "1000.00"
+        }
+      }
+    },
+    "expected_server_response": {
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/grant/ends_at",
+            "code": "INVALID_INTERVAL",
+            "message": "End must be later than start."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "id": "duplicate-overlap",
+    "verification": "declarative_server_review",
+    "precondition": "Existing unrevoked grant overlaps same membership/duty/scope.",
+    "obligation": "Durably reject with duty_grant_state_conflict; distinct duties may overlap and adjacent intervals are allowed.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "authorizeDutyGrant-success"
+    ],
+    "operationId": "authorizeDutyGrant",
+    "schema_valid_request": {
+      "idempotency_key": "duty-attempt-authorizeDutyGrant",
+      "expected_authority_version": 9,
+      "expected_membership_version": 3,
+      "expected_grant_version": null,
+      "reason": "Synthetic explicit chapter authorization",
+      "membership_id": "9007199254740995",
+      "grant": {
+        "duty_code": "RF_APPROVER",
+        "scope_kind": "chapter",
+        "requesting_unit_id": null,
+        "starts_at": "2026-10-26T00:00:00.000000Z",
+        "ends_at": null,
+        "monetary_limit": {
+          "currency": "PHP",
+          "amount": "1000.00"
+        }
+      }
+    },
+    "expected_server_response": {
+      "status": 409,
+      "body": {
+        "resource_type": "duty_grant",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "duty_grants.authorize",
+            "idempotency_key": "duty-attempt-authorizeDutyGrant"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "duty_grant_state_conflict",
+        "message": "Current grant state cannot accept this change.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "id": "limit-authority",
+    "verification": "declarative_server_review",
+    "precondition": "A proposed increase exceeds currently approved assigning authority.",
+    "obligation": "Deny 403, expose no protected values; Head role alone cannot approve Finance settings.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "grant-limit-change-denied"
+    ],
+    "operationId": "amendDutyGrant",
+    "schema_valid_request": {
+      "idempotency_key": "duty-attempt-amendDutyGrant",
+      "expected_authority_version": 9,
+      "expected_membership_version": 3,
+      "expected_grant_version": 2,
+      "reason": "Synthetic explicit chapter authorization",
+      "grant": {
+        "duty_code": "RF_APPROVER",
+        "scope_kind": "chapter",
+        "requesting_unit_id": null,
+        "starts_at": "2026-10-26T00:00:00.000000Z",
+        "ends_at": null,
+        "monetary_limit": {
+          "currency": "PHP",
+          "amount": "2000.00"
+        }
+      }
+    },
+    "expected_server_response": {
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "id": "cross-chapter-alternate",
+    "verification": "declarative_server_review",
+    "precondition": "Target membership, unit or replaced grant belongs to another chapter.",
+    "obligation": "Uniform 404 with no reference disclosure, no grant/end mutation.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "alternate-cross-chapter"
+    ],
+    "operationId": "substituteDutyGrant",
+    "schema_valid_request": {
+      "idempotency_key": "duty-attempt-substituteDutyGrant",
+      "expected_authority_version": 9,
+      "expected_membership_version": 3,
+      "expected_grant_version": 2,
+      "reason": "Synthetic explicit chapter authorization",
+      "target_membership_id": "9007199254741020",
+      "expected_target_membership_version": 2,
+      "grant": {
+        "duty_code": "RF_APPROVER",
+        "scope_kind": "chapter",
+        "requesting_unit_id": null,
+        "starts_at": "2026-10-27T00:00:00.000000Z",
+        "ends_at": "2026-11-01T00:00:00.000000Z",
+        "monetary_limit": {
+          "currency": "PHP",
+          "amount": "1000.00"
+        }
+      }
+    },
+    "expected_server_response": {
+      "status": 404,
+      "body": {
+        "code": "duty_grant_not_visible",
+        "message": "Reference unavailable."
+      }
+    }
+  },
+  {
+    "id": "independence",
+    "verification": "declarative_server_review",
+    "precondition": "One individual holds several duties or preparer/custodian has an alternate duty.",
+    "obligation": "Use immutable users.id for action-specific independence. Two roles are not two people. Count preparer/custodian cannot approve variance; authorized receiving preparer may post inspected RM.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "substituteDutyGrant-success"
+    ]
+  },
+  {
+    "id": "effective-history",
+    "verification": "declarative_server_review",
+    "precondition": "An explicitly authorized alternate replaces original at a future boundary.",
+    "obligation": "Atomic original end plus new grant at inclusive-start/exclusive-end, retained actors/reasons/snapshots; no automatic restoration.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "substituteDutyGrant-success"
+    ]
+  },
+  {
+    "id": "revocation",
+    "verification": "declarative_server_review",
+    "precondition": "Grant expires/revokes after protected work is queued.",
+    "obligation": "Recheck before protected action and delivery; suppress unauthorized output. Membership and independently authorized grants remain. Reauthentication cannot restore grant.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "revokeDutyGrant-success"
+    ]
+  },
+  {
+    "id": "stale-guards",
+    "verification": "declarative_server_review",
+    "precondition": "Grant row, actor authority, target membership or context changes before new attempt.",
+    "obligation": "Distinct stale codes, no mutation or version leakage. Review original scope with current access before deliberate new attempt.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "amendDutyGrant-grant_stale"
+    ]
+  },
+  {
+    "id": "replay",
+    "verification": "declarative_server_review",
+    "precondition": "Same immutable original actor/chapter/action/key/fingerprint after committed grant.",
+    "obligation": "Current access first, then same-payload replay returns original identity/time/snapshots despite old expected versions. Changed payload conflicts. Never create a new key during uncertainty.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "authorizeDutyGrant-replay"
+    ]
+  },
+  {
+    "id": "unknown",
+    "verification": "declarative_server_review",
+    "precondition": "Mutation reply is lost, malformed, redirected, HTML or lookup has no visible terminal result.",
+    "obligation": "Remain uncertain; HTTP200 is not commitment; lookup original authorized scope only; switch/logout/denial cannot prove failure or retarget original.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "lookupOperationByKey-duty-grant-pending"
+    ]
+  },
+  {
+    "id": "pagination",
+    "verification": "declarative_server_review",
+    "precondition": "Officer requests next page or a stale/other-filter cursor.",
+    "obligation": "Bind opaque cursor to actor/chapter/filter/limit/snapshot, numeric ascending grant ID, bounded 1..100; reject mismatch 400 or snapshot change 409.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "grants-page"
+    ]
+  },
+  {
+    "id": "edit-retention",
+    "verification": "declarative_server_review",
+    "precondition": "Editable nonsecret grant terms coexist with a frozen pending attempt.",
+    "obligation": "Feedback is body-relative RFC6901; correct edits retained separately; conceal on interruption, same identity/current access/version review before resume; no offline/reload persistence.",
+    "limitations": "Schema/example/consumer checks do not execute P03 authorization, atomicity, persistence, independent-person checks, cursor security or queued delivery.",
+    "requirements": [
+      "GOV-04",
+      "GOV-05",
+      "GOV-06",
+      "GOV-07",
+      "SEC-03",
+      "TR-12",
+      "DOC-11"
+    ],
+    "automatic_mutation_retries": [],
+    "exchanges": [
+      "authorizeDutyGrant-422"
+    ]
+  }
+]
