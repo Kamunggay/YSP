@@ -159,7 +159,7 @@ export async function buildReview(plan) {
 
   const files = new Set([apiPath, 'scripts/verification.Dockerfile', 'scripts/verification.Dockerfile.dockerignore', 'scripts/verify.ps1',
     'frontend/tsconfig.json', 'frontend/package-lock.json', 'backend/composer.lock', 'contracts/p02-review/reconcile.mjs',
-    'contracts/p02-review/v1/README.md', 'contracts/p02-review/v1/review.json']);
+    'contracts/p02-review/v1/.gitignore', 'contracts/p02-review/v1/README.md', 'contracts/p02-review/v1/review.json']);
   async function collect(directory) {
     for (const entry of (await readdir(new URL(directory, root), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
       if (entry.name === 'node_modules') continue;

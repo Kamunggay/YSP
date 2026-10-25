@@ -6,11 +6,12 @@
   "description": "Shared Stage 0 and P02 wire contract validation; no runtime acceptance implied.",
   "scripts": {
     "generate": "node generate.mjs",
+    "generate:fixtures": "node generate.mjs --fixtures",
     "generate:check": "node generate.mjs --check",
     "typecheck": "tsc -p consumer/tsconfig.json",
     "reconcile": "node ../p02-review/reconcile.mjs",
     "reconcile:check": "node ../p02-review/reconcile.mjs --check",
-    "test": "npm run generate:check && npm run typecheck && npm run reconcile:check && node --test tests/*.test.mjs"
+    "test": "npm run generate:fixtures && npm run generate:check && npm run typecheck && npm run reconcile && npm run reconcile:check && node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.1.0",

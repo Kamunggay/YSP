@@ -15,3 +15,6 @@
 **/test-results
 **/playwright-report
 **/*.log
+contracts/transport/generated/session-validation.json
+contracts/transport/generated/session-examples.ts
+contracts/p02-review/v1/index.json

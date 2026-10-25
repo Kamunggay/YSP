@@ -83,6 +83,7 @@ outputs['session-examples.ts'] = '// Generated from the validated operation exch
   + `export const rejectedRequestResponses = ${JSON.stringify(invalidExamples, null, 2)} as const satisfies readonly ConsumerResponseExample[];\n`;
 await mkdir(new URL('./generated/', import.meta.url), { recursive: true });
 for (const [name, output] of Object.entries(outputs)) {
+  if (process.argv.includes('--fixtures') && !['session-validation.json', 'session-examples.ts'].includes(name)) continue;
   const target = new URL(`./generated/${name}`, import.meta.url);
   if (process.argv.includes('--check')) assert.equal((await readFile(target, 'utf8')).replaceAll('\r\n', '\n'), output, `generation drift: ${name}; run npm run generate`);
   else await writeFile(target, output);

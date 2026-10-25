@@ -11,7 +11,7 @@ Start with [review.json](review.json) for the 13 parent inventory surfaces, all 
 parent checklist positions, seven scenario packs, compatibility classifications,
 decision authority and outstanding freeze/runtime gates. Checklist positions are
 local to the parent specification, not new requirement identifiers.
-[index.json](index.json) resolves these to all 49 exact HTTP operations and named
+The locally generated `index.json` resolves these to all 49 exact HTTP operations and named
 examples, and indexes every authored scenario. Its JSON pointers lead to the
 original requests, responses, headers, security, preconditions and server obligations;
 they introduce no competing wire definitions. Scenario shape checks are executed;
@@ -46,11 +46,16 @@ npm --prefix contracts/transport test
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1
 ```
 
-The normal entry checks deterministic type generation, strict positive/intentional
+The normal entry first builds the ignored runtime-validation and typed-example
+fixtures, then checks all generated outputs against the canonical sources. The
+compact `api.d.ts` and `routes.ts` remain tracked to detect contract/type drift;
+the expanded fixture bundles and review index are reproducible build outputs.
+It also checks strict positive/intentional
 negative compilation, this reconciliation's drift and the existing schema/example,
 transport, internal context, identity/evidence, IPC/RM, stock-hold, canonical-hash
-and actual health consumer checks. `npm --prefix contracts/transport run reconcile`
-updates only the derived index after a reviewed source change. Execution results,
+and actual health consumer checks. It builds and checks the ignored review index;
+`npm --prefix contracts/transport run reconcile` can also build that index directly.
+Execution results,
 tool identities and limitations for this revision are in [results.json](results.json).
 
 Contract checks do not prove runtime authorization, code consumption, session

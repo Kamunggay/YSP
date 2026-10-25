@@ -20,7 +20,8 @@ COPY contracts /workspace/contracts
 COPY --chown=node:node frontend /workspace/frontend
 # Check the validation consumer against the application's compiler as well as the
 # generator-compatible compiler pinned in contracts/transport.
-RUN node node_modules/typescript/bin/tsc -p ../contracts/transport/consumer/tsconfig.json
-RUN chown -R node:node /workspace/frontend
+RUN node ../contracts/transport/generate.mjs --fixtures \
+    && node node_modules/typescript/bin/tsc -p ../contracts/transport/consumer/tsconfig.json
+RUN chown -R node:node /workspace/frontend /workspace/contracts/transport/generated /workspace/contracts/p02-review/v1
 USER node
 CMD ["npm", "run", "test:browser"]
