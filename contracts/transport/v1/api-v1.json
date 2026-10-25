@@ -11349,6 +11349,1950 @@
           422
         ]
       }
+    },
+    "/provider/provisioning-context": {
+      "get": {
+        "operationId": "getProvisioningContext",
+        "summary": "getProvisioningContext",
+        "description": "Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.",
+        "security": [
+          {
+            "provisionerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Currently authorized provider result; inspect terminal outcome, not HTTP status alone.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ProvisioningContext"
+                },
+                "examples": {
+                  "getProvisioningContext-success": {
+                    "$ref": "./provisioning-examples.json#/getProvisioningContext-success"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "getProvisioningContext-400": {
+                    "$ref": "./provisioning-examples.json#/getProvisioningContext-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "getProvisioningContext-401": {
+                    "$ref": "./provisioning-examples.json#/getProvisioningContext-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "getProvisioningContext-403": {
+                    "$ref": "./provisioning-examples.json#/getProvisioningContext-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "getProvisioningContext-429": {
+                    "$ref": "./provisioning-examples.json#/getProvisioningContext-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "getProvisioningContext-503": {
+                    "$ref": "./provisioning-examples.json#/getProvisioningContext-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ]
+      }
+    },
+    "/provider/provisioning-identities/lookup": {
+      "post": {
+        "operationId": "lookupProvisioningIdentity",
+        "summary": "lookupProvisioningIdentity",
+        "description": "Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.",
+        "security": [
+          {
+            "provisionerSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Currently authorized provider result; inspect terminal outcome, not HTTP status alone.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipIdentityLookupResult"
+                },
+                "examples": {
+                  "lookupProvisioningIdentity-success": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningIdentity-success"
+                  },
+                  "provider-identity-absent": {
+                    "$ref": "./provisioning-examples.json#/provider-identity-absent"
+                  },
+                  "provider-identity-disabled": {
+                    "$ref": "./provisioning-examples.json#/provider-identity-disabled"
+                  },
+                  "provider-identity-not-visible": {
+                    "$ref": "./provisioning-examples.json#/provider-identity-not-visible"
+                  },
+                  "provider-identity-ineligible": {
+                    "$ref": "./provisioning-examples.json#/provider-identity-ineligible"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "lookupProvisioningIdentity-400": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningIdentity-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "lookupProvisioningIdentity-401": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningIdentity-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "lookupProvisioningIdentity-403": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningIdentity-403"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "lookupProvisioningIdentity-419": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningIdentity-419"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "lookupProvisioningIdentity-422": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningIdentity-422"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "lookupProvisioningIdentity-429": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningIdentity-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "lookupProvisioningIdentity-503": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningIdentity-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/MembershipIdentityLookupRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
+    },
+    "/provider/provisionings": {
+      "post": {
+        "operationId": "createProvisionedChapter",
+        "summary": "createProvisionedChapter",
+        "description": "Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.",
+        "security": [
+          {
+            "provisionerSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Currently authorized provider result; inspect terminal outcome, not HTTP status alone.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/CreateProvisionedChapterSuccess"
+                },
+                "examples": {
+                  "createProvisionedChapter-success": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-success"
+                  },
+                  "createProvisionedChapter-replay": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-replay"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "createProvisionedChapter-400": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "createProvisionedChapter-401": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "createProvisionedChapter-403": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-403"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/ProvisioningConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/ProvisioningRejected"
+                    }
+                  ]
+                },
+                "examples": {
+                  "createProvisionedChapter-409": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-409"
+                  },
+                  "createProvisionedChapter-idempotency_conflict": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-idempotency_conflict"
+                  },
+                  "createProvisionedChapter-rejected": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-rejected"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "createProvisionedChapter-419": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-419"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "createProvisionedChapter-422": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-422"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "createProvisionedChapter-429": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "createProvisionedChapter-503": {
+                    "$ref": "./provisioning-examples.json#/createProvisionedChapter-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/CreateProvisionedChapterRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ]
+      },
+      "get": {
+        "operationId": "listProvisionings",
+        "summary": "listProvisionings",
+        "description": "Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.",
+        "security": [
+          {
+            "provisionerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/MembershipCursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "awaiting_initial_head",
+                "initial_head_designated"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Currently authorized provider result; inspect terminal outcome, not HTTP status alone.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ProvisioningPage"
+                },
+                "examples": {
+                  "listProvisionings-success": {
+                    "$ref": "./provisioning-examples.json#/listProvisionings-success"
+                  },
+                  "provider-empty-page": {
+                    "$ref": "./provisioning-examples.json#/provider-empty-page"
+                  },
+                  "provider-first-page": {
+                    "$ref": "./provisioning-examples.json#/provider-first-page"
+                  },
+                  "provider-last-page": {
+                    "$ref": "./provisioning-examples.json#/provider-last-page"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "listProvisionings-400": {
+                    "$ref": "./provisioning-examples.json#/listProvisionings-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "listProvisionings-401": {
+                    "$ref": "./provisioning-examples.json#/listProvisionings-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "listProvisionings-403": {
+                    "$ref": "./provisioning-examples.json#/listProvisionings-403"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ProvisioningConflict"
+                },
+                "examples": {
+                  "listProvisionings-409": {
+                    "$ref": "./provisioning-examples.json#/listProvisionings-409"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "listProvisionings-429": {
+                    "$ref": "./provisioning-examples.json#/listProvisionings-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "listProvisionings-503": {
+                    "$ref": "./provisioning-examples.json#/listProvisionings-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ]
+      }
+    },
+    "/provider/provisionings/{provisioning_id}/initial-head": {
+      "post": {
+        "operationId": "appointInitialHead",
+        "summary": "appointInitialHead",
+        "description": "Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.",
+        "security": [
+          {
+            "provisionerSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provisioning_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Currently authorized provider result; inspect terminal outcome, not HTTP status alone.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/AppointInitialHeadSuccess"
+                },
+                "examples": {
+                  "appointInitialHead-success": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-success"
+                  },
+                  "appointInitialHead-replay": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-replay"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "appointInitialHead-400": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "appointInitialHead-401": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "appointInitialHead-403": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ProvisioningNotVisible"
+                },
+                "examples": {
+                  "appointInitialHead-404": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-404"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/ProvisioningConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/ProvisioningRejected"
+                    }
+                  ]
+                },
+                "examples": {
+                  "appointInitialHead-409": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-409"
+                  },
+                  "appointInitialHead-idempotency_conflict": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-idempotency_conflict"
+                  },
+                  "appointInitialHead-provisioning_stale": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-provisioning_stale"
+                  },
+                  "appointInitialHead-rejected": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-rejected"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "appointInitialHead-419": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-419"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "appointInitialHead-422": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-422"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "appointInitialHead-429": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "appointInitialHead-503": {
+                    "$ref": "./provisioning-examples.json#/appointInitialHead-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/AppointInitialHeadRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
+    },
+    "/provider/provisionings/{provisioning_id}": {
+      "get": {
+        "operationId": "readProvisioning",
+        "summary": "readProvisioning",
+        "description": "Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.",
+        "security": [
+          {
+            "provisionerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provisioning_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Currently authorized provider result; inspect terminal outcome, not HTTP status alone.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/Provisioning"
+                },
+                "examples": {
+                  "readProvisioning-success": {
+                    "$ref": "./provisioning-examples.json#/readProvisioning-success"
+                  },
+                  "provider-separate-membership-authorized": {
+                    "$ref": "./provisioning-examples.json#/provider-separate-membership-authorized"
+                  },
+                  "provider-separate-membership-ended": {
+                    "$ref": "./provisioning-examples.json#/provider-separate-membership-ended"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "readProvisioning-400": {
+                    "$ref": "./provisioning-examples.json#/readProvisioning-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "readProvisioning-401": {
+                    "$ref": "./provisioning-examples.json#/readProvisioning-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "readProvisioning-403": {
+                    "$ref": "./provisioning-examples.json#/readProvisioning-403"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ProvisioningNotVisible"
+                },
+                "examples": {
+                  "readProvisioning-404": {
+                    "$ref": "./provisioning-examples.json#/readProvisioning-404"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "readProvisioning-429": {
+                    "$ref": "./provisioning-examples.json#/readProvisioning-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "readProvisioning-503": {
+                    "$ref": "./provisioning-examples.json#/readProvisioning-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ]
+      }
+    },
+    "/provider/provisioning-operations/by-key": {
+      "get": {
+        "operationId": "lookupProvisioningByKey",
+        "summary": "lookupProvisioningByKey",
+        "description": "Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.",
+        "security": [
+          {
+            "provisionerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "in": "query",
+            "name": "action_code",
+            "required": true,
+            "schema": {
+              "enum": [
+                "provider.chapters.create",
+                "provider.initial_head.appoint"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "idempotency_key",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/IdempotencyKey"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Currently authorized provider result; inspect terminal outcome, not HTTP status alone.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ProvisioningLookup"
+                },
+                "examples": {
+                  "lookupProvisioningByKey-success": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-success"
+                  },
+                  "lookupProvisioningByKey-rejected": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-rejected"
+                  },
+                  "lookupProvisioningByKey-pending_or_not_visible": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-pending_or_not_visible"
+                  },
+                  "lookupProvisioningByKey-unavailable": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-unavailable"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "lookupProvisioningByKey-400": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-400"
+                  },
+                  "lookupProvisioningByKey-duplicate": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-duplicate"
+                  },
+                  "lookupProvisioningByKey-mixed": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-mixed"
+                  },
+                  "lookupProvisioningByKey-missing-action": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-missing-action"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "lookupProvisioningByKey-401": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "lookupProvisioningByKey-403": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "lookupProvisioningByKey-429": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "lookupProvisioningByKey-503": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningByKey-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ]
+      }
+    },
+    "/provider/provisioning-operations/by-id/{operation_id}": {
+      "get": {
+        "operationId": "lookupProvisioningById",
+        "summary": "lookupProvisioningById",
+        "description": "Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.",
+        "security": [
+          {
+            "provisionerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/OperationId"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Currently authorized provider result; inspect terminal outcome, not HTTP status alone.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ProvisioningLookup"
+                },
+                "examples": {
+                  "lookupProvisioningById-success": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningById-success"
+                  },
+                  "lookupProvisioningById-rejected": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningById-rejected"
+                  },
+                  "lookupProvisioningById-pending_or_not_visible": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningById-pending_or_not_visible"
+                  },
+                  "lookupProvisioningById-unavailable": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningById-unavailable"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "lookupProvisioningById-400": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningById-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "lookupProvisioningById-401": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningById-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "lookupProvisioningById-403": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningById-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "lookupProvisioningById-429": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningById-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Safe provider failure; never decides an earlier uncertain attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "lookupProvisioningById-503": {
+                    "$ref": "./provisioning-examples.json#/lookupProvisioningById-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ]
+      }
     }
   },
   "components": {
@@ -11364,6 +13308,12 @@
         "in": "header",
         "name": "X-XSRF-TOKEN",
         "description": "URL-decode the XSRF-TOKEN cookie once and forward its encrypted opaque value unchanged. Required even for same-origin unsafe requests. Browser sends ysp_session automatically with credentials: include. No bearer or local-storage credential flow."
+      },
+      "provisionerSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ysp_session",
+        "description": "Same authenticated P02 session cookie; server requires active individual, required MFA, current separate provisioner grant in exactly one authorized organization. No chapter membership follows. Recheck on every provider read, write, replay and lookup. Billing/recovery grants alone fail. Scheme declaration implements no runtime enforcement."
       }
     },
     "schemas": {
@@ -11780,6 +13730,60 @@
       },
       "PolicyConfigMaterial": {
         "$ref": "./transport.schema.json#/$defs/PolicyConfigMaterial"
+      },
+      "ProvisionerScope": {
+        "$ref": "./transport.schema.json#/$defs/ProvisionerScope"
+      },
+      "ProvisioningContext": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningContext"
+      },
+      "ProvisionedChapter": {
+        "$ref": "./transport.schema.json#/$defs/ProvisionedChapter"
+      },
+      "InitialHeadAppointment": {
+        "$ref": "./transport.schema.json#/$defs/InitialHeadAppointment"
+      },
+      "Provisioning": {
+        "$ref": "./transport.schema.json#/$defs/Provisioning"
+      },
+      "ProvisioningPage": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningPage"
+      },
+      "CreateProvisionedChapterRequest": {
+        "$ref": "./transport.schema.json#/$defs/CreateProvisionedChapterRequest"
+      },
+      "AppointInitialHeadRequest": {
+        "$ref": "./transport.schema.json#/$defs/AppointInitialHeadRequest"
+      },
+      "ProvisioningCommittedOperation": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningCommittedOperation"
+      },
+      "ProvisioningRejectedOperation": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningRejectedOperation"
+      },
+      "ProvisioningSuccess": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningSuccess"
+      },
+      "ProvisioningRejected": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningRejected"
+      },
+      "ProvisioningUncertain": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningUncertain"
+      },
+      "ProvisioningLookup": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningLookup"
+      },
+      "ProvisioningConflict": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningConflict"
+      },
+      "ProvisioningNotVisible": {
+        "$ref": "./transport.schema.json#/$defs/ProvisioningNotVisible"
+      },
+      "CreateProvisionedChapterSuccess": {
+        "$ref": "./transport.schema.json#/$defs/CreateProvisionedChapterSuccess"
+      },
+      "AppointInitialHeadSuccess": {
+        "$ref": "./transport.schema.json#/$defs/AppointInitialHeadSuccess"
       }
     },
     "responses": {
@@ -12212,5 +14216,50 @@
       "Durable result provider: atomic original-scope actor/action/key fingerprint, terminal snapshots/rejection, replay/lookup access and queued-output reauthorization"
     ],
     "runtime_limits": "Schema validates exact strings/UTC/versions, closed fields and state shapes. Tuple equality, interval order/overlap, approval authority, registered schema completeness, cursor binding/order, material-change invalidation, append-only persistence and transactional replay require P03/backend. Synthetic tests prove no runtime enforcement or human review."
+  },
+  "x-provisioning-contract": {
+    "revision": "p02.09-review.1",
+    "status": "Proposal; affected freeze blocked on actual Glenn/Efren/security and P03 interface review. Contract-only evidence.",
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "authorization": "All /provider operations require active identity, completed required MFA and currently effective separate provisioner authority. Resolve exactly one permitted organization from server grant/destination, else 403 without organization candidates. No caller organization/provider scope selector. GET provisioning-context returns server-bound scope and authority_version, with allowed finite actions. Session bootstrap provider_destinations stays canonical and conveys only navigation. No X-Chapter-Context, selected chapter, membership or duty is required or inferred. Read/list/lookup require current provider.chapters.prepare; identity lookup provider.identities.reference.read; create provider.chapters.create; appoint provider.initial_head.appoint. Recheck actual permission and visibility per call; action array is not proof. Any separately approved operational membership uses current chapter selection, effective duties, audit attribution and identical independence checks. Provider, billing and recovery status alone never signs off, browses transactions or appoints an operational grant.",
+    "visibility": "Actor-private provisioning namespace: server resolves organization_id AND provider_user_id from current session; other provisioners cannot browse/recover these attempts. Read/list only resources originally provisioned in that namespace. Uniform 404 provisioning_not_visible covers absent/cross-organization/other-provider IDs. Original-scope lookup cannot follow a changed organization; current mismatched access is denied, never silently retargeted. No global operation list. Multiple-org provisioning and delegated-provider recovery require later reviewed interfaces.",
+    "identity": "Reuse MembershipIdentityLookupRequest/Result and ExistingIdentityReference exactly. POST exact canonical user_id; no name/email/prefix search, public registration, new identity or credential delivery. Server checks a separately approved provider-specific candidate visibility relation for appointing an existing identity in this organization. Existing eligible visible identity returns minimal reference; nonexistent, disabled, ineligible and nonvisible all return identical identity:null, no reason. Rate limit and timing defenses required. This visibility relation is NOT a global directory or membership. Its actual approval blocks freeze. Appointment rechecks target eligibility under lock; rejection identity_not_eligible does not disclose reason.",
+    "lifecycle": "Create atomically creates chapter identity plus provisioning awaiting_initial_head, never auto-appoints. Explicit appoint targets an existing provisioning with expected version and existing identity; terminal result is initial_head_designated. Only initial appointment; replacements use a separately specified procedure, not this operation. Neither command creates/enables membership, duty grant, provider membership or selected chapter. initial_head_membership_authorization is separately visible: not_applicable before appointment; not_authorized, authorized or ended after. Only separate currently authorized chapter membership administration (the membership administration contract) can change membership; appointment is not its authorizing capability. How the first membership is separately authorized needs backend/domain approval before runtime enablement, not a provider shortcut. No activation/trial/subscription/general provider-role administration.",
+    "values": "IDs reuse exact canonical string Id, versions bounded Version, times canonical UtcInstant. Chapter code ASCII uppercase [A-Z][A-Z0-9_-]{0,31}, unique in organization under lock; name 1..160 characters, meaningful nonblank under server validation. No case folding/trimming of semantic input after fingerprinting. Unknown fields/duplicate JSON members reject before fingerprint. Existing identity summary is a server read, never caller display_name authority.",
+    "pagination": "Read/list reuse Provisioning exactly. Actor-private list optional status, limit default50 bounded1..100, cursor. Conjunctive filters. Immutable provisioning ID numeric ascending using decimal comparison, no JS Number conversion. next_cursor:null means end; nonnull means another page. Empty list succeeds. Cursor opaque server-bound to actor/organization/status/limit/snapshot UTC. Malformed, expired or changed selectors 400; changed snapshot 409 provisioning_snapshot_stale. Never restart silently or disclose other scopes. Membership status changes also invalidate the snapshot.",
+    "attempt": "Minimum nonchapter identity UNIQUE(organization_id,provider_user_id,action_code,idempotency_key), all server-bound except exact endpoint action and caller key. Pin original scope/actor, command, target provisioning_id (null for create), schema revision, body/versions; no chapter_id before existence, arbitrary scope, client fingerprint or fake record. Reuse the membership administration contract operation identity/outcome/committed_at/replayed conventions with resource_type provisioning and terminal Provisioning snapshot. Server computes SHA256 of RFC8785 UTF8-no-BOM canonical JSON {scope,action_code,provisioning_id,input_schema,body}; input_schema is the exact request component + revision p02.09-review.1; body includes original key as in the membership administration contract. Do not reuse generic chapter fingerprint for this nonchapter identity. All semantic fields, exact strings and explicit versions participate; no client normalization. Cookies/CSRF/transport metadata excluded.",
+    "replay": "Current original-namespace access and action rechecked BEFORE result disclosure. Compare canonical fingerprint before new-attempt stale guards. Authorized identical terminal replay retains original operation_id, committed_at and result snapshot with replayed:true; never re-execute. Changed body/target/version under same namespace/action/key 409 idempotency_conflict with no saved data. New attempt separately checks expected provider authority version and provisioning version. Distinct stale codes contain no replacement values. Predurable guard/field/access errors have no operation; they never prove an earlier uncertain attempt failed. Atomic terminal rejection retains its own operation/time and no fabricated chapter/result resource.",
+    "lookup": "GET /provider/provisioning-operations/by-key requires exactly action_code plus idempotency_key; by-id/{operation_id} uses exactly operation ID. Scope only from current session. No chapter, organization, actor, extra action selector on by-id, duplicate/repeated query keys, mixed selectors or global browsing. Unknown/malformed fields/selectors ->400. 200 ProvisioningLookup: committed success, durable rejected, pending_or_not_visible or unavailable. No visible row is uncertainty, never rejection. 503 is also uncertainty; 401/403/404 cannot decide earlier commitment. Same original scope/current read and original action visibility checks apply; successful lookup/rejected replay sets replayed:true. Operation ID alone grants no access. IDs and scope/result/action/key cross-value matching require server and consumer checks.",
+    "interruption": "Lost response, timeout, HTML, malformed JSON, redirect, unavailable store, logout or session expiry keep immutable original scope/action/key/payload/known operation ID. No automatic new key, mutation replay, cross-scope lookup or relabeling after chapter switch. Restore same identity, current original provider scope and authority before authorized lookup. Correct nonsecret draft separate from immutable attempt; conceal protected edits on interruption. No offline/reload persistence or secret retention promised. Only a visible terminal result plus current permission permits a reviewed new attempt.",
+    "feedback": "Reuse MembershipInvalid and FieldFeedback RFC6901 actual body paths (/chapter/code, /chapter/name, /identity/user_id, /expected_provider_authority_version, /expected_provisioning_version). Safe messages and next_action; no private candidate, chapter collision, policy, other actor or replacement version values. Durable chapter_code_unavailable discloses no colliding resource. Nonblank meaningful names/reasons require server validation beyond JSON Schema.",
+    "p03_dependencies": [
+      "Atomic nonchapter provisioning/result storage, namespace uniqueness and chapter-code uniqueness with resource/appointment/audit/follow-up in one owning transaction",
+      "Server fingerprint comparison, current authorization and locked authority/resource guards, immutable results and attribution",
+      "Crash recovery including commit-before-response; pending/absent result cannot certify failure; durable follow-up cannot grant operational access",
+      "No fake operation store or successful fixture certifies readiness; all scenario server obligations need future integration tests"
+    ],
+    "freeze_gates": [
+      "Actual Glenn consumer review of provider-only entry, field feedback, pagination and uncertain lookup at this revision",
+      "Actual Efren/domain/security approval of server single-organization scope, actor-private visibility and existing-identity candidate relation; separately authorized initial membership bootstrap before runtime enablement",
+      "P03 owner agreement on exact nonchapter attempt namespace, fingerprint, selectors, atomic terminal resource result, audit and crash recovery; affected contract freeze blocked until agreement"
+    ],
+    "compatibility": "New provider paths and distinct resource-specific result only; existing chapter lookups, ActionResult, identity references and bootstrap schemas preserved. No provisioning branch added to chapter result union. Existing consumers remain valid; new consumers use generated provisioning types. Candidate authority and requirement IDs unchanged."
   }
 }

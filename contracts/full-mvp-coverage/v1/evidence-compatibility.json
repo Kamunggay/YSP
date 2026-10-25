@@ -1,13 +1,13 @@
 {
   "sourceRevision": "3e2c51dacf3f5f74c78958b3048a857364521eea",
-  "revision": "p02.08-review.1",
+  "revision": "p02.09-review.1",
   "authoredOn": "2026-10-25",
   "purpose": "Successor reconciliation only. The frozen index, historical artifact hash and original executed checks remain attributable to the source revision. The current digest pins the extended contract; it does not recertify the historical run, peer approval, P02 acceptance or live readiness. Stage 0 operation preservation and current schemas/examples/consumer are checked independently by the normal contract entry.",
   "artifacts": [
     {
       "artifact": "contracts/transport/v1/api-v1.json",
       "historicalSha256": "0d03c7b7ab376e628240d6595224835dc0f27d871642e3bcdd10ac954b60864a",
-      "currentSha256": "bf833a4d56c229c1a4e93db284ddfbc64b05e6c1ef884eeac2998fd579e7cc4c"
+      "currentSha256": "6e10024f08327a965658a2012cd045aabb34f8b47d49748e84832fbf7a6f5ea5"
     }
   ]
 }

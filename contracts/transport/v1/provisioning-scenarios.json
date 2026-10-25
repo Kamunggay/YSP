@@ -1,0 +1,693 @@
+[
+  {
+    "id": "provider-only-entry",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "provider-only-entry",
+      "getProvisioningContext-success"
+    ],
+    "obligation": "Provisioner with zero chapter memberships enters only permitted provisioning destination; pre-MFA, billing-only, recovery-only and no grant are denied; no transactions or context inferred.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "chapter-then-head",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "createProvisionedChapter-success",
+      "appointInitialHead-success"
+    ],
+    "obligation": "Create chapter and awaiting appointment result atomically; explicit separately keyed appointment under version lock designates the existing identity. Neither writes membership/duties or grants provider access.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "separate-membership",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "provider-separate-membership-authorized",
+      "provider-separate-membership-ended",
+      "provider-with-separate-current-duties",
+      "provider-chapter-member-authorizes-separately"
+    ],
+    "obligation": "Separate the membership administration contract authorization changes only safe membership indication, never grants operational authority from appointment. First membership authorization procedure needs approval before runtime. In a different already established chapter the provisioner has separately approved current Head membership/duties and may authorize membership with chapter attribution and identical independence rules; no provider sign-off.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "identity-visibility",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "provider-identity-absent",
+      "provider-identity-disabled",
+      "provider-identity-not-visible",
+      "provider-identity-ineligible"
+    ],
+    "obligation": "Use approved provider candidate relation, exact ID and uniform null responses/timing/rate limits. Recheck target under appointment lock without enumerating a directory.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "scoped-uncertain-lookup",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "lookupProvisioningByKey-pending_or_not_visible",
+      "lookupProvisioningById-unavailable",
+      "lookupProvisioningById-403"
+    ],
+    "obligation": "Lookup binds original organization+actor/action/key or operation ID; other actor/organization has no visibility. Denial, absent row and unavailable stay uncertain; never retarget or reveal hidden operation existence.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "immutable-replay",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "createProvisionedChapter-replay",
+      "appointInitialHead-replay",
+      "appointInitialHead-idempotency_conflict"
+    ],
+    "obligation": "Reauthorize original scope, compare fingerprint before new-attempt guards, preserve operation/time/result on replay; changed target/version/body under same key conflicts.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "stale-versions",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "appointInitialHead-409",
+      "appointInitialHead-provisioning_stale"
+    ],
+    "obligation": "New attempts check current provider authority and resource versions independently under lock; stale returns no replacement values/effects.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "terminal-rejection",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "createProvisionedChapter-rejected",
+      "lookupProvisioningByKey-rejected"
+    ],
+    "obligation": "Durable resource rejection atomic with result and audit has original operation/time; no fake chapter/record. Predurable field/access guard failure proves nothing about earlier attempt.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "selector-rejection",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "lookupProvisioningByKey-duplicate",
+      "lookupProvisioningByKey-mixed",
+      "lookupProvisioningByKey-missing-action",
+      "lookupProvisioningById-400"
+    ],
+    "obligation": "Reject duplicate JSON members and repeated/malformed/mixed selectors before normalization; no arbitrary chapter/organization/actor scope or global operation browsing.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "uncertainty-and-expiry",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "appointInitialHead-401",
+      "appointInitialHead-419",
+      "lookupProvisioningByKey-unavailable"
+    ],
+    "obligation": "Lost response, malformed JSON/HTML/redirect, timeout/logout/expiry keep exact original attempt; conceal edits; same identity/current scope review then lookup. No automatic new key, unsafe retry or replay.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "bounded-private-list",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "provider-first-page",
+      "provider-last-page",
+      "provider-empty-page",
+      "listProvisionings-409"
+    ],
+    "obligation": "List/read same canonical resource, actor-private visibility and deterministic numeric ID order. Bind cursor to actor/org/filter/limit/snapshot including membership status. Bad/changed cursor never silently restarts.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "field-feedback",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "createProvisionedChapter-422",
+      "appointInitialHead-422"
+    ],
+    "obligation": "Actual RFC6901 request paths and safe next actions; correct nonsecret draft separately; never echo colliding chapter, hidden identity, policy, credentials or current replacement versions.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "p03-runtime-gate",
+    "verification": "declarative_server_review",
+    "precondition": "Synthetic authorized provider fixtures; relevant server facts must be established in future integration tests.",
+    "exchanges": [
+      "createProvisionedChapter-success",
+      "lookupProvisioningById-success"
+    ],
+    "obligation": "P03 must supply atomic provisioning/result/audit/follow-up, namespace and code uniqueness, canonical fingerprint/replay and crash recovery. No fixture/fake store certifies readiness, activation, subscription or role administration.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Schema/type/consumer evidence only. Actual P03/backend enforcement, first-membership procedure, scope/visibility approval and Glenn/Efren/security review remain gates."
+  },
+  {
+    "id": "stale-provider-guard",
+    "verification": "declarative_server_review",
+    "operationId": "appointInitialHead",
+    "precondition": "Request shape is valid; current locked server facts reject this new attempt. Target eligibility or chapter code collision must not disclose hidden values.",
+    "schema_valid_request": {
+      "idempotency_key": "provisioning-attempt-appointInitialHead",
+      "expected_provider_authority_version": 6,
+      "expected_provisioning_version": 1,
+      "identity": {
+        "user_id": "9007199254740994"
+      },
+      "reason": "Explicit initial Head designation"
+    },
+    "expected_server_response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "provider_authority_stale",
+        "message": "Review the original attempt with current authority.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "exchanges": [
+      "appointInitialHead-409"
+    ],
+    "obligation": "Reject according to current original-scope authority, key fingerprint, version or eligibility/uniqueness checks; no second effect. Replay compares fingerprint before new-attempt guards.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Cross-value/current-state predicates require future backend/P03 integration tests; not enforced by JSON Schema."
+  },
+  {
+    "id": "stale-resource-guard",
+    "verification": "declarative_server_review",
+    "operationId": "appointInitialHead",
+    "precondition": "Request shape is valid; current locked server facts reject this new attempt. Target eligibility or chapter code collision must not disclose hidden values.",
+    "schema_valid_request": {
+      "idempotency_key": "provisioning-attempt-appointInitialHead",
+      "expected_provider_authority_version": 7,
+      "expected_provisioning_version": 2,
+      "identity": {
+        "user_id": "9007199254740994"
+      },
+      "reason": "Explicit initial Head designation"
+    },
+    "expected_server_response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "provisioning_stale",
+        "message": "Review the original immutable attempt.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "exchanges": [
+      "appointInitialHead-provisioning_stale"
+    ],
+    "obligation": "Reject according to current original-scope authority, key fingerprint, version or eligibility/uniqueness checks; no second effect. Replay compares fingerprint before new-attempt guards.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Cross-value/current-state predicates require future backend/P03 integration tests; not enforced by JSON Schema."
+  },
+  {
+    "id": "changed-payload-under-key",
+    "verification": "declarative_server_review",
+    "operationId": "appointInitialHead",
+    "precondition": "Request shape is valid; current locked server facts reject this new attempt. Target eligibility or chapter code collision must not disclose hidden values.",
+    "schema_valid_request": {
+      "idempotency_key": "provisioning-attempt-appointInitialHead",
+      "expected_provider_authority_version": 7,
+      "expected_provisioning_version": 1,
+      "identity": {
+        "user_id": "9007199254740994"
+      },
+      "reason": "Changed under original key"
+    },
+    "expected_server_response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original immutable attempt.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "exchanges": [
+      "appointInitialHead-idempotency_conflict"
+    ],
+    "obligation": "Reject according to current original-scope authority, key fingerprint, version or eligibility/uniqueness checks; no second effect. Replay compares fingerprint before new-attempt guards.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Cross-value/current-state predicates require future backend/P03 integration tests; not enforced by JSON Schema."
+  },
+  {
+    "id": "target-eligibility-race",
+    "verification": "declarative_server_review",
+    "operationId": "appointInitialHead",
+    "precondition": "Request shape is valid; current locked server facts reject this new attempt. Target eligibility or chapter code collision must not disclose hidden values.",
+    "schema_valid_request": {
+      "idempotency_key": "provisioning-attempt-appointInitialHead",
+      "expected_provider_authority_version": 7,
+      "expected_provisioning_version": 1,
+      "identity": {
+        "user_id": "9007199254740994"
+      },
+      "reason": "Explicit initial Head designation"
+    },
+    "expected_server_response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "blocked",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning_id": "9007199254741001",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000002",
+            "action_code": "provider.initial_head.appoint",
+            "idempotency_key": "provisioning-attempt-appointInitialHead"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "identity_not_eligible",
+        "message": "Provisioning cannot accept this action.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "exchanges": [
+      "appointInitialHead-rejected"
+    ],
+    "obligation": "Reject according to current original-scope authority, key fingerprint, version or eligibility/uniqueness checks; no second effect. Replay compares fingerprint before new-attempt guards.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Cross-value/current-state predicates require future backend/P03 integration tests; not enforced by JSON Schema."
+  },
+  {
+    "id": "chapter-code-uniqueness",
+    "verification": "declarative_server_review",
+    "operationId": "createProvisionedChapter",
+    "precondition": "Request shape is valid; current locked server facts reject this new attempt. Target eligibility or chapter code collision must not disclose hidden values.",
+    "schema_valid_request": {
+      "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+      "expected_provider_authority_version": 7,
+      "chapter": {
+        "code": "YSP_TEST",
+        "name": "Synthetic chapter"
+      }
+    },
+    "expected_server_response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "blocked",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning_id": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "provider.chapters.create",
+            "idempotency_key": "provisioning-attempt-createProvisionedChapter"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "chapter_code_unavailable",
+        "message": "Provisioning cannot accept this action.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "exchanges": [
+      "createProvisionedChapter-rejected"
+    ],
+    "obligation": "Reject according to current original-scope authority, key fingerprint, version or eligibility/uniqueness checks; no second effect. Replay compares fingerprint before new-attempt guards.",
+    "automatic_mutation_retries": [],
+    "requirements": [
+      "GOV-03",
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "DOC-11",
+      "TR-03",
+      "TR-06",
+      "TR-10",
+      "TR-11",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "ADD-07",
+      "AC-19",
+      "ADD-AC-09",
+      "S-22"
+    ],
+    "limitations": "Cross-value/current-state predicates require future backend/P03 integration tests; not enforced by JSON Schema."
+  }
+]

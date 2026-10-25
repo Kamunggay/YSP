@@ -53,7 +53,7 @@ for (const item of Object.values(resolved.paths)) {
   }
 }
 outputs['session-validation.json'] = `${JSON.stringify(consumerSchemas, null, 2)}\n`;
-const exchanges = (await Promise.all(['session', 'enrollment', 'mfa-recovery', 'chapter-context', 'membership', 'duty-grant', 'policy'].map(async slice =>
+const exchanges = (await Promise.all(['session', 'enrollment', 'mfa-recovery', 'chapter-context', 'membership', 'duty-grant', 'policy', 'provisioning'].map(async slice =>
   JSON.parse(await readFile(new URL(`./v1/${slice}-exchanges.json`, import.meta.url), 'utf8'))))).flat();
 const examples = exchanges.map(({ operationId, request, response }) => ({
   operationId,

@@ -5490,6 +5490,1079 @@
           }
         }
       ]
+    },
+    "ProvisionerScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "organization_id",
+        "provider_user_id"
+      ],
+      "properties": {
+        "kind": {
+          "const": "provisioner"
+        },
+        "organization_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "provider_user_id": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "ProvisioningContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "authority_version",
+        "available_actions"
+      ],
+      "properties": {
+        "scope": {
+          "$ref": "#/$defs/ProvisionerScope"
+        },
+        "authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "available_actions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "provider.identities.reference.read",
+              "provider.chapters.prepare",
+              "provider.chapters.create",
+              "provider.initial_head.appoint"
+            ]
+          }
+        }
+      }
+    },
+    "ProvisionedChapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "code",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_-]{0,31}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      }
+    },
+    "InitialHeadAppointment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "appointed_by",
+        "appointed_at"
+      ],
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/ExistingIdentityReference"
+        },
+        "appointed_by": {
+          "$ref": "#/$defs/ExistingIdentityReference"
+        },
+        "appointed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        }
+      }
+    },
+    "Provisioning": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "scope",
+            "chapter",
+            "version",
+            "created_by",
+            "created_at",
+            "status",
+            "initial_head",
+            "initial_head_membership_authorization"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "scope": {
+              "$ref": "#/$defs/ProvisionerScope"
+            },
+            "chapter": {
+              "$ref": "#/$defs/ProvisionedChapter"
+            },
+            "version": {
+              "$ref": "#/$defs/Version"
+            },
+            "created_by": {
+              "$ref": "#/$defs/ExistingIdentityReference"
+            },
+            "created_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "status": {
+              "const": "awaiting_initial_head"
+            },
+            "initial_head": {
+              "type": "null"
+            },
+            "initial_head_membership_authorization": {
+              "const": "not_applicable"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "scope",
+            "chapter",
+            "version",
+            "created_by",
+            "created_at",
+            "status",
+            "initial_head",
+            "initial_head_membership_authorization"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "scope": {
+              "$ref": "#/$defs/ProvisionerScope"
+            },
+            "chapter": {
+              "$ref": "#/$defs/ProvisionedChapter"
+            },
+            "version": {
+              "$ref": "#/$defs/Version"
+            },
+            "created_by": {
+              "$ref": "#/$defs/ExistingIdentityReference"
+            },
+            "created_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "status": {
+              "const": "initial_head_designated"
+            },
+            "initial_head": {
+              "$ref": "#/$defs/InitialHeadAppointment"
+            },
+            "initial_head_membership_authorization": {
+              "enum": [
+                "not_authorized",
+                "authorized",
+                "ended"
+              ]
+            }
+          }
+        }
+      ],
+      "description": "Canonical provider-visible provisioning read/list item. Membership status is only a safe current indication, never a grant or duty. Mutation/lookup snapshots retain status at terminal commitment and do not certify current membership."
+    },
+    "ProvisioningPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "limit",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/Provisioning"
+          }
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "next_cursor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MembershipCursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "CreateProvisionedChapterRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_provider_authority_version",
+        "chapter"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_provider_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "chapter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "name"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_-]{0,31}$"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          }
+        }
+      }
+    },
+    "AppointInitialHeadRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_provider_authority_version",
+        "expected_provisioning_version",
+        "identity",
+        "reason"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_provider_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_provisioning_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "user_id"
+          ],
+          "properties": {
+            "user_id": {
+              "$ref": "#/$defs/Id"
+            }
+          }
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "ProvisioningCommittedOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "outcome",
+        "committed_at",
+        "replayed"
+      ],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "action_code",
+            "idempotency_key"
+          ],
+          "properties": {
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            },
+            "action_code": {
+              "enum": [
+                "provider.chapters.create",
+                "provider.initial_head.appoint"
+              ]
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        "outcome": {
+          "const": "committed"
+        },
+        "committed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ProvisioningRejectedOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "outcome",
+        "committed_at",
+        "replayed"
+      ],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "action_code",
+            "idempotency_key"
+          ],
+          "properties": {
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            },
+            "action_code": {
+              "enum": [
+                "provider.chapters.create",
+                "provider.initial_head.appoint"
+              ]
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        "outcome": {
+          "const": "rejected"
+        },
+        "committed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ProvisioningSuccess": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/CreateProvisionedChapterSuccess"
+        },
+        {
+          "$ref": "#/$defs/AppointInitialHeadSuccess"
+        }
+      ]
+    },
+    "ProvisioningRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "scope",
+        "provisioning_id",
+        "operation",
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "provisioning"
+        },
+        "action_result": {
+          "const": "blocked"
+        },
+        "scope": {
+          "$ref": "#/$defs/ProvisionerScope"
+        },
+        "provisioning_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operation": {
+          "$ref": "#/$defs/ProvisioningRejectedOperation"
+        },
+        "code": {
+          "enum": [
+            "chapter_code_unavailable",
+            "initial_head_already_designated",
+            "identity_not_eligible"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
+    },
+    "ProvisioningUncertain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "scope",
+        "lookup_state",
+        "operation",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "provisioning"
+        },
+        "action_result": {
+          "const": "uncertain"
+        },
+        "scope": {
+          "$ref": "#/$defs/ProvisionerScope"
+        },
+        "lookup_state": {
+          "enum": [
+            "pending_or_not_visible",
+            "unavailable"
+          ]
+        },
+        "operation": {
+          "type": "null"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "lookup_original_attempt"
+        }
+      }
+    },
+    "ProvisioningLookup": {
+      "oneOf": [
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "resource_type",
+                "action_result",
+                "scope",
+                "provisioning",
+                "operation"
+              ],
+              "properties": {
+                "resource_type": {
+                  "const": "provisioning"
+                },
+                "action_result": {
+                  "const": "success"
+                },
+                "scope": {
+                  "$ref": "#/$defs/ProvisionerScope"
+                },
+                "provisioning": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "scope",
+                    "chapter",
+                    "version",
+                    "created_by",
+                    "created_at",
+                    "status",
+                    "initial_head",
+                    "initial_head_membership_authorization"
+                  ],
+                  "properties": {
+                    "id": {
+                      "$ref": "#/$defs/Id"
+                    },
+                    "scope": {
+                      "$ref": "#/$defs/ProvisionerScope"
+                    },
+                    "chapter": {
+                      "$ref": "#/$defs/ProvisionedChapter"
+                    },
+                    "version": {
+                      "$ref": "#/$defs/Version"
+                    },
+                    "created_by": {
+                      "$ref": "#/$defs/ExistingIdentityReference"
+                    },
+                    "created_at": {
+                      "$ref": "#/$defs/UtcInstant"
+                    },
+                    "status": {
+                      "const": "awaiting_initial_head"
+                    },
+                    "initial_head": {
+                      "type": "null"
+                    },
+                    "initial_head_membership_authorization": {
+                      "const": "not_applicable"
+                    }
+                  }
+                },
+                "operation": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "identity",
+                    "outcome",
+                    "committed_at",
+                    "replayed"
+                  ],
+                  "properties": {
+                    "identity": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "operation_id",
+                        "action_code",
+                        "idempotency_key"
+                      ],
+                      "properties": {
+                        "operation_id": {
+                          "$ref": "#/$defs/OperationId"
+                        },
+                        "action_code": {
+                          "const": "provider.chapters.create"
+                        },
+                        "idempotency_key": {
+                          "$ref": "#/$defs/IdempotencyKey"
+                        }
+                      }
+                    },
+                    "outcome": {
+                      "const": "committed"
+                    },
+                    "committed_at": {
+                      "$ref": "#/$defs/UtcInstant"
+                    },
+                    "replayed": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "resource_type",
+                "action_result",
+                "scope",
+                "provisioning",
+                "operation"
+              ],
+              "properties": {
+                "resource_type": {
+                  "const": "provisioning"
+                },
+                "action_result": {
+                  "const": "success"
+                },
+                "scope": {
+                  "$ref": "#/$defs/ProvisionerScope"
+                },
+                "provisioning": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "scope",
+                    "chapter",
+                    "version",
+                    "created_by",
+                    "created_at",
+                    "status",
+                    "initial_head",
+                    "initial_head_membership_authorization"
+                  ],
+                  "properties": {
+                    "id": {
+                      "$ref": "#/$defs/Id"
+                    },
+                    "scope": {
+                      "$ref": "#/$defs/ProvisionerScope"
+                    },
+                    "chapter": {
+                      "$ref": "#/$defs/ProvisionedChapter"
+                    },
+                    "version": {
+                      "$ref": "#/$defs/Version"
+                    },
+                    "created_by": {
+                      "$ref": "#/$defs/ExistingIdentityReference"
+                    },
+                    "created_at": {
+                      "$ref": "#/$defs/UtcInstant"
+                    },
+                    "status": {
+                      "const": "initial_head_designated"
+                    },
+                    "initial_head": {
+                      "$ref": "#/$defs/InitialHeadAppointment"
+                    },
+                    "initial_head_membership_authorization": {
+                      "enum": [
+                        "not_authorized",
+                        "authorized",
+                        "ended"
+                      ]
+                    }
+                  }
+                },
+                "operation": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "identity",
+                    "outcome",
+                    "committed_at",
+                    "replayed"
+                  ],
+                  "properties": {
+                    "identity": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "operation_id",
+                        "action_code",
+                        "idempotency_key"
+                      ],
+                      "properties": {
+                        "operation_id": {
+                          "$ref": "#/$defs/OperationId"
+                        },
+                        "action_code": {
+                          "const": "provider.initial_head.appoint"
+                        },
+                        "idempotency_key": {
+                          "$ref": "#/$defs/IdempotencyKey"
+                        }
+                      }
+                    },
+                    "outcome": {
+                      "const": "committed"
+                    },
+                    "committed_at": {
+                      "$ref": "#/$defs/UtcInstant"
+                    },
+                    "replayed": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "resource_type",
+            "action_result",
+            "scope",
+            "provisioning_id",
+            "operation",
+            "code",
+            "message",
+            "next_action"
+          ],
+          "properties": {
+            "resource_type": {
+              "const": "provisioning"
+            },
+            "action_result": {
+              "const": "blocked"
+            },
+            "scope": {
+              "$ref": "#/$defs/ProvisionerScope"
+            },
+            "provisioning_id": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Id"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "operation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "identity",
+                "outcome",
+                "committed_at",
+                "replayed"
+              ],
+              "properties": {
+                "identity": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "operation_id",
+                    "action_code",
+                    "idempotency_key"
+                  ],
+                  "properties": {
+                    "operation_id": {
+                      "$ref": "#/$defs/OperationId"
+                    },
+                    "action_code": {
+                      "enum": [
+                        "provider.chapters.create",
+                        "provider.initial_head.appoint"
+                      ]
+                    },
+                    "idempotency_key": {
+                      "$ref": "#/$defs/IdempotencyKey"
+                    }
+                  }
+                },
+                "outcome": {
+                  "const": "rejected"
+                },
+                "committed_at": {
+                  "$ref": "#/$defs/UtcInstant"
+                },
+                "replayed": {
+                  "const": true
+                }
+              }
+            },
+            "code": {
+              "enum": [
+                "chapter_code_unavailable",
+                "initial_head_already_designated",
+                "identity_not_eligible"
+              ]
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "next_action": {
+              "const": "review_original_attempt"
+            }
+          }
+        },
+        {
+          "$ref": "#/$defs/ProvisioningUncertain"
+        }
+      ]
+    },
+    "ProvisioningConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "provider_authority_stale",
+            "provisioning_stale",
+            "idempotency_conflict",
+            "provisioning_snapshot_stale"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
+    },
+    "ProvisioningNotVisible": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "const": "provisioning_not_visible"
+        },
+        "message": {
+          "const": "Provisioning is not available."
+        }
+      }
+    },
+    "CreateProvisionedChapterSuccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "scope",
+        "provisioning",
+        "operation"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "provisioning"
+        },
+        "action_result": {
+          "const": "success"
+        },
+        "scope": {
+          "$ref": "#/$defs/ProvisionerScope"
+        },
+        "provisioning": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "scope",
+            "chapter",
+            "version",
+            "created_by",
+            "created_at",
+            "status",
+            "initial_head",
+            "initial_head_membership_authorization"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "scope": {
+              "$ref": "#/$defs/ProvisionerScope"
+            },
+            "chapter": {
+              "$ref": "#/$defs/ProvisionedChapter"
+            },
+            "version": {
+              "$ref": "#/$defs/Version"
+            },
+            "created_by": {
+              "$ref": "#/$defs/ExistingIdentityReference"
+            },
+            "created_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "status": {
+              "const": "awaiting_initial_head"
+            },
+            "initial_head": {
+              "type": "null"
+            },
+            "initial_head_membership_authorization": {
+              "const": "not_applicable"
+            }
+          }
+        },
+        "operation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity",
+            "outcome",
+            "committed_at",
+            "replayed"
+          ],
+          "properties": {
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "action_code",
+                "idempotency_key"
+              ],
+              "properties": {
+                "operation_id": {
+                  "$ref": "#/$defs/OperationId"
+                },
+                "action_code": {
+                  "const": "provider.chapters.create"
+                },
+                "idempotency_key": {
+                  "$ref": "#/$defs/IdempotencyKey"
+                }
+              }
+            },
+            "outcome": {
+              "const": "committed"
+            },
+            "committed_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "replayed": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "AppointInitialHeadSuccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "scope",
+        "provisioning",
+        "operation"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "provisioning"
+        },
+        "action_result": {
+          "const": "success"
+        },
+        "scope": {
+          "$ref": "#/$defs/ProvisionerScope"
+        },
+        "provisioning": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "scope",
+            "chapter",
+            "version",
+            "created_by",
+            "created_at",
+            "status",
+            "initial_head",
+            "initial_head_membership_authorization"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Id"
+            },
+            "scope": {
+              "$ref": "#/$defs/ProvisionerScope"
+            },
+            "chapter": {
+              "$ref": "#/$defs/ProvisionedChapter"
+            },
+            "version": {
+              "$ref": "#/$defs/Version"
+            },
+            "created_by": {
+              "$ref": "#/$defs/ExistingIdentityReference"
+            },
+            "created_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "status": {
+              "const": "initial_head_designated"
+            },
+            "initial_head": {
+              "$ref": "#/$defs/InitialHeadAppointment"
+            },
+            "initial_head_membership_authorization": {
+              "enum": [
+                "not_authorized",
+                "authorized",
+                "ended"
+              ]
+            }
+          }
+        },
+        "operation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity",
+            "outcome",
+            "committed_at",
+            "replayed"
+          ],
+          "properties": {
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "action_code",
+                "idempotency_key"
+              ],
+              "properties": {
+                "operation_id": {
+                  "$ref": "#/$defs/OperationId"
+                },
+                "action_code": {
+                  "const": "provider.initial_head.appoint"
+                },
+                "idempotency_key": {
+                  "$ref": "#/$defs/IdempotencyKey"
+                }
+              }
+            },
+            "outcome": {
+              "const": "committed"
+            },
+            "committed_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "replayed": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
     }
   },
   "$ref": "#/$defs/ActionResult"

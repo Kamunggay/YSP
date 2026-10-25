@@ -151,5 +151,37 @@ export const routes = {
   "returnPolicyVersion": {
     "method": "POST",
     "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/return"
+  },
+  "getProvisioningContext": {
+    "method": "GET",
+    "path": "/api/v1/provider/provisioning-context"
+  },
+  "lookupProvisioningIdentity": {
+    "method": "POST",
+    "path": "/api/v1/provider/provisioning-identities/lookup"
+  },
+  "listProvisionings": {
+    "method": "GET",
+    "path": "/api/v1/provider/provisionings"
+  },
+  "createProvisionedChapter": {
+    "method": "POST",
+    "path": "/api/v1/provider/provisionings"
+  },
+  "appointInitialHead": {
+    "method": "POST",
+    "path": "/api/v1/provider/provisionings/{provisioning_id}/initial-head"
+  },
+  "readProvisioning": {
+    "method": "GET",
+    "path": "/api/v1/provider/provisionings/{provisioning_id}"
+  },
+  "lookupProvisioningByKey": {
+    "method": "GET",
+    "path": "/api/v1/provider/provisioning-operations/by-key"
+  },
+  "lookupProvisioningById": {
+    "method": "GET",
+    "path": "/api/v1/provider/provisioning-operations/by-id/{operation_id}"
   }
 } as const;

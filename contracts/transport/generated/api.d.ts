@@ -539,6 +539,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/provider/provisioning-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * getProvisioningContext
+         * @description Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.
+         */
+        get: operations["getProvisioningContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/provider/provisioning-identities/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * lookupProvisioningIdentity
+         * @description Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.
+         */
+        post: operations["lookupProvisioningIdentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/provider/provisioning-operations/by-id/{operation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * lookupProvisioningById
+         * @description Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.
+         */
+        get: operations["lookupProvisioningById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/provider/provisioning-operations/by-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * lookupProvisioningByKey
+         * @description Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.
+         */
+        get: operations["lookupProvisioningByKey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/provider/provisionings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * listProvisionings
+         * @description Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.
+         */
+        get: operations["listProvisionings"];
+        put?: never;
+        /**
+         * createProvisionedChapter
+         * @description Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.
+         */
+        post: operations["createProvisionedChapter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/provider/provisionings/{provisioning_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readProvisioning
+         * @description Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.
+         */
+        get: operations["readProvisioning"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/provider/provisionings/{provisioning_id}/initial-head": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * appointInitialHead
+         * @description Separate provisioner authority; no chapter context or implied operational membership. Exact authorization, namespace, guards, visibility and recovery in x-provisioning-contract.
+         */
+        post: operations["appointInitialHead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/session": {
         parameters: {
             query?: never;
@@ -858,6 +1002,47 @@ export interface components {
             idempotency_key: components["schemas"]["IdempotencyKey"];
             reason: string;
         };
+        AppointInitialHeadRequest: {
+            expected_provider_authority_version: components["schemas"]["Version"];
+            expected_provisioning_version: components["schemas"]["Version"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            identity: {
+                user_id: components["schemas"]["Id"];
+            };
+            reason: string;
+        };
+        AppointInitialHeadSuccess: {
+            /** @constant */
+            action_result: "success";
+            operation: {
+                committed_at: components["schemas"]["UtcInstant"];
+                identity: {
+                    /** @constant */
+                    action_code: "provider.initial_head.appoint";
+                    idempotency_key: components["schemas"]["IdempotencyKey"];
+                    operation_id: components["schemas"]["OperationId"];
+                };
+                /** @constant */
+                outcome: "committed";
+                replayed: boolean;
+            };
+            provisioning: {
+                chapter: components["schemas"]["ProvisionedChapter"];
+                created_at: components["schemas"]["UtcInstant"];
+                created_by: components["schemas"]["ExistingIdentityReference"];
+                id: components["schemas"]["Id"];
+                initial_head: components["schemas"]["InitialHeadAppointment"];
+                /** @enum {unknown} */
+                initial_head_membership_authorization: "not_authorized" | "authorized" | "ended";
+                scope: components["schemas"]["ProvisionerScope"];
+                /** @constant */
+                status: "initial_head_designated";
+                version: components["schemas"]["Version"];
+            };
+            /** @constant */
+            resource_type: "provisioning";
+            scope: components["schemas"]["ProvisionerScope"];
+        };
         ApprovePolicyVersionRequest: {
             effective_from: components["schemas"]["UtcInstant"];
             effective_until: components["schemas"]["UtcInstant"] | null;
@@ -1042,6 +1227,46 @@ export interface components {
         ConfirmEnrollmentRequest: {
             authenticator_code: components["schemas"]["AuthenticatorCode"];
             enrollment_id: components["schemas"]["EnrollmentId"];
+        };
+        CreateProvisionedChapterRequest: {
+            chapter: {
+                code: string;
+                name: string;
+            };
+            expected_provider_authority_version: components["schemas"]["Version"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+        };
+        CreateProvisionedChapterSuccess: {
+            /** @constant */
+            action_result: "success";
+            operation: {
+                committed_at: components["schemas"]["UtcInstant"];
+                identity: {
+                    /** @constant */
+                    action_code: "provider.chapters.create";
+                    idempotency_key: components["schemas"]["IdempotencyKey"];
+                    operation_id: components["schemas"]["OperationId"];
+                };
+                /** @constant */
+                outcome: "committed";
+                replayed: boolean;
+            };
+            provisioning: {
+                chapter: components["schemas"]["ProvisionedChapter"];
+                created_at: components["schemas"]["UtcInstant"];
+                created_by: components["schemas"]["ExistingIdentityReference"];
+                id: components["schemas"]["Id"];
+                initial_head: null;
+                /** @constant */
+                initial_head_membership_authorization: "not_applicable";
+                scope: components["schemas"]["ProvisionerScope"];
+                /** @constant */
+                status: "awaiting_initial_head";
+                version: components["schemas"]["Version"];
+            };
+            /** @constant */
+            resource_type: "provisioning";
+            scope: components["schemas"]["ProvisionerScope"];
         };
         DutyCatalogue: {
             items: {
@@ -1229,6 +1454,11 @@ export interface components {
         Id: string;
         /** @description Case-sensitive opaque client key, scoped by server-authorized chapter AND action. No trimming or case folding. Generate once before sending and retain with the original attempt and immutable payload. */
         IdempotencyKey: string;
+        InitialHeadAppointment: {
+            appointed_at: components["schemas"]["UtcInstant"];
+            appointed_by: components["schemas"]["ExistingIdentityReference"];
+            identity: components["schemas"]["ExistingIdentityReference"];
+        };
         InvalidLookup: components["schemas"]["ActionResult"] & {
             /** @constant */
             action_result?: "blocked";
@@ -1702,6 +1932,208 @@ export interface components {
                 kind: "organization";
                 organization_id: components["schemas"]["Id"];
             };
+        };
+        ProvisionedChapter: {
+            code: string;
+            id: components["schemas"]["Id"];
+            name: string;
+        };
+        ProvisionerScope: {
+            /** @constant */
+            kind: "provisioner";
+            organization_id: components["schemas"]["Id"];
+            provider_user_id: components["schemas"]["Id"];
+        };
+        /** @description Canonical provider-visible provisioning read/list item. Membership status is only a safe current indication, never a grant or duty. Mutation/lookup snapshots retain status at terminal commitment and do not certify current membership. */
+        Provisioning: {
+            chapter: components["schemas"]["ProvisionedChapter"];
+            created_at: components["schemas"]["UtcInstant"];
+            created_by: components["schemas"]["ExistingIdentityReference"];
+            id: components["schemas"]["Id"];
+            initial_head: null;
+            /** @constant */
+            initial_head_membership_authorization: "not_applicable";
+            scope: components["schemas"]["ProvisionerScope"];
+            /** @constant */
+            status: "awaiting_initial_head";
+            version: components["schemas"]["Version"];
+        } | {
+            chapter: components["schemas"]["ProvisionedChapter"];
+            created_at: components["schemas"]["UtcInstant"];
+            created_by: components["schemas"]["ExistingIdentityReference"];
+            id: components["schemas"]["Id"];
+            initial_head: components["schemas"]["InitialHeadAppointment"];
+            /** @enum {unknown} */
+            initial_head_membership_authorization: "not_authorized" | "authorized" | "ended";
+            scope: components["schemas"]["ProvisionerScope"];
+            /** @constant */
+            status: "initial_head_designated";
+            version: components["schemas"]["Version"];
+        };
+        ProvisioningCommittedOperation: {
+            committed_at: components["schemas"]["UtcInstant"];
+            identity: {
+                /** @enum {unknown} */
+                action_code: "provider.chapters.create" | "provider.initial_head.appoint";
+                idempotency_key: components["schemas"]["IdempotencyKey"];
+                operation_id: components["schemas"]["OperationId"];
+            };
+            /** @constant */
+            outcome: "committed";
+            replayed: boolean;
+        };
+        ProvisioningConflict: {
+            /** @enum {unknown} */
+            code: "provider_authority_stale" | "provisioning_stale" | "idempotency_conflict" | "provisioning_snapshot_stale";
+            message: string;
+            /** @constant */
+            next_action: "review_original_attempt";
+        };
+        ProvisioningContext: {
+            authority_version: components["schemas"]["Version"];
+            available_actions: ("provider.identities.reference.read" | "provider.chapters.prepare" | "provider.chapters.create" | "provider.initial_head.appoint")[];
+            scope: components["schemas"]["ProvisionerScope"];
+        };
+        ProvisioningLookup: ({
+            /** @constant */
+            action_result: "success";
+            operation: {
+                committed_at: components["schemas"]["UtcInstant"];
+                identity: {
+                    /** @constant */
+                    action_code: "provider.chapters.create";
+                    idempotency_key: components["schemas"]["IdempotencyKey"];
+                    operation_id: components["schemas"]["OperationId"];
+                };
+                /** @constant */
+                outcome: "committed";
+                /** @constant */
+                replayed: true;
+            };
+            provisioning: {
+                chapter: components["schemas"]["ProvisionedChapter"];
+                created_at: components["schemas"]["UtcInstant"];
+                created_by: components["schemas"]["ExistingIdentityReference"];
+                id: components["schemas"]["Id"];
+                initial_head: null;
+                /** @constant */
+                initial_head_membership_authorization: "not_applicable";
+                scope: components["schemas"]["ProvisionerScope"];
+                /** @constant */
+                status: "awaiting_initial_head";
+                version: components["schemas"]["Version"];
+            };
+            /** @constant */
+            resource_type: "provisioning";
+            scope: components["schemas"]["ProvisionerScope"];
+        } | {
+            /** @constant */
+            action_result: "success";
+            operation: {
+                committed_at: components["schemas"]["UtcInstant"];
+                identity: {
+                    /** @constant */
+                    action_code: "provider.initial_head.appoint";
+                    idempotency_key: components["schemas"]["IdempotencyKey"];
+                    operation_id: components["schemas"]["OperationId"];
+                };
+                /** @constant */
+                outcome: "committed";
+                /** @constant */
+                replayed: true;
+            };
+            provisioning: {
+                chapter: components["schemas"]["ProvisionedChapter"];
+                created_at: components["schemas"]["UtcInstant"];
+                created_by: components["schemas"]["ExistingIdentityReference"];
+                id: components["schemas"]["Id"];
+                initial_head: components["schemas"]["InitialHeadAppointment"];
+                /** @enum {unknown} */
+                initial_head_membership_authorization: "not_authorized" | "authorized" | "ended";
+                scope: components["schemas"]["ProvisionerScope"];
+                /** @constant */
+                status: "initial_head_designated";
+                version: components["schemas"]["Version"];
+            };
+            /** @constant */
+            resource_type: "provisioning";
+            scope: components["schemas"]["ProvisionerScope"];
+        }) | {
+            /** @constant */
+            action_result: "blocked";
+            /** @enum {unknown} */
+            code: "chapter_code_unavailable" | "initial_head_already_designated" | "identity_not_eligible";
+            message: string;
+            /** @constant */
+            next_action: "review_original_attempt";
+            operation: {
+                committed_at: components["schemas"]["UtcInstant"];
+                identity: {
+                    /** @enum {unknown} */
+                    action_code: "provider.chapters.create" | "provider.initial_head.appoint";
+                    idempotency_key: components["schemas"]["IdempotencyKey"];
+                    operation_id: components["schemas"]["OperationId"];
+                };
+                /** @constant */
+                outcome: "rejected";
+                /** @constant */
+                replayed: true;
+            };
+            provisioning_id: components["schemas"]["Id"] | null;
+            /** @constant */
+            resource_type: "provisioning";
+            scope: components["schemas"]["ProvisionerScope"];
+        } | components["schemas"]["ProvisioningUncertain"];
+        ProvisioningNotVisible: {
+            /** @constant */
+            code: "provisioning_not_visible";
+            /** @constant */
+            message: "Provisioning is not available.";
+        };
+        ProvisioningPage: {
+            items: components["schemas"]["Provisioning"][];
+            limit: number;
+            next_cursor: components["schemas"]["MembershipCursor"] | null;
+        };
+        ProvisioningRejected: {
+            /** @constant */
+            action_result: "blocked";
+            /** @enum {unknown} */
+            code: "chapter_code_unavailable" | "initial_head_already_designated" | "identity_not_eligible";
+            message: string;
+            /** @constant */
+            next_action: "review_original_attempt";
+            operation: components["schemas"]["ProvisioningRejectedOperation"];
+            provisioning_id: components["schemas"]["Id"] | null;
+            /** @constant */
+            resource_type: "provisioning";
+            scope: components["schemas"]["ProvisionerScope"];
+        };
+        ProvisioningRejectedOperation: {
+            committed_at: components["schemas"]["UtcInstant"];
+            identity: {
+                /** @enum {unknown} */
+                action_code: "provider.chapters.create" | "provider.initial_head.appoint";
+                idempotency_key: components["schemas"]["IdempotencyKey"];
+                operation_id: components["schemas"]["OperationId"];
+            };
+            /** @constant */
+            outcome: "rejected";
+            replayed: boolean;
+        };
+        ProvisioningSuccess: components["schemas"]["CreateProvisionedChapterSuccess"] | components["schemas"]["AppointInitialHeadSuccess"];
+        ProvisioningUncertain: {
+            /** @constant */
+            action_result: "uncertain";
+            /** @enum {unknown} */
+            lookup_state: "pending_or_not_visible" | "unavailable";
+            message: string;
+            /** @constant */
+            next_action: "lookup_original_attempt";
+            operation: null;
+            /** @constant */
+            resource_type: "provisioning";
+            scope: components["schemas"]["ProvisionerScope"];
         };
         /** @description Nonnegative DECIMAL(20,6) magnitude: at most fourteen integral and six fractional digits. No exponent, sign, separators or binary floating point. Zero is a transport value; a domain operation may require a positive amount. Fractional trailing zeros are accepted. Canonical fingerprint representation uses six places, so 2 and 2.000000 denote the same exact quantity. Signed ledger deltas require a later explicit domain schema. */
         Quantity: string;
@@ -4815,6 +5247,739 @@ export interface operations {
             503: {
                 headers: {
                     /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    getProvisioningContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Currently authorized provider result; inspect terminal outcome, not HTTP status alone. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisioningContext"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    lookupProvisioningIdentity: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-XSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MembershipIdentityLookupRequest"];
+            };
+        };
+        responses: {
+            /** @description Currently authorized provider result; inspect terminal outcome, not HTTP status alone. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipIdentityLookupResult"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    lookupProvisioningById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operation_id: components["schemas"]["OperationId"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Currently authorized provider result; inspect terminal outcome, not HTTP status alone. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisioningLookup"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    lookupProvisioningByKey: {
+        parameters: {
+            query: {
+                action_code: "provider.chapters.create" | "provider.initial_head.appoint";
+                idempotency_key: components["schemas"]["IdempotencyKey"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Currently authorized provider result; inspect terminal outcome, not HTTP status alone. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisioningLookup"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    listProvisionings: {
+        parameters: {
+            query?: {
+                cursor?: components["schemas"]["MembershipCursor"];
+                limit?: number;
+                status?: "awaiting_initial_head" | "initial_head_designated";
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Currently authorized provider result; inspect terminal outcome, not HTTP status alone. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisioningPage"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisioningConflict"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    createProvisionedChapter: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-XSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProvisionedChapterRequest"];
+            };
+        };
+        responses: {
+            /** @description Currently authorized provider result; inspect terminal outcome, not HTTP status alone. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateProvisionedChapterSuccess"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisioningConflict"] | components["schemas"]["ProvisioningRejected"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    readProvisioning: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provisioning_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Currently authorized provider result; inspect terminal outcome, not HTTP status alone. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Provisioning"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisioningNotVisible"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    appointInitialHead: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                provisioning_id: components["schemas"]["Id"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointInitialHeadRequest"];
+            };
+        };
+        responses: {
+            /** @description Currently authorized provider result; inspect terminal outcome, not HTTP status alone. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointInitialHeadSuccess"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            404: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisioningNotVisible"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            409: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvisioningConflict"] | components["schemas"]["ProvisioningRejected"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Safe provider failure; never decides an earlier uncertain attempt. */
+            503: {
+                headers: {
                     "Cache-Control": "no-store";
                     [name: string]: unknown;
                 };

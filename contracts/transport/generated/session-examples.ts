@@ -14701,6 +14701,2022 @@ export const consumerExamples = [
         "next_action": "review_original_attempt"
       }
     }
+  },
+  {
+    "operationId": "getProvisioningContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "authority_version": 7,
+        "available_actions": [
+          "provider.identities.reference.read",
+          "provider.chapters.prepare",
+          "provider.chapters.create",
+          "provider.initial_head.appoint"
+        ]
+      }
+    }
+  },
+  {
+    "operationId": "getProvisioningContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "getProvisioningContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "getProvisioningContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "getProvisioningContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "identity": {
+          "user_id": "9007199254740994",
+          "display_name": "Synthetic designated Head"
+        }
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "identity": null
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "identity": null
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "identity": null
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "identity": null
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "success",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning": {
+          "id": "9007199254741001",
+          "scope": {
+            "kind": "provisioner",
+            "organization_id": "1",
+            "provider_user_id": "9007199254740993"
+          },
+          "chapter": {
+            "id": "9007199254741002",
+            "code": "YSP_TEST",
+            "name": "Synthetic chapter"
+          },
+          "version": 1,
+          "created_by": {
+            "user_id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "created_at": "2026-10-25T06:00:00.123456Z",
+          "status": "awaiting_initial_head",
+          "initial_head": null,
+          "initial_head_membership_authorization": "not_applicable"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "provider.chapters.create",
+            "idempotency_key": "provisioning-attempt-createProvisionedChapter"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "provider_authority_stale",
+        "message": "Review the original attempt with current authority.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "success",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning": {
+          "id": "9007199254741001",
+          "scope": {
+            "kind": "provisioner",
+            "organization_id": "1",
+            "provider_user_id": "9007199254740993"
+          },
+          "chapter": {
+            "id": "9007199254741002",
+            "code": "YSP_TEST",
+            "name": "Synthetic chapter"
+          },
+          "version": 1,
+          "created_by": {
+            "user_id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "created_at": "2026-10-25T06:00:00.123456Z",
+          "status": "awaiting_initial_head",
+          "initial_head": null,
+          "initial_head_membership_authorization": "not_applicable"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "provider.chapters.create",
+            "idempotency_key": "provisioning-attempt-createProvisionedChapter"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original immutable attempt.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-createProvisionedChapter",
+        "expected_provider_authority_version": 7,
+        "chapter": {
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        }
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "blocked",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning_id": null,
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "provider.chapters.create",
+            "idempotency_key": "provisioning-attempt-createProvisionedChapter"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "chapter_code_unavailable",
+        "message": "Provisioning cannot accept this action.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "success",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning": {
+          "id": "9007199254741001",
+          "scope": {
+            "kind": "provisioner",
+            "organization_id": "1",
+            "provider_user_id": "9007199254740993"
+          },
+          "chapter": {
+            "id": "9007199254741002",
+            "code": "YSP_TEST",
+            "name": "Synthetic chapter"
+          },
+          "version": 2,
+          "created_by": {
+            "user_id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "created_at": "2026-10-25T06:00:00.123456Z",
+          "status": "initial_head_designated",
+          "initial_head": {
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic designated Head"
+            },
+            "appointed_by": {
+              "user_id": "9007199254740993",
+              "display_name": "Synthetic provisioner"
+            },
+            "appointed_at": "2026-10-25T06:00:00.123456Z"
+          },
+          "initial_head_membership_authorization": "not_authorized"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000002",
+            "action_code": "provider.initial_head.appoint",
+            "idempotency_key": "provisioning-attempt-appointInitialHead"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "provisioning_not_visible",
+        "message": "Provisioning is not available."
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "provider_authority_stale",
+        "message": "Review the original attempt with current authority.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "success",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning": {
+          "id": "9007199254741001",
+          "scope": {
+            "kind": "provisioner",
+            "organization_id": "1",
+            "provider_user_id": "9007199254740993"
+          },
+          "chapter": {
+            "id": "9007199254741002",
+            "code": "YSP_TEST",
+            "name": "Synthetic chapter"
+          },
+          "version": 2,
+          "created_by": {
+            "user_id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "created_at": "2026-10-25T06:00:00.123456Z",
+          "status": "initial_head_designated",
+          "initial_head": {
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic designated Head"
+            },
+            "appointed_by": {
+              "user_id": "9007199254740993",
+              "display_name": "Synthetic provisioner"
+            },
+            "appointed_at": "2026-10-25T06:00:00.123456Z"
+          },
+          "initial_head_membership_authorization": "not_authorized"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000002",
+            "action_code": "provider.initial_head.appoint",
+            "idempotency_key": "provisioning-attempt-appointInitialHead"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original immutable attempt.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "provisioning_stale",
+        "message": "Review the original immutable attempt.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "request": {
+      "body": {
+        "idempotency_key": "provisioning-attempt-appointInitialHead",
+        "expected_provider_authority_version": 7,
+        "expected_provisioning_version": 1,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "reason": "Explicit initial Head designation"
+      },
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "blocked",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning_id": "9007199254741001",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000002",
+            "action_code": "provider.initial_head.appoint",
+            "idempotency_key": "provisioning-attempt-appointInitialHead"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "identity_not_eligible",
+        "message": "Provisioning cannot accept this action.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "request": {
+      "query": {
+        "limit": 1,
+        "status": "initial_head_designated"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "9007199254741001",
+            "scope": {
+              "kind": "provisioner",
+              "organization_id": "1",
+              "provider_user_id": "9007199254740993"
+            },
+            "chapter": {
+              "id": "9007199254741002",
+              "code": "YSP_TEST",
+              "name": "Synthetic chapter"
+            },
+            "version": 2,
+            "created_by": {
+              "user_id": "9007199254740993",
+              "display_name": "Synthetic provisioner"
+            },
+            "created_at": "2026-10-25T06:00:00.123456Z",
+            "status": "initial_head_designated",
+            "initial_head": {
+              "identity": {
+                "user_id": "9007199254740994",
+                "display_name": "Synthetic designated Head"
+              },
+              "appointed_by": {
+                "user_id": "9007199254740993",
+                "display_name": "Synthetic provisioner"
+              },
+              "appointed_at": "2026-10-25T06:00:00.123456Z"
+            },
+            "initial_head_membership_authorization": "not_authorized"
+          }
+        ],
+        "limit": 1,
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "request": {
+      "query": {
+        "limit": 1,
+        "status": "initial_head_designated"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "request": {
+      "query": {
+        "limit": 1,
+        "status": "initial_head_designated"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "request": {
+      "query": {
+        "limit": 1,
+        "status": "initial_head_designated"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "provisioning_snapshot_stale",
+        "message": "Review the original attempt with current authority.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "request": {
+      "query": {
+        "limit": 1,
+        "status": "initial_head_designated"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "request": {
+      "query": {
+        "limit": 1,
+        "status": "initial_head_designated"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "request": {
+      "query": {
+        "limit": 1,
+        "status": "initial_head_designated"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [],
+        "limit": 1,
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "request": {
+      "query": {
+        "limit": 1
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "9007199254741001",
+            "scope": {
+              "kind": "provisioner",
+              "organization_id": "1",
+              "provider_user_id": "9007199254740993"
+            },
+            "chapter": {
+              "id": "9007199254741002",
+              "code": "YSP_TEST",
+              "name": "Synthetic chapter"
+            },
+            "version": 1,
+            "created_by": {
+              "user_id": "9007199254740993",
+              "display_name": "Synthetic provisioner"
+            },
+            "created_at": "2026-10-25T06:00:00.123456Z",
+            "status": "awaiting_initial_head",
+            "initial_head": null,
+            "initial_head_membership_authorization": "not_applicable"
+          }
+        ],
+        "limit": 1,
+        "next_cursor": "cur_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "request": {
+      "query": {
+        "limit": 1,
+        "cursor": "cur_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "9007199254741003",
+            "scope": {
+              "kind": "provisioner",
+              "organization_id": "1",
+              "provider_user_id": "9007199254740993"
+            },
+            "chapter": {
+              "id": "9007199254741004",
+              "code": "YSP_TEST",
+              "name": "Synthetic chapter"
+            },
+            "version": 2,
+            "created_by": {
+              "user_id": "9007199254740993",
+              "display_name": "Synthetic provisioner"
+            },
+            "created_at": "2026-10-25T06:00:00.123456Z",
+            "status": "initial_head_designated",
+            "initial_head": {
+              "identity": {
+                "user_id": "9007199254740994",
+                "display_name": "Synthetic designated Head"
+              },
+              "appointed_by": {
+                "user_id": "9007199254740993",
+                "display_name": "Synthetic provisioner"
+              },
+              "appointed_at": "2026-10-25T06:00:00.123456Z"
+            },
+            "initial_head_membership_authorization": "not_authorized"
+          }
+        ],
+        "limit": 1,
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "readProvisioning",
+    "request": {
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "id": "9007199254741001",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "chapter": {
+          "id": "9007199254741002",
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        },
+        "version": 2,
+        "created_by": {
+          "user_id": "9007199254740993",
+          "display_name": "Synthetic provisioner"
+        },
+        "created_at": "2026-10-25T06:00:00.123456Z",
+        "status": "initial_head_designated",
+        "initial_head": {
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic designated Head"
+          },
+          "appointed_by": {
+            "user_id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "appointed_at": "2026-10-25T06:00:00.123456Z"
+        },
+        "initial_head_membership_authorization": "not_authorized"
+      }
+    }
+  },
+  {
+    "operationId": "readProvisioning",
+    "request": {
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "readProvisioning",
+    "request": {
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "readProvisioning",
+    "request": {
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "provisioning_not_visible",
+        "message": "Provisioning is not available."
+      }
+    }
+  },
+  {
+    "operationId": "readProvisioning",
+    "request": {
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "readProvisioning",
+    "request": {
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "readProvisioning",
+    "request": {
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "id": "9007199254741001",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "chapter": {
+          "id": "9007199254741002",
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        },
+        "version": 2,
+        "created_by": {
+          "user_id": "9007199254740993",
+          "display_name": "Synthetic provisioner"
+        },
+        "created_at": "2026-10-25T06:00:00.123456Z",
+        "status": "initial_head_designated",
+        "initial_head": {
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic designated Head"
+          },
+          "appointed_by": {
+            "user_id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "appointed_at": "2026-10-25T06:00:00.123456Z"
+        },
+        "initial_head_membership_authorization": "authorized"
+      }
+    }
+  },
+  {
+    "operationId": "readProvisioning",
+    "request": {
+      "path": {
+        "provisioning_id": "9007199254741001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "id": "9007199254741001",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "chapter": {
+          "id": "9007199254741002",
+          "code": "YSP_TEST",
+          "name": "Synthetic chapter"
+        },
+        "version": 2,
+        "created_by": {
+          "user_id": "9007199254740993",
+          "display_name": "Synthetic provisioner"
+        },
+        "created_at": "2026-10-25T06:00:00.123456Z",
+        "status": "initial_head_designated",
+        "initial_head": {
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic designated Head"
+          },
+          "appointed_by": {
+            "user_id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "appointed_at": "2026-10-25T06:00:00.123456Z"
+        },
+        "initial_head_membership_authorization": "ended"
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "request": {
+      "query": {
+        "action_code": "provider.initial_head.appoint",
+        "idempotency_key": "provisioning-attempt-appointInitialHead"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "success",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning": {
+          "id": "9007199254741001",
+          "scope": {
+            "kind": "provisioner",
+            "organization_id": "1",
+            "provider_user_id": "9007199254740993"
+          },
+          "chapter": {
+            "id": "9007199254741002",
+            "code": "YSP_TEST",
+            "name": "Synthetic chapter"
+          },
+          "version": 2,
+          "created_by": {
+            "user_id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "created_at": "2026-10-25T06:00:00.123456Z",
+          "status": "initial_head_designated",
+          "initial_head": {
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic designated Head"
+            },
+            "appointed_by": {
+              "user_id": "9007199254740993",
+              "display_name": "Synthetic provisioner"
+            },
+            "appointed_at": "2026-10-25T06:00:00.123456Z"
+          },
+          "initial_head_membership_authorization": "not_authorized"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000002",
+            "action_code": "provider.initial_head.appoint",
+            "idempotency_key": "provisioning-attempt-appointInitialHead"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "request": {
+      "query": {
+        "action_code": "provider.initial_head.appoint",
+        "idempotency_key": "provisioning-attempt-appointInitialHead"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "request": {
+      "query": {
+        "action_code": "provider.initial_head.appoint",
+        "idempotency_key": "provisioning-attempt-appointInitialHead"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "request": {
+      "query": {
+        "action_code": "provider.initial_head.appoint",
+        "idempotency_key": "provisioning-attempt-appointInitialHead"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "request": {
+      "query": {
+        "action_code": "provider.initial_head.appoint",
+        "idempotency_key": "provisioning-attempt-appointInitialHead"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "request": {
+      "query": {
+        "action_code": "provider.initial_head.appoint",
+        "idempotency_key": "provisioning-attempt-appointInitialHead"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "blocked",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning_id": "9007199254741001",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000002",
+            "action_code": "provider.initial_head.appoint",
+            "idempotency_key": "provisioning-attempt-appointInitialHead"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        },
+        "code": "identity_not_eligible",
+        "message": "Provisioning cannot accept this action.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "request": {
+      "query": {
+        "action_code": "provider.initial_head.appoint",
+        "idempotency_key": "provisioning-attempt-appointInitialHead"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "uncertain",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "lookup_state": "pending_or_not_visible",
+        "operation": null,
+        "message": "Original outcome is not currently available.",
+        "next_action": "lookup_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "request": {
+      "query": {
+        "action_code": "provider.initial_head.appoint",
+        "idempotency_key": "provisioning-attempt-appointInitialHead"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "uncertain",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "lookup_state": "unavailable",
+        "operation": null,
+        "message": "Original outcome is not currently available.",
+        "next_action": "lookup_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "success",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning": {
+          "id": "9007199254741001",
+          "scope": {
+            "kind": "provisioner",
+            "organization_id": "1",
+            "provider_user_id": "9007199254740993"
+          },
+          "chapter": {
+            "id": "9007199254741002",
+            "code": "YSP_TEST",
+            "name": "Synthetic chapter"
+          },
+          "version": 2,
+          "created_by": {
+            "user_id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "created_at": "2026-10-25T06:00:00.123456Z",
+          "status": "initial_head_designated",
+          "initial_head": {
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic designated Head"
+            },
+            "appointed_by": {
+              "user_id": "9007199254740993",
+              "display_name": "Synthetic provisioner"
+            },
+            "appointed_at": "2026-10-25T06:00:00.123456Z"
+          },
+          "initial_head_membership_authorization": "not_authorized"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000002",
+            "action_code": "provider.initial_head.appoint",
+            "idempotency_key": "provisioning-attempt-appointInitialHead"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "lookupProvisioningById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "blocked",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "provisioning_id": "9007199254741001",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000002",
+            "action_code": "provider.initial_head.appoint",
+            "idempotency_key": "provisioning-attempt-appointInitialHead"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        },
+        "code": "identity_not_eligible",
+        "message": "Provisioning cannot accept this action.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "uncertain",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "lookup_state": "pending_or_not_visible",
+        "operation": null,
+        "message": "Original outcome is not currently available.",
+        "next_action": "lookup_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "provisioning",
+        "action_result": "uncertain",
+        "scope": {
+          "kind": "provisioner",
+          "organization_id": "1",
+          "provider_user_id": "9007199254740993"
+        },
+        "lookup_state": "unavailable",
+        "operation": null,
+        "message": "Original outcome is not currently available.",
+        "next_action": "lookup_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "getSession",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "state": "authenticated",
+        "user": {
+          "id": "9007199254740993",
+          "display_name": "Synthetic provisioner"
+        },
+        "mfa": {
+          "status": "verified",
+          "verified_at": "2026-10-25T06:00:00.000000Z"
+        },
+        "provider_destinations": [
+          {
+            "kind": "chapter_provisioning",
+            "scope": {
+              "kind": "organization",
+              "organization_id": "1"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {
+      "query": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740993",
+            "display_name": "Synthetic provisioner"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": [
+            {
+              "kind": "chapter_provisioning",
+              "scope": {
+                "kind": "organization",
+                "organization_id": "1"
+              }
+            }
+          ]
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "selected",
+        "selection_source": "explicit",
+        "membership": {
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "membership_version": 3
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740993",
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [
+            {
+              "id": "9007199254741010",
+              "duty_code": "CHAPTER_HEAD",
+              "scope_kind": "chapter",
+              "requesting_unit_id": null,
+              "starts_at": "2026-10-25T06:00:00.000000Z",
+              "ends_at": null,
+              "revoked_at": null
+            }
+          ],
+          "available_actions": [
+            "memberships.read",
+            "memberships.prepare",
+            "memberships.authorize",
+            "memberships.revoke",
+            "duty_grants.read",
+            "duty_grants.prepare",
+            "duty_grants.authorize",
+            "duty_grants.revoke",
+            "alternates.read",
+            "alternates.prepare",
+            "alternates.authorize",
+            "alternates.revoke",
+            "memberships.disable",
+            "policy.status.read",
+            "policy.operational.read",
+            "policy.operational.prepare",
+            "policy.operational.approve",
+            "identities.reference.read"
+          ],
+          "provider_roles": [
+            "provisioner"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "authorized",
+          "version": 3,
+          "authority_version": 4,
+          "authorized": {
+            "user_id": "9007199254740993",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
   }
 ] as const satisfies readonly ConsumerExample[];
 export const rejectedRequestResponses = [
@@ -15391,6 +17407,184 @@ export const rejectedRequestResponses = [
           }
         ],
         "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "getProvisioningContext",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningIdentity",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Correct the indicated field.",
+        "field_feedback": [
+          {
+            "path": "/user_id",
+            "code": "INVALID",
+            "message": "Use a valid value."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "createProvisionedChapter",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Correct the indicated field.",
+        "field_feedback": [
+          {
+            "path": "/chapter/code",
+            "code": "INVALID",
+            "message": "Use a valid value."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "appointInitialHead",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Correct the indicated field.",
+        "field_feedback": [
+          {
+            "path": "/identity/user_id",
+            "code": "INVALID",
+            "message": "Use a valid value."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "listProvisionings",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "readProvisioning",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningByKey",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupProvisioningById",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
       }
     }
   }
