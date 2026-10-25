@@ -150,5 +150,50 @@
     "Glenn/Efren reviews are completed on project-owner attestation; original reviewer notes, original dates and per-decision security/P03 approval were not supplied.",
     "Schema/examples/type checks do not prove runtime authorization, MFA code consumption, session revocation, atomic persistence, queued-output enforcement, P02 completion, AC-19/ADD-AC-09 execution or live/MIG readiness.",
     "Unresolved wire/security freeze choices and separate runtime-enablement gates remain in review.json. Stage 0 provenance, candidate requirements, IDs, roadmap DAG and parent issue remain unchanged."
-  ]
+  ],
+  "outputCleanup": {
+    "sourceRevision": "0c35499dcea001f40b06c8f88f6986bc02efe24b",
+    "recordedOn": "2026-10-25",
+    "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+    "artifactSetSha256": "4504434d4ec512a2e7ffe46cc6460b12f0a36f7901f14e604112a67269e9805d",
+    "removedFromTracking": [
+      "contracts/transport/generated/session-validation.json",
+      "contracts/transport/generated/session-examples.ts",
+      "contracts/p02-review/v1/index.json"
+    ],
+    "removedGeneratedLines": 91145,
+    "retained": "Canonical OpenAPI/shared schemas, authored examples/exchanges/scenarios, consumer/check code, locked dependencies and compact generated declarations/routes remain tracked. The compact generated interface files still detect source/type drift.",
+    "verification": [
+      {
+        "command": "npm --prefix contracts/transport test",
+        "condition": "All three removed outputs were initially absent; normal entry regenerated them.",
+        "exitCode": 0,
+        "passed": 99,
+        "failed": 0
+      },
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+        "condition": "Docker context excludes all three expanded outputs; build and normal test entry regenerate required artifacts.",
+        "exitCode": 0,
+        "passedContractTests": 99
+      }
+    ],
+    "verificationImage": "sha256:4b138cba24765de383858571eb534be9d8d64efbf66e8e1373f41f6264c7263c",
+    "automatedReview": {
+      "Standards": 0,
+      "Spec": 0
+    },
+    "logs": [
+      {
+        "name": "output-cleanup-contract.log",
+        "sha256Bytes": "7280906f8904d5ec15c1c7ffb6e48a3275b16a1869d48fc9d084785e33af5ba2"
+      },
+      {
+        "name": "output-cleanup-combined.log",
+        "sha256Bytes": "5dd48c3509673a1a7554269d2c7c72e6a68acde39bdabffb4162413e84b92a8b"
+      }
+    ],
+    "archives": "No archive directories are present in the current change tree. Earlier archive copies were removed in 8168be3; historical commits are preserved. This cleanup does not rewrite Git history.",
+    "boundaries": "HTTP contract and requirement scope unchanged. Original execution evidence above remains tied to its original revision; this supplemental record identifies cleanup verification."
+  }
 }
