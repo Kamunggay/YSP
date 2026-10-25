@@ -157,7 +157,7 @@ export async function buildReview(plan) {
     };
   });
 
-  const files = new Set([apiPath, 'scripts/verification.Dockerfile', 'scripts/verify.ps1',
+  const files = new Set([apiPath, 'scripts/verification.Dockerfile', 'scripts/verification.Dockerfile.dockerignore', 'scripts/verify.ps1',
     'frontend/tsconfig.json', 'frontend/package-lock.json', 'backend/composer.lock', 'contracts/p02-review/reconcile.mjs',
     'contracts/p02-review/v1/README.md', 'contracts/p02-review/v1/review.json']);
   async function collect(directory) {

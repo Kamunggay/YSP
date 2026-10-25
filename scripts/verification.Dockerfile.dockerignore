@@ -3,6 +3,12 @@
 !frontend/**
 !contracts/
 !contracts/**
+!backend/
+!backend/composer.lock
+!scripts/
+!scripts/verification.Dockerfile
+!scripts/verification.Dockerfile.dockerignore
+!scripts/verify.ps1
 **/node_modules
 **/.env*
 **/dist

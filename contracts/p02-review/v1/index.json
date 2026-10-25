@@ -4,7 +4,7 @@
   "contractVersion": "1.1.0-p02.04-review.1",
   "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
   "digestFormat": "sha256-utf8-lf",
-  "artifactSetSha256": "c8b254b10c41a927ee85b3c9b33748504336cdd6d8d08f278d2d5bf06a250397",
+  "artifactSetSha256": "a689e47af7ab1adefe00a9b621895832feab22dbfb13f952f7588b420e7e06c7",
   "artifacts": [
     {
       "path": "backend/composer.lock",
@@ -136,7 +136,7 @@
     },
     {
       "path": "contracts/p02-review/reconcile.mjs",
-      "sha256": "07bffbad1b623001ed013ad599f23a4e7d3840ac6d256ae430abcacc22d4c41a"
+      "sha256": "5572b8e483249c21c11b872bb4232071f0ba5904ab05b90fed80a17fad458e51"
     },
     {
       "path": "contracts/p02-review/v1/README.md",
@@ -476,7 +476,11 @@
     },
     {
       "path": "scripts/verification.Dockerfile",
-      "sha256": "173c204fb755619d42cb3002468b02615f64beb97b75afbdb715fb2ca4317ef8"
+      "sha256": "6caf0f931d0be3f78f717f1a3065b822794e206c844c3c1ca8f05be4673420ce"
+    },
+    {
+      "path": "scripts/verification.Dockerfile.dockerignore",
+      "sha256": "87f561c1da6080e5813507151e454d60a6714036cc9d3acd021c79420c1f2235"
     },
     {
       "path": "scripts/verify.ps1",
