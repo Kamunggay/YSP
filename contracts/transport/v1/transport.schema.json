@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:ysp:transport:v1",
-  "title": "YSP shared transport v1 — review revision 1",
-  "description": "Leader-authored P00 contract for shared transport, parent spec https://github.com/Kamunggay/YSP/issues/2. Review candidate dated 2026-10-24; Glenn frontend/query and Efren posting acceptance pending. This describes wire values, not implemented business behavior. TR-02–TR-03, TR-06–TR-10, TR-12, TR-15, DOC-11, UX-01–UX-04; Q3–Q5. Identity/record/evidence payloads belong to the identity, record and evidence contract, IPC/RM acceptance to the receiving contract, stock query/hold semantics to the stock-hold contract. No public mutation or balance setter is defined.",
+  "title": "YSP shared transport v1 \u00e2\u20ac\u201d review revision 1",
+  "description": "Leader-authored P00 contract for shared transport, parent spec https://github.com/Kamunggay/YSP/issues/2. Review candidate dated 2026-10-24; Glenn frontend/query and Efren posting acceptance pending. This describes wire values, not implemented business behavior. TR-02\u00e2\u20ac\u201cTR-03, TR-06\u00e2\u20ac\u201cTR-10, TR-12, TR-15, DOC-11, UX-01\u00e2\u20ac\u201cUX-04; Q3\u00e2\u20ac\u201cQ5. Identity/record/evidence payloads belong to the identity, record and evidence contract, IPC/RM acceptance to the receiving contract, stock query/hold semantics to the stock-hold contract. No public mutation or balance setter is defined.",
   "$defs": {
     "Id": {
       "type": "string",
@@ -27,7 +27,7 @@
         "value",
         "quantity_scale"
       ],
-      "description": "A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units.",
+      "description": "A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0\u00e2\u20ac\u201c6 follow DATABASE-SCHEMA \u00c2\u00a72.1/\u00c2\u00a72.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units.",
       "properties": {
         "value": {
           "$ref": "#/$defs/Quantity"
@@ -1394,6 +1394,315 @@
                 "enum": [
                   "/email",
                   "/password"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "const": "invalid"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check this field."
+              }
+            }
+          }
+        }
+      }
+    },
+    "EnrollmentId": {
+      "type": "string",
+      "pattern": "^enr_[A-Za-z0-9_-]{32,96}$",
+      "description": "Opaque, bounded, case-sensitive identity AND current-session binding. Distinct from durable operation IDs. Never an authority token or user selector."
+    },
+    "PrepareEnrollmentRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "intent"
+          ],
+          "properties": {
+            "intent": {
+              "type": "string",
+              "const": "begin"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "intent",
+            "enrollment_id"
+          ],
+          "properties": {
+            "intent": {
+              "type": "string",
+              "const": "replace_unconfirmed"
+            },
+            "enrollment_id": {
+              "$ref": "#/$defs/EnrollmentId"
+            }
+          }
+        }
+      ]
+    },
+    "ConfirmEnrollmentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enrollment_id",
+        "authenticator_code"
+      ],
+      "properties": {
+        "enrollment_id": {
+          "$ref": "#/$defs/EnrollmentId"
+        },
+        "authenticator_code": {
+          "type": "string",
+          "pattern": "^[0-9]{6}$",
+          "description": "Transient authenticator proof, never a recovery code or browser draft."
+        }
+      }
+    },
+    "PreparedEnrollment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "enrollment"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "const": "mfa_enrollment_required"
+        },
+        "enrollment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "expires_at",
+            "setup_uri",
+            "manual_key"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/EnrollmentId"
+            },
+            "expires_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "setup_uri": {
+              "type": "string",
+              "format": "uri",
+              "maxLength": 2048,
+              "pattern": "^otpauth://totp/[^?#]+\\?[^#]+$"
+            },
+            "manual_key": {
+              "type": "string",
+              "pattern": "^[A-Z2-7]{32}$"
+            }
+          }
+        }
+      }
+    },
+    "RecoveryCodeIssuance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issued_at",
+        "codes"
+      ],
+      "properties": {
+        "issued_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "codes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{4}(?:-[A-Z0-9]{4}){3}$"
+          }
+        }
+      },
+      "description": "One-time plaintext issuance only in successful confirmation (or separately protected ticket 04 regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration."
+    },
+    "ConfirmedEnrollment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "recovery_codes"
+      ],
+      "properties": {
+        "session": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/AuthenticatedSession"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mfa": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "verified"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "recovery_codes": {
+          "$ref": "#/$defs/RecoveryCodeIssuance"
+        }
+      }
+    },
+    "EnrollmentUnauthorized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "authentication_required"
+        },
+        "message": {
+          "type": "string",
+          "const": "Sign in to continue."
+        }
+      }
+    },
+    "EnrollmentConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "enrollment_unavailable"
+        },
+        "message": {
+          "type": "string",
+          "const": "Bootstrap the current session before a reviewed next action."
+        }
+      }
+    },
+    "EnrollmentProofRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_authenticator_proof"
+        },
+        "message": {
+          "type": "string",
+          "const": "The authenticator proof was not accepted."
+        }
+      }
+    },
+    "PrepareEnrollmentInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "field_errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_input"
+        },
+        "message": {
+          "type": "string",
+          "const": "Check the submitted fields."
+        },
+        "field_errors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pointer",
+              "code",
+              "message"
+            ],
+            "properties": {
+              "pointer": {
+                "type": "string",
+                "enum": [
+                  "/intent",
+                  "/enrollment_id"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "const": "invalid"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check this field."
+              }
+            }
+          }
+        }
+      }
+    },
+    "ConfirmEnrollmentInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "field_errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_input"
+        },
+        "message": {
+          "type": "string",
+          "const": "Check the submitted fields."
+        },
+        "field_errors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pointer",
+              "code",
+              "message"
+            ],
+            "properties": {
+              "pointer": {
+                "type": "string",
+                "enum": [
+                  "/enrollment_id",
+                  "/authenticator_code"
                 ]
               },
               "code": {

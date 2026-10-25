@@ -969,6 +969,607 @@
         "description": "Contract candidate only; adapter/policy review gates are in x-session-contract. All responses are no-store. Accept application/json; never redirect to HTML. No request body.",
         "x-session-consumer": true
       }
+    },
+    "/session/mfa/enrollment": {
+      "post": {
+        "security": [
+          {
+            "chapterSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Mandatory for success; optional here only to represent missing-token 419 examples. Same-origin does not bypass validation."
+          }
+        ],
+        "x-requirements": [
+          "SEC-01",
+          "SEC-02",
+          "SEC-03",
+          "TR-03",
+          "TR-16",
+          "TR-17",
+          "TR-18",
+          "DOC-11",
+          "UX-02",
+          "UX-03"
+        ],
+        "operationId": "prepareAuthenticatorEnrollment",
+        "summary": "Prepare or explicitly replace an unconfirmed authenticator",
+        "description": "Contract candidate; see x-enrollment-contract. Requires current password-verified mfa_enrollment_required session and mandatory token AND origin guards. No caller user ID, Idempotency-Key, durable operation or replay readback. All responses no-store.",
+        "responses": {
+          "200": {
+            "description": "Preparation alone never verifies MFA.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PreparedEnrollment"
+                },
+                "examples": {
+                  "enrollment-begin": {
+                    "$ref": "./enrollment-examples.json#/enrollment-begin"
+                  },
+                  "enrollment-replace": {
+                    "$ref": "./enrollment-examples.json#/enrollment-replace"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked or disabled session; no identity details.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "prepareAuthenticatorEnrollment-signed-out": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-signed-out"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Same safe response for stale, expired, wrong-session or consumed enrollment; begin with an existing pending enrollment conflicts. Bootstrap first; never implicitly replace.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentConflict"
+                },
+                "examples": {
+                  "prepareAuthenticatorEnrollment-stale": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-stale"
+                  },
+                  "prepareAuthenticatorEnrollment-expired": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-expired"
+                  },
+                  "prepareAuthenticatorEnrollment-wrong-session": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-wrong-session"
+                  },
+                  "prepareAuthenticatorEnrollment-consumed": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-consumed"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request shape; field pointers refer only to this request and never echo secrets.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/PrepareEnrollmentInvalid"
+                },
+                "examples": {
+                  "prepareAuthenticatorEnrollment-fields": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-fields"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin rejected or current session state disallows the exchange. No credential or authority information disclosed.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "prepareAuthenticatorEnrollment-403": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-403"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Missing/stale/malformed token, even when Sec-Fetch-Site is same-origin. Reject before credential validation or state change. Refresh only; no automatic unsafe retry.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "prepareAuthenticatorEnrollment-419": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-419"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Throttled; no unsafe retry. Respect Retry-After.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "description": "Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "prepareAuthenticatorEnrollment-429": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable. A lost/invalid response never establishes whether a prior unsafe exchange completed.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "prepareAuthenticatorEnrollment-503": {
+                    "$ref": "./enrollment-examples.json#/prepareAuthenticatorEnrollment-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/PrepareEnrollmentRequest"
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
+    },
+    "/session/mfa/enrollment/confirm": {
+      "post": {
+        "security": [
+          {
+            "chapterSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Mandatory for success; optional here only to represent missing-token 419 examples. Same-origin does not bypass validation."
+          }
+        ],
+        "x-requirements": [
+          "SEC-01",
+          "SEC-02",
+          "SEC-03",
+          "TR-03",
+          "TR-16",
+          "TR-17",
+          "TR-18",
+          "DOC-11",
+          "UX-02",
+          "UX-03"
+        ],
+        "operationId": "confirmAuthenticatorEnrollment",
+        "summary": "Confirm the matching live authenticator and issue recovery codes once",
+        "description": "Contract candidate; see x-enrollment-contract. Requires current password-verified mfa_enrollment_required session and mandatory token AND origin guards. No caller user ID, Idempotency-Key, durable operation or replay readback. All responses no-store.",
+        "responses": {
+          "200": {
+            "description": "Atomically verify live matching proof, consume enrollment, rotate session/CSRF and issue codes once. No repeat readback.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              },
+              "Set-Cookie": {
+                "required": true,
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 2
+                },
+                "description": "Separate Set-Cookie fields: host-only ysp_session (Secure; HttpOnly; Path=/; SameSite=Lax), XSRF-TOKEN (Secure; Path=/; SameSite=Lax; readable by JavaScript). No Domain. Values opaque; actual lifetime requires later security approval. Browser JavaScript cannot inspect Set-Cookie."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ConfirmedEnrollment"
+                },
+                "examples": {
+                  "enrollment-confirm-live": {
+                    "$ref": "./enrollment-examples.json#/enrollment-confirm-live"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, revoked or disabled session; no identity details.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "confirmAuthenticatorEnrollment-signed-out": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-signed-out"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Same safe response for stale, expired, wrong-session or consumed enrollment; begin with an existing pending enrollment conflicts. Bootstrap first; never implicitly replace.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentConflict"
+                },
+                "examples": {
+                  "confirmAuthenticatorEnrollment-stale": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-stale"
+                  },
+                  "confirmAuthenticatorEnrollment-expired": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-expired"
+                  },
+                  "confirmAuthenticatorEnrollment-wrong-session": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-wrong-session"
+                  },
+                  "confirmAuthenticatorEnrollment-consumed": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-consumed"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request shape; field pointers refer only to this request and never echo secrets.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ConfirmEnrollmentInvalid"
+                },
+                "examples": {
+                  "confirmAuthenticatorEnrollment-fields": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-fields"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Well-shaped but invalid or expired authenticator proof; no MFA verification or codes. Expired enrollment instead uses 409.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentProofRejected"
+                },
+                "examples": {
+                  "enrollment-proof-invalid": {
+                    "$ref": "./enrollment-examples.json#/enrollment-proof-invalid"
+                  },
+                  "enrollment-proof-expired": {
+                    "$ref": "./enrollment-examples.json#/enrollment-proof-expired"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin rejected or current session state disallows the exchange. No credential or authority information disclosed.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "confirmAuthenticatorEnrollment-403": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-403"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Missing/stale/malformed token, even when Sec-Fetch-Site is same-origin. Reject before credential validation or state change. Refresh only; no automatic unsafe retry.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "confirmAuthenticatorEnrollment-419": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-419"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Throttled; no unsafe retry. Respect Retry-After.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "description": "Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "confirmAuthenticatorEnrollment-429": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable. A lost/invalid response never establishes whether a prior unsafe exchange completed.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "confirmAuthenticatorEnrollment-503": {
+                    "$ref": "./enrollment-examples.json#/confirmAuthenticatorEnrollment-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/ConfirmEnrollmentRequest"
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
     }
   },
   "components": {
@@ -1106,6 +1707,39 @@
       },
       "SignInInvalid": {
         "$ref": "./transport.schema.json#/$defs/SignInInvalid"
+      },
+      "EnrollmentId": {
+        "$ref": "./transport.schema.json#/$defs/EnrollmentId"
+      },
+      "PrepareEnrollmentRequest": {
+        "$ref": "./transport.schema.json#/$defs/PrepareEnrollmentRequest"
+      },
+      "ConfirmEnrollmentRequest": {
+        "$ref": "./transport.schema.json#/$defs/ConfirmEnrollmentRequest"
+      },
+      "PreparedEnrollment": {
+        "$ref": "./transport.schema.json#/$defs/PreparedEnrollment"
+      },
+      "RecoveryCodeIssuance": {
+        "$ref": "./transport.schema.json#/$defs/RecoveryCodeIssuance"
+      },
+      "ConfirmedEnrollment": {
+        "$ref": "./transport.schema.json#/$defs/ConfirmedEnrollment"
+      },
+      "EnrollmentUnauthorized": {
+        "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+      },
+      "EnrollmentConflict": {
+        "$ref": "./transport.schema.json#/$defs/EnrollmentConflict"
+      },
+      "EnrollmentProofRejected": {
+        "$ref": "./transport.schema.json#/$defs/EnrollmentProofRejected"
+      },
+      "PrepareEnrollmentInvalid": {
+        "$ref": "./transport.schema.json#/$defs/PrepareEnrollmentInvalid"
+      },
+      "ConfirmEnrollmentInvalid": {
+        "$ref": "./transport.schema.json#/$defs/ConfirmEnrollmentInvalid"
       }
     },
     "responses": {
@@ -1293,7 +1927,7 @@
       "rotation": "Sign-in, successful MFA, privilege elevation and logout regenerate session ID and CSRF token. Logout invalidates old server session then issues fresh anonymous cookies; bootstrap revalidates disabled/revoked identity. GET /csrf-cookie reissues current CSRF token without unconditional rotation. Read current cookie immediately before each unsafe request; do not cache token in local storage.",
       "lifetime": "Numeric session/MFA lifetimes, attempt limits and recent-proof windows need subsequent security/backend approval. No fixture value approves a runtime default."
     },
-    "consumer": "Browser credentials: include; Accept: application/json; JSON Content-Type only with sign-in body; redirect: error. Every result no-store. 204 has no body or Content-Type. No automatic unsafe retry after CSRF/429/network/protocol failure. Refresh/bootstrap can inform next action but never prove an earlier business attempt rejected.",
+    "consumer": "Browser credentials: include; Accept: application/json; JSON Content-Type only with a JSON request body; redirect: error. Every result no-store. 204 has no body or Content-Type. No automatic unsafe retry after CSRF/429/network/protocol failure. Refresh/bootstrap can inform next action but never prove an earlier business attempt rejected.",
     "freeze_gates": [
       "Glenn reviews exact route/base, cookies, adapter, status/examples and generated consumer usability at this revision",
       "Efren reviews restricted states, provider separation and Leader-authored access contract",
@@ -1321,5 +1955,29 @@
         "combined": "powershell -NoProfile -File scripts/verify.ps1"
       }
     }
+  },
+  "x-enrollment-contract": {
+    "revision": "p02.03-review.1",
+    "authored_on": "2026-10-25",
+    "authority": "Codex under owner-authorized ticket 03; proposed wire contract, not peer/security approval",
+    "review_status": "pending; affected contract freeze blocked on Glenn, Efren and backend/security review",
+    "binding": "Current identity AND current server session own one live unconfirmed enrollment. Never accept caller user IDs. An enrollment identifier is distinct from an operation ID. Required MFA pending sessions can bootstrap, prepare/replace, confirm, refresh CSRF or sign out; no chapter/context, permissions or operational access.",
+    "preparation": "POST /session/mfa/enrollment intent begin requires no live pending enrollment. intent replace_unconfirmed requires the matching live identifier and atomically invalidates its predecessor. Never replaces an already confirmed factor. Return setup URI/manual key only in this 200 response; no readback endpoint. A lost preparation response requires bootstrap and a reviewed next action; do not automatically begin or replace.",
+    "confirmation": "POST /session/mfa/enrollment/confirm takes matching enrollment_id and authenticator_code. Validate expiry, session/identity binding and proof atomically before MFA becomes verified; consume enrollment and rotate session/CSRF. Only successful confirmation issues the initial one-time code set. Browser acknowledgment, copy or download is not proof and changes no authority. Repeat/consumed confirmation never reissues codes.",
+    "failure_precedence": [
+      "origin 403",
+      "CSRF 419",
+      "throttle 429",
+      "request shape 422",
+      "current session 401",
+      "allowed enrollment state 403",
+      "binding/live enrollment 409",
+      "proof 400",
+      "atomic success"
+    ],
+    "secrets": "Passwords, OTPs, setup URI/manual key, enrollment material and recovery codes are transient; never editable drafts, local/session storage, IndexedDB, durable browser state, URL history, analytics or logs. Clear transient secret UI on completion/navigation/expiry/sign-out; recovery-code download is an explicit user-held secret export, never a browser draft. Bootstrap, errors, chapter context and normal reads cannot disclose setup material or recovery codes.",
+    "lost_confirmation": "Never automatically repeat confirmation or restart enrollment. GET /session discovers current state, never recovery-code readback: authenticated/verified means the session succeeded but lost codes remain unavailable; mfa_enrollment_required does not prove rejection and needs reviewed next action; mfa_challenge_required requires the existing factor; signed_out requires sign-in. Ticket 04 owns explicit protected regeneration with fresh proof, or blocked assisted recovery when no usable factor remains. No ticket 04 route is invented or required for bootstrap validation.",
+    "synthetic": "All public fixtures, setup secrets, OTPs, codes, IDs, five-minute expiry, two-code example and Retry-After 30 are synthetic. Wire format/size bounds are not approved security limits. Actual MFA timing, code count/entropy, throttling/attempt values and proof policy require subsequent backend/security approval before runtime enablement.",
+    "scope": "Schema and generated-consumer checks only. Binding, replacement invalidation, one-time verification/issuance, revocation, session rotation and pending-access denial are declarative server review obligations, not executed security enforcement. No production endpoints, code storage or UI."
   }
 }

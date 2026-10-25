@@ -1,0 +1,218 @@
+{
+  "enrollment-begin": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "state": "mfa_enrollment_required",
+      "enrollment": {
+        "id": "enr_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "expires_at": "2026-10-25T06:05:00.000000Z",
+        "setup_uri": "otpauth://totp/YSP:synthetic%40example.test?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=YSP",
+        "manual_key": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
+      }
+    }
+  },
+  "enrollment-replace": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "state": "mfa_enrollment_required",
+      "enrollment": {
+        "id": "enr_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "expires_at": "2026-10-25T06:05:00.000000Z",
+        "setup_uri": "otpauth://totp/YSP:synthetic%40example.test?secret=KRSXG5DSNFXGOIDBKRSXG5DSNFXGOIDB&issuer=YSP",
+        "manual_key": "KRSXG5DSNFXGOIDBKRSXG5DSNFXGOIDB"
+      }
+    }
+  },
+  "prepareAuthenticatorEnrollment-stale": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "enrollment_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "prepareAuthenticatorEnrollment-expired": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "enrollment_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "prepareAuthenticatorEnrollment-wrong-session": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "enrollment_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "prepareAuthenticatorEnrollment-consumed": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "enrollment_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "prepareAuthenticatorEnrollment-signed-out": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "prepareAuthenticatorEnrollment-fields": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "invalid_input",
+      "message": "Check the submitted fields.",
+      "field_errors": [
+        {
+          "pointer": "/intent",
+          "code": "invalid",
+          "message": "Check this field."
+        }
+      ]
+    }
+  },
+  "prepareAuthenticatorEnrollment-403": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "origin_forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "prepareAuthenticatorEnrollment-419": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "prepareAuthenticatorEnrollment-429": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "prepareAuthenticatorEnrollment-503": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "enrollment-confirm-live": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "session": {
+        "state": "authenticated",
+        "user": {
+          "id": "9007199254740994",
+          "display_name": "Synthetic approver"
+        },
+        "mfa": {
+          "status": "verified",
+          "verified_at": "2026-10-25T06:01:00.000000Z"
+        },
+        "provider_destinations": []
+      },
+      "recovery_codes": {
+        "issued_at": "2026-10-25T06:01:00.000000Z",
+        "codes": [
+          "DEMO-CODE-0001-AAAA",
+          "DEMO-CODE-0002-BBBB"
+        ]
+      }
+    }
+  },
+  "enrollment-proof-invalid": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "invalid_authenticator_proof",
+      "message": "The authenticator proof was not accepted."
+    }
+  },
+  "enrollment-proof-expired": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "invalid_authenticator_proof",
+      "message": "The authenticator proof was not accepted."
+    }
+  },
+  "confirmAuthenticatorEnrollment-stale": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "enrollment_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "confirmAuthenticatorEnrollment-expired": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "enrollment_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "confirmAuthenticatorEnrollment-wrong-session": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "enrollment_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "confirmAuthenticatorEnrollment-consumed": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "enrollment_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "confirmAuthenticatorEnrollment-signed-out": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "confirmAuthenticatorEnrollment-fields": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "invalid_input",
+      "message": "Check the submitted fields.",
+      "field_errors": [
+        {
+          "pointer": "/authenticator_code",
+          "code": "invalid",
+          "message": "Check this field."
+        }
+      ]
+    }
+  },
+  "confirmAuthenticatorEnrollment-403": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "origin_forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "confirmAuthenticatorEnrollment-419": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "confirmAuthenticatorEnrollment-429": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "confirmAuthenticatorEnrollment-503": {
+    "summary": "Synthetic public fixture; not runtime security evidence",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  }
+}

@@ -39,7 +39,8 @@ for (const item of Object.values(resolved.paths)) {
   }
 }
 outputs['session-validation.json'] = `${JSON.stringify(consumerSchemas, null, 2)}\n`;
-const exchanges = JSON.parse(await readFile(new URL('./v1/session-exchanges.json', import.meta.url), 'utf8'));
+const exchanges = (await Promise.all(['session', 'enrollment'].map(async slice =>
+  JSON.parse(await readFile(new URL(`./v1/${slice}-exchanges.json`, import.meta.url), 'utf8'))))).flat();
 const examples = exchanges.map(({ operationId, request, response }) => ({
   operationId,
   request: Object.hasOwn(request, 'body') ? { body: request.body } : {},
@@ -48,9 +49,16 @@ const examples = exchanges.map(({ operationId, request, response }) => ({
     ...(response.status === 429 ? { retryAfter: response.headers['retry-after'] } : {}),
   },
 }));
+// Malformed request fixtures validate as rejections, not as valid typed requests.
+const invalidRequest = index => api.paths[exchanges[index].path][exchanges[index].method]
+  ['x-invalid-request-statuses']?.includes(exchanges[index].response.status);
+const validExamples = examples.filter((_, index) => !invalidRequest(index));
+const invalidExamples = examples.filter((_, index) => invalidRequest(index))
+  .map(({ operationId, response }) => ({ operationId, response }));
 outputs['session-examples.ts'] = '// Generated from the validated operation exchanges; do not edit.\n'
-  + 'import type { ConsumerExample } from "../consumer/session.ts";\n'
-  + `export const consumerExamples = ${JSON.stringify(examples, null, 2)} as const satisfies readonly ConsumerExample[];\n`;
+  + 'import type { ConsumerExample, ConsumerResponseExample } from "../consumer/session.ts";\n'
+  + `export const consumerExamples = ${JSON.stringify(validExamples, null, 2)} as const satisfies readonly ConsumerExample[];\n`
+  + `export const rejectedRequestResponses = ${JSON.stringify(invalidExamples, null, 2)} as const satisfies readonly ConsumerResponseExample[];\n`;
 await mkdir(new URL('./generated/', import.meta.url), { recursive: true });
 for (const [name, output] of Object.entries(outputs)) {
   const target = new URL(`./generated/${name}`, import.meta.url);

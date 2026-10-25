@@ -23,5 +23,13 @@ export const routes = {
   "initializeCsrf": {
     "method": "GET",
     "path": "/csrf-cookie"
+  },
+  "prepareAuthenticatorEnrollment": {
+    "method": "POST",
+    "path": "/api/v1/session/mfa/enrollment"
+  },
+  "confirmAuthenticatorEnrollment": {
+    "method": "POST",
+    "path": "/api/v1/session/mfa/enrollment/confirm"
   }
 } as const;

@@ -22,6 +22,8 @@ export type ConsumerExample = { [K in Operation]: {
   operationId: K; request: Pick<Options<K>, 'body'>; response: Result<K>;
 } }[Operation];
 
+export type ConsumerResponseExample = { [K in Operation]: { operationId: K; response: Result<K> } }[Operation];
+
 const ajv = new Ajv2020({ strict: true, allErrors: true, validateFormats: true });
 addFormats(ajv);
 

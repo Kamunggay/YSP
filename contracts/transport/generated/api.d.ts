@@ -79,6 +79,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/session/mfa/enrollment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare or explicitly replace an unconfirmed authenticator
+         * @description Contract candidate; see x-enrollment-contract. Requires current password-verified mfa_enrollment_required session and mandatory token AND origin guards. No caller user ID, Idempotency-Key, durable operation or replay readback. All responses no-store.
+         */
+        post: operations["prepareAuthenticatorEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/session/mfa/enrollment/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm the matching live authenticator and issue recovery codes once
+         * @description Contract candidate; see x-enrollment-contract. Requires current password-verified mfa_enrollment_required session and mandatory token AND origin guards. No caller user ID, Idempotency-Key, durable operation or replay readback. All responses no-store.
+         */
+        post: operations["confirmAuthenticatorEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/session/sign-in": {
         parameters: {
             query?: never;
@@ -243,9 +283,62 @@ export interface components {
                 kind: string;
             } | null;
         } & unknown;
+        ConfirmedEnrollment: {
+            /** @description One-time plaintext issuance only in successful confirmation (or separately protected ticket 04 regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration. */
+            recovery_codes: {
+                codes: string[];
+                issued_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
+            };
+            session: components["schemas"]["SessionSnapshot"]["oneOf"]["3"] & {
+                mfa?: {
+                    /** @constant */
+                    status?: "verified";
+                };
+            };
+        };
+        ConfirmEnrollmentInvalid: {
+            /** @constant */
+            code: "invalid_input";
+            field_errors: {
+                /** @constant */
+                code: "invalid";
+                /** @constant */
+                message: "Check this field.";
+                /** @enum {string} */
+                pointer: "/enrollment_id" | "/authenticator_code";
+            }[];
+            /** @constant */
+            message: "Check the submitted fields.";
+        };
+        ConfirmEnrollmentRequest: {
+            /** @description Transient authenticator proof, never a recovery code or browser draft. */
+            authenticator_code: string;
+            /** @description Opaque, bounded, case-sensitive identity AND current-session binding. Distinct from durable operation IDs. Never an authority token or user selector. */
+            enrollment_id: string;
+        };
+        EnrollmentConflict: {
+            /** @constant */
+            code: "enrollment_unavailable";
+            /** @constant */
+            message: "Bootstrap the current session before a reviewed next action.";
+        };
+        /** @description Opaque, bounded, case-sensitive identity AND current-session binding. Distinct from durable operation IDs. Never an authority token or user selector. */
+        EnrollmentId: string;
+        EnrollmentProofRejected: {
+            /** @constant */
+            code: "invalid_authenticator_proof";
+            /** @constant */
+            message: "The authenticator proof was not accepted.";
+        };
         EnrollmentRequiredSession: {
             /** @constant */
             state: "mfa_enrollment_required";
+        };
+        EnrollmentUnauthorized: {
+            /** @constant */
+            code: "authentication_required";
+            /** @constant */
+            message: "Sign in to continue.";
         };
         /** @description Correctable field feedback. path is an RFC 6901 pointer relative to the endpoint request JSON body (not CommandContext or a translated label). Empty pointer targets the body as a whole. Do not echo sensitive submitted data. */
         FieldFeedback: {
@@ -401,6 +494,39 @@ export interface components {
             /** @constant */
             currency: "PHP";
         };
+        PreparedEnrollment: {
+            enrollment: {
+                expires_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
+                id: components["schemas"]["ConfirmEnrollmentRequest"]["enrollment_id"];
+                manual_key: string;
+                /** Format: uri */
+                setup_uri: string;
+            };
+            /** @constant */
+            state: "mfa_enrollment_required";
+        };
+        PrepareEnrollmentInvalid: {
+            /** @constant */
+            code: "invalid_input";
+            field_errors: {
+                /** @constant */
+                code: "invalid";
+                /** @constant */
+                message: "Check this field.";
+                /** @enum {string} */
+                pointer: "/intent" | "/enrollment_id";
+            }[];
+            /** @constant */
+            message: "Check the submitted fields.";
+        };
+        PrepareEnrollmentRequest: {
+            /** @constant */
+            intent: "begin";
+        } | {
+            enrollment_id: components["schemas"]["ConfirmEnrollmentRequest"]["enrollment_id"];
+            /** @constant */
+            intent: "replace_unconfirmed";
+        };
         /** @description Independently authorized provisioning destination, not a chapter membership, duty or permission. No operational access follows from it. Other provider surfaces await their owning contracts. */
         ProviderDestination: {
             /** @constant */
@@ -426,6 +552,11 @@ export interface components {
             states: {
                 [key: string]: string;
             };
+        };
+        /** @description One-time plaintext issuance only in successful confirmation (or separately protected ticket 04 regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration. */
+        RecoveryCodeIssuance: {
+            codes: string[];
+            issued_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
         };
         SessionCsrfFailure: {
             /** @constant */
@@ -528,7 +659,7 @@ export interface components {
             email: string;
             password: string;
         };
-        /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
+        /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0â€“6 follow DATABASE-SCHEMA Â§2.1/Â§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
         UnitQuantity: {
             quantity_scale: number;
             /** @description Nonnegative DECIMAL(20,6) magnitude: at most fourteen integral and six fractional digits. No exponent, sign, separators or binary floating point. Zero is a transport value; a domain operation may require a positive amount. Fractional trailing zeros are accepted. Canonical fingerprint representation uses six places, so 2 and 2.000000 denote the same exact quantity. Signed ledger deltas require a later explicit domain schema. */
@@ -745,6 +876,239 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Throttled; no unsafe retry. Respect Retry-After. */
+            429: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value. */
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Unavailable. A lost/invalid response never establishes whether a prior unsafe exchange completed. */
+            503: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    prepareAuthenticatorEnrollment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Mandatory for success; optional here only to represent missing-token 419 examples. Same-origin does not bypass validation. */
+                "X-XSRF-TOKEN"?: string;
+            };
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrepareEnrollmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Preparation alone never verifies MFA. */
+            200: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreparedEnrollment"];
+                };
+            };
+            /** @description Missing, expired, revoked or disabled session; no identity details. */
+            401: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Origin rejected or current session state disallows the exchange. No credential or authority information disclosed. */
+            403: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Same safe response for stale, expired, wrong-session or consumed enrollment; begin with an existing pending enrollment conflicts. Bootstrap first; never implicitly replace. */
+            409: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentConflict"];
+                };
+            };
+            /** @description Missing/stale/malformed token, even when Sec-Fetch-Site is same-origin. Reject before credential validation or state change. Refresh only; no automatic unsafe retry. */
+            419: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Invalid request shape; field pointers refer only to this request and never echo secrets. */
+            422: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepareEnrollmentInvalid"];
+                };
+            };
+            /** @description Throttled; no unsafe retry. Respect Retry-After. */
+            429: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value. */
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Unavailable. A lost/invalid response never establishes whether a prior unsafe exchange completed. */
+            503: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    confirmAuthenticatorEnrollment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Mandatory for success; optional here only to represent missing-token 419 examples. Same-origin does not bypass validation. */
+                "X-XSRF-TOKEN"?: string;
+            };
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmEnrollmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Atomically verify live matching proof, consume enrollment, rotate session/CSRF and issue codes once. No repeat readback. */
+            200: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Separate Set-Cookie fields: host-only ysp_session (Secure; HttpOnly; Path=/; SameSite=Lax), XSRF-TOKEN (Secure; Path=/; SameSite=Lax; readable by JavaScript). No Domain. Values opaque; actual lifetime requires later security approval. Browser JavaScript cannot inspect Set-Cookie. */
+                    "Set-Cookie": string[];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmedEnrollment"];
+                };
+            };
+            /** @description Well-shaped but invalid or expired authenticator proof; no MFA verification or codes. Expired enrollment instead uses 409. */
+            400: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentProofRejected"];
+                };
+            };
+            /** @description Missing, expired, revoked or disabled session; no identity details. */
+            401: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Origin rejected or current session state disallows the exchange. No credential or authority information disclosed. */
+            403: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Same safe response for stale, expired, wrong-session or consumed enrollment; begin with an existing pending enrollment conflicts. Bootstrap first; never implicitly replace. */
+            409: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentConflict"];
+                };
+            };
+            /** @description Missing/stale/malformed token, even when Sec-Fetch-Site is same-origin. Reject before credential validation or state change. Refresh only; no automatic unsafe retry. */
+            419: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Invalid request shape; field pointers refer only to this request and never echo secrets. */
+            422: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmEnrollmentInvalid"];
                 };
             };
             /** @description Throttled; no unsafe retry. Respect Retry-After. */
