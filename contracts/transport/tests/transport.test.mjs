@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import SwaggerParser from '@apidevtools/swagger-parser';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { loadContract, httpMethods, validateExchange } from '../validation/operation-examples.mjs';
+import { jsonDigest } from './fixtures/stage-0-identity.mjs';
 
 const readJson = async (path) => JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
 const schema = await readJson('../v1/transport.schema.json');
@@ -110,15 +109,14 @@ test('TR-03: OpenAPI and every reusable definition compile, including HTTP looku
 
 test('TR-03/DOC-11: Stage 0 lookup scopes, identities and response semantics remain compatible', async () => {
   const { api } = await loadContract();
-  const archived = await SwaggerParser.validate(fileURLToPath(new URL('../../p00-review/stage-0/contracts/transport/v1/api-v1.json', import.meta.url)), {
-    resolve: { http: false },
-  });
-  assert.deepEqual(api.servers, archived.servers);
-  assert.deepEqual(api.security, archived.security);
-  assert.deepEqual(api.components.securitySchemes.chapterSession, archived.components.securitySchemes.chapterSession);
-  for (const [path, item] of Object.entries(archived.paths)) assert.deepEqual(api.paths[path], item, path);
-  const originalSchema = await readJson('../../p00-review/stage-0/contracts/transport/v1/transport.schema.json');
-  for (const [name, definition] of Object.entries(originalSchema.$defs)) assert.deepEqual(schema.$defs[name], definition, name);
+  const baseline = await readJson('./fixtures/stage-0-compatibility.json');
+  assert.deepEqual(api.servers, baseline.servers);
+  assert.deepEqual(api.security, baseline.security);
+  assert.equal(jsonDigest(api.components.securitySchemes.chapterSession), baseline.chapterSession);
+  for (const [path, expected] of Object.entries(baseline.lookups)) assert.equal(jsonDigest(api.paths[path]), expected, path);
+  for (const [name, expected] of Object.entries(baseline.definitions)) assert.equal(jsonDigest(schema.$defs[name]), expected, name);
+  const examples = await readJson('../v1/examples.json');
+  for (const [name, expected] of Object.entries(baseline.examples)) assert.equal(jsonDigest(examples[name]), expected, name);
 });
 
 test('TR-03/DOC-11/UX-02: examples distinguish terminal outcomes, corrections and uncertainty', async () => {

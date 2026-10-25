@@ -1,0 +1,78 @@
+{
+  "sourceRevision": "3e2c51dacf3f5f74c78958b3048a857364521eea",
+  "sourceUrl": "https://github.com/Kamunggay/YSP/tree/3e2c51dacf3f5f74c78958b3048a857364521eea",
+  "purpose": "Successor compatibility reconciliation. Historical files and runs remain in the source revision, with original hashes and review states. This records preservation assertions, not new peer acceptance or a rerun of historical evidence.",
+  "historicalManifest": "contracts/p00-review/v1/manifest.json",
+  "handoffDigests": {
+    "contracts/p00-review/v1/manifest.json": "3ad7b9e5321b12b6b90a17d57a3dcb60e64dddfbb02f5902adf43ce04448ffc5",
+    "contracts/p00-review/v1/validation.json": "39e24529cdd2fef706d61a0035acd8b8ccdab080a35f03f06e4439468a3533a0",
+    "contracts/p00-review/v1/reconciliation.md": "3760ac1ba8fed92950d4a6acd43a1260e90be2cd4c49a0a711004cbb1e1962f8",
+    "contracts/p00-review/v1/README.md": "c55c2c1805a86e0b19fae02a7262160162aa72352eb36139fe04ccf615ac93e6",
+    "contracts/p00-review/v1/walkthrough.md": "5f73218cc21fca539d6066e2ac68dde607e766dd35afec999ec2354023f50b82"
+  },
+  "extensibleArtifacts": [
+    "contracts/transport/v1/api-v1.json",
+    "contracts/transport/v1/transport.schema.json",
+    "contracts/transport/v1/examples.json"
+  ],
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "chapterSession": []
+    }
+  ],
+  "chapterSession": "5d0d7b5c6b99323440c870fdf8601ceafd63b0de9a2d6c91b0a1f4a8466ab37f",
+  "lookups": {
+    "/chapters/{chapter_id}/operations/by-key": "24c640a015c07a95080203b9b8fb4e7c16108be7701599e548523aa79d17d7a9",
+    "/chapters/{chapter_id}/operations/by-id/{operation_id}": "97f6ad8824af71c903139c1f6b4f109f5b69349db501cfb0720afe1665d72e76"
+  },
+  "definitions": {
+    "Id": "3f351a16f4f95321960fc0f10720dc82e1f7280c37a428ccba4f5314a67103e8",
+    "Version": "c9d6e4566d7b1e731281bbb1bafc5b6bd28ae2c93b9fe0e7eeb0a33201646d41",
+    "Quantity": "81fcbe5efcec67ec8cc0f916fe6d091dd0f7b1fa71b8fabce2427888ddcd7da2",
+    "UnitQuantity": "ef5494cbaa77d22ddf9c2e1bb9cb57049711fa26e9c0c0f1b3ddb9f3d58f528e",
+    "PostedMoney": "e3dd9729b5d77f8a90f1447db22dd1866ee773aaf60c65fe65acff084ce459e2",
+    "UtcInstant": "6eec2e983f965d9b63b791086f8cae4ef55fcccedf2245513eb7895f8c0e8e31",
+    "ActionCode": "659821bd545929040b97b5e39fed106e46dd39ec279a47e24146e38bc69f2f48",
+    "IdempotencyKey": "7347e6f54b5338556055a036f09728681bdfdeeb1f965887c698edafa0258e50",
+    "OperationId": "49319c05fa15bcb66d980cbdc87e021c32c5a60a588e438dd4bba331d8aa8bff",
+    "RecordReference": "628292a7e7cf467ed585448c8b343fc0cd9fe170c61f1120aa02207677aec834",
+    "CommandContext": "d66031d1aece78fc5b4e4bd2b7141964613127e6d19693d378f3aaf8be586a2a",
+    "OperationLookup": "14b137fd836ccc20068bd1a3f238d1b1aec5f737cbdf85cd76cbe22bb7ec6c64",
+    "OperationIdentity": "333b59101077a878581181b451f0e42b10b31e411e214643720f3d8dfcce6985",
+    "Operation": "d4ddfcfbb5e33e3d6b3f2ddcd373c163b28b0df7fdb626d801915daa9aee4ce8",
+    "RecordState": "dd35eff1f9b1a8e5dc83ce65eb0915e01969bb25b9103b3b50dd8896dc659857",
+    "FieldFeedback": "28bfe92b704871eb23ed1525e9df4d40e73c81090300d74b26114814f9aa5433",
+    "BlockingReason": "3a09efd10eccdf5b000a9e5dda1076aa531730a8d655999832841fa254a5efe1",
+    "NextAction": "aed4726ad51f3f507bbcbb9a9bf094e2208dd036fcbf99056760ee36f11c84f2",
+    "BusinessTimes": "3feb25aff09b099fd836acab647c60e090a3d39b1e686937309a37dc6a3168ae",
+    "ActionResult": "79991236015d1409fc1edd6c1eb9839ad5c576e8ed791bbdf70d5a3d08b37319",
+    "LookupTerminal": "152e7bbe757af6f7139d40d446d241a8cf7517333edad9b5efa04b31dc71f657",
+    "LookupPending": "62a704a48cd4e4d1e151dc452bc258300a0f5034725c5a20cb6a34b94bd24f88",
+    "LookupUnavailable": "d05b3faad82a2cec467dce4bcb19167203fd95c4da19dd8328a2c47f65407ea9",
+    "ForbiddenResult": "81ba8fcd26340939a6d26176eec13220654b623864ed4ab53ab1cf30d4cf6a82",
+    "InvalidLookup": "c8b0345cf3e5fbf419b083e55d11a2e189da3e73ca44c0be176a29141f2d7ea7"
+  },
+  "examples": {
+    "success": "4508d6f11f2dbd2836eb01a1e846e542aa65f1e5b66266583c81e383892d9cb7",
+    "blocked-field": "9baf55c0b8854d844b5d9ad769da84143ab2f71b42ca76699289c150ba5ab663",
+    "stale-progress": "f80747a61f3a1445504a25afbd0ab8642c0691ae507325c11ecc929b38be40ba",
+    "stale-material": "1507cc7dca5f8bde8854d635b2c66b1736f866d0f1fb3cf43dd5e69c41127b78",
+    "forbidden": "f25c687f9f730e51ddc0bdc22bd66f334ef8a787f660db8cc6ebc50486bb8134",
+    "uncertain-not-visible": "cf851b220261eb67cdc5347bda679e1f4dbd45b51960e92579dbd069cd3af487",
+    "uncertain-unavailable": "ce0d35be03102642617c1ec11bd44d619a8c1904412af7871f107c7811e707d9",
+    "uncertain-by-id": "9bf9f114e9ec284fe01aff9a9e5fd2cdfc768515a69dc9ff2a16f99c52c44cfa",
+    "same-payload-replay": "da411b162a3e89ad86c67722332db24c45535be03570fca5d0629a11dda835ea",
+    "changed-payload-key-reuse": "7a1cc29e3afa0ab19e7712675d5104138f789579b25d9c724ea0d5cd483a0a42",
+    "durable-rejection": "355f25b6e9d09a1493c8fa2e546f3eb04d6729fd2dbd7c87fe736fb8439149aa",
+    "command-context": "3401e157a335518a6d9f6230edefd79c910cabca6cdb0c8bf42cbb050baa5197",
+    "lookup-by-key": "e6ef2b7521088a248dee056aa9ec66a833e40f74521dde9dee8f08fc5083e342",
+    "lookup-by-id": "8ba01bdc88359014123dc6eb19e9eae9d056ce0033c611a81df93681542cf1ad",
+    "business-times": "01cc25ddb129462dd0ea247816ec79ccb3f14d9c2d015399d726ee5020cedf7d",
+    "lookup-invalid": "a9ea27ae80d61e4b6af5954b56e4b2c3605fa71e07a4a122f446e4cf7c761252"
+  }
+}
