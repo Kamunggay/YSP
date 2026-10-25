@@ -8,7 +8,9 @@
     "generate": "node generate.mjs",
     "generate:check": "node generate.mjs --check",
     "typecheck": "tsc -p consumer/tsconfig.json",
-    "test": "npm run generate:check && npm run typecheck && node --test tests/*.test.mjs"
+    "reconcile": "node ../p02-review/reconcile.mjs",
+    "reconcile:check": "node ../p02-review/reconcile.mjs --check",
+    "test": "npm run generate:check && npm run typecheck && npm run reconcile:check && node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.1.0",

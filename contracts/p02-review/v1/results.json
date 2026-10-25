@@ -1,0 +1,64 @@
+{
+  "revision": "p02-reconciliation-2026-10-25.1",
+  "recordedOn": "2026-10-25",
+  "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+  "artifactSetSha256": "6d187b2ba61f457f4fabbcaaf3f5dd84dd963ea312c9e14ec146e5fe8e12ef2c",
+  "digestFormat": "sha256-utf8-lf",
+  "testedSource": "Inherited canonical contract at f5e89d64e54bd8cfc77d06d16389d4d11905cd96 plus the fingerprinted reconciliation changes. No wire/schema/generated-consumer changes.",
+  "scope": "Contract checks execute against the identified artifact set; this result file is an execution record excluded from its own input fingerprint.",
+  "host": {
+    "node": "v24.11.1",
+    "npm": "11.21.0",
+    "commands": [
+      {
+        "command": "npm --prefix contracts/transport ci --ignore-scripts",
+        "exitCode": 0,
+        "result": "48 locked packages installed; audit found 0 vulnerabilities"
+      },
+      {
+        "command": "npm --prefix contracts/transport test",
+        "exitCode": 0,
+        "result": "99 tests passed; 0 failed/skipped. Deterministic generation, strict positive/intentional-negative compilation and reconciliation drift checks passed."
+      }
+    ],
+    "logs": [
+      {
+        "name": "11-clean-install.log",
+        "sha256Bytes": "de6607c4ddd29285b448c2d14cf952bfc84fb6fa7e2d892bb46c7e96a5c914b6"
+      },
+      {
+        "name": "11-contract-tests.log",
+        "sha256Bytes": "35cede6a41b6b64aeae513c20be5c73166acd8cf6a93e39124b788d4b5e37453"
+      }
+    ]
+  },
+  "combined": {
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+    "status": "running",
+    "exitCode": null
+  },
+  "locks": [
+    {
+      "path": "contracts/transport/package-lock.json",
+      "sha256Bytes": "f4987c2d0f6928c29269dd621e297197a1ffca14dbb6db14d3f83bba2fc544b2"
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "sha256Bytes": "6792a468c569e3baac43a1efcf9370b12fa1d0ec04ccdbb795d49c26df175dc8"
+    },
+    {
+      "path": "backend/composer.lock",
+      "sha256Bytes": "bbc816d24fd855aeb0c68b7d9fc34da3b0a11c12175c9883576e071597d6a33d"
+    }
+  ],
+  "coverage": {
+    "httpOperations": 49,
+    "formalP02Exchanges": 706,
+    "chapterLookupExamples": 13,
+    "authoredServerScenarios": 108,
+    "sessionExampleScenarios": 35,
+    "parentChecklistPositions": 18
+  },
+  "peerReviewEvidence": "Completed on owner attestation as recorded in review.json; no direct reviewer notes, original dates or zero-findings assertion.",
+  "runtimeAcceptance": "Not demonstrated. See review.json for freeze, security, P03 and owning-package gates."
+}
