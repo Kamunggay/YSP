@@ -200,5 +200,49 @@
     "previousReportedCount": 706,
     "actualCount": 606,
     "basis": "Counted the nine P02 exchange arrays directly; 600 named response examples match their exchange response bodies. This corrects summary arithmetic only; executed test results and contract content are unchanged."
+  },
+  "exampleGeneration": {
+    "sourceRevision": "72e19b340d551b84ee9a91a815372f49772d80c5",
+    "previousRevision": "a5c7efd32701eafee7d723d412e3dbbf9e0377a5",
+    "recordedOn": "2026-10-25",
+    "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+    "artifactSetSha256": "30cb3e2f81f17d925ffc1fa5c3d17d9e7cf7a211a196c62d58c2f08430121800",
+    "removedTrackedLines": 9159,
+    "generatedMaps": 9,
+    "preservedExampleObjects": 600,
+    "authoredExchanges": 606,
+    "source": "Response bodies are authored only in exchange fixtures; generation preserves all existing example objects, documentation labels, bodyless omissions and cross-surface ownership.",
+    "driftCheck": "An intentional generated session-example mutation was rejected by generate.mjs --check; the original generated file was restored.",
+    "validation": [
+      {
+        "command": "npm --prefix contracts/transport test",
+        "condition": "All twelve derived files were absent before the normal entry regenerated them.",
+        "exitCode": 0,
+        "passed": 102,
+        "failed": 0
+      },
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+        "condition": "Docker context excludes generated maps and expanded bundles; the build and test entry generate them before use.",
+        "exitCode": 0,
+        "passedContractTests": 102
+      }
+    ],
+    "reviews": {
+      "Standards": 0,
+      "Spec": 0
+    },
+    "verificationImage": "sha256:78352119dc3b4109bdb974f12109127364ad0226a17a5bd2d688708b3c966925",
+    "logs": [
+      {
+        "name": "example-generation-contract.log",
+        "sha256Bytes": "a3dec7453023900569d7097676d7c4d7563ec0ca9c1d26174c1bf86604bfdd0b"
+      },
+      {
+        "name": "example-generation-combined.log",
+        "sha256Bytes": "76acf354ba9c482a72d0f68772c0593428c0f70e9d24bfa8ec89a01ff602418e"
+      }
+    ],
+    "boundaries": "Canonical OpenAPI, shared schemas, authored exchanges/scenarios and tracked generated declarations/routes are unchanged. Original execution records remain tied to their original revisions."
   }
 }
