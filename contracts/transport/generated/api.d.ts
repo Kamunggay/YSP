@@ -466,13 +466,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        get?: never;
+        put?: never;
         /**
          * reviewPolicyVersion
          * @description See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.
          */
-        get: operations["reviewPolicyVersion"];
-        put?: never;
-        post?: never;
+        post: operations["reviewPolicyVersion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1893,7 +1893,7 @@ export interface components {
             reason: string;
             target_membership_id: components["schemas"]["Id"];
         };
-        /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0â€“6 follow DATABASE-SCHEMA Â§2.1/Â§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
+        /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
         UnitQuantity: {
             quantity_scale: number;
             value: components["schemas"]["Quantity"];
@@ -4415,12 +4415,10 @@ export interface operations {
     };
     reviewPolicyVersion: {
         parameters: {
-            query: {
-                expected_material_version: components["schemas"]["Version"];
-                material_hash: components["schemas"]["Hash"];
-            };
+            query?: never;
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
             };
             path: {
                 category: components["schemas"]["PolicyCategory"];
@@ -4432,7 +4430,11 @@ export interface operations {
                 ysp_session?: string;
             };
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewPolicyVersionRequest"];
+            };
+        };
         responses: {
             /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
             200: {
@@ -4441,7 +4443,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PolicyVersion"];
+                    "application/json": components["schemas"]["PolicySuccess"];
                 };
             };
             /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
@@ -4491,7 +4493,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PolicyConflict"];
+                    "application/json": components["schemas"]["PolicyConflict"] | components["schemas"]["PolicyRejected"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
                 };
             };
             /** @description Authorized result or safe failure; transport failure does not establish mutation outcome. */

@@ -47641,123 +47641,73 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "id",
+              "resource_type",
+              "action_result",
               "chapter_id",
-              "policy_id",
-              "policy_code",
-              "category",
-              "responsible_duty",
-              "version_no",
-              "row_version",
-              "metadata",
-              "material",
-              "schema_support",
-              "review_state",
-              "effective_state",
-              "reason",
-              "created",
-              "last_changed",
-              "decisions",
-              "approved_policy"
+              "root",
+              "version",
+              "operation"
             ],
             "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+              "resource_type": {
+                "const": "policy"
+              },
+              "action_result": {
+                "const": "success"
               },
               "chapter_id": {
                 "type": "string",
                 "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
                 "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
               },
-              "policy_id": {
-                "type": "string",
-                "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-              },
-              "policy_code": {
-                "type": "string",
-                "pattern": "^[A-Z][A-Z0-9_]{0,47}$"
-              },
-              "category": {
-                "enum": [
-                  "operational",
-                  "financial"
-                ]
-              },
-              "responsible_duty": {
-                "enum": [
-                  "CHAPTER_HEAD",
-                  "FINANCE"
-                ]
-              },
-              "version_no": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 4294967295,
-                "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
-              },
-              "row_version": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 4294967295,
-                "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
-              },
-              "metadata": {
+              "root": {
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "name",
-                  "schema_id",
-                  "schema_version",
-                  "effective_from",
-                  "effective_until",
-                  "supersedes_version_id"
+                  "id",
+                  "chapter_id",
+                  "policy_code",
+                  "category",
+                  "responsible_duty",
+                  "row_version",
+                  "latest_version_id",
+                  "created",
+                  "last_changed"
                 ],
                 "properties": {
-                  "name": {
+                  "id": {
                     "type": "string",
-                    "minLength": 1,
-                    "maxLength": 160
+                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
                   },
-                  "schema_id": {
+                  "chapter_id": {
                     "type": "string",
-                    "pattern": "^urn:ysp:policy:[a-z][a-z0-9-]{0,63}$"
+                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
                   },
-                  "schema_version": {
+                  "policy_code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,47}$"
+                  },
+                  "category": {
+                    "enum": [
+                      "operational",
+                      "financial"
+                    ]
+                  },
+                  "responsible_duty": {
+                    "enum": [
+                      "CHAPTER_HEAD",
+                      "FINANCE"
+                    ]
+                  },
+                  "row_version": {
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 4294967295,
                     "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
                   },
-                  "effective_from": {
-                    "oneOf": [
-                      {
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
-                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "effective_until": {
-                    "oneOf": [
-                      {
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
-                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "supersedes_version_id": {
+                  "latest_version_id": {
                     "oneOf": [
                       {
                         "type": "string",
@@ -47768,417 +47718,172 @@
                         "type": "null"
                       }
                     ]
-                  }
-                }
-              },
-              "material": {
-                "oneOf": [
-                  {
-                    "allOf": [
-                      {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "chapter_id",
-                          "record",
-                          "material_version",
-                          "material_hash"
-                        ],
-                        "properties": {
-                          "chapter_id": {
-                            "type": "string",
-                            "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                            "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                          },
-                          "record": {
-                            "type": "object",
-                            "additionalProperties": false,
-                            "required": [
-                              "id",
-                              "kind"
-                            ],
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                                "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                              },
-                              "kind": {
-                                "type": "string",
-                                "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
-                              }
-                            },
-                            "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
-                          },
-                          "material_version": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 4294967295,
-                            "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
-                          },
-                          "material_hash": {
-                            "type": "string",
-                            "minLength": 64,
-                            "maxLength": 64,
-                            "pattern": "^[a-f0-9]{64}$",
-                            "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
-                          }
-                        },
-                        "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
+                  },
+                  "created": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "user_id",
+                      "at"
+                    ],
+                    "properties": {
+                      "user_id": {
+                        "type": "string",
+                        "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                        "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
                       },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "record": {
-                            "type": "object",
-                            "properties": {
-                              "kind": {
-                                "const": "CONFIG"
-                              }
-                            }
-                          }
+                      "at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                      }
+                    }
+                  },
+                  "last_changed": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "user_id",
+                      "at"
+                    ],
+                    "properties": {
+                      "user_id": {
+                        "type": "string",
+                        "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                        "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                      }
+                    }
+                  }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "category": {
+                          "const": "operational"
                         }
                       }
-                    ]
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "schema_support": {
-                "enum": [
-                  "missing",
-                  "unsupported",
-                  "registered_reference"
-                ]
-              },
-              "review_state": {
-                "enum": [
-                  "draft",
-                  "submitted",
-                  "reviewed",
-                  "returned",
-                  "approved"
-                ]
-              },
-              "effective_state": {
-                "enum": [
-                  "not_approved",
-                  "scheduled",
-                  "current",
-                  "expired",
-                  "superseded"
-                ]
-              },
-              "reason": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 2000
-              },
-              "created": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "user_id",
-                  "at"
-                ],
-                "properties": {
-                  "user_id": {
-                    "type": "string",
-                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                  },
-                  "at": {
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
-                    "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
-                  }
-                }
-              },
-              "last_changed": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "user_id",
-                  "at"
-                ],
-                "properties": {
-                  "user_id": {
-                    "type": "string",
-                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                  },
-                  "at": {
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
-                    "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
-                  }
-                }
-              },
-              "decisions": {
-                "type": "array",
-                "maxItems": 100,
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "decision",
-                    "material",
-                    "authority_version",
-                    "duty_grant_id",
-                    "duty",
-                    "reason",
-                    "effective_from",
-                    "effective_until",
-                    "actor"
-                  ],
-                  "properties": {
-                    "decision": {
-                      "enum": [
-                        "review",
-                        "approve",
-                        "return"
-                      ]
                     },
-                    "material": {
-                      "allOf": [
-                        {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": [
-                            "chapter_id",
-                            "record",
-                            "material_version",
-                            "material_hash"
-                          ],
-                          "properties": {
-                            "chapter_id": {
-                              "type": "string",
-                              "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                              "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                            },
-                            "record": {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "required": [
-                                "id",
-                                "kind"
-                              ],
-                              "properties": {
-                                "id": {
-                                  "type": "string",
-                                  "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                                  "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                                },
-                                "kind": {
-                                  "type": "string",
-                                  "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
-                                }
-                              },
-                              "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
-                            },
-                            "material_version": {
-                              "type": "integer",
-                              "minimum": 1,
-                              "maximum": 4294967295,
-                              "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
-                            },
-                            "material_hash": {
-                              "type": "string",
-                              "minLength": 64,
-                              "maxLength": 64,
-                              "pattern": "^[a-f0-9]{64}$",
-                              "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
-                            }
-                          },
-                          "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "record": {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "const": "CONFIG"
-                                }
-                              }
-                            }
-                          }
-                        }
-                      ]
-                    },
-                    "authority_version": {
-                      "type": "integer",
-                      "minimum": 1,
-                      "maximum": 4294967295,
-                      "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
-                    },
-                    "duty_grant_id": {
-                      "type": "string",
-                      "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                      "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                    },
-                    "duty": {
-                      "enum": [
-                        "CHAPTER_HEAD",
-                        "FINANCE"
-                      ]
-                    },
-                    "reason": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 2000
-                    },
-                    "effective_from": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
-                      "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
-                    },
-                    "effective_until": {
-                      "oneOf": [
-                        {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
-                          "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "actor": {
-                      "type": "object",
-                      "additionalProperties": false,
-                      "required": [
-                        "user_id",
-                        "at"
-                      ],
+                    "then": {
                       "properties": {
-                        "user_id": {
-                          "type": "string",
-                          "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                          "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                        },
-                        "at": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
-                          "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                        "responsible_duty": {
+                          "const": "CHAPTER_HEAD"
+                        }
+                      }
+                    },
+                    "else": {
+                      "properties": {
+                        "responsible_duty": {
+                          "const": "FINANCE"
                         }
                       }
                     }
                   }
-                }
+                ]
               },
-              "approved_policy": {
-                "oneOf": [
-                  {
+              "version": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "chapter_id",
+                  "policy_id",
+                  "policy_code",
+                  "category",
+                  "responsible_duty",
+                  "version_no",
+                  "row_version",
+                  "metadata",
+                  "material",
+                  "schema_support",
+                  "review_state",
+                  "effective_state",
+                  "reason",
+                  "created",
+                  "last_changed",
+                  "decisions",
+                  "approved_policy"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                  },
+                  "chapter_id": {
+                    "type": "string",
+                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                  },
+                  "policy_id": {
+                    "type": "string",
+                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                  },
+                  "policy_code": {
+                    "type": "string",
+                    "pattern": "^[A-Z][A-Z0-9_]{0,47}$"
+                  },
+                  "category": {
+                    "enum": [
+                      "operational",
+                      "financial"
+                    ]
+                  },
+                  "responsible_duty": {
+                    "enum": [
+                      "CHAPTER_HEAD",
+                      "FINANCE"
+                    ]
+                  },
+                  "version_no": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295,
+                    "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+                  },
+                  "row_version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295,
+                    "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+                  },
+                  "metadata": {
                     "type": "object",
                     "additionalProperties": false,
                     "required": [
-                      "chapter_id",
-                      "policy_id",
-                      "policy_version_id",
-                      "version_no",
-                      "settings_hash",
-                      "approval",
+                      "name",
+                      "schema_id",
+                      "schema_version",
                       "effective_from",
-                      "effective_until"
+                      "effective_until",
+                      "supersedes_version_id"
                     ],
                     "properties": {
-                      "chapter_id": {
+                      "name": {
                         "type": "string",
-                        "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                        "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                        "minLength": 1,
+                        "maxLength": 160
                       },
-                      "policy_id": {
+                      "schema_id": {
                         "type": "string",
-                        "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                        "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                        "pattern": "^urn:ysp:policy:[a-z][a-z0-9-]{0,63}$"
                       },
-                      "policy_version_id": {
-                        "type": "string",
-                        "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                        "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                      },
-                      "version_no": {
+                      "schema_version": {
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 4294967295,
                         "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
                       },
-                      "settings_hash": {
-                        "type": "string",
-                        "minLength": 64,
-                        "maxLength": 64,
-                        "pattern": "^[a-f0-9]{64}$",
-                        "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
-                      },
-                      "approval": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "chapter_id",
-                          "record",
-                          "material_version",
-                          "material_hash"
-                        ],
-                        "properties": {
-                          "chapter_id": {
-                            "type": "string",
-                            "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                            "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                          },
-                          "record": {
-                            "type": "object",
-                            "additionalProperties": false,
-                            "required": [
-                              "id",
-                              "kind"
-                            ],
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                                "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                              },
-                              "kind": {
-                                "type": "string",
-                                "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
-                              }
-                            },
-                            "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
-                          },
-                          "material_version": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 4294967295,
-                            "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
-                          },
-                          "material_hash": {
-                            "type": "string",
-                            "minLength": 64,
-                            "maxLength": 64,
-                            "pattern": "^[a-f0-9]{64}$",
-                            "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
-                          }
-                        },
-                        "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
-                      },
                       "effective_from": {
-                        "type": "string",
-                        "format": "date-time",
-                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
-                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
-                      },
-                      "effective_until": {
-                        "anyOf": [
+                        "oneOf": [
                           {
                             "type": "string",
                             "format": "date-time",
@@ -48189,230 +47894,295 @@
                             "type": "null"
                           }
                         ]
-                      }
-                    },
-                    "description": "Server-resolved approved CONFIG version, not a trusted approved flag. Access owns policy validity; P03 owns its CONFIG material snapshot/approval history. Consumer checks current effective interval, approval duties and scoped version at execution. New policy never silently recalculates completed records."
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "allOf": [
-              {
-                "if": {
-                  "properties": {
-                    "category": {
-                      "const": "operational"
-                    }
-                  }
-                },
-                "then": {
-                  "properties": {
-                    "responsible_duty": {
-                      "const": "CHAPTER_HEAD"
-                    }
-                  }
-                },
-                "else": {
-                  "properties": {
-                    "responsible_duty": {
-                      "const": "FINANCE"
-                    }
-                  }
-                }
-              },
-              {
-                "if": {
-                  "properties": {
-                    "review_state": {
-                      "enum": [
-                        "submitted",
-                        "reviewed",
-                        "approved"
-                      ]
-                    }
-                  }
-                },
-                "then": {
-                  "properties": {
-                    "material": {
-                      "allOf": [
-                        {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": [
-                            "chapter_id",
-                            "record",
-                            "material_version",
-                            "material_hash"
-                          ],
-                          "properties": {
-                            "chapter_id": {
-                              "type": "string",
-                              "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                              "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                            },
-                            "record": {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "required": [
-                                "id",
-                                "kind"
-                              ],
-                              "properties": {
-                                "id": {
-                                  "type": "string",
-                                  "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                                  "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                                },
-                                "kind": {
-                                  "type": "string",
-                                  "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
-                                }
-                              },
-                              "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
-                            },
-                            "material_version": {
-                              "type": "integer",
-                              "minimum": 1,
-                              "maximum": 4294967295,
-                              "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
-                            },
-                            "material_hash": {
-                              "type": "string",
-                              "minLength": 64,
-                              "maxLength": 64,
-                              "pattern": "^[a-f0-9]{64}$",
-                              "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
-                            }
+                      },
+                      "effective_until": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                            "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
                           },
-                          "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "record": {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "const": "CONFIG"
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "supersedes_version_id": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                            "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "material": {
+                    "oneOf": [
+                      {
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "chapter_id",
+                              "record",
+                              "material_version",
+                              "material_hash"
+                            ],
+                            "properties": {
+                              "chapter_id": {
+                                "type": "string",
+                                "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                              },
+                              "record": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "id",
+                                  "kind"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
+                                  }
+                                },
+                                "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
+                              },
+                              "material_version": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 4294967295,
+                                "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+                              },
+                              "material_hash": {
+                                "type": "string",
+                                "minLength": 64,
+                                "maxLength": 64,
+                                "pattern": "^[a-f0-9]{64}$",
+                                "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
+                              }
+                            },
+                            "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "record": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "CONFIG"
+                                  }
                                 }
                               }
                             }
                           }
-                        }
-                      ]
-                    },
-                    "schema_support": {
-                      "const": "registered_reference"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "schema_support": {
+                    "enum": [
+                      "missing",
+                      "unsupported",
+                      "registered_reference"
+                    ]
+                  },
+                  "review_state": {
+                    "enum": [
+                      "draft",
+                      "submitted",
+                      "reviewed",
+                      "returned",
+                      "approved"
+                    ]
+                  },
+                  "effective_state": {
+                    "enum": [
+                      "not_approved",
+                      "scheduled",
+                      "current",
+                      "expired",
+                      "superseded"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "created": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "user_id",
+                      "at"
+                    ],
+                    "properties": {
+                      "user_id": {
+                        "type": "string",
+                        "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                        "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                      }
                     }
-                  }
-                }
-              },
-              {
-                "if": {
-                  "properties": {
-                    "review_state": {
-                      "const": "approved"
+                  },
+                  "last_changed": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "user_id",
+                      "at"
+                    ],
+                    "properties": {
+                      "user_id": {
+                        "type": "string",
+                        "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                        "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                      }
                     }
-                  }
-                },
-                "then": {
-                  "properties": {
-                    "approved_policy": {
+                  },
+                  "decisions": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
                       "type": "object",
                       "additionalProperties": false,
                       "required": [
-                        "chapter_id",
-                        "policy_id",
-                        "policy_version_id",
-                        "version_no",
-                        "settings_hash",
-                        "approval",
+                        "decision",
+                        "material",
+                        "authority_version",
+                        "duty_grant_id",
+                        "duty",
+                        "reason",
                         "effective_from",
-                        "effective_until"
+                        "effective_until",
+                        "actor"
                       ],
                       "properties": {
-                        "chapter_id": {
-                          "type": "string",
-                          "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                          "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                        "decision": {
+                          "enum": [
+                            "review",
+                            "approve",
+                            "return"
+                          ]
                         },
-                        "policy_id": {
-                          "type": "string",
-                          "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                          "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                        "material": {
+                          "allOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "chapter_id",
+                                "record",
+                                "material_version",
+                                "material_hash"
+                              ],
+                              "properties": {
+                                "chapter_id": {
+                                  "type": "string",
+                                  "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                  "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                                },
+                                "record": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "required": [
+                                    "id",
+                                    "kind"
+                                  ],
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                      "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
+                                    }
+                                  },
+                                  "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
+                                },
+                                "material_version": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 4294967295,
+                                  "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+                                },
+                                "material_hash": {
+                                  "type": "string",
+                                  "minLength": 64,
+                                  "maxLength": 64,
+                                  "pattern": "^[a-f0-9]{64}$",
+                                  "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
+                                }
+                              },
+                              "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "record": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "const": "CONFIG"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
                         },
-                        "policy_version_id": {
-                          "type": "string",
-                          "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                          "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                        },
-                        "version_no": {
+                        "authority_version": {
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 4294967295,
                           "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
                         },
-                        "settings_hash": {
+                        "duty_grant_id": {
                           "type": "string",
-                          "minLength": 64,
-                          "maxLength": 64,
-                          "pattern": "^[a-f0-9]{64}$",
-                          "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
+                          "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                          "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
                         },
-                        "approval": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": [
-                            "chapter_id",
-                            "record",
-                            "material_version",
-                            "material_hash"
-                          ],
-                          "properties": {
-                            "chapter_id": {
-                              "type": "string",
-                              "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                              "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                            },
-                            "record": {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "required": [
-                                "id",
-                                "kind"
-                              ],
-                              "properties": {
-                                "id": {
-                                  "type": "string",
-                                  "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
-                                  "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
-                                },
-                                "kind": {
-                                  "type": "string",
-                                  "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
-                                }
-                              },
-                              "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
-                            },
-                            "material_version": {
-                              "type": "integer",
-                              "minimum": 1,
-                              "maximum": 4294967295,
-                              "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
-                            },
-                            "material_hash": {
-                              "type": "string",
-                              "minLength": 64,
-                              "maxLength": 64,
-                              "pattern": "^[a-f0-9]{64}$",
-                              "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
-                            }
-                          },
-                          "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
+                        "duty": {
+                          "enum": [
+                            "CHAPTER_HEAD",
+                            "FINANCE"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
                         },
                         "effective_from": {
                           "type": "string",
@@ -48421,7 +48191,7 @@
                           "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
                         },
                         "effective_until": {
-                          "anyOf": [
+                          "oneOf": [
                             {
                               "type": "string",
                               "format": "date-time",
@@ -48432,47 +48202,483 @@
                               "type": "null"
                             }
                           ]
+                        },
+                        "actor": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "user_id",
+                            "at"
+                          ],
+                          "properties": {
+                            "user_id": {
+                              "type": "string",
+                              "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                              "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                            },
+                            "at": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                              "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                            }
+                          }
                         }
-                      },
-                      "description": "Server-resolved approved CONFIG version, not a trusted approved flag. Access owns policy validity; P03 owns its CONFIG material snapshot/approval history. Consumer checks current effective interval, approval duties and scoped version at execution. New policy never silently recalculates completed records."
-                    },
-                    "effective_state": {
-                      "enum": [
-                        "scheduled",
-                        "current",
-                        "expired",
-                        "superseded"
-                      ]
-                    },
-                    "decisions": {
-                      "type": "array",
-                      "minItems": 1,
-                      "contains": {
+                      }
+                    }
+                  },
+                  "approved_policy": {
+                    "oneOf": [
+                      {
                         "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "chapter_id",
+                          "policy_id",
+                          "policy_version_id",
+                          "version_no",
+                          "settings_hash",
+                          "approval",
+                          "effective_from",
+                          "effective_until"
+                        ],
                         "properties": {
-                          "decision": {
-                            "const": "approve"
+                          "chapter_id": {
+                            "type": "string",
+                            "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                            "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                          },
+                          "policy_id": {
+                            "type": "string",
+                            "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                            "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                          },
+                          "policy_version_id": {
+                            "type": "string",
+                            "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                            "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                          },
+                          "version_no": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 4294967295,
+                            "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+                          },
+                          "settings_hash": {
+                            "type": "string",
+                            "minLength": 64,
+                            "maxLength": 64,
+                            "pattern": "^[a-f0-9]{64}$",
+                            "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
+                          },
+                          "approval": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "chapter_id",
+                              "record",
+                              "material_version",
+                              "material_hash"
+                            ],
+                            "properties": {
+                              "chapter_id": {
+                                "type": "string",
+                                "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                              },
+                              "record": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "id",
+                                  "kind"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
+                                  }
+                                },
+                                "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
+                              },
+                              "material_version": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 4294967295,
+                                "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+                              },
+                              "material_hash": {
+                                "type": "string",
+                                "minLength": 64,
+                                "maxLength": 64,
+                                "pattern": "^[a-f0-9]{64}$",
+                                "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
+                              }
+                            },
+                            "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
+                          },
+                          "effective_from": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                            "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                          },
+                          "effective_until": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                                "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
-                        "required": [
-                          "decision"
-                        ]
+                        "description": "Server-resolved approved CONFIG version, not a trusted approved flag. Access owns policy validity; P03 owns its CONFIG material snapshot/approval history. Consumer checks current effective interval, approval duties and scoped version at execution. New policy never silently recalculates completed records."
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "category": {
+                          "const": "operational"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "responsible_duty": {
+                          "const": "CHAPTER_HEAD"
+                        }
+                      }
+                    },
+                    "else": {
+                      "properties": {
+                        "responsible_duty": {
+                          "const": "FINANCE"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "review_state": {
+                          "enum": [
+                            "submitted",
+                            "reviewed",
+                            "approved"
+                          ]
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "material": {
+                          "allOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "chapter_id",
+                                "record",
+                                "material_version",
+                                "material_hash"
+                              ],
+                              "properties": {
+                                "chapter_id": {
+                                  "type": "string",
+                                  "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                  "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                                },
+                                "record": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "required": [
+                                    "id",
+                                    "kind"
+                                  ],
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                      "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
+                                    }
+                                  },
+                                  "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
+                                },
+                                "material_version": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 4294967295,
+                                  "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+                                },
+                                "material_hash": {
+                                  "type": "string",
+                                  "minLength": 64,
+                                  "maxLength": 64,
+                                  "pattern": "^[a-f0-9]{64}$",
+                                  "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
+                                }
+                              },
+                              "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "record": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "const": "CONFIG"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "schema_support": {
+                          "const": "registered_reference"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "review_state": {
+                          "const": "approved"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "approved_policy": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "chapter_id",
+                            "policy_id",
+                            "policy_version_id",
+                            "version_no",
+                            "settings_hash",
+                            "approval",
+                            "effective_from",
+                            "effective_until"
+                          ],
+                          "properties": {
+                            "chapter_id": {
+                              "type": "string",
+                              "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                              "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                            },
+                            "policy_id": {
+                              "type": "string",
+                              "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                              "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                            },
+                            "policy_version_id": {
+                              "type": "string",
+                              "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                              "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                            },
+                            "version_no": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 4294967295,
+                              "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+                            },
+                            "settings_hash": {
+                              "type": "string",
+                              "minLength": 64,
+                              "maxLength": 64,
+                              "pattern": "^[a-f0-9]{64}$",
+                              "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
+                            },
+                            "approval": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "chapter_id",
+                                "record",
+                                "material_version",
+                                "material_hash"
+                              ],
+                              "properties": {
+                                "chapter_id": {
+                                  "type": "string",
+                                  "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                  "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                                },
+                                "record": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "required": [
+                                    "id",
+                                    "kind"
+                                  ],
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                      "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "pattern": "^[A-Z][A-Z0-9_]{0,31}$"
+                                    }
+                                  },
+                                  "description": "Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract."
+                                },
+                                "material_version": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 4294967295,
+                                  "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+                                },
+                                "material_hash": {
+                                  "type": "string",
+                                  "minLength": 64,
+                                  "maxLength": 64,
+                                  "pattern": "^[a-f0-9]{64}$",
+                                  "description": "Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority."
+                                }
+                              },
+                              "description": "Immutable version pin owned by P03. Compare the entire chapter/record/material tuple and hash, never only a global-looking ID."
+                            },
+                            "effective_from": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                              "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                            },
+                            "effective_until": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                                  "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "description": "Server-resolved approved CONFIG version, not a trusted approved flag. Access owns policy validity; P03 owns its CONFIG material snapshot/approval history. Consumer checks current effective interval, approval duties and scoped version at execution. New policy never silently recalculates completed records."
+                        },
+                        "effective_state": {
+                          "enum": [
+                            "scheduled",
+                            "current",
+                            "expired",
+                            "superseded"
+                          ]
+                        },
+                        "decisions": {
+                          "type": "array",
+                          "minItems": 1,
+                          "contains": {
+                            "type": "object",
+                            "properties": {
+                              "decision": {
+                                "const": "approve"
+                              }
+                            },
+                            "required": [
+                              "decision"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "else": {
+                      "properties": {
+                        "approved_policy": {
+                          "type": "null"
+                        },
+                        "effective_state": {
+                          "const": "not_approved"
+                        }
                       }
                     }
                   }
-                },
-                "else": {
-                  "properties": {
-                    "approved_policy": {
-                      "type": "null"
-                    },
-                    "effective_state": {
-                      "const": "not_approved"
+                ]
+              },
+              "operation": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "identity",
+                  "outcome",
+                  "committed_at",
+                  "replayed"
+                ],
+                "properties": {
+                  "identity": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation_id",
+                      "action_code",
+                      "idempotency_key"
+                    ],
+                    "properties": {
+                      "operation_id": {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+                        "description": "Opaque case-sensitive server public ULID, not the numeric operations table ID. Possession confers no access."
+                      },
+                      "action_code": {
+                        "enum": [
+                          "policy.operational.prepare",
+                          "policy.operational.approve",
+                          "policy.financial.prepare",
+                          "policy.financial.approve"
+                        ]
+                      },
+                      "idempotency_key": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+                        "description": "Case-sensitive opaque client key, scoped by server-authorized chapter AND action. No trimming or case folding. Generate once before sending and retain with the original attempt and immutable payload."
+                      }
                     }
+                  },
+                  "outcome": {
+                    "const": "committed"
+                  },
+                  "committed_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                    "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                  },
+                  "replayed": {
+                    "type": "boolean"
                   }
                 }
               }
-            ]
+            }
           }
         }
       },
@@ -48635,31 +48841,235 @@
             "const": 409
           },
           "body": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code",
+                  "message",
+                  "next_action"
+                ],
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "idempotency_conflict",
+                      "chapter_context_stale",
+                      "authority_stale",
+                      "policy_row_stale",
+                      "policy_material_stale",
+                      "policy_snapshot_stale"
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "next_action": {
+                    "const": "review_original_attempt"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "resource_type",
+                  "action_result",
+                  "chapter_id",
+                  "operation",
+                  "code",
+                  "message",
+                  "next_action"
+                ],
+                "properties": {
+                  "resource_type": {
+                    "const": "policy"
+                  },
+                  "action_result": {
+                    "const": "blocked"
+                  },
+                  "chapter_id": {
+                    "type": "string",
+                    "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                    "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                  },
+                  "operation": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "identity",
+                      "outcome",
+                      "committed_at",
+                      "replayed"
+                    ],
+                    "properties": {
+                      "identity": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "operation_id",
+                          "action_code",
+                          "idempotency_key"
+                        ],
+                        "properties": {
+                          "operation_id": {
+                            "type": "string",
+                            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+                            "description": "Opaque case-sensitive server public ULID, not the numeric operations table ID. Possession confers no access."
+                          },
+                          "action_code": {
+                            "enum": [
+                              "policy.operational.prepare",
+                              "policy.operational.approve",
+                              "policy.financial.prepare",
+                              "policy.financial.approve"
+                            ]
+                          },
+                          "idempotency_key": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+                            "description": "Case-sensitive opaque client key, scoped by server-authorized chapter AND action. No trimming or case folding. Generate once before sending and retain with the original attempt and immutable payload."
+                          }
+                        }
+                      },
+                      "outcome": {
+                        "const": "rejected"
+                      },
+                      "committed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                      },
+                      "replayed": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "code": {
+                    "enum": [
+                      "policy_missing_material",
+                      "policy_unsupported",
+                      "policy_unapproved",
+                      "policy_state_conflict",
+                      "policy_interval_conflict"
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "next_action": {
+                    "const": "review_original_attempt"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 419
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "csrf_mismatch"
+              },
+              "message": {
+                "type": "string",
+                "const": "Refresh CSRF before a reviewed new attempt."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 422
+          },
+          "body": {
             "type": "object",
             "additionalProperties": false,
             "required": [
               "code",
               "message",
+              "field_feedback",
               "next_action"
             ],
             "properties": {
               "code": {
-                "enum": [
-                  "idempotency_conflict",
-                  "chapter_context_stale",
-                  "authority_stale",
-                  "policy_row_stale",
-                  "policy_material_stale",
-                  "policy_snapshot_stale"
-                ]
+                "const": "validation_failed"
               },
               "message": {
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 200
               },
+              "field_feedback": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "path",
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "format": "json-pointer"
+                    },
+                    "code": {
+                      "type": "string",
+                      "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "description": "Correctable field feedback. path is an RFC 6901 pointer relative to the endpoint request JSON body (not CommandContext or a translated label). Empty pointer targets the body as a whole. Do not echo sensitive submitted data."
+                }
+              },
               "next_action": {
-                "const": "review_original_attempt"
+                "const": "correct_fields"
               }
             }
           }

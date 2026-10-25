@@ -3933,7 +3933,7 @@
     "name": "reviewPolicyVersion-success",
     "operationId": "reviewPolicyVersion",
     "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
-    "method": "get",
+    "method": "post",
     "request": {
       "path": {
         "chapter_id": "1",
@@ -3942,39 +3942,18 @@
         "version_id": "9007199254740999"
       },
       "header": {
-        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
       },
       "cookie": {
         "ysp_session": "synthetic-session-cookie"
       },
-      "query": {
-        "expected_material_version": 3,
-        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
-    },
-    "response": {
-      "status": 200,
-      "headers": {
-        "cache-control": "no-store"
-      },
-      "mediaType": "application/json",
       "body": {
-        "id": "9007199254740999",
-        "chapter_id": "1",
-        "policy_id": "9007199254740998",
-        "policy_code": "OPERATIONAL_ROOT",
-        "category": "operational",
-        "responsible_duty": "CHAPTER_HEAD",
-        "version_no": 2,
-        "row_version": 4,
-        "metadata": {
-          "name": "Synthetic operational policy",
-          "schema_id": "urn:ysp:policy:synthetic-owner-reference",
-          "schema_version": 1,
-          "effective_from": "2026-10-26T00:00:00.000000Z",
-          "effective_until": null,
-          "supersedes_version_id": null
-        },
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
+        "expected_material_version": 3,
+        "reason": "Synthetic reviewed policy interface",
         "material": {
           "chapter_id": "1",
           "record": {
@@ -3984,20 +3963,112 @@
           "material_version": 3,
           "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         },
-        "schema_support": "registered_reference",
-        "review_state": "reviewed",
-        "effective_state": "not_approved",
-        "reason": "Synthetic complete material reference",
-        "created": {
-          "user_id": "9007199254740996",
-          "at": "2026-10-25T06:00:00.123456Z"
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "policy",
+        "action_result": "success",
+        "chapter_id": "1",
+        "root": {
+          "id": "9007199254740998",
+          "chapter_id": "1",
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "row_version": 4,
+          "latest_version_id": "9007199254740999",
+          "created": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          }
         },
-        "last_changed": {
-          "user_id": "9007199254740996",
-          "at": "2026-10-25T06:00:00.123456Z"
+        "version": {
+          "id": "9007199254740999",
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "version_no": 2,
+          "row_version": 4,
+          "metadata": {
+            "name": "Synthetic operational policy",
+            "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+            "schema_version": 1,
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "supersedes_version_id": null
+          },
+          "material": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "schema_support": "registered_reference",
+          "review_state": "reviewed",
+          "effective_state": "not_approved",
+          "reason": "Synthetic complete material reference",
+          "created": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "decisions": [
+            {
+              "decision": "review",
+              "material": {
+                "chapter_id": "1",
+                "record": {
+                  "id": "9007199254741010",
+                  "kind": "CONFIG"
+                },
+                "material_version": 3,
+                "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "authority_version": 9,
+              "duty_grant_id": "9007199254741000",
+              "duty": "CHAPTER_HEAD",
+              "reason": "Synthetic reviewed policy interface",
+              "effective_from": "2026-10-26T00:00:00.000000Z",
+              "effective_until": null,
+              "actor": {
+                "user_id": "9007199254740996",
+                "at": "2026-10-25T06:00:00.123456Z"
+              }
+            }
+          ],
+          "approved_policy": null
         },
-        "decisions": [],
-        "approved_policy": null
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "policy.operational.approve",
+            "idempotency_key": "policy-attempt-reviewPolicyVersion"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
       }
     },
     "synthetic": true,
@@ -4029,7 +4100,7 @@
     "name": "reviewPolicyVersion-400",
     "operationId": "reviewPolicyVersion",
     "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
-    "method": "get",
+    "method": "post",
     "request": {
       "path": {
         "chapter_id": "1",
@@ -4038,16 +4109,34 @@
         "version_id": "9007199254740999"
       },
       "header": {
-        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
       },
       "cookie": {
         "ysp_session": "synthetic-session-cookie"
       },
       "query": {
-        "unexpected": "invalid",
+        "unexpected": "invalid"
+      },
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
         "expected_material_version": 3,
-        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
     },
     "response": {
       "status": 400,
@@ -4089,7 +4178,7 @@
     "name": "reviewPolicyVersion-401",
     "operationId": "reviewPolicyVersion",
     "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
-    "method": "get",
+    "method": "post",
     "request": {
       "path": {
         "chapter_id": "1",
@@ -4098,15 +4187,31 @@
         "version_id": "9007199254740999"
       },
       "header": {
-        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
       },
       "cookie": {
         "ysp_session": "synthetic-session-cookie"
       },
-      "query": {
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
         "expected_material_version": 3,
-        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
     },
     "response": {
       "status": 401,
@@ -4148,7 +4253,7 @@
     "name": "reviewPolicyVersion-403",
     "operationId": "reviewPolicyVersion",
     "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
-    "method": "get",
+    "method": "post",
     "request": {
       "path": {
         "chapter_id": "1",
@@ -4157,15 +4262,31 @@
         "version_id": "9007199254740999"
       },
       "header": {
-        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
       },
       "cookie": {
         "ysp_session": "synthetic-session-cookie"
       },
-      "query": {
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
         "expected_material_version": 3,
-        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
     },
     "response": {
       "status": 403,
@@ -4207,7 +4328,7 @@
     "name": "reviewPolicyVersion-404",
     "operationId": "reviewPolicyVersion",
     "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
-    "method": "get",
+    "method": "post",
     "request": {
       "path": {
         "chapter_id": "1",
@@ -4216,15 +4337,31 @@
         "version_id": "9007199254740999"
       },
       "header": {
-        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
       },
       "cookie": {
         "ysp_session": "synthetic-session-cookie"
       },
-      "query": {
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
         "expected_material_version": 3,
-        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
     },
     "response": {
       "status": 404,
@@ -4266,7 +4403,7 @@
     "name": "reviewPolicyVersion-409",
     "operationId": "reviewPolicyVersion",
     "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
-    "method": "get",
+    "method": "post",
     "request": {
       "path": {
         "chapter_id": "1",
@@ -4275,15 +4412,31 @@
         "version_id": "9007199254740999"
       },
       "header": {
-        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
       },
       "cookie": {
         "ysp_session": "synthetic-session-cookie"
       },
-      "query": {
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
         "expected_material_version": 3,
-        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
     },
     "response": {
       "status": 409,
@@ -4326,7 +4479,7 @@
     "name": "reviewPolicyVersion-429",
     "operationId": "reviewPolicyVersion",
     "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
-    "method": "get",
+    "method": "post",
     "request": {
       "path": {
         "chapter_id": "1",
@@ -4335,15 +4488,31 @@
         "version_id": "9007199254740999"
       },
       "header": {
-        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
       },
       "cookie": {
         "ysp_session": "synthetic-session-cookie"
       },
-      "query": {
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
         "expected_material_version": 3,
-        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
     },
     "response": {
       "status": 429,
@@ -4386,7 +4555,7 @@
     "name": "reviewPolicyVersion-503",
     "operationId": "reviewPolicyVersion",
     "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
-    "method": "get",
+    "method": "post",
     "request": {
       "path": {
         "chapter_id": "1",
@@ -4395,15 +4564,31 @@
         "version_id": "9007199254740999"
       },
       "header": {
-        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
       },
       "cookie": {
         "ysp_session": "synthetic-session-cookie"
       },
-      "query": {
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
         "expected_material_version": 3,
-        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
     },
     "response": {
       "status": 503,
@@ -4560,7 +4745,7 @@
               "authority_version": 9,
               "duty_grant_id": "9007199254741000",
               "duty": "CHAPTER_HEAD",
-              "reason": "Synthetic exact material approval",
+              "reason": "Synthetic reviewed policy interface",
               "effective_from": "2026-10-26T00:00:00.000000Z",
               "effective_until": null,
               "actor": {
@@ -5431,7 +5616,7 @@
               "authority_version": 9,
               "duty_grant_id": "9007199254741000",
               "duty": "CHAPTER_HEAD",
-              "reason": "Synthetic exact material approval",
+              "reason": "Synthetic reviewed policy interface",
               "effective_from": "2026-10-26T00:00:00.000000Z",
               "effective_until": null,
               "actor": {
@@ -7153,7 +7338,7 @@
               "authority_version": 9,
               "duty_grant_id": "9007199254741000",
               "duty": "CHAPTER_HEAD",
-              "reason": "Synthetic exact material approval",
+              "reason": "Synthetic reviewed policy interface",
               "effective_from": "2026-10-26T00:00:00.000000Z",
               "effective_until": null,
               "actor": {
@@ -7641,7 +7826,7 @@
               "authority_version": 9,
               "duty_grant_id": "9007199254741000",
               "duty": "CHAPTER_HEAD",
-              "reason": "Synthetic exact material approval",
+              "reason": "Synthetic reviewed policy interface",
               "effective_from": "2026-10-26T00:00:00.000000Z",
               "effective_until": null,
               "actor": {
@@ -8394,7 +8579,7 @@
               "authority_version": 9,
               "duty_grant_id": "9007199254741000",
               "duty": "FINANCE",
-              "reason": "Synthetic exact material approval",
+              "reason": "Synthetic reviewed policy interface",
               "effective_from": "2026-10-26T00:00:00.000000Z",
               "effective_until": null,
               "actor": {
@@ -8578,7 +8763,7 @@
               "authority_version": 9,
               "duty_grant_id": "9007199254741000",
               "duty": "CHAPTER_HEAD",
-              "reason": "Synthetic exact material approval",
+              "reason": "Synthetic reviewed policy interface",
               "effective_from": "2026-10-24T00:00:00.000000Z",
               "effective_until": null,
               "actor": {
@@ -9458,7 +9643,7 @@
               "authority_version": 9,
               "duty_grant_id": "9007199254741000",
               "duty": "CHAPTER_HEAD",
-              "reason": "Synthetic exact material approval",
+              "reason": "Synthetic reviewed policy interface",
               "effective_from": "2026-10-26T00:00:00.000000Z",
               "effective_until": null,
               "actor": {
@@ -9812,7 +9997,7 @@
               "authority_version": 9,
               "duty_grant_id": "9007199254741000",
               "duty": "CHAPTER_HEAD",
-              "reason": "Synthetic exact material approval",
+              "reason": "Synthetic reviewed policy interface",
               "effective_from": "2026-10-26T00:00:00.000000Z",
               "effective_until": null,
               "actor": {
@@ -10070,7 +10255,7 @@
     "name": "review-material-stale",
     "operationId": "reviewPolicyVersion",
     "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
-    "method": "get",
+    "method": "post",
     "request": {
       "path": {
         "chapter_id": "1",
@@ -10079,15 +10264,31 @@
         "version_id": "9007199254740999"
       },
       "header": {
-        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
       },
       "cookie": {
         "ysp_session": "synthetic-session-cookie"
       },
-      "query": {
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
         "expected_material_version": 3,
-        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      }
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
     },
     "response": {
       "status": 409,
@@ -10416,7 +10617,7 @@
             "authority_version": 9,
             "duty_grant_id": "9007199254741000",
             "duty": "CHAPTER_HEAD",
-            "reason": "Synthetic exact material approval",
+            "reason": "Synthetic reviewed policy interface",
             "effective_from": "2026-10-26T00:00:00.000000Z",
             "effective_until": null,
             "actor": {
@@ -10621,6 +10822,419 @@
             ]
           }
         ]
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "DOC-03",
+      "DOC-05",
+      "DOC-10",
+      "DOC-11",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-07",
+      "TR-09",
+      "TR-12",
+      "TR-17",
+      "UX-01",
+      "UX-02",
+      "UX-03",
+      "UX-04",
+      "ADD-08",
+      "F-01",
+      "F-11",
+      "S-21"
+    ]
+  },
+  {
+    "name": "reviewPolicyVersion-419",
+    "operationId": "reviewPolicyVersion",
+    "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "category": "operational",
+        "policy_code": "OPERATIONAL_ROOT",
+        "version_id": "9007199254740999"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
+        "expected_material_version": 3,
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      }
+    },
+    "response": {
+      "status": 419,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "DOC-03",
+      "DOC-05",
+      "DOC-10",
+      "DOC-11",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-07",
+      "TR-09",
+      "TR-12",
+      "TR-17",
+      "UX-01",
+      "UX-02",
+      "UX-03",
+      "UX-04",
+      "ADD-08",
+      "F-01",
+      "F-11",
+      "S-21"
+    ]
+  },
+  {
+    "name": "reviewPolicyVersion-422",
+    "operationId": "reviewPolicyVersion",
+    "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "category": "operational",
+        "policy_code": "OPERATIONAL_ROOT",
+        "version_id": "9007199254740999"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
+        "expected_material_version": 3,
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      }
+    },
+    "response": {
+      "status": 422,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/reason",
+            "code": "REQUIRED",
+            "message": "Reason is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "DOC-03",
+      "DOC-05",
+      "DOC-10",
+      "DOC-11",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-07",
+      "TR-09",
+      "TR-12",
+      "TR-17",
+      "UX-01",
+      "UX-02",
+      "UX-03",
+      "UX-04",
+      "ADD-08",
+      "F-01",
+      "F-11",
+      "S-21"
+    ]
+  },
+  {
+    "name": "reviewPolicyVersion-replay",
+    "operationId": "reviewPolicyVersion",
+    "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "category": "operational",
+        "policy_code": "OPERATIONAL_ROOT",
+        "version_id": "9007199254740999"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "body": {
+        "idempotency_key": "policy-attempt-reviewPolicyVersion",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
+        "expected_material_version": 3,
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      },
+      "mediaType": "application/json"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "policy",
+        "action_result": "success",
+        "chapter_id": "1",
+        "root": {
+          "id": "9007199254740998",
+          "chapter_id": "1",
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "row_version": 4,
+          "latest_version_id": "9007199254740999",
+          "created": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          }
+        },
+        "version": {
+          "id": "9007199254740999",
+          "chapter_id": "1",
+          "policy_id": "9007199254740998",
+          "policy_code": "OPERATIONAL_ROOT",
+          "category": "operational",
+          "responsible_duty": "CHAPTER_HEAD",
+          "version_no": 2,
+          "row_version": 4,
+          "metadata": {
+            "name": "Synthetic operational policy",
+            "schema_id": "urn:ysp:policy:synthetic-owner-reference",
+            "schema_version": 1,
+            "effective_from": "2026-10-26T00:00:00.000000Z",
+            "effective_until": null,
+            "supersedes_version_id": null
+          },
+          "material": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254741010",
+              "kind": "CONFIG"
+            },
+            "material_version": 3,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "schema_support": "registered_reference",
+          "review_state": "reviewed",
+          "effective_state": "not_approved",
+          "reason": "Synthetic complete material reference",
+          "created": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "last_changed": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "decisions": [
+            {
+              "decision": "review",
+              "material": {
+                "chapter_id": "1",
+                "record": {
+                  "id": "9007199254741010",
+                  "kind": "CONFIG"
+                },
+                "material_version": 3,
+                "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "authority_version": 9,
+              "duty_grant_id": "9007199254741000",
+              "duty": "CHAPTER_HEAD",
+              "reason": "Synthetic reviewed policy interface",
+              "effective_from": "2026-10-26T00:00:00.000000Z",
+              "effective_until": null,
+              "actor": {
+                "user_id": "9007199254740996",
+                "at": "2026-10-25T06:00:00.123456Z"
+              }
+            }
+          ],
+          "approved_policy": null
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "policy.operational.approve",
+            "idempotency_key": "policy-attempt-reviewPolicyVersion"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-08",
+      "GOV-09",
+      "DOC-03",
+      "DOC-05",
+      "DOC-10",
+      "DOC-11",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-07",
+      "TR-09",
+      "TR-12",
+      "TR-17",
+      "UX-01",
+      "UX-02",
+      "UX-03",
+      "UX-04",
+      "ADD-08",
+      "F-01",
+      "F-11",
+      "S-21"
+    ]
+  },
+  {
+    "name": "approve-before-review-rejected",
+    "operationId": "approvePolicyVersion",
+    "path": "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/approve",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "category": "operational",
+        "policy_code": "OPERATIONAL_ROOT",
+        "version_id": "9007199254740999"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "policy-approve-policy_state_conflict",
+        "expected_authority_version": 9,
+        "expected_row_version": 4,
+        "expected_material_version": 3,
+        "reason": "Synthetic reviewed policy interface",
+        "material": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254741010",
+            "kind": "CONFIG"
+          },
+          "material_version": 3,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "effective_from": "2026-10-26T00:00:00.000000Z",
+        "effective_until": null
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "policy",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "policy.operational.approve",
+            "idempotency_key": "policy-approve-policy_state_conflict"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "policy_state_conflict",
+        "message": "Policy cannot accept this action.",
+        "next_action": "review_original_attempt"
       }
     },
     "synthetic": true,

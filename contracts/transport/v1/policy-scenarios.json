@@ -25,7 +25,7 @@
     "exchanges": [
       "reviewPolicyVersion-success"
     ],
-    "obligation": "Present exact material/version/hash and schema identity, omitting settings; verify supplied material query pin. Review GET has no durable side effect.",
+    "obligation": "POST review appends a version-bound P03 review decision and returns its durable operation plus material/schema metadata with settings omitted. The caller pins full material tuple, hash and separate versions.",
     "automatic_mutation_retries": [],
     "requirements": [
       "GOV-08",
@@ -80,9 +80,10 @@
     "verification": "declarative_server_review",
     "precondition": "The exact reviewed CONFIG and schema are complete, with currently eligible authority.",
     "exchanges": [
-      "approvePolicyVersion-success"
+      "approvePolicyVersion-success",
+      "approve-before-review-rejected"
     ],
-    "obligation": "Bind material/hash, reason, effective interval and current grant/authority. Settings hash is server-resolved, never trusted from draft metadata.",
+    "obligation": "Bind material/hash, reason, effective interval and current grant/authority. Settings hash is server-resolved, never trusted from draft metadata. Approval before recorded review rejects with policy_state_conflict.",
     "automatic_mutation_retries": [],
     "requirements": [
       "GOV-08",

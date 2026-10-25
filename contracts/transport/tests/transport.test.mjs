@@ -96,6 +96,7 @@ test('TR-03: OpenAPI and every reusable definition compile, including HTTP looku
     ...await readJson('../v1/chapter-context-exchanges.json'),
     ...await readJson('../v1/membership-exchanges.json'),
     ...await readJson('../v1/duty-grant-exchanges.json'),
+    ...await readJson('../v1/policy-exchanges.json'),
   ];
   assert.equal(new Set(exchanges.map(e => e.name)).size, exchanges.length, 'unique exchange names');
   for (const example of exchanges) validateExchange(api, operationAjv, example);
@@ -126,13 +127,13 @@ test('TR-03/DOC-11: Stage 0 lookup scopes, identities and response semantics rem
     delete preserved.get['x-session-consumer'];
     const media = preserved.get.responses['200'].content['application/json'];
     // Compare the original branches and every old status/selector/example exactly;
-    // membership and duty-grant branches are independently validated by their slice tests.
-    assert.equal(media.schema.oneOf.length, 6);
+    // Membership, duty-grant and policy branches are validated by their slice tests.
+    assert.equal(media.schema.oneOf.length, 8);
     media.schema.oneOf = media.schema.oneOf.slice(0, 2);
     for (const response of Object.values(preserved.get.responses)) {
       for (const media of Object.values(response.content ?? {})) {
         for (const name of Object.keys(media.examples ?? {})) {
-          if (name.includes('-membership') || name.includes('-duty-grant')) delete media.examples[name];
+          if (name.includes('-membership') || name.includes('-duty-grant') || name.includes('-policy')) delete media.examples[name];
         }
       }
     }

@@ -10178,13 +10178,14 @@
       }
     },
     "/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review": {
-      "get": {
+      "post": {
         "operationId": "reviewPolicyVersion",
         "summary": "reviewPolicyVersion",
         "description": "See x-policy-contract for exact category authority, safe visibility, versions and P03 boundary.",
         "security": [
           {
-            "chapterSession": []
+            "chapterSession": [],
+            "csrfToken": []
           }
         ],
         "parameters": [
@@ -10238,19 +10239,13 @@
             }
           },
           {
-            "in": "query",
-            "name": "expected_material_version",
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
             "required": true,
             "schema": {
-              "$ref": "./transport.schema.json#/$defs/Version"
-            }
-          },
-          {
-            "in": "query",
-            "name": "material_hash",
-            "required": true,
-            "schema": {
-              "$ref": "./transport.schema.json#/$defs/Hash"
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
             }
           }
         ],
@@ -10269,11 +10264,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "./transport.schema.json#/$defs/PolicyVersion"
+                  "$ref": "./transport.schema.json#/$defs/PolicySuccess"
                 },
                 "examples": {
                   "reviewPolicyVersion-success": {
                     "$ref": "./policy-examples.json#/reviewPolicyVersion-success"
+                  },
+                  "reviewPolicyVersion-replay": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-replay"
                   }
                 }
               }
@@ -10389,7 +10387,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/PolicyRejected"
+                    }
+                  ]
                 },
                 "examples": {
                   "reviewPolicyVersion-409": {
@@ -10456,13 +10461,61 @@
                 }
               }
             }
+          },
+          "419": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "reviewPolicyVersion-419": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-419"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Authorized result or safe failure; transport failure does not establish mutation outcome.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "reviewPolicyVersion-422": {
+                    "$ref": "./policy-examples.json#/reviewPolicyVersion-422"
+                  }
+                }
+              }
+            }
           }
         },
         "x-invalid-parameter-statuses": [
           400
         ],
         "x-session-consumer": true,
-        "x-action-code": "policy.{category}.read",
+        "x-action-code": "policy.{category}.approve",
         "x-requirements": [
           "GOV-08",
           "GOV-09",
@@ -10485,6 +10538,19 @@
           "F-01",
           "F-11",
           "S-21"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/ReviewPolicyVersionRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
         ]
       }
     },
@@ -10743,6 +10809,9 @@
                   },
                   "approve-policy_interval_conflict": {
                     "$ref": "./policy-examples.json#/approve-policy_interval_conflict"
+                  },
+                  "approve-before-review-rejected": {
+                    "$ref": "./policy-examples.json#/approve-before-review-rejected"
                   }
                 }
               }
@@ -12129,11 +12198,11 @@
     ],
     "concrete_settings_payload_variants": [],
     "metadata": "PolicyMetadata contains P02 writable draft metadata; PolicyRoot/PolicyVersion contain server-owned category, policy code, responsible duty, attribution and version state. A root is lazily created by save with null expected_row_version only when absent; existing root requires its current row version. Save appends a new draft PolicyVersion, never edits approved material. No settings property, arbitrary JSON, empty placeholder or approved flag is accepted. Schema metadata is a request for owner resolution, not evidence of support or approval.",
-    "authorization": "Current chapter membership, required MFA and X-Chapter-Context for all operations. Safe status accepts policy.status.read for any current chapter duty, filters to requested affected_action and server-permitted next steps; it is no authority to perform that action. Operational read/prepare/approve requires CHAPTER_HEAD; financial equivalents require FINANCE. Neither implies the other. No provider access. Category path maps read/list/review to policy.{category}.read, save/submit to .prepare, approve/return to .approve. Review is a read only pinned material presentation and writes no decision; prior recorded review decisions may be returned by P03. Submit records no approval.",
+    "authorization": "Current chapter membership, required MFA and X-Chapter-Context for all operations. Safe status accepts policy.status.read for any current chapter duty, filters to requested affected_action and server-permitted next steps; it is no authority to perform that action. Operational read/prepare/approve requires CHAPTER_HEAD; financial equivalents require FINANCE. Neither implies the other. No provider access. Category path maps read/list to policy.{category}.read, save/submit to .prepare, review/approve/return to .approve. Review POST appends an exact-material review decision and returns canonical durable policy success. It does not approve. Submit records no approval.",
     "visibility": "Status exposes only relevant safe blockers, responsible duty and permitted steps for requested action; no values, material hashes, policy IDs, reasons or actor details. All category root/version details require own read authority, financial details default Finance only. Version values/settings are omitted in every HTTP representation, including complete-material review. Authorized reviewer can inspect exact material/schema identity without executable payload. Unknown, cross-chapter and inaccessible target/reference use identical 404 policy_not_visible. 403 contains no private data; stale replies disclose no replacement versions.",
     "pagination": "Root and version lists use PolicyRoot and PolicyVersion exactly as reads, limit default50 bounded1..100, cursor; roots filter policy_code, versions filter review_state/effective_state. All filters conjunctive. Root order immutable id numeric ascending using decimal comparison; versions version_no then id ascending. next_cursor:null means end, nonnull means remaining page. Empty succeeds. Opaque cursor binds actor/chapter/category/parent, normalized filters, limit and snapshot UTC; malformed/expired/mismatched 400, changed snapshot 409 policy_snapshot_stale. No silent restart or global enumeration.",
     "material": "Reuse canonical MaterialReference and PolicyReference from identity-record-evidence. Material must be same-chapter CONFIG; compare complete tuple/hash, expected_material_version separately from row. registered_reference means P03 resolves complete immutable material against an owning-domain registered constrained schema, not client attestation. No owning-domain concrete payload write variants reviewed here. Missing/unsupported material blocks submit/approval; approval of arbitrary JSON or empty payload is impossible. Complete material fixtures model a P03-owned pre-existing registered reference, not a newly approved domain schema. Until owner registry/validator exists real settings approval remains disabled.",
-    "approval": "Operational approval CHAPTER_HEAD, financial FINANCE, with currently effective grant/authority independently checked. Bind exact material/hash/schema, authority_version, duty_grant_id, actor, reason and half-open effective interval [from,until); null until open. Require reviewed current submitted material and valid nonoverlapping interval under parent lock. P03 supplies append-only decisions/history. Material change invalidates affected approval, creates new material/version and requires reapproval; never erase old decisions. New policy does not recalculate completed/issued records. Future approved versions remain scheduled and cannot satisfy current action; selected effective version resolved at execution UTC.",
+    "approval": "Operational approval CHAPTER_HEAD, financial FINANCE, with currently effective grant/authority independently checked. Bind exact material/hash/schema, authority_version, duty_grant_id, actor, reason and half-open effective interval [from,until); null until open. Require reviewed current submitted material and valid nonoverlapping interval under parent lock. P03 supplies append-only decisions/history. Material change invalidates affected approval, creates new material/version and requires reapproval; never erase old decisions. New policy does not recalculate completed/issued records. Future approved versions remain scheduled and cannot satisfy current action; selected effective version resolved at execution UTC. Approval before a recorded eligible review returns durable policy_state_conflict. Review and approval are distinct commands in the immutable fingerprint even though both use the category approval action; no extra independent-person rule is inferred for ordinary policy review.",
     "attempt": "Reuse canonical x-membership-contract attempts/results. Server RFC8785 fingerprint {chapter_id,category,policy_code,version_id,command,context_revision,body}; version_id null only save; command distinguishes save/submit/approve/return sharing action codes. Original actor bound server side. Key uniqueness chapter/action/key; changed command/body/target/context conflicts. Recheck original-scope access before authorized identical replay; return original operation/time/root/version and decisions, replayed:true before new-attempt version guards. New attempt checks row, material, authority, context separately; stale has no effect. Never automatic mutation retry/new key while uncertain.",
     "durable_results": "Both existing chapter lookup selectors extend with PolicyLookupTerminal/Rejected, preserving record/membership/grant results and pending/unavailable. Current original chapter/category read access required, including financial scope; no fabricated CONFIG success record. Additive discriminant is explicit exhaustive-consumer migration; consumers dispatch resource_type. Lost response, HTML, malformed JSON, redirect, pending, unavailable or unknown key remain uncertain; only authorized durable committed/rejected result establishes outcome.",
     "feedback": "MembershipInvalid/FieldFeedback actual RFC6901 request pointers; no echoed secrets. Keep corrected nonsecret draft separate from immutable sent attempt. On expiry conceal edits, resume only same identity/current scope after context and version review. Switching chapter never retargets attempt. P02 PolicyBlocker owns responsible_duty/policy_code/permitted_next_steps; original closed BlockingReason/NextAction are unchanged. Missing input blocks affected action only; other drafts/setup remain available. No ready_for_live boolean.",

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:ysp:transport:v1",
-  "title": "YSP shared transport v1 \u00e2\u20ac\u201d review revision 1",
-  "description": "Leader-authored P00 contract for shared transport, parent spec https://github.com/Kamunggay/YSP/issues/2. Review candidate dated 2026-10-24; Glenn frontend/query and Efren posting acceptance pending. This describes wire values, not implemented business behavior. TR-02\u00e2\u20ac\u201cTR-03, TR-06\u00e2\u20ac\u201cTR-10, TR-12, TR-15, DOC-11, UX-01\u00e2\u20ac\u201cUX-04; Q3\u00e2\u20ac\u201cQ5. Identity/record/evidence payloads belong to the identity, record and evidence contract, IPC/RM acceptance to the receiving contract, stock query/hold semantics to the stock-hold contract. No public mutation or balance setter is defined.",
+  "title": "YSP shared transport v1 — review revision 1",
+  "description": "Leader-authored P00 contract for shared transport, parent spec https://github.com/Kamunggay/YSP/issues/2. Review candidate dated 2026-10-24; Glenn frontend/query and Efren posting acceptance pending. This describes wire values, not implemented business behavior. TR-02–TR-03, TR-06–TR-10, TR-12, TR-15, DOC-11, UX-01–UX-04; Q3–Q5. Identity/record/evidence payloads belong to the identity, record and evidence contract, IPC/RM acceptance to the receiving contract, stock query/hold semantics to the stock-hold contract. No public mutation or balance setter is defined.",
   "$defs": {
     "Id": {
       "type": "string",
@@ -27,7 +27,7 @@
         "value",
         "quantity_scale"
       ],
-      "description": "A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0\u00e2\u20ac\u201c6 follow DATABASE-SCHEMA \u00c2\u00a72.1/\u00c2\u00a72.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units.",
+      "description": "A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units.",
       "properties": {
         "value": {
           "$ref": "#/$defs/Quantity"

@@ -70,9 +70,17 @@ test('DOC-11/TR-12: policy consumer preserves scope, immutable replay and uncert
     });
     assert.equal(calls, 1, e.name); assert.equal(result.kind, 'response', e.name); assert.deepEqual(result.body, e.response.body, e.name);
   }
-  for (const id of ['savePolicyDraft', 'submitPolicyVersion', 'approvePolicyVersion', 'returnPolicyVersion']) {
+  for (const id of ['savePolicyDraft', 'submitPolicyVersion', 'reviewPolicyVersion', 'approvePolicyVersion', 'returnPolicyVersion']) {
     const a = get(id+'-success').response.body, b = get(id+'-replay').response.body;
     assert.equal(b.operation.replayed, true); b.operation.replayed = false; assert.deepEqual(a,b);
+  }
+  for (const e of exchanges.filter(e => ['reviewPolicyVersion','approvePolicyVersion','returnPolicyVersion'].includes(e.operationId) && e.response.status === 200)) {
+    const decision = e.response.body.version.decisions.at(-1);
+    assert.equal(decision.reason, e.request.body.reason, e.name);
+    assert.deepEqual(decision.material, e.request.body.material, e.name);
+    assert.equal(decision.authority_version, e.request.body.expected_authority_version, e.name);
+    assert.equal(decision.effective_from, e.request.body.effective_from, e.name);
+    assert.equal(decision.effective_until, e.request.body.effective_until, e.name);
   }
   const e = get('approvePolicyVersion-success'), success = e.response.body;
   const attempt = { chapter_id: '1', policy_id: success.root.id, category: 'operational', policy_code: 'OPERATIONAL_ROOT', action_code: 'policy.operational.approve', idempotency_key: e.request.body.idempotency_key };
@@ -103,7 +111,7 @@ test('GOV-08/GOV-09: formal policy scenarios distinguish server obligations from
   }
   const get = n => exchanges.find(e => e.name === n).response.body;
   assert.equal(get('savePolicyDraft-success').version.material, null);
-  const review = get('reviewPolicyVersion-success');
+  const review = get('reviewPolicyVersion-success').version;
   assert.equal(review.material.record.kind, 'CONFIG'); assert.equal(review.material.material_version, 3); assert.equal('settings' in review, false);
   const original = get('approvePolicyVersion-success').version, changed = get('material-change-reapproval');
   assert.equal(changed.material.material_version, 4); assert.equal(changed.approved_policy, null); assert.equal(changed.review_state, 'draft');
@@ -121,6 +129,11 @@ test('GOV-08/GOV-09: formal policy scenarios distinguish server obligations from
 
 test('TR-03/TR-09: canonical policy/material pins stay compatible with the existing P03 boundary', async () => {
   const internal = JSON.parse(await readFile(new URL('../../identity-record-evidence/v1/contract.schema.json', import.meta.url), 'utf8'));
+  const transport = await read('transport.schema');
+  for (const name of ['Hash','MaterialReference','PolicyReference']) {
+    const normalized = JSON.parse(JSON.stringify(internal.$defs[name]).replaceAll('urn:ysp:transport:v1#/$defs/', '#/$defs/'));
+    assert.deepEqual(transport.$defs[name], normalized, name + ': canonical schema parity');
+  }
   ajv.addSchema(internal);
   const material = ajv.compile({ $ref: internal.$id + '#/$defs/MaterialReference' });
   const policy = ajv.compile({ $ref: internal.$id + '#/$defs/PolicyReference' });

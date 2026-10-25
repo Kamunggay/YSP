@@ -141,7 +141,7 @@ export const routes = {
     "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/submit"
   },
   "reviewPolicyVersion": {
-    "method": "GET",
+    "method": "POST",
     "path": "/api/v1/chapters/{chapter_id}/policies/{category}/{policy_code}/versions/{version_id}/review"
   },
   "approvePolicyVersion": {
