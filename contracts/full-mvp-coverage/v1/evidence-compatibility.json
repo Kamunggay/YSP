@@ -7,7 +7,7 @@
     {
       "artifact": "contracts/transport/v1/api-v1.json",
       "historicalSha256": "0d03c7b7ab376e628240d6595224835dc0f27d871642e3bcdd10ac954b60864a",
-      "currentSha256": "5059f68a34c102543bc8cd10077ceb4cb241b05bedd593ed84eb7519b1d54afc"
+      "currentSha256": "fc9b9410ada9d67c083d2b10853ffa1ab3f611116304ded0d411f8a24021cf32"
     }
   ]
 }

@@ -62,3 +62,11 @@ test('DOC-11: HTTP 200 pending lookup never means commitment and old record cons
   if(e.response.status===200)assert.equal(membershipLookupOutcome(e.response.body),e.response.body.action_result==='uncertain'?'uncertain':'record_result');
  }
 });
+
+test('SEC-03: membership operations reference declared cookie and unsafe CSRF security schemes',()=>{
+ for(const item of Object.values(api.paths))for(const method of ['get','post']){
+  const op=item[method];if(!op || !['listMemberships','readMembership','lookupMembershipIdentity','authorizeMembership','disableMembership','revokeMembership'].includes(op.operationId))continue;
+  assert.deepEqual(op.security,[method==='post'?{chapterSession:[],csrfToken:[]}:{chapterSession:[]}]);
+  for(const requirement of op.security)for(const name of Object.keys(requirement))assert.ok(api.components.securitySchemes[name]);
+ }
+});
