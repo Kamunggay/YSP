@@ -106,7 +106,7 @@
   ],
   "coverage": {
     "httpOperations": 49,
-    "formalP02Exchanges": 706,
+    "formalP02Exchanges": 606,
     "chapterLookupExamples": 13,
     "authoredServerScenarios": 108,
     "sessionExampleScenarios": 35,
@@ -195,5 +195,10 @@
     ],
     "archives": "No archive directories are present in the current change tree. Earlier archive copies were removed in 8168be3; historical commits are preserved. This cleanup does not rewrite Git history.",
     "boundaries": "HTTP contract and requirement scope unchanged. Original execution evidence above remains tied to its original revision; this supplemental record identifies cleanup verification."
+  },
+  "exchangeCountCorrection": {
+    "previousReportedCount": 706,
+    "actualCount": 606,
+    "basis": "Counted the nine P02 exchange arrays directly; 600 named response examples match their exchange response bodies. This corrects summary arithmetic only; executed test results and contract content are unchanged."
   }
 }
