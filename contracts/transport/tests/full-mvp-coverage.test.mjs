@@ -81,6 +81,7 @@ test('frozen revision and rendered review survive both LF and CRLF checkouts', (
     'contracts/full-mvp-coverage/check.mjs', 'contracts/full-mvp-coverage/inventory.mjs',
     'contracts/full-mvp-coverage/render.mjs', 'contracts/full-mvp-coverage/ownership.mjs', 'contracts/full-mvp-coverage/v1/index.json',
     'contracts/full-mvp-coverage/v1/source-inventory.json', 'contracts/full-mvp-coverage/v1/review-index.md',
+    'contracts/full-mvp-coverage/v1/evidence-compatibility.json',
     ...index.evidence.map(row => row.artifact),
   ];
   try {
@@ -94,10 +95,23 @@ test('frozen revision and rendered review survive both LF and CRLF checkouts', (
       assert.equal(check.status, 0, check.stdout + check.stderr);
       const render = spawnSync(process.execPath, [resolve(directory, 'contracts/full-mvp-coverage/render.mjs'), '--check'], { encoding: 'utf8' });
       assert.equal(render.status, 0, render.stdout + render.stderr);
+      const artifact = resolve(directory, 'contracts/transport/v1/api-v1.json');
+      writeFileSync(artifact, readFileSync(artifact, 'utf8') + '\n');
+      const changed = spawnSync(process.execPath, [resolve(directory, 'contracts/full-mvp-coverage/check.mjs'), '--snapshot'], { encoding: 'utf8' });
+      assert.equal(changed.status, 1, 'successor reconciliation must still reject later artifact drift');
+      assert.match(changed.stdout, /transport-consistency/);
     }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('successor evidence cannot replace an unrecognized historical hash', () => {
+  const result = checkMutation(index => {
+    index.evidence.find(row => row.key === 'transport-consistency').artifactSha256 = '0'.repeat(64);
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /transport-consistency/);
 });
 
 test('decision branches retain source-kind skips and the variance-fork consumers', () => {
