@@ -284,7 +284,7 @@ export interface components {
             } | null;
         } & unknown;
         ConfirmedEnrollment: {
-            /** @description One-time plaintext issuance only in successful confirmation (or separately protected ticket 04 regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration. */
+            /** @description One-time plaintext issuance only in successful confirmation (or separately protected existing-factor challenge/recovery regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration. */
             recovery_codes: {
                 codes: string[];
                 issued_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
@@ -553,7 +553,7 @@ export interface components {
                 [key: string]: string;
             };
         };
-        /** @description One-time plaintext issuance only in successful confirmation (or separately protected ticket 04 regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration. */
+        /** @description One-time plaintext issuance only in successful confirmation (or separately protected existing-factor challenge/recovery regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration. */
         RecoveryCodeIssuance: {
             codes: string[];
             issued_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
@@ -659,7 +659,7 @@ export interface components {
             email: string;
             password: string;
         };
-        /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0â€“6 follow DATABASE-SCHEMA Â§2.1/Â§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
+        /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
         UnitQuantity: {
             quantity_scale: number;
             /** @description Nonnegative DECIMAL(20,6) magnitude: at most fourteen integral and six fractional digits. No exponent, sign, separators or binary floating point. Zero is a transport value; a domain operation may require a positive amount. Fractional trailing zeros are accepted. Canonical fingerprint representation uses six places, so 2 and 2.000000 denote the same exact quantity. Signed ledger deltas require a later explicit domain schema. */

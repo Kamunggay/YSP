@@ -113,7 +113,8 @@ test('SEC-01/DOC-11: declarative server scenarios reference validated exchanges 
     assert.ok(scenarios.some(s => s.id === id), id);
   }
   const lost = scenarios.find(s => s.id === 'lost-confirmation');
-  assert.equal(lost.follow_on_ticket, '.scratch/p02-shared-openapi/issues/04-mfa-challenges-and-recovery.md');
+  assert.equal(lost.follow_on_spec, 'https://github.com/Kamunggay/YSP/issues/5');
+  assert.equal(lost.follow_on_slice, 'MFA challenges and recovery-code maintenance');
   assert.deepEqual(lost.automatic_mutation_retries, []);
 });
 

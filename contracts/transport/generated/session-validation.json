@@ -1531,7 +1531,7 @@
                     }
                   }
                 },
-                "description": "One-time plaintext issuance only in successful confirmation (or separately protected ticket 04 regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration."
+                "description": "One-time plaintext issuance only in successful confirmation (or separately protected existing-factor challenge/recovery regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration."
               }
             }
           }

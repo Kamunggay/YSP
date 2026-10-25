@@ -182,10 +182,11 @@
       "bootstrap-challenge",
       "bootstrap-signed-out"
     ],
-    "obligation": "Explicit GET bootstrap determines current authentication state only. Never automatically repeat confirmation or restart enrollment. Verified session does not promise code readback; ticket 04 owns explicit protected regeneration with fresh proof. Challenge requires existing proof; enrollment pending needs reviewed next action, not inference of rejection. Signed out requires sign-in. With no usable factor, assisted recovery remains blocked pending an approved procedure. No recovery restores extra authority.",
+    "obligation": "Explicit GET bootstrap determines current authentication state only. Never automatically repeat confirmation or restart enrollment. Verified session does not promise code readback; existing-factor challenge/recovery slice owns explicit protected regeneration with fresh proof. Challenge requires existing proof; enrollment pending needs reviewed next action, not inference of rejection. Signed out requires sign-in. With no usable factor, assisted recovery remains blocked pending an approved procedure. No recovery restores extra authority.",
     "limitations": "Exchange schemas and generated consumer are executed; server effects, authorization, expiry, binding, code consumption and persistence are not.",
-    "follow_on_ticket": ".scratch/p02-shared-openapi/issues/04-mfa-challenges-and-recovery.md",
-    "automatic_mutation_retries": []
+    "automatic_mutation_retries": [],
+    "follow_on_spec": "https://github.com/Kamunggay/YSP/issues/5",
+    "follow_on_slice": "MFA challenges and recovery-code maintenance"
   },
   {
     "id": "secret-lifetime",
