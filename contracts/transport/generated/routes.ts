@@ -55,5 +55,29 @@ export const routes = {
   "selectChapter": {
     "method": "POST",
     "path": "/api/v1/session/chapter-selection"
+  },
+  "listMemberships": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/memberships"
+  },
+  "readMembership": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/memberships/{membership_id}"
+  },
+  "lookupMembershipIdentity": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/memberships/identity-reference"
+  },
+  "authorizeMembership": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/memberships/authorize"
+  },
+  "disableMembership": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/memberships/{membership_id}/disable"
+  },
+  "revokeMembership": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/memberships/{membership_id}/revoke"
   }
 } as const;

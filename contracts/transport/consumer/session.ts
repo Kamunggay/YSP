@@ -18,10 +18,11 @@ type Options<K extends Operation> = {
   origin: string; cookie: string; signal: AbortSignal;
   fetch: (url: URL, init: RequestInit) => Promise<Response>;
   query?: operations[K]['parameters']['query'];
-} & (operations[K]['parameters']['header'] extends { 'X-Chapter-Context': infer H extends string } ? { contextRevision: H } : { contextRevision?: never })
+} & (operations[K]['parameters']['path'] extends Record<string, string> ? { path: operations[K]['parameters']['path'] } : { path?: never })
+  & (operations[K]['parameters']['header'] extends { 'X-Chapter-Context': infer H extends string } ? { contextRevision: H } : { contextRevision?: never })
   & (operations[K] extends { requestBody: { content: { 'application/json': infer B } } } ? { body: B } : { body?: never });
 export type ConsumerExample = { [K in Operation]: {
-  operationId: K; request: Pick<Options<K>, 'body' | 'query' | 'contextRevision'>; response: Result<K>;
+  operationId: K; request: Pick<Options<K>, 'body' | 'query' | 'contextRevision' | 'path'>; response: Result<K>;
 } }[Operation];
 
 export type ConsumerResponseExample = { [K in Operation]: { operationId: K; response: Result<K> } }[Operation];
@@ -43,7 +44,11 @@ export async function exchangeSession<K extends Operation>(operation: K, options
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
   let response: Response;
   try {
-    const url = new URL(route.path, options.origin);
+    let pathname: string = route.path;
+    for (const [name, value] of Object.entries(options.path ?? {})) {
+      pathname = pathname.replace(`{${name}}`, encodeURIComponent(String(value)));
+    }
+    const url = new URL(pathname, options.origin);
     for (const [name, value] of Object.entries(options.query ?? {})) {
       if (value !== undefined) url.searchParams.set(name, String(value));
     }

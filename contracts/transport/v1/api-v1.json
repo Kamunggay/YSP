@@ -82,6 +82,12 @@
                     },
                     {
                       "$ref": "./transport.schema.json#/$defs/LookupPending"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipLookupTerminal"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipLookupRejected"
                     }
                   ]
                 },
@@ -91,6 +97,15 @@
                   },
                   "uncertain-not-visible": {
                     "$ref": "./examples.json#/uncertain-not-visible"
+                  },
+                  "lookupOperationByKey-membership": {
+                    "$ref": "./membership-examples.json#/lookupOperationByKey-membership"
+                  },
+                  "lookupOperationByKey-membership-pending": {
+                    "$ref": "./membership-examples.json#/lookupOperationByKey-membership-pending"
+                  },
+                  "lookupOperationByKey-membership-rejected": {
+                    "$ref": "./membership-examples.json#/lookupOperationByKey-membership-rejected"
                   }
                 }
               }
@@ -106,9 +121,30 @@
             "$ref": "#/components/responses/ForbiddenLookup"
           },
           "503": {
-            "$ref": "#/components/responses/UnavailableLookup"
+            "description": "Authorized lookup could not establish a terminal result. Proxies/network failures may provide no JSON at all; the client retains uncertainty locally.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/OperationCacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/LookupUnavailable"
+                },
+                "examples": {
+                  "uncertain-unavailable": {
+                    "$ref": "./examples.json#/uncertain-unavailable"
+                  },
+                  "lookupOperationByKey-membership-unavailable": {
+                    "$ref": "./membership-examples.json#/lookupOperationByKey-membership-unavailable"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-session-consumer": true
       }
     },
     "/chapters/{chapter_id}/operations/by-id/{operation_id}": {
@@ -153,6 +189,12 @@
                     },
                     {
                       "$ref": "./transport.schema.json#/$defs/LookupPending"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipLookupTerminal"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipLookupRejected"
                     }
                   ]
                 },
@@ -165,6 +207,15 @@
                   },
                   "uncertain-by-id": {
                     "$ref": "./examples.json#/uncertain-by-id"
+                  },
+                  "lookupOperationById-membership": {
+                    "$ref": "./membership-examples.json#/lookupOperationById-membership"
+                  },
+                  "lookupOperationById-membership-pending": {
+                    "$ref": "./membership-examples.json#/lookupOperationById-membership-pending"
+                  },
+                  "lookupOperationById-membership-rejected": {
+                    "$ref": "./membership-examples.json#/lookupOperationById-membership-rejected"
                   }
                 }
               }
@@ -180,9 +231,30 @@
             "$ref": "#/components/responses/ForbiddenLookup"
           },
           "503": {
-            "$ref": "#/components/responses/UnavailableLookup"
+            "description": "Authorized lookup could not establish a terminal result. Proxies/network failures may provide no JSON at all; the client retains uncertainty locally.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/OperationCacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/LookupUnavailable"
+                },
+                "examples": {
+                  "uncertain-unavailable": {
+                    "$ref": "./examples.json#/uncertain-unavailable"
+                  },
+                  "lookupOperationById-membership-unavailable": {
+                    "$ref": "./membership-examples.json#/lookupOperationById-membership-unavailable"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-session-consumer": true
       }
     },
     "/session": {
@@ -3235,6 +3307,1784 @@
           400
         ]
       }
+    },
+    "/chapters/{chapter_id}/memberships": {
+      "get": {
+        "operationId": "listMemberships",
+        "summary": "listMemberships",
+        "description": "Chapter Head only; current authorization and MFA required. See x-membership-contract for guards, visibility, pagination and immutable original-scope recovery.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "authorized",
+                "disabled",
+                "revoked"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/MembershipCursor"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "listMemberships-401": {
+                    "$ref": "./membership-examples.json#/listMemberships-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "listMemberships-403": {
+                    "$ref": "./membership-examples.json#/listMemberships-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "listMemberships-429": {
+                    "$ref": "./membership-examples.json#/listMemberships-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "listMemberships-503": {
+                    "$ref": "./membership-examples.json#/listMemberships-503"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Authorized scoped result; mutation success requires durable committed operation.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/AdminMembershipPage"
+                },
+                "examples": {
+                  "listMemberships-success": {
+                    "$ref": "./membership-examples.json#/listMemberships-success"
+                  },
+                  "memberships-empty": {
+                    "$ref": "./membership-examples.json#/memberships-empty"
+                  },
+                  "memberships-page": {
+                    "$ref": "./membership-examples.json#/memberships-page"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid selectors/headers.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "listMemberships-400": {
+                    "$ref": "./membership-examples.json#/listMemberships-400"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Context, authority or membership stale; or changed immutable payload.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipConflict"
+                },
+                "examples": {
+                  "listMemberships-chapter_context_stale": {
+                    "$ref": "./membership-examples.json#/listMemberships-chapter_context_stale"
+                  },
+                  "listMemberships-authority_stale": {
+                    "$ref": "./membership-examples.json#/listMemberships-authority_stale"
+                  },
+                  "listMemberships-membership_stale": {
+                    "$ref": "./membership-examples.json#/listMemberships-membership_stale"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true
+      }
+    },
+    "/chapters/{chapter_id}/memberships/{membership_id}": {
+      "get": {
+        "operationId": "readMembership",
+        "summary": "readMembership",
+        "description": "Chapter Head only; current authorization and MFA required. See x-membership-contract for guards, visibility, pagination and immutable original-scope recovery.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "readMembership-401": {
+                    "$ref": "./membership-examples.json#/readMembership-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "readMembership-403": {
+                    "$ref": "./membership-examples.json#/readMembership-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "readMembership-429": {
+                    "$ref": "./membership-examples.json#/readMembership-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "readMembership-503": {
+                    "$ref": "./membership-examples.json#/readMembership-503"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Authorized scoped result; mutation success requires durable committed operation.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/AdminMembership"
+                },
+                "examples": {
+                  "readMembership-success": {
+                    "$ref": "./membership-examples.json#/readMembership-success"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid selectors/headers.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "readMembership-400": {
+                    "$ref": "./membership-examples.json#/readMembership-400"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Context, authority or membership stale; or changed immutable payload.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipConflict"
+                },
+                "examples": {
+                  "readMembership-chapter_context_stale": {
+                    "$ref": "./membership-examples.json#/readMembership-chapter_context_stale"
+                  },
+                  "readMembership-authority_stale": {
+                    "$ref": "./membership-examples.json#/readMembership-authority_stale"
+                  },
+                  "readMembership-membership_stale": {
+                    "$ref": "./membership-examples.json#/readMembership-membership_stale"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Identical for absent, other-chapter or nonvisible membership.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipNotVisible"
+                },
+                "examples": {
+                  "readMembership-404": {
+                    "$ref": "./membership-examples.json#/readMembership-404"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true
+      }
+    },
+    "/chapters/{chapter_id}/memberships/identity-reference": {
+      "post": {
+        "operationId": "lookupMembershipIdentity",
+        "summary": "lookupMembershipIdentity",
+        "description": "Chapter Head only; current authorization and MFA required. See x-membership-contract for guards, visibility, pagination and immutable original-scope recovery.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "lookupMembershipIdentity-401": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "lookupMembershipIdentity-403": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "lookupMembershipIdentity-429": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "lookupMembershipIdentity-503": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-503"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Authorized scoped result; mutation success requires durable committed operation.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipIdentityLookupResult"
+                },
+                "examples": {
+                  "lookupMembershipIdentity-success": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-success"
+                  },
+                  "identity-absent": {
+                    "$ref": "./membership-examples.json#/identity-absent"
+                  },
+                  "identity-disabled": {
+                    "$ref": "./membership-examples.json#/identity-disabled"
+                  },
+                  "identity-not-visible": {
+                    "$ref": "./membership-examples.json#/identity-not-visible"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid selectors/headers.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "lookupMembershipIdentity-400": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-400"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Context, authority or membership stale; or changed immutable payload.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipConflict"
+                },
+                "examples": {
+                  "lookupMembershipIdentity-chapter_context_stale": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-chapter_context_stale"
+                  },
+                  "lookupMembershipIdentity-authority_stale": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-authority_stale"
+                  },
+                  "lookupMembershipIdentity-membership_stale": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-membership_stale"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid closed body; endpoint-relative field feedback.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "lookupMembershipIdentity-422": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-422"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF failure; no automatic unsafe retry.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "lookupMembershipIdentity-419": {
+                    "$ref": "./membership-examples.json#/lookupMembershipIdentity-419"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/MembershipIdentityLookupRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ],
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true
+      }
+    },
+    "/chapters/{chapter_id}/memberships/authorize": {
+      "post": {
+        "operationId": "authorizeMembership",
+        "summary": "authorizeMembership",
+        "description": "Chapter Head only; current authorization and MFA required. See x-membership-contract for guards, visibility, pagination and immutable original-scope recovery.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "authorizeMembership-401": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "authorizeMembership-403": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "authorizeMembership-429": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "authorizeMembership-503": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-503"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Authorized scoped result; mutation success requires durable committed operation.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipSuccess"
+                },
+                "examples": {
+                  "authorizeMembership-success": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-success"
+                  },
+                  "authorizeMembership-replay": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-replay"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid selectors/headers.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "authorizeMembership-400": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-400"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Context, authority or membership stale; or changed immutable payload.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipRejected"
+                    }
+                  ]
+                },
+                "examples": {
+                  "authorizeMembership-chapter_context_stale": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-chapter_context_stale"
+                  },
+                  "authorizeMembership-authority_stale": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-authority_stale"
+                  },
+                  "authorizeMembership-membership_stale": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-membership_stale"
+                  },
+                  "authorizeMembership-idempotency_conflict": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-idempotency_conflict"
+                  },
+                  "authorizeMembership-durable-rejection": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-durable-rejection"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid closed body; endpoint-relative field feedback.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "authorizeMembership-422": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-422"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF failure; no automatic unsafe retry.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "authorizeMembership-419": {
+                    "$ref": "./membership-examples.json#/authorizeMembership-419"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/AuthorizeMembershipRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ],
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true
+      }
+    },
+    "/chapters/{chapter_id}/memberships/{membership_id}/disable": {
+      "post": {
+        "operationId": "disableMembership",
+        "summary": "disableMembership",
+        "description": "Chapter Head only; current authorization and MFA required. See x-membership-contract for guards, visibility, pagination and immutable original-scope recovery.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "disableMembership-401": {
+                    "$ref": "./membership-examples.json#/disableMembership-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "disableMembership-403": {
+                    "$ref": "./membership-examples.json#/disableMembership-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "disableMembership-429": {
+                    "$ref": "./membership-examples.json#/disableMembership-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "disableMembership-503": {
+                    "$ref": "./membership-examples.json#/disableMembership-503"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Authorized scoped result; mutation success requires durable committed operation.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipSuccess"
+                },
+                "examples": {
+                  "disableMembership-success": {
+                    "$ref": "./membership-examples.json#/disableMembership-success"
+                  },
+                  "disableMembership-replay": {
+                    "$ref": "./membership-examples.json#/disableMembership-replay"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid selectors/headers.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "disableMembership-400": {
+                    "$ref": "./membership-examples.json#/disableMembership-400"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Context, authority or membership stale; or changed immutable payload.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipRejected"
+                    }
+                  ]
+                },
+                "examples": {
+                  "disableMembership-chapter_context_stale": {
+                    "$ref": "./membership-examples.json#/disableMembership-chapter_context_stale"
+                  },
+                  "disableMembership-authority_stale": {
+                    "$ref": "./membership-examples.json#/disableMembership-authority_stale"
+                  },
+                  "disableMembership-membership_stale": {
+                    "$ref": "./membership-examples.json#/disableMembership-membership_stale"
+                  },
+                  "disableMembership-idempotency_conflict": {
+                    "$ref": "./membership-examples.json#/disableMembership-idempotency_conflict"
+                  },
+                  "disableMembership-durable-rejection": {
+                    "$ref": "./membership-examples.json#/disableMembership-durable-rejection"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid closed body; endpoint-relative field feedback.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "disableMembership-422": {
+                    "$ref": "./membership-examples.json#/disableMembership-422"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF failure; no automatic unsafe retry.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "disableMembership-419": {
+                    "$ref": "./membership-examples.json#/disableMembership-419"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/EndMembershipRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ],
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true
+      }
+    },
+    "/chapters/{chapter_id}/memberships/{membership_id}/revoke": {
+      "post": {
+        "operationId": "revokeMembership",
+        "summary": "revokeMembership",
+        "description": "Chapter Head only; current authorization and MFA required. See x-membership-contract for guards, visibility, pagination and immutable original-scope recovery.",
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ChapterContextRevision"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "path",
+            "name": "membership_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "revokeMembership-401": {
+                    "$ref": "./membership-examples.json#/revokeMembership-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "revokeMembership-403": {
+                    "$ref": "./membership-examples.json#/revokeMembership-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "revokeMembership-429": {
+                    "$ref": "./membership-examples.json#/revokeMembership-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Current access/transport failure; never proves earlier mutation failure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "revokeMembership-503": {
+                    "$ref": "./membership-examples.json#/revokeMembership-503"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Authorized scoped result; mutation success requires durable committed operation.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipSuccess"
+                },
+                "examples": {
+                  "revokeMembership-success": {
+                    "$ref": "./membership-examples.json#/revokeMembership-success"
+                  },
+                  "revokeMembership-replay": {
+                    "$ref": "./membership-examples.json#/revokeMembership-replay"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid selectors/headers.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "revokeMembership-400": {
+                    "$ref": "./membership-examples.json#/revokeMembership-400"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Context, authority or membership stale; or changed immutable payload.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipConflict"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/MembershipRejected"
+                    }
+                  ]
+                },
+                "examples": {
+                  "revokeMembership-chapter_context_stale": {
+                    "$ref": "./membership-examples.json#/revokeMembership-chapter_context_stale"
+                  },
+                  "revokeMembership-authority_stale": {
+                    "$ref": "./membership-examples.json#/revokeMembership-authority_stale"
+                  },
+                  "revokeMembership-membership_stale": {
+                    "$ref": "./membership-examples.json#/revokeMembership-membership_stale"
+                  },
+                  "revokeMembership-idempotency_conflict": {
+                    "$ref": "./membership-examples.json#/revokeMembership-idempotency_conflict"
+                  },
+                  "revokeMembership-durable-rejection": {
+                    "$ref": "./membership-examples.json#/revokeMembership-durable-rejection"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid closed body; endpoint-relative field feedback.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "revokeMembership-422": {
+                    "$ref": "./membership-examples.json#/revokeMembership-422"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF failure; no automatic unsafe retry.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "revokeMembership-419": {
+                    "$ref": "./membership-examples.json#/revokeMembership-419"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/EndMembershipRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ],
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-session-consumer": true
+      }
     }
   },
   "components": {
@@ -3477,6 +5327,57 @@
       },
       "ChapterQueryInvalid": {
         "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+      },
+      "ExistingIdentityReference": {
+        "$ref": "./transport.schema.json#/$defs/ExistingIdentityReference"
+      },
+      "MembershipAttribution": {
+        "$ref": "./transport.schema.json#/$defs/MembershipAttribution"
+      },
+      "AdminMembership": {
+        "$ref": "./transport.schema.json#/$defs/AdminMembership"
+      },
+      "AdminMembershipPage": {
+        "$ref": "./transport.schema.json#/$defs/AdminMembershipPage"
+      },
+      "MembershipIdentityLookupRequest": {
+        "$ref": "./transport.schema.json#/$defs/MembershipIdentityLookupRequest"
+      },
+      "MembershipIdentityLookupResult": {
+        "$ref": "./transport.schema.json#/$defs/MembershipIdentityLookupResult"
+      },
+      "AuthorizeMembershipRequest": {
+        "$ref": "./transport.schema.json#/$defs/AuthorizeMembershipRequest"
+      },
+      "EndMembershipRequest": {
+        "$ref": "./transport.schema.json#/$defs/EndMembershipRequest"
+      },
+      "MembershipCommittedOperation": {
+        "$ref": "./transport.schema.json#/$defs/MembershipCommittedOperation"
+      },
+      "MembershipSuccess": {
+        "$ref": "./transport.schema.json#/$defs/MembershipSuccess"
+      },
+      "MembershipConflict": {
+        "$ref": "./transport.schema.json#/$defs/MembershipConflict"
+      },
+      "MembershipInvalid": {
+        "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+      },
+      "MembershipNotVisible": {
+        "$ref": "./transport.schema.json#/$defs/MembershipNotVisible"
+      },
+      "MembershipLookupTerminal": {
+        "$ref": "./transport.schema.json#/$defs/MembershipLookupTerminal"
+      },
+      "MembershipRejectedOperation": {
+        "$ref": "./transport.schema.json#/$defs/MembershipRejectedOperation"
+      },
+      "MembershipRejected": {
+        "$ref": "./transport.schema.json#/$defs/MembershipRejected"
+      },
+      "MembershipLookupRejected": {
+        "$ref": "./transport.schema.json#/$defs/MembershipLookupRejected"
       }
     },
     "responses": {
@@ -3848,5 +5749,21 @@
         "P03 agreement on original scoped durable attempt resolution; later provider scopes remain the provisioning/global-disable slices"
       ]
     }
+  },
+  "x-membership-contract": {
+    "review_status": "Proposed wire; freeze blockers: actual Glenn consumer and Efren domain/access/security review of exact ID selector, visibility/nonenumeration, pagination and replay guards; no human acceptance claimed.",
+    "identity_lookup": "POST exact canonical existing user_id only, behind current Chapter Head memberships.prepare permission and MFA. No prefix/name/email search, pagination, public registration or credentials. Nonexistent, disabled, ineligible and nonvisible identities return identical 200 identity:null, with no reason. Uniform safe messages and rate limits; timing/nonenumeration enforcement remains P03/runtime work. This proposal cannot freeze before reviewer approval.",
+    "authorization": "Server binds actor from session and current Chapter Head action permission in original chapter. Recheck MFA and current grants on every read, mutation, replay, lookup, job and protected delivery. Provider authority alone grants nothing. Read/list memberships.read; identity lookup memberships.prepare; mutation action is exact memberships.authorize/disable/revoke. Browser fields and navigation are not authority.",
+    "pagination": "GET memberships accepts optional status, limit default 50 (1..100), cursor. Order immutable membership_id numeric ascending (decimal comparison, never JS Number). next_cursor null ends; nonnull means another page. Opaque server cursor binds actor, chapter, status, limit and snapshot; invalid/expired/mismatched cursor is 400, never restarts silently. Membership changes invalidate snapshot: 409 review original query. Empty list is success. No global query. IDs uniquely identify items.",
+    "attempt": "Pin original chapter, action, idempotency key, X-Chapter-Context revision, expected actor authority version and target resource version (including explicit null absence). Freeze canonical payload bytes and SHA-256 fingerprint server-side: RFC 8785 canonical JSON of {chapter_id,action_code,membership_id,context_revision,body} (membership_id null only for authorize; exact path target for disable/revoke); body includes original key and version fields. Do not accept a client fingerprint. Original identity is actor-session bound. Unique chapter/action/key is atomic with resource changes, result, audit and follow-up under P03.",
+    "replay": "Recheck current access first. Compare immutable fingerprint before stale guard evaluation for an existing terminal same-key attempt: authorized identical replay returns original membership/version, operation ID and committed_at with replayed:true, even if original versions are now stale. Never execute again. Different payload under original key -> 409 idempotency_conflict. Different action/chapter/key is a distinct attempt, never recovery; do not offer a new key while original outcome is unknown. For a new attempt, stale context/authority/resource -> distinct 409 codes; no side effect. Missing versions/client actor/authority/approved flags -> 422; bad selectors/headers -> 400. 401/403/419 cannot establish earlier failure.",
+    "lookup_compatibility": "Both old lookup forms and record branches preserved byte-for-byte in shared definitions. Added MembershipLookupTerminal to HTTP 200 union is additive on wire but incompatible with exhaustive old consumers that assume every terminal has record; consumers must discriminate resource_type before old action_result handling. No old required field, enum or nullability changed. Membership pending/not-visible and unavailable reuse LookupPending/LookupUnavailable without fabricated record, using null record and unknown operation; HTTP 200 alone is not commitment. Actual consumer approval remains a freeze blocker.",
+    "lifecycle": "Disable/revoke ends only this chapter membership immediately; retains identity, all historical attribution and independently authorized other memberships. Reauthorization requires exact retained version. Never deletes global identity or infers global disable authority (separate later boundary). New protected operations and queued jobs/delivery must recheck current scope; cancel/suppress protected output after revocation, preserve durable business outcome and audit, do not roll back completed work. Atomic persistence, crash recovery and outbox are P03, synthetic fixtures only.",
+    "feedback": "FieldFeedback RFC 6901 pointers are relative to actual request body. Codes/messages are safe; no candidate secrets. Correct non-secret edits remain separate from immutable attempt. Logout/session interruption/revocation conceals protected edits; resume only same identity after current authorization and version review. Chapter switch never retargets original attempt. No secret retention, offline synchronization or reload persistence promised. Timeout, malformed JSON/HTML/redirect or lost connection leaves original outcome uncertain; never auto-replay or fabricate failed outcome.",
+    "terminal_rejection": "P03 may durably record an atomic membership state rejection: 409 MembershipRejected without fabricated resulting membership/record. Original ID and terminal transaction time survive authorized replay/lookup (HTTP 200 MembershipLookupRejected, replayed:true). Predurable field/guard/access failures have no operation and cannot establish an earlier attempt outcome.",
+    "canonical_references": [
+      "https://www.rfc-editor.org/rfc/rfc8785",
+      "https://www.rfc-editor.org/rfc/rfc6901"
+    ]
   }
 }

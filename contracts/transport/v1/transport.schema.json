@@ -2538,6 +2538,693 @@
           "const": "Use only the documented single-valued selectors."
         }
       }
+    },
+    "ExistingIdentityReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user_id",
+        "display_name"
+      ],
+      "properties": {
+        "user_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "description": "Minimal authorized existing individual reference; no credentials, email, account status, provider duties or memberships. Reused by later administration contracts, never a global directory."
+    },
+    "MembershipAttribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user_id",
+        "at"
+      ],
+      "properties": {
+        "user_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "at": {
+          "$ref": "#/$defs/UtcInstant"
+        }
+      }
+    },
+    "AdminMembership": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "membership_id",
+            "chapter_id",
+            "identity",
+            "status",
+            "version",
+            "authority_version",
+            "authorized",
+            "disabled",
+            "revoked",
+            "history_reference"
+          ],
+          "properties": {
+            "membership_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "chapter_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "identity": {
+              "$ref": "#/$defs/ExistingIdentityReference"
+            },
+            "status": {
+              "const": "authorized"
+            },
+            "version": {
+              "$ref": "#/$defs/Version"
+            },
+            "authority_version": {
+              "$ref": "#/$defs/Version"
+            },
+            "authorized": {
+              "$ref": "#/$defs/MembershipAttribution"
+            },
+            "disabled": {
+              "type": "null"
+            },
+            "revoked": {
+              "type": "null"
+            },
+            "history_reference": {
+              "type": "string",
+              "pattern": "^mh_[A-Za-z0-9_-]{32,96}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "membership_id",
+            "chapter_id",
+            "identity",
+            "status",
+            "version",
+            "authority_version",
+            "authorized",
+            "disabled",
+            "revoked",
+            "history_reference"
+          ],
+          "properties": {
+            "membership_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "chapter_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "identity": {
+              "$ref": "#/$defs/ExistingIdentityReference"
+            },
+            "status": {
+              "const": "disabled"
+            },
+            "version": {
+              "$ref": "#/$defs/Version"
+            },
+            "authority_version": {
+              "$ref": "#/$defs/Version"
+            },
+            "authorized": {
+              "$ref": "#/$defs/MembershipAttribution"
+            },
+            "disabled": {
+              "$ref": "#/$defs/MembershipAttribution"
+            },
+            "revoked": {
+              "type": "null"
+            },
+            "history_reference": {
+              "type": "string",
+              "pattern": "^mh_[A-Za-z0-9_-]{32,96}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "membership_id",
+            "chapter_id",
+            "identity",
+            "status",
+            "version",
+            "authority_version",
+            "authorized",
+            "disabled",
+            "revoked",
+            "history_reference"
+          ],
+          "properties": {
+            "membership_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "chapter_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "identity": {
+              "$ref": "#/$defs/ExistingIdentityReference"
+            },
+            "status": {
+              "const": "revoked"
+            },
+            "version": {
+              "$ref": "#/$defs/Version"
+            },
+            "authority_version": {
+              "$ref": "#/$defs/Version"
+            },
+            "authorized": {
+              "$ref": "#/$defs/MembershipAttribution"
+            },
+            "disabled": {
+              "type": "null"
+            },
+            "revoked": {
+              "$ref": "#/$defs/MembershipAttribution"
+            },
+            "history_reference": {
+              "type": "string",
+              "pattern": "^mh_[A-Za-z0-9_-]{32,96}$"
+            }
+          }
+        }
+      ],
+      "description": "One closed projection for scoped read, list and mutation result. Stable membership identity survives disable/revoke and reauthorization; history_reference is opaque and is not an unguarded audit endpoint. Current epoch authorization plus retained historical attribution. version is resource concurrency; authority_version is target membership authority revision."
+    },
+    "AdminMembershipPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/AdminMembership"
+          }
+        },
+        "next_cursor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MembershipCursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "MembershipIdentityLookupRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user_id"
+      ],
+      "properties": {
+        "user_id": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "MembershipIdentityLookupResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity"
+      ],
+      "properties": {
+        "identity": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ExistingIdentityReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "AuthorizeMembershipRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "identity",
+        "expected_membership_version"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "user_id"
+          ],
+          "properties": {
+            "user_id": {
+              "$ref": "#/$defs/Id"
+            }
+          }
+        },
+        "expected_membership_version": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "expected_membership_version is required: null asserts no membership ever existed; otherwise exact retained membership version. Reauthorization updates the stable existing membership, never inserts a second identity/chapter association. No duties are implicitly granted."
+    },
+    "EndMembershipRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "expected_authority_version",
+        "expected_membership_version"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "expected_authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_membership_version": {
+          "$ref": "#/$defs/Version"
+        }
+      }
+    },
+    "MembershipCommittedOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "outcome",
+        "committed_at",
+        "replayed"
+      ],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "action_code",
+            "idempotency_key"
+          ],
+          "properties": {
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            },
+            "action_code": {
+              "enum": [
+                "memberships.authorize",
+                "memberships.disable",
+                "memberships.revoke"
+              ]
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        "outcome": {
+          "const": "committed"
+        },
+        "committed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "MembershipSuccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "membership",
+        "operation"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "membership"
+        },
+        "action_result": {
+          "const": "success"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "membership": {
+          "$ref": "#/$defs/AdminMembership"
+        },
+        "operation": {
+          "$ref": "#/$defs/MembershipCommittedOperation"
+        }
+      }
+    },
+    "MembershipConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "idempotency_conflict",
+            "chapter_context_stale",
+            "authority_stale",
+            "membership_stale"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
+    },
+    "MembershipInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "field_feedback",
+        "next_action"
+      ],
+      "properties": {
+        "code": {
+          "const": "validation_failed"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "field_feedback": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/FieldFeedback"
+          }
+        },
+        "next_action": {
+          "const": "correct_fields"
+        }
+      }
+    },
+    "MembershipNotVisible": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "const": "membership_not_visible"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      }
+    },
+    "MembershipLookupTerminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "membership",
+        "operation"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "membership"
+        },
+        "action_result": {
+          "const": "success"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "membership": {
+          "$ref": "#/$defs/AdminMembership"
+        },
+        "operation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity",
+            "outcome",
+            "committed_at",
+            "replayed"
+          ],
+          "properties": {
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "action_code",
+                "idempotency_key"
+              ],
+              "properties": {
+                "operation_id": {
+                  "$ref": "#/$defs/OperationId"
+                },
+                "action_code": {
+                  "enum": [
+                    "memberships.authorize",
+                    "memberships.disable",
+                    "memberships.revoke"
+                  ]
+                },
+                "idempotency_key": {
+                  "$ref": "#/$defs/IdempotencyKey"
+                }
+              }
+            },
+            "outcome": {
+              "const": "committed"
+            },
+            "committed_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "replayed": {
+              "const": true
+            }
+          }
+        }
+      }
+    },
+    "MembershipRejectedOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "outcome",
+        "committed_at",
+        "replayed"
+      ],
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation_id",
+            "action_code",
+            "idempotency_key"
+          ],
+          "properties": {
+            "operation_id": {
+              "$ref": "#/$defs/OperationId"
+            },
+            "action_code": {
+              "enum": [
+                "memberships.authorize",
+                "memberships.disable",
+                "memberships.revoke"
+              ]
+            },
+            "idempotency_key": {
+              "$ref": "#/$defs/IdempotencyKey"
+            }
+          }
+        },
+        "outcome": {
+          "const": "rejected"
+        },
+        "committed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "MembershipRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "operation",
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "membership"
+        },
+        "action_result": {
+          "const": "blocked"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "operation": {
+          "$ref": "#/$defs/MembershipRejectedOperation"
+        },
+        "code": {
+          "const": "membership_state_conflict"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
+    },
+    "MembershipLookupRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_type",
+        "action_result",
+        "chapter_id",
+        "operation",
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "resource_type": {
+          "const": "membership"
+        },
+        "action_result": {
+          "const": "blocked"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "operation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity",
+            "outcome",
+            "committed_at",
+            "replayed"
+          ],
+          "properties": {
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "action_code",
+                "idempotency_key"
+              ],
+              "properties": {
+                "operation_id": {
+                  "$ref": "#/$defs/OperationId"
+                },
+                "action_code": {
+                  "enum": [
+                    "memberships.authorize",
+                    "memberships.disable",
+                    "memberships.revoke"
+                  ]
+                },
+                "idempotency_key": {
+                  "$ref": "#/$defs/IdempotencyKey"
+                }
+              }
+            },
+            "outcome": {
+              "const": "rejected"
+            },
+            "committed_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "replayed": {
+              "const": true
+            }
+          }
+        },
+        "code": {
+          "const": "membership_state_conflict"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "next_action": {
+          "const": "review_original_attempt"
+        }
+      }
     }
   },
   "$ref": "#/$defs/ActionResult"

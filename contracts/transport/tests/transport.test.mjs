@@ -94,6 +94,7 @@ test('TR-03: OpenAPI and every reusable definition compile, including HTTP looku
     ...await readJson('../v1/enrollment-exchanges.json'),
     ...await readJson('../v1/mfa-recovery-exchanges.json'),
     ...await readJson('../v1/chapter-context-exchanges.json'),
+    ...await readJson('../v1/membership-exchanges.json'),
   ];
   assert.equal(new Set(exchanges.map(e => e.name)).size, exchanges.length, 'unique exchange names');
   for (const example of exchanges) validateExchange(api, operationAjv, example);
@@ -119,7 +120,23 @@ test('TR-03/DOC-11: Stage 0 lookup scopes, identities and response semantics rem
   assert.deepEqual(api.servers, baseline.servers);
   assert.deepEqual(api.security, baseline.security);
   assert.equal(jsonDigest(api.components.securitySchemes.chapterSession), baseline.chapterSession);
-  for (const [path, expected] of Object.entries(baseline.lookups)) assert.equal(jsonDigest(api.paths[path]), expected, path);
+  for (const [path, expected] of Object.entries(baseline.lookups)) {
+    const preserved = structuredClone(api.paths[path]);
+    delete preserved.get['x-session-consumer'];
+    const media = preserved.get.responses['200'].content['application/json'];
+    // Compare the original branches and every old status/selector/example exactly;
+    // membership branches are independently validated by membership tests.
+    assert.equal(media.schema.oneOf.length, 4);
+    media.schema.oneOf = media.schema.oneOf.slice(0, 2);
+    for (const response of Object.values(preserved.get.responses)) {
+      for (const media of Object.values(response.content ?? {})) {
+        for (const name of Object.keys(media.examples ?? {})) {
+          if (name.includes('-membership')) delete media.examples[name];
+        }
+      }
+    }
+    assert.equal(jsonDigest(preserved), expected, path);
+  }
   for (const [name, expected] of Object.entries(baseline.definitions)) assert.equal(jsonDigest(schema.$defs[name]), expected, name);
   const examples = await readJson('../v1/examples.json');
   for (const [name, expected] of Object.entries(baseline.examples)) assert.equal(jsonDigest(examples[name]), expected, name);

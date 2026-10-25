@@ -2727,6 +2727,2074 @@ export const consumerExamples = [
         }
       }
     }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "membership_id": "9007199254740995",
+            "chapter_id": "1",
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic member"
+            },
+            "status": "authorized",
+            "version": 3,
+            "authority_version": 4,
+            "authorized": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "disabled": null,
+            "revoked": null,
+            "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        ],
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [],
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "query": {
+        "limit": 1,
+        "status": "authorized"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "membership_id": "9007199254740995",
+            "chapter_id": "1",
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic member"
+            },
+            "status": "authorized",
+            "version": 3,
+            "authority_version": 4,
+            "authorized": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "disabled": null,
+            "revoked": null,
+            "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        ],
+        "next_cursor": "cur_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "membership_id": "9007199254740995",
+        "chapter_id": "1",
+        "identity": {
+          "user_id": "9007199254740994",
+          "display_name": "Synthetic member"
+        },
+        "status": "authorized",
+        "version": 3,
+        "authority_version": 4,
+        "authorized": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "disabled": null,
+        "revoked": null,
+        "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 404,
+      "body": {
+        "code": "membership_not_visible",
+        "message": "Membership unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "identity": {
+          "user_id": "9007199254740994",
+          "display_name": "Synthetic member"
+        }
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "identity": null
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "identity": null
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "identity": null
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "request": {
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "authorized",
+          "version": 3,
+          "authority_version": 4,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "authorized",
+          "version": 3,
+          "authority_version": 4,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740997"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "disabled",
+          "version": 4,
+          "authority_version": 5,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.disable",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "disabled",
+          "version": 4,
+          "authority_version": 5,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.disable",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 4
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "revoked",
+          "version": 4,
+          "authority_version": 5,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.revoke",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "revoked",
+          "version": 4,
+          "authority_version": 5,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.revoke",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 4
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "query": {
+        "action_code": "memberships.authorize",
+        "idempotency_key": "membership-attempt-01"
+      },
+      "path": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "authorized",
+          "version": 3,
+          "authority_version": 4,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "authorized",
+          "version": 3,
+          "authority_version": 4,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "query": {
+        "action_code": "memberships.authorize",
+        "idempotency_key": "membership-attempt-01"
+      },
+      "path": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "NO_VISIBLE_TERMINAL_RESULT",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "pending_or_not_visible"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "query": {
+        "action_code": "memberships.authorize",
+        "idempotency_key": "membership-attempt-01"
+      },
+      "path": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "LOOKUP_UNAVAILABLE",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "unavailable"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "NO_VISIBLE_TERMINAL_RESULT",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "pending_or_not_visible"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "LOOKUP_UNAVAILABLE",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "unavailable"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "query": {
+        "action_code": "memberships.authorize",
+        "idempotency_key": "membership-attempt-01"
+      },
+      "path": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "path": {
+        "chapter_id": "1"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.disable",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "request": {
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.revoke",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    }
   }
 ] as const satisfies readonly ConsumerExample[];
 export const rejectedRequestResponses = [
@@ -2868,6 +4936,148 @@ export const rejectedRequestResponses = [
             "message": "Check this field."
           }
         ]
+      }
+    }
+  },
+  {
+    "operationId": "listMemberships",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "readMembership",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupMembershipIdentity",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/user_id",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "authorizeMembership",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "disableMembership",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "revokeMembership",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
       }
     }
   }
