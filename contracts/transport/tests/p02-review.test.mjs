@@ -26,4 +26,11 @@ test('TR-03/SEC-03: review links and owner-attested reviews cannot silently drif
   assert.deepEqual(review.operations.filter(row => row.availability === 'safely_unavailable').map(row => row.operationId).sort(),
     ['disableGlobalIdentity', 'lookupIdentityDisableById', 'lookupIdentityDisableByKey']);
   assert.ok(review.scenarios.every(row => row.attemptedRequestsAndExpectedResponses.length));
+  const signedOut = review.scenarios.find(row => row.id === 'session/bootstrap-signed-out').responseBoundaries[0];
+  assert.ok(signedOut.forbiddenData.fields.includes('chapter_choices'));
+  assert.ok(signedOut.forbiddenData.fields.includes('provider_destinations'));
+  assert.equal(signedOut.permittedNextSteps.consumerActions[0].action, 'sign_in');
+  const policy = review.scenarios.find(row => row.id === 'policy/missing-policy');
+  assert.ok(policy.responseBoundaries.some(row => row.permittedNextSteps.actionLists.some(list =>
+    list.actions.includes('request_responsible_duty'))));
 });

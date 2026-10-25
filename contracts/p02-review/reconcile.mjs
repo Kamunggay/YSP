@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { sessionNextAction } from '../transport/consumer/session.ts';
+import { chapterNextAction } from '../transport/consumer/chapter-context.ts';
 
 const root = new URL('../../', import.meta.url);
 const read = async path => JSON.parse(await readFile(new URL(path, root), 'utf8'));
@@ -11,8 +13,61 @@ const slices = ['session', 'enrollment', 'mfa-recovery', 'chapter-context', 'mem
 const pointer = value => value.replaceAll('~', '~0').replaceAll('/', '~1');
 const ref = (path, location = '') => `${path}#${location}`;
 
+// Read constraints and actions from the same status-specific schemas/examples as
+// the consumer. This is a review index, not another response validator.
+function responseBoundary(exchange, validation) {
+  const variants = validation[exchange.operationId]?.oneOf ?? [];
+  const responseIndex = variants.findIndex(row => row.properties.status.const === exchange.response.status);
+  const schema = variants[responseIndex]?.properties.body;
+  const body = exchange.response.body;
+  function fields(definition) {
+    if (!definition) return { names: [], closed: body === undefined };
+    const branches = ['oneOf', 'anyOf', 'allOf'].flatMap(key => definition[key] ?? []).filter(branch =>
+      Object.entries(branch.properties ?? {}).every(([name, value]) =>
+        !Object.hasOwn(value, 'const') || body?.[name] === undefined || body[name] === value.const));
+    const children = branches.map(fields);
+    return { names: [...Object.keys(definition.properties ?? {}), ...children.flatMap(row => row.names)],
+      closed: definition.additionalProperties === false ||
+        (children.length > 0 && children.every(row => row.closed)) };
+  }
+  const allowed = fields(schema);
+  const candidates = ['user', 'identity', 'chapter_context', 'chapter_choices', 'provider_destinations', 'permissions',
+    'duties', 'context', 'membership', 'grant', 'items', 'record', 'material', 'settings', 'enrollment', 'setup_uri',
+    'manual_key', 'recovery_codes', 'result', 'operation'];
+  const actionLists = [];
+  function findActions(value, location) {
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      const at = `${location}/${pointer(key)}`;
+      if (['permitted_next_steps', 'next_actions', 'allowed_actions', 'permitted_actions'].includes(key)) {
+        actionLists.push({ source: `${exchange.source}${at}`, actions: child });
+      } else findActions(child, at);
+    }
+  }
+  findActions(body, '/response/body');
+  const consumerActions = [];
+  if (['signed_out', 'mfa_enrollment_required', 'mfa_challenge_required', 'authenticated'].includes(body?.state)) {
+    consumerActions.push({ source: 'contracts/transport/consumer/session.ts#sessionNextAction', action: sessionNextAction(body) });
+  }
+  if (['no_authorized_memberships', 'selection_required', 'selected'].includes(body?.chapter_state)) {
+    consumerActions.push({ source: 'contracts/transport/consumer/chapter-context.ts#chapterNextAction', action: chapterNextAction(body) });
+  }
+  return { exchange: exchange.source,
+    forbiddenData: schema && allowed.closed ? {
+      source: ref('contracts/transport/generated/session-validation.json', `/${exchange.operationId}/oneOf/${responseIndex}/properties/body`),
+      fields: candidates.filter(name => !allowed.names.includes(name)),
+      boundary: 'These named top-level protected fields are excluded by this closed response variant; nested authorization/redaction remains a declarative server obligation.',
+    } : { fields: [], boundary: body === undefined ? 'Entire response body forbidden.' :
+      'Forbidden-field enumeration unspecified by this index; consult the canonical chapter lookup schema and current-access redaction obligations.' },
+    permittedNextSteps: { actionLists, consumerActions,
+      boundary: actionLists.length || consumerActions.length ? 'Only these response/consumer actions, subject to current authority; no automatic mutation replay.' :
+        'No explicit next-action list in this response. Further navigation is unspecified here and requires owning consumer/server agreement; no mutation replay is permitted.' },
+  };
+}
+
 export async function buildReview(plan) {
   const api = await read(apiPath);
+  const validation = await read('contracts/transport/generated/session-validation.json');
   const operationRows = Object.entries(api.paths).flatMap(([path, item]) =>
     Object.entries(item).filter(([, operation]) => operation?.operationId).map(([method, operation]) => ({ path, method, operation, item })));
   const ids = operationRows.map(row => row.operation.operationId);
@@ -53,9 +108,8 @@ export async function buildReview(plan) {
         initialAuthenticationAndContext: ref(path, `/${index}/precondition`),
         syntheticServerConditionsAndObligation: ref(path, `/${index}/obligation`),
         attemptedRequestsAndExpectedResponses: row.exchanges.map(name => namedExchange(slice, name).source),
-        forbiddenData: row.response_absent_fields?.length ? ref(path, `/${index}/response_absent_fields`) :
-          'Closed operation response schemas constrain fields; current-access redaction and secret visibility remain declarative server obligations, not proven runtime predicates.',
-        permittedNextSteps: 'Use only the referenced response feedback/next actions and current authority. Preserve an uncertain attempt; no automatic mutation replay or new key.',
+        declaredForbiddenData: row.response_absent_fields?.length ? ref(path, `/${index}/response_absent_fields`) : null,
+        responseBoundaries: row.exchanges.map(name => responseBoundary(namedExchange(slice, name), validation)),
         verification: 'Validated exchange shapes and consumer checks; synthetic server conditions remain declarative.',
         checks: [`contracts/transport/tests/${slice}.test.mjs`],
       });
@@ -69,8 +123,7 @@ export async function buildReview(plan) {
       initialAuthenticationAndContext: `${initialState}. Chapter selection/authority, when authenticated, is exactly the referenced snapshot; otherwise no chapter context is authorized.`,
       syntheticServerConditionsAndObligation: 'The named fixture supplies the synthetic server response; authorization, expiry and credential verification are not executed.',
       attemptedRequestsAndExpectedResponses: [exchange.source],
-      forbiddenData: 'Only the closed status-specific response schema is permitted; restricted session states exclude chapter/provider authority.',
-      permittedNextSteps: 'Follow the state-discriminated response and sessionNextAction; refresh CSRF after rotation; no automatic mutation replay.',
+      responseBoundaries: [responseBoundary(exchange, validation)],
       verification: 'Exchange/schema and minimal consumer checks; server behavior declarative.', checks: ['contracts/transport/tests/session.test.mjs'] });
   }
   const scenarioIds = new Set(scenarios.map(row => row.id));
