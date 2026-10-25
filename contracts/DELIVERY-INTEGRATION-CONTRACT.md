@@ -2,6 +2,8 @@
 
 **Status:** Proposed for review by the Sales, Requisitions and Inventory owners, plus the Documents/evidence owner. The route and payload below are a reviewable proposal, not an accepted interface or implementation authorization.
 
+**23 October 2026 scoped decision:** Leader accepted action-aware lookup and explicit row/material versions in the [Stage 0 first-slice agreement](../docs/contracts/first-slice-agreement.md). Those shared conventions are reflected below. The handover route, payload as a whole and future source-operation assignments remain proposals; actual owner validation is pending.
+
 ## Purpose and boundary
 
 Delivery/fulfillment owns the handover user experience, collection of actual quantities and recipient acknowledgment, and the typed client adapter. It is a workflow boundary, not a new backend module or persistence owner.
@@ -17,7 +19,7 @@ A handover can consume approved customer Sales demand or approved internal requi
 These paths are proposed for owner review:
 
 - POST /api/v1/handovers records one actual handover.
-- GET /api/v1/operations/by-idempotency-key/{key} retrieves the authorized committed result after a timeout or lost response. Scope the lookup to the active chapter and actor authority.
+- GET /api/v1/operations/by-idempotency-key/{key}?action={action} proposes an action-aware route for authorized terminal-result lookup after a timeout or lost response. Server-authorized chapter, action and key identify the attempt; a known operation ID also supports scoped lookup. No visible terminal result does not prove failure. The exact route remains proposed.
 - The adapter dispatches by source kind to the source-owning Sales or Requisitions application operation. The adapter does not coordinate separate commits.
 
 ### Request
@@ -33,7 +35,8 @@ Content-Type: application/json
   "source": {
     "kind": "sales_order",
     "id": "source-record-id",
-    "expected_version": 7
+    "expected_row_version": 7,
+    "expected_material_version": 3
   },
   "lines": [
     { "source_line_id": "source-line-id", "actual_quantity": "2.000" }
@@ -44,7 +47,7 @@ Content-Type: application/json
 }
 ~~~
 
-Use source.kind = "requisition" for an internal issue. Quantities are decimal strings in the approved source-line unit and precision. The client submits actual quantities and source references only; the server chooses and validates lot/position allocations. Bind chapter scope to the authorized operation context and compare expected_version against the current source version. Do not accept client-supplied approval, payment coverage, stock balance, or transaction status.
+Use source.kind = "requisition" for an internal issue. Quantities are decimal strings in the approved source-line unit and precision. The client submits actual quantities and source references only; the server chooses and validates lot/position allocations. Bind chapter scope to the authorized operation context. Compare expected_row_version with current concurrency state and expected_material_version with the approved/evidence-bound material snapshot; check both where required. The sample versions are illustrative. Do not accept client-supplied approval, payment coverage, stock balance, or transaction status.
 
 ### Committed response
 

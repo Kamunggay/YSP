@@ -11,11 +11,11 @@
 | Stack | React/TypeScript frontend; modular Laravel API; MySQL; Docker Compose on AWS Lightsail |
 | Funding | USD 100 total AWS credit; USD 35/month infrastructure planning target |
 | Operations | Project owner is technical lead; one member trained as backup |
-| Delivery state | Reconciled review candidate; implementation baseline only after authorized acceptance of this revision; implementation, deployment and acceptance evidence are separate deliverables |
+| Delivery state | Final requirements specification; implementation, deployment and acceptance evidence are separate deliverables |
 
 ## 1. Document authority and use
 
-This is a review candidate for the standalone technical requirements handoff for YSP Chapter Operations. The approved v2.0 operational workflow is the historical source baseline; this reconciled v2.1 document includes later additions and corrections that require explicit authorized acceptance before those changes become implementation requirements. Publication or the historical v2.0 approval does not by itself accept v2.1. Record accepted revision, date, approver and scope in the project docs. It is written for the four-member delivery and operations team and can be shared as a single Markdown file. Architecture, operational behavior, terminology, cost assumptions, release gates and complete source-flowchart coverage are included below; no companion repository document is required to interpret a requirement.
+This is the review candidate for the standalone technical requirements baseline for YSP Chapter Operations. It is written for the four-member delivery and operations team and can be shared as a single Markdown file. Architecture, operational behavior, terminology, cost assumptions, release gates and complete source-flowchart coverage are included below; no companion repository document is required to interpret a requirement.
 
 The first deployment serves YSP Cebu within one organization. It uses a separate React/TypeScript frontend, one modular Laravel backend, private MySQL on the same Docker host and tested off-host backups. The full agreed operational workflow is required. Growth follows measured host, database and worker capacity; independent microservices are a later architectural option.
 
@@ -110,7 +110,7 @@ Critical operations may coordinate modules within one MySQL transaction. Module 
 
 **TR-08 — Inventory authority and seven balance views.** Movement history remains immutable throughout approved retention; balance rows are controlled projections reconcilable to authorized movements. Track variant, lot, restrictions, location/custodian and condition. An ordinary override cannot remove donor restrictions. Present these views separately:
 
-1. **Usable stockroom on-hand:** Accepted usable units physically held in the stockroom, including RF/SO-reserved units; excludes booth custody and quarantine/rejected goods.
+1. **Usable stockroom on-hand:** Accepted usable units physically held in the stockroom, including RF/SO-reserved units; excludes booth custody and quarantine/rejected goods. An eligibility hold on previously accepted usable goods does not reduce this view before authorized condition treatment. The 23 October 2026 Leader clarification preserves the INV-10 ROP basis and immediate use block; see the [Stage 0 agreement](contracts/first-slice-agreement.md#held-stock-example).
 2. **Available-to-allocate:** Eligible usable on-hand minus RF and SO reservations and applicable holds, with held/reserved intersections counted once. Eligibility is evaluated by lot, restriction, condition and purpose.
 3. **RF-reserved:** Outstanding stock committed to approved internal or booth-checkout RFs. No unpaid-sales expiry clock applies.
 4. **SO-reserved:** Outstanding stock committed to approved SO quantities. Only unpaid available-stock quantities use RSV-01 expiry; paid/funded protected quantities follow RSV-02/RSV-10.
@@ -237,7 +237,7 @@ Use a small chapter subscription record and controlled provider administration; 
 | Provider price, collection verification, post-grace/retention terms | Commercial offer/activation; chapter buyer money remains separate |
 | Release, operator and restore runbooks | Successful rehearsal and evidence; actual maintenance scheduling agreed |
 
-These inputs do not remove any requirement. The initial architecture and trial/maintenance rules are settled; named chapter policies and operating values remain deliberate pre-live inputs. The approved v2.0 workflow remains the historical approved source baseline. This v2.1 review candidate becomes the implementation baseline only after an authorized requirements owner records acceptance of this revision and its scope. Production acceptance requires executed evidence, demonstrated recovery, funded hosting and authorized activation; publication of this document alone does not satisfy those gates.
+These inputs do not remove any requirement. The initial architecture and trial/maintenance rules are settled; named chapter policies and operating values remain deliberate pre-live inputs. This final specification is the implementation baseline. Production acceptance requires executed evidence, demonstrated recovery, funded hosting and authorized activation; publication of this document alone does not satisfy those gates.
 
 ## 12. Deployment cost and funding plan
 
@@ -292,7 +292,7 @@ These are responsibilities, not five mandatory hires. Four members may cover sev
 
 Implement the complete scope in Appendix A and the controls in TR-01–TR-30. Complete release acceptance requires all staged MIG gates, all AC scenarios, all Appendix C coverage and demonstrated recovery. Partial software, unchecked coverage or an unavailable independent approver cannot be relabeled complete because the host is small.
 
-The v2.0 document was the approved requirements handoff. This v2.1 reconciliation remains a review candidate until authorized acceptance is recorded. Later changes must record the version/date, changed IDs, rationale, affected workflow/test evidence and required Chapter Head/Finance review. Preserve existing IDs; add new IDs for additional requirements rather than silently renumbering. Changes to cloud size alone do not authorize weaker product controls.
+This version is final as a requirements handoff. Later changes must record the version/date, changed IDs, rationale, affected workflow/test evidence and required Chapter Head/Finance review. Preserve existing IDs; add new IDs for additional requirements rather than silently renumbering. Changes to cloud size alone do not authorize weaker product controls.
 
 | Version | Change |
 | --- | --- |
@@ -472,7 +472,7 @@ Exact amounts, windows and schedules are chapter inputs intentionally left confi
 11. **INV-11 — Proposed replenishment.** Show the approved target, eligible stock, outstanding demand, existing reservations, confirmed relevant inbound quantities and replenishment already in progress. Propose the uncovered quantity needed for approved demand/target stock, avoiding overlap between shortage and ROP portions. Purchasing reviews the proposed amount before commitment.
 12. **INV-12 — No duplicated supply need.** Existing RepFs, POs and confirmed inbound allocations covering the same need prevent another purchase request for that covered quantity. Identify supply that is late, disputed or ineligible separately; additional procurement requires a documented reason and approval.
 13. **INV-13 — Physical counts.** Compare signed independent count evidence with recorded custody/stock quantities. Differences remain visible and unavailable for unsupported corrections until investigation and approved ADJ. No direct balance edit is permitted.
-14. **INV-14 — Quarantine.** Damaged, rejected, defective or otherwise held goods are unavailable for allocation, issue or sale. Retain quantities and custody separately, with authorized clearance, replacement, return or disposal evidence. A pending damage review may block use immediately without silently changing its recorded quantity.
+14. **INV-14 — Quarantine.** Damaged, rejected, defective or otherwise held goods are unavailable for allocation, issue or sale. Retain quantities and custody separately, with authorized clearance, replacement, return or disposal evidence. A pending damage review may block use immediately without silently changing its recorded quantity. Under Leader's 23 October 2026 Q7–Q8 clarification, independent hold reasons may cover the same units: count affected units once and keep them blocked until every applicable hold is cleared. If recorded quantity and usable condition never changed, authorized evidence-linked hold clearance needs no movement and restores only the eligibility permitted by remaining commitments and restrictions. Actual quarantine/condition treatment retains its approved source-linked movement.
 
 #### A.6.1 Quantity examples
 
@@ -774,8 +774,12 @@ Goods entrusted to a named booth custodian for an event.
 _Avoid_: Available stockroom stock, booth reservation
 
 **Usable on-hand stock**:
-Accepted stock held in the stockroom, including reserved goods, excluding goods in quarantine or booth custody.
+Accepted stock held in the stockroom, including reserved goods and goods under an eligibility hold until authorized condition treatment, excluding goods in quarantine or booth custody.
 _Avoid_: Available-to-allocate stock
+
+**Stock hold**:
+A restriction on use of identified stock while a finding or condition is unresolved; several holds may cover the same goods. Holds block use until every applicable hold is cleared, without themselves changing recorded physical quantity or condition.
+_Avoid_: Write-off, quarantine movement
 
 **Reserved stock**:
 Usable stock committed to an approved requisition or sales order and awaiting handover. RF-reserved and SO-reserved quantities remain separately identifiable; reservation does not remove units from usable on-hand.

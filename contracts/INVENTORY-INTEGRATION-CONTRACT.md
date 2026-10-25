@@ -2,6 +2,8 @@
 
 **Status:** Proposed for review by the Inventory owner and dependent module owners. This document describes an application-operation boundary; operation names are conceptual, and it does not assign final route or code names.
 
+**23 October 2026 scoped decision:** Leader accepted Q1–Q8 in the [Stage 0 first-slice agreement](../docs/contracts/first-slice-agreement.md). For P06, Purchasing/Receiving owns IPC/RM acceptance and its outer transaction; Inventory exclusively posts stock and Documents validates evidence within it. A hold on previously accepted usable stock changes eligibility without reducing usable on-hand before authorized condition treatment. Overlapping hold reasons count affected units once; clearing one preserves other holds. Authorized evidence-linked hold-only clearance requires no movement when recorded quantity/condition never changed. Explicit row/material version fields and action-aware lookup apply to shared contracts. Other operations remain proposals; detailed overlap representation and actual Glenn/Efren validation are pending.
+
 ## Purpose and ownership
 
 Inventory and custody owns stock provenance, eligibility, availability, reservations, accepted-stock postings, custody transfers, physical movements and inventory treatment of approved adjustments. Sales, Requisitions/fulfillment, Purchasing/Receiving coordination and Booth operations consume these operations through the Laravel application. They must not write inventory tables or balance projections directly.
@@ -21,6 +23,9 @@ All versioned JSON operations use the shared response fields required by TR-03: 
 | Post accepted receipt | One valid source path: approved PO plus supplier DR; authorized donation DA; or approved opening IPC. Also requires accepted RM, inspected actual quantities, condition, source and restrictions. | Posts only accepted quantities to the correct lot/location and updates applicable supply progress. Rejected, held or disputed quantities remain unavailable. Purchasing/Receiving owns its source workflow; the participating operation shares its transaction. |
 | Post physical movement | Approved source, actual quantity, source/destination custody and condition, ready evidence and current version | Appends immutable movement history and updates controlled balance projections once. Used for signed issue/release, booth checkout/sale, accepted return or authorized adjustment, as applicable. |
 | Record hold or count finding | Lot/location, observed condition or independent count evidence, reason and actor | Makes affected goods unavailable when policy requires and records the finding. A claim/count alone does not rewrite on-hand; correction requires authorized ADJ resolution. |
+| Clear stock hold | Identified hold and affected coverage, authorized evidence-linked resolution, current versions and actor context | Releases only that hold; rechecks other active holds, reservations and restrictions under locks. If recorded quantity and usable condition never changed, update eligibility/result/history without a movement. Actual condition treatment follows its approved source-linked posting operation. |
+
+Accepted Q7 requires hold coverage to be identifiable: the active held quantity and held-reserved intersection are unions, not sums of per-reason totals. The detailed P00 schema/internal contracts must make this enforceable before enabling overlapping holds; matching lot/position and quantity alone does not prove the same units are covered.
 
 ## Inputs and authority
 
@@ -32,7 +37,7 @@ All versioned JSON operations use the shared response fields required by TR-03: 
 
 ## Transaction, replay and failure behavior
 
-- The application operation that owns the source workflow owns the outer transaction. Proposed ownership is Sales for its customer-release operation and Requisitions for its internal issue operation; Purchasing/Receiving ownership of receipt workflow must be confirmed. Inventory participates in that same transaction for stock checks, reservation/posting, balance changes, result and audit. Purely Inventory-owned postings use an Inventory operation as transaction owner. Confirm these assignments with the owners before implementation.
+- The application operation that owns the source workflow owns the outer transaction. Proposed ownership is Sales for its customer-release operation and Requisitions for its internal issue operation. Leader accepted Purchasing/Receiving ownership of IPC/RM acceptance for P06 in Stage 0 Q2, with peer validation pending. Inventory participates in that same transaction for stock checks, reservation/posting, balance changes, result and audit; Documents validates required evidence. Participants do not commit independently. Purely Inventory-owned postings use an Inventory operation as transaction owner. Other assignments remain subject to their owners' agreement before implementation.
 - Lock/recheck eligible balances and competing reservations before commitment or movement. Enforce nonnegative eligible balances and remaining-demand limits.
 - Persist the chapter/action/idempotency key, payload fingerprint and committed result with the business writes. Same-payload retries return that result; changed payload reuse is rejected. A lost response requires operation-result lookup before retry.
 - Return a typed blocking result for stale versions, insufficient or ineligible stock, invalid source/evidence, missing authority/approval, duplicate key with changed payload, or unresolved physical activity. Do not tell an operator to repeat a real-world handover when its posting outcome is uncertain.
@@ -47,6 +52,9 @@ All versioned JSON operations use the shared response fields required by TR-03: 
 5. A donor-restricted lot cannot satisfy an incompatible purpose even when another lot of the same item code is eligible.
 6. Booth checkout and sale update their respective custody once, with no second stockroom deduction at close-out.
 7. A repeated posting with the same idempotency key and payload returns the original movement; altered payload reuse is rejected.
+8. Two independent holds cover the same three units out of ten usable units with no reservations: on-hand stays ten, held quantity is three and availability seven. Clearing one hold leaves availability seven; clearing the last restores ten without a movement if condition/quantity never changed.
+9. If those three units are also reserved, hold and hold/reservation overlap each count the units once. Clearing the holds does not release the reservation; availability remains seven until that commitment is otherwise fulfilled or released.
+10. Partial hold overlap and concurrent clearance/allocation preserve the active union; no still-held unit becomes allocatable. A quarantined position needs its actual approved condition treatment even if a hold is cleared.
 
 **Traceability:** PRD INV-01–INV-14, RF-04–RF-08, SO-04/SO-08–SO-10, RCV-01–RCV-13 and ADJ-01–ADJ-10; TR-02–TR-03 and TR-06–TR-12; APP-FLOW F-02, F-03, F-06, F-07 and F-09.
 

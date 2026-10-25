@@ -2,6 +2,8 @@
 
 **Status:** Proposed for review by the Sales and Finance owners, Inventory owner and Delivery/fulfillment owner. Operation names are conceptual application boundaries; final routes and code symbols require owner agreement.
 
+**23 October 2026 scoped decision:** The [Stage 0 first-slice agreement](../docs/contracts/first-slice-agreement.md) records Leader acceptance of shared Q1–Q6 conventions: action-aware operation lookup, explicit row/material versions and incremental P02–P06 contract scope. It does not accept the complete Sales/Finance interface or customer-release transaction assignment. Preserve this proposal for its later consumers; actual owner validation remains pending.
+
 ## Purpose and ownership
 
 Sales and finance owns customer Sales orders (SO), Sales Invoices (SI), verified-payment records, Official Receipts (OR), payment allocations and release coverage, invoice adjustments/refunds, and financial reconciliation. Sales records and coordinates customer demand; it does not own inventory balances or physical movement history. Delivery collects actual handover details; Inventory revalidates and posts stock movements.

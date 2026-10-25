@@ -37,8 +37,12 @@ Goods entrusted to a named booth custodian for an event.
 _Avoid_: Available stockroom stock, booth reservation
 
 **Usable on-hand stock**:
-Accepted stock held in the stockroom, including reserved goods, excluding goods in quarantine or booth custody.
+Accepted stock held in the stockroom, including reserved goods and goods under an eligibility hold until authorized condition treatment, excluding goods in quarantine or booth custody.
 _Avoid_: Available-to-allocate stock
+
+**Stock hold**:
+A restriction on use of identified stock while a finding or condition is unresolved; several holds may cover the same goods. Holds block use until every applicable hold is cleared, without themselves changing recorded physical quantity or condition.
+_Avoid_: Write-off, quarantine movement
 
 **Reserved stock**:
 Usable stock committed to an approved requisition or sales order and awaiting handover. RF-reserved and SO-reserved quantities remain separately identifiable; reservation does not remove units from usable on-hand.

@@ -189,7 +189,7 @@ Exact amounts, windows and schedules are chapter inputs intentionally left confi
 
 1. **INV-01 — Item identity.** Track item code, description, size/variant, unit, approved prices, ROP and target level. Goods of different variants or incompatible units are not interchangeable without authorized correction.
 2. **INV-02 — Eligibility.** Retain location/custodian, source, condition and donation restrictions. Purchased and donated goods may share an item code but must retain distinguishable eligibility and provenance.
-3. **INV-03 — Balance views.** Show seven separately labeled quantities: usable stockroom on-hand (including reserved goods), available-to-allocate, RF-reserved, SO-reserved, booth custody, quarantined/rejected, and inbound open PO. These views overlap and must not be summed as distinct stock. Inbound and booth quantities are not available stockroom stock. Booth sales reduce booth custody only.
+3. **INV-03 — Balance views.** Show seven separately labeled quantities: usable stockroom on-hand (including reserved goods), available-to-allocate, RF-reserved, SO-reserved, booth custody, quarantined/rejected, and inbound open PO. These views overlap and must not be summed as distinct stock. Inbound and booth quantities are not available stockroom stock. Booth sales reduce booth custody only. Leader clarified on 23 October 2026 that an eligibility hold on previously accepted usable goods does not itself reduce usable on-hand; authorized condition treatment changes the condition view. Applicable holds still block use under INV-14. INV-10 continues to compare usable on-hand with ROP; demand shortage remains independently actionable. See the [Stage 0 agreement](contracts/first-slice-agreement.md#held-stock-example).
 4. **INV-04 — Availability.** Available-to-allocate equals eligible usable stockroom stock minus active reservations for that eligibility group. Reservations change availability, not physical on-hand. Expiry/cancellation releases commitments without creating receipts.
 5. **INV-05 — Concurrent demands.** Confirm current eligible availability when committing a reservation or handover. Two demands cannot reserve the same units; no operational posting may create a negative eligible balance or exceed remaining demand.
 6. **INV-06 — Reservation detail.** Each RF/SO reservation identifies its parent and line, item/source eligibility, quantity, creation time, status, fulfilled quantity, expiry where applicable and release/cancellation history. Keep RF and SO commitments separately visible.
@@ -200,7 +200,7 @@ Exact amounts, windows and schedules are chapter inputs intentionally left confi
 11. **INV-11 — Proposed replenishment.** Show the approved target, eligible stock, outstanding demand, existing reservations, confirmed relevant inbound quantities and replenishment already in progress. Propose the uncovered quantity needed for approved demand/target stock, avoiding overlap between shortage and ROP portions. Purchasing reviews the proposed amount before commitment.
 12. **INV-12 — No duplicated supply need.** Existing RepFs, POs and confirmed inbound allocations covering the same need prevent another purchase request for that covered quantity. Identify supply that is late, disputed or ineligible separately; additional procurement requires a documented reason and approval.
 13. **INV-13 — Physical counts.** Compare signed independent count evidence with recorded custody/stock quantities. Differences remain visible and unavailable for unsupported corrections until investigation and approved ADJ. No direct balance edit is permitted.
-14. **INV-14 — Quarantine.** Damaged, rejected, defective or otherwise held goods are unavailable for allocation, issue or sale. Retain quantities and custody separately, with authorized clearance, replacement, return or disposal evidence. A pending damage review may block use immediately without silently changing its recorded quantity.
+14. **INV-14 — Quarantine.** Damaged, rejected, defective or otherwise held goods are unavailable for allocation, issue or sale. Retain quantities and custody separately, with authorized clearance, replacement, return or disposal evidence. A pending damage review may block use immediately without silently changing its recorded quantity. Under Leader's 23 October 2026 Q7–Q8 clarification, independent hold reasons may cover the same units: count affected units once and keep them blocked until every applicable hold is cleared. If recorded quantity and usable condition never changed, authorized evidence-linked hold clearance needs no movement and restores only the eligibility permitted by remaining commitments and restrictions. Actual quarantine/condition treatment retains its approved source-linked movement.
 
 ### 6.1 Quantity examples
 
@@ -569,8 +569,12 @@ Goods entrusted to a named booth custodian for an event.
 _Avoid_: Available stockroom stock, booth reservation
 
 **Usable on-hand stock**:
-Accepted stock held in the stockroom, including reserved goods, excluding goods in quarantine or booth custody.
+Accepted stock held in the stockroom, including reserved goods and goods under an eligibility hold until authorized condition treatment, excluding goods in quarantine or booth custody.
 _Avoid_: Available-to-allocate stock
+
+**Stock hold**:
+A restriction on use of identified stock while a finding or condition is unresolved; several holds may cover the same goods. Holds block use until every applicable hold is cleared, without themselves changing recorded physical quantity or condition.
+_Avoid_: Write-off, quarantine movement
 
 **Reserved stock**:
 Usable stock committed to an approved requisition or sales order and awaiting handover. RF-reserved and SO-reserved quantities remain separately identifiable; reservation does not remove units from usable on-hand.

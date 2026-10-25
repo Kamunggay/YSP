@@ -121,11 +121,21 @@ Expected result: ignored `backend/.env` and `frontend/.env` files exist. Backend
 
 ## 7. Build and start the app
 
+If another YSP checkout already runs on this machine, use a separate Compose project name in this PowerShell session. Otherwise, both checkouts use the default `ysp-health` project and can reuse each other's containers and database volume with different generated credentials:
+
+```powershell
+$env:COMPOSE_PROJECT_NAME = 'ysp-review'
+```
+
+Choose a new project name for each independent reproduction. Keep this value set through startup and cleanup below. This gives the review its own containers, networks and database volume.
+
 The default browser port is `8080`. If it is occupied, run this before the Compose commands and use port `18084` in step 8:
 
 ```powershell
 $env:YSP_HTTP_PORT = '18084'
 ```
+
+If `18084` is also occupied, choose another free port such as `18085` and use it in the browser URL.
 
 Build, start, migrate and verify the baseline:
 
@@ -193,5 +203,16 @@ docker compose --env-file backend/.env down
 ```
 
 This stops/removes the local app containers and network while retaining its database volume. Do not add `--volumes` if you intend to keep the data. Existing database volumes retain their original passwords; regenerating configuration does not rotate them. See the [backend guide](backend/README.md) if you lose the matching configuration.
+
+For a disposable reproduction created with a separate project name, remove its test database before deleting its checkout:
+
+```powershell
+# Confirm this is the isolated review project, not your normal development app.
+$env:COMPOSE_PROJECT_NAME
+docker compose --env-file backend/.env down --volumes --remove-orphans
+if ($LASTEXITCODE -ne 0) { throw 'Review cleanup failed; retain the checkout and log' }
+```
+
+Run cleanup from the same review directory with the same project name. Remove the temporary checkout only after cleanup succeeds, and retain your evidence directory outside it. If the deleted checkout's generated credentials were its only copy, a retained database volume cannot be reused with newly generated passwords.
 
 This reproduction establishes the Stage 0 health baseline for the tested revision. Business transactions, full MVP acceptance, production deployment and live activation retain their own gates.
