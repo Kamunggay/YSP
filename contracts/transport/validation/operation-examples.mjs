@@ -54,16 +54,12 @@ function checkHeaders(ajv, definitions, supplied = {}, label) {
 }
 
 // Examples contain parsed parameter values (IDs stay strings); this is not an HTTP adapter.
-export function validateExchange(api, ajv, exchange) {
-  const item = api.paths[exchange.path];
-  const operation = item?.[exchange.method];
-  assert.ok(httpMethods.includes(exchange.method) && operation, 'undocumented operation');
-  assert.equal(exchange.operationId, operation.operationId, 'operation identity');
+function checkParameters(ajv, item, operation, request) {
   const parameters = new Map();
   for (const p of [...(item.parameters ?? []), ...(operation.parameters ?? [])]) parameters.set(`${p.in}:${p.name}`, p);
   for (const location of ['path', 'query', 'cookie', 'header']) {
     const definitions = [...parameters.values()].filter(p => p.in === location);
-    const values = exchange.request[location] ?? {};
+    const values = request[location] ?? {};
     if (location === 'header') {
       checkHeaders(ajv, Object.fromEntries(definitions.map(p => [p.name, p])), values, 'request header');
       continue;
@@ -74,7 +70,18 @@ export function validateExchange(api, ajv, exchange) {
       if (Object.hasOwn(values, p.name)) checkValue(ajv, p.schema, values[p.name], `${location} ${p.name}`);
     }
   }
+}
+
+export function validateExchange(api, ajv, exchange) {
+  const item = api.paths[exchange.path];
+  const operation = item?.[exchange.method];
+  assert.ok(httpMethods.includes(exchange.method) && operation, 'undocumented operation');
+  assert.equal(exchange.operationId, operation.operationId, 'operation identity');
   const status = exchange.response.status;
+  if (operation['x-invalid-parameter-statuses']?.includes(status)) {
+    assert.throws(() => checkParameters(ajv, item, operation, exchange.request),
+      'selector rejection requires invalid parameters');
+  } else checkParameters(ajv, item, operation, exchange.request);
   if (operation['x-invalid-request-statuses']?.includes(status)) {
     // An operation-linked validation rejection must actually contain invalid input.
     assert.equal(exchange.request.mediaType, 'application/json', 'invalid request media type');

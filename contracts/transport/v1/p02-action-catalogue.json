@@ -1,0 +1,259 @@
+{
+  "revision": "p02.05-review.1",
+  "duties": [
+    "COMMITTEE_REQUESTER",
+    "RF_APPROVER",
+    "SALES_OFFICER",
+    "SALES_REVIEWER",
+    "FINANCE",
+    "INVENTORY",
+    "PURCHASING",
+    "BUDGET_APPROVER",
+    "RECEIVING",
+    "DISPATCH",
+    "BOOTH_CUSTODIAN",
+    "BOOTH_CASHIER",
+    "INDEPENDENT_REVIEWER",
+    "CHAPTER_HEAD"
+  ],
+  "provider_authorities": [
+    "provisioner",
+    "billing_admin",
+    "recovery_operator"
+  ],
+  "actions": [
+    {
+      "action": "memberships.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "memberships.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "memberships.authorize",
+      "category": "approval",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "memberships.revoke",
+      "category": "revoke",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "duty_grants.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "duty_grants.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "duty_grants.authorize",
+      "category": "approval",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "duty_grants.revoke",
+      "category": "revoke",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "alternates.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "alternates.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "alternates.authorize",
+      "category": "approval",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "alternates.revoke",
+      "category": "revoke",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "memberships.disable",
+      "category": "disable",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.status.read",
+      "category": "safe_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD",
+        "FINANCE"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.operational.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.operational.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.operational.approve",
+      "category": "approval",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.financial.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "FINANCE"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.financial.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "FINANCE"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.financial.approve",
+      "category": "approval",
+      "chapter_duties": [
+        "FINANCE"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "identities.reference.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "provider.identities.reference.read",
+      "category": "sensitive_read",
+      "chapter_duties": [],
+      "provider_authorities": [
+        "provisioner"
+      ],
+      "enabled_boundary": true
+    },
+    {
+      "action": "provider.chapters.prepare",
+      "category": "preparation",
+      "chapter_duties": [],
+      "provider_authorities": [
+        "provisioner"
+      ],
+      "enabled_boundary": true
+    },
+    {
+      "action": "provider.chapters.create",
+      "category": "approval",
+      "chapter_duties": [],
+      "provider_authorities": [
+        "provisioner"
+      ],
+      "enabled_boundary": true
+    },
+    {
+      "action": "provider.initial_head.appoint",
+      "category": "approval",
+      "chapter_duties": [],
+      "provider_authorities": [
+        "provisioner"
+      ],
+      "enabled_boundary": true
+    },
+    {
+      "action": "identity.disable",
+      "category": "disable",
+      "chapter_duties": [],
+      "provider_authorities": [],
+      "enabled_boundary": false
+    }
+  ]
+}

@@ -1524,6 +1524,1209 @@ export const consumerExamples = [
         "message": "The session service is unavailable."
       }
     }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "no_authorized_memberships"
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740995",
+            "display_name": "Synthetic provider"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": [
+            {
+              "kind": "chapter_provisioning",
+              "scope": {
+                "kind": "organization",
+                "organization_id": "1"
+              }
+            }
+          ]
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "no_authorized_memberships"
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "selection_required"
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {
+      "query": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "selected",
+        "selection_source": "sole_membership",
+        "membership": {
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "membership_version": 3
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740994",
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [
+            {
+              "id": "9007199254741010",
+              "duty_code": "CHAPTER_HEAD",
+              "scope_kind": "chapter",
+              "requesting_unit_id": null,
+              "starts_at": "2026-10-25T06:00:00.000000Z",
+              "ends_at": null,
+              "revoked_at": null
+            }
+          ],
+          "available_actions": [
+            "memberships.read",
+            "memberships.prepare",
+            "memberships.authorize",
+            "memberships.revoke",
+            "duty_grants.read",
+            "duty_grants.prepare",
+            "duty_grants.authorize",
+            "duty_grants.revoke",
+            "alternates.read",
+            "alternates.prepare",
+            "alternates.authorize",
+            "alternates.revoke",
+            "memberships.disable",
+            "policy.status.read",
+            "policy.operational.read",
+            "policy.operational.prepare",
+            "policy.operational.approve",
+            "identities.reference.read"
+          ],
+          "provider_roles": []
+        }
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {
+      "query": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "selected",
+        "selection_source": "restored",
+        "membership": {
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "membership_version": 3
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740994",
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [
+            {
+              "id": "9007199254741010",
+              "duty_code": "CHAPTER_HEAD",
+              "scope_kind": "chapter",
+              "requesting_unit_id": null,
+              "starts_at": "2026-10-25T06:00:00.000000Z",
+              "ends_at": null,
+              "revoked_at": null
+            }
+          ],
+          "available_actions": [
+            "memberships.read",
+            "memberships.prepare",
+            "memberships.authorize",
+            "memberships.revoke",
+            "duty_grants.read",
+            "duty_grants.prepare",
+            "duty_grants.authorize",
+            "duty_grants.revoke",
+            "alternates.read",
+            "alternates.prepare",
+            "alternates.authorize",
+            "alternates.revoke",
+            "memberships.disable",
+            "policy.status.read",
+            "policy.operational.read",
+            "policy.operational.prepare",
+            "policy.operational.approve",
+            "identities.reference.read"
+          ],
+          "provider_roles": []
+        }
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {
+      "query": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "selected",
+        "selection_source": "explicit",
+        "membership": {
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "membership_version": 3
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740994",
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [
+            {
+              "id": "9007199254741010",
+              "duty_code": "CHAPTER_HEAD",
+              "scope_kind": "chapter",
+              "requesting_unit_id": null,
+              "starts_at": "2026-10-25T06:00:00.000000Z",
+              "ends_at": null,
+              "revoked_at": null
+            }
+          ],
+          "available_actions": [
+            "memberships.read",
+            "memberships.prepare",
+            "memberships.authorize",
+            "memberships.revoke",
+            "duty_grants.read",
+            "duty_grants.prepare",
+            "duty_grants.authorize",
+            "duty_grants.revoke",
+            "alternates.read",
+            "alternates.prepare",
+            "alternates.authorize",
+            "alternates.revoke",
+            "memberships.disable",
+            "policy.status.read",
+            "policy.operational.read",
+            "policy.operational.prepare",
+            "policy.operational.approve",
+            "identities.reference.read"
+          ],
+          "provider_roles": []
+        }
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {
+      "query": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740993",
+            "display_name": "Synthetic requester"
+          },
+          "mfa": {
+            "status": "not_required"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "selected",
+        "selection_source": "explicit",
+        "membership": {
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "membership_version": 3
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740993",
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [
+            {
+              "id": "9007199254741010",
+              "duty_code": "COMMITTEE_REQUESTER",
+              "scope_kind": "unit",
+              "requesting_unit_id": "77",
+              "starts_at": "2026-10-25T06:00:00.000000Z",
+              "ends_at": null,
+              "revoked_at": null
+            }
+          ],
+          "available_actions": [],
+          "provider_roles": []
+        }
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {
+      "query": {
+        "chapter_id": "2"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "chapter_state": "selected",
+        "selection_source": "explicit",
+        "membership": {
+          "chapter_id": "2",
+          "chapter_name": "YSP Liloan",
+          "membership_id": "9007199254741002",
+          "membership_version": 2
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740994",
+          "chapter_id": "2",
+          "chapter_name": "YSP Liloan",
+          "membership_id": "9007199254741002",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [
+            {
+              "id": "9007199254741011",
+              "duty_code": "FINANCE",
+              "scope_kind": "chapter",
+              "requesting_unit_id": null,
+              "starts_at": "2026-10-25T06:00:00.000000Z",
+              "ends_at": null,
+              "revoked_at": null
+            }
+          ],
+          "available_actions": [
+            "policy.status.read",
+            "policy.financial.read",
+            "policy.financial.prepare",
+            "policy.financial.approve"
+          ],
+          "provider_roles": []
+        }
+      }
+    }
+  },
+  {
+    "operationId": "listChapterMemberships",
+    "request": {
+      "query": {
+        "limit": 1
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "items": [],
+        "limit": 1,
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "listChapterMemberships",
+    "request": {
+      "query": {
+        "limit": 1
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "items": [
+          {
+            "chapter_id": "1",
+            "chapter_name": "YSP Cebu",
+            "membership_id": "9007199254741001",
+            "membership_version": 3
+          }
+        ],
+        "limit": 1,
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "listChapterMemberships",
+    "request": {
+      "query": {
+        "limit": 1
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "items": [
+          {
+            "chapter_id": "1",
+            "chapter_name": "YSP Cebu",
+            "membership_id": "9007199254741001",
+            "membership_version": 3
+          }
+        ],
+        "limit": 1,
+        "next_cursor": "cur_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    }
+  },
+  {
+    "operationId": "listChapterMemberships",
+    "request": {
+      "query": {
+        "limit": 1,
+        "cursor": "cur_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "items": [
+          {
+            "chapter_id": "2",
+            "chapter_name": "YSP Liloan",
+            "membership_id": "9007199254741002",
+            "membership_version": 2
+          }
+        ],
+        "limit": 1,
+        "next_cursor": null
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "1",
+        "membership_id": "9007199254741001",
+        "expected_membership_version": 3
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "chapter_state": "selected",
+        "selection_source": "explicit",
+        "membership": {
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "membership_version": 3
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740994",
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [
+            {
+              "id": "9007199254741010",
+              "duty_code": "CHAPTER_HEAD",
+              "scope_kind": "chapter",
+              "requesting_unit_id": null,
+              "starts_at": "2026-10-25T06:00:00.000000Z",
+              "ends_at": null,
+              "revoked_at": null
+            }
+          ],
+          "available_actions": [
+            "memberships.read",
+            "memberships.prepare",
+            "memberships.authorize",
+            "memberships.revoke",
+            "duty_grants.read",
+            "duty_grants.prepare",
+            "duty_grants.authorize",
+            "duty_grants.revoke",
+            "alternates.read",
+            "alternates.prepare",
+            "alternates.authorize",
+            "alternates.revoke",
+            "memberships.disable",
+            "policy.status.read",
+            "policy.operational.read",
+            "policy.operational.prepare",
+            "policy.operational.approve",
+            "identities.reference.read"
+          ],
+          "provider_roles": []
+        }
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "2",
+        "membership_id": "9007199254741002",
+        "expected_membership_version": 2
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "chapter_state": "selected",
+        "selection_source": "explicit",
+        "membership": {
+          "chapter_id": "2",
+          "chapter_name": "YSP Liloan",
+          "membership_id": "9007199254741002",
+          "membership_version": 2
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740994",
+          "chapter_id": "2",
+          "chapter_name": "YSP Liloan",
+          "membership_id": "9007199254741002",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [
+            {
+              "id": "9007199254741011",
+              "duty_code": "FINANCE",
+              "scope_kind": "chapter",
+              "requesting_unit_id": null,
+              "starts_at": "2026-10-25T06:00:00.000000Z",
+              "ends_at": null,
+              "revoked_at": null
+            }
+          ],
+          "available_actions": [
+            "policy.status.read",
+            "policy.financial.read",
+            "policy.financial.prepare",
+            "policy.financial.approve"
+          ],
+          "provider_roles": []
+        }
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Refresh current context and review the original scope before another attempt.",
+        "next_action": "refresh_context"
+      }
+    }
+  },
+  {
+    "operationId": "listChapterMemberships",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "listChapterMemberships",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "listChapterMemberships",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "listChapterMemberships",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "1",
+        "membership_id": "9007199254741001",
+        "expected_membership_version": 3
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "1",
+        "membership_id": "9007199254741001",
+        "expected_membership_version": 3
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "1",
+        "membership_id": "9007199254741001",
+        "expected_membership_version": 3
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "1",
+        "membership_id": "9007199254741001",
+        "expected_membership_version": 3
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "1",
+        "membership_id": "9007199254741001",
+        "expected_membership_version": 3
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Refresh current context and review the original scope before another attempt.",
+        "next_action": "refresh_context"
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "1",
+        "membership_id": "9007199254741001",
+        "expected_membership_version": 3
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "99",
+        "membership_id": "99",
+        "expected_membership_version": 1
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "99",
+        "membership_id": "99",
+        "expected_membership_version": 1
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "99",
+        "membership_id": "99",
+        "expected_membership_version": 1
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "request": {
+      "body": {
+        "chapter_id": "1",
+        "membership_id": "9007199254741001",
+        "expected_membership_version": 3
+      },
+      "contextRevision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Refresh current context and review the original scope before another attempt.",
+        "next_action": "refresh_context"
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Refresh current context and review the original scope before another attempt.",
+        "next_action": "refresh_context"
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {
+      "query": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": [
+            {
+              "kind": "chapter_provisioning",
+              "scope": {
+                "kind": "organization",
+                "organization_id": "1"
+              }
+            }
+          ]
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "selected",
+        "selection_source": "explicit",
+        "membership": {
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "membership_version": 3
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740994",
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [
+            {
+              "id": "9007199254741010",
+              "duty_code": "CHAPTER_HEAD",
+              "scope_kind": "chapter",
+              "requesting_unit_id": null,
+              "starts_at": "2026-10-25T06:00:00.000000Z",
+              "ends_at": null,
+              "revoked_at": null
+            }
+          ],
+          "available_actions": [
+            "memberships.read",
+            "memberships.prepare",
+            "memberships.authorize",
+            "memberships.revoke",
+            "duty_grants.read",
+            "duty_grants.prepare",
+            "duty_grants.authorize",
+            "duty_grants.revoke",
+            "alternates.read",
+            "alternates.prepare",
+            "alternates.authorize",
+            "alternates.revoke",
+            "memberships.disable",
+            "policy.status.read",
+            "policy.operational.read",
+            "policy.operational.prepare",
+            "policy.operational.approve",
+            "identities.reference.read"
+          ],
+          "provider_roles": [
+            "provisioner"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "request": {
+      "query": {
+        "chapter_id": "1"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:00:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "selection_revision": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "chapter_state": "selected",
+        "selection_source": "explicit",
+        "membership": {
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "membership_version": 3
+        },
+        "context": {
+          "schema_version": "1.0",
+          "user_id": "9007199254740994",
+          "chapter_id": "1",
+          "chapter_name": "YSP Cebu",
+          "membership_id": "9007199254741001",
+          "authority_version": 7,
+          "checked_at": "2026-10-25T06:10:00.000000Z",
+          "mfa_satisfied": true,
+          "duty_grants": [],
+          "available_actions": [],
+          "provider_roles": []
+        }
+      }
+    }
   }
 ] as const satisfies readonly ConsumerExample[];
 export const rejectedRequestResponses = [
@@ -1610,6 +2813,57 @@ export const rejectedRequestResponses = [
         "field_errors": [
           {
             "pointer": "/password",
+            "code": "invalid",
+            "message": "Check this field."
+          }
+        ]
+      }
+    }
+  },
+  {
+    "operationId": "getChapterContext",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "listChapterMemberships",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "selectChapter",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "invalid_input",
+        "message": "Check the submitted fields.",
+        "field_errors": [
+          {
+            "pointer": "/expected_membership_version",
             "code": "invalid",
             "message": "Check this field."
           }

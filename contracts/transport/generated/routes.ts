@@ -43,5 +43,17 @@ export const routes = {
   "getAssistedRecoveryGuidance": {
     "method": "GET",
     "path": "/api/v1/session/mfa/assisted-recovery"
+  },
+  "listChapterMemberships": {
+    "method": "GET",
+    "path": "/api/v1/session/chapter-memberships"
+  },
+  "getChapterContext": {
+    "method": "GET",
+    "path": "/api/v1/session/chapter-context"
+  },
+  "selectChapter": {
+    "method": "POST",
+    "path": "/api/v1/session/chapter-selection"
   }
 } as const;

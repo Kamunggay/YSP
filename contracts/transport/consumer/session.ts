@@ -17,9 +17,11 @@ type Failure = { kind: 'unresolved'; reason: 'transport' | 'protocol' | 'csrf_co
 type Options<K extends Operation> = {
   origin: string; cookie: string; signal: AbortSignal;
   fetch: (url: URL, init: RequestInit) => Promise<Response>;
-} & (operations[K] extends { requestBody: { content: { 'application/json': infer B } } } ? { body: B } : { body?: never });
+  query?: operations[K]['parameters']['query'];
+} & (operations[K]['parameters']['header'] extends { 'X-Chapter-Context': infer H extends string } ? { contextRevision: H } : { contextRevision?: never })
+  & (operations[K] extends { requestBody: { content: { 'application/json': infer B } } } ? { body: B } : { body?: never });
 export type ConsumerExample = { [K in Operation]: {
-  operationId: K; request: Pick<Options<K>, 'body'>; response: Result<K>;
+  operationId: K; request: Pick<Options<K>, 'body' | 'query' | 'contextRevision'>; response: Result<K>;
 } }[Operation];
 
 export type ConsumerResponseExample = { [K in Operation]: { operationId: K; response: Result<K> } }[Operation];
@@ -30,6 +32,7 @@ addFormats(ajv);
 export async function exchangeSession<K extends Operation>(operation: K, options: Options<K>): Promise<Result<K> | Failure> {
   const route = routes[operation];
   const headers = new Headers({ Accept: 'application/json' });
+  if (options.contextRevision !== undefined) headers.set('X-Chapter-Context', options.contextRevision);
   if (route.method === 'POST') {
     const encoded = options.cookie.split(';').map(part => part.trim()).find(part => part.startsWith('XSRF-TOKEN='));
     if (encoded) {
@@ -40,7 +43,11 @@ export async function exchangeSession<K extends Operation>(operation: K, options
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
   let response: Response;
   try {
-    response = await options.fetch(new URL(route.path, options.origin), {
+    const url = new URL(route.path, options.origin);
+    for (const [name, value] of Object.entries(options.query ?? {})) {
+      if (value !== undefined) url.searchParams.set(name, String(value));
+    }
+    response = await options.fetch(url, {
       method: route.method, credentials: 'include', redirect: 'error', cache: 'no-store',
       headers, signal: options.signal,
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),

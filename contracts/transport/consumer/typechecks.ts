@@ -1,5 +1,6 @@
 import type { components, operations } from '../generated/api.d.ts';
 import { exchangeSession, sessionNextAction } from './session.ts';
+import { chapterNextAction, chapterScopeMatches } from './chapter-context.ts';
 
 // Compiled, never invoked. @ts-expect-error becomes a failure if the error disappears.
 export async function compileConsumer(signal: AbortSignal, fetcher: typeof fetch): Promise<void> {
@@ -130,4 +131,64 @@ export async function compileMfaRecovery(signal: AbortSignal, fetcher: typeof fe
   await exchangeSession('regenerateRecoveryCodes', { ...common, body: { password: 'synthetic-only', authenticator_code: '123456', recent_proof_at: '2026-10-25T06:00:00.000000Z' } });
   // @ts-expect-error Guidance accepts no identity/proof upload body.
   await exchangeSession('getAssistedRecoveryGuidance', { ...common, body: { user_id: '1' } });
+}
+
+export async function compileChapterContext(signal: AbortSignal, fetcher: typeof fetch): Promise<void> {
+  const common = { origin: 'https://ysp.example.test', cookie: '', signal, fetch: fetcher };
+  const current = await exchangeSession('getChapterContext', { ...common, query: { chapter_id: '1' } });
+  if (current.kind === 'response') {
+    switch (current.status) {
+      case 200:
+        chapterNextAction(current.body);
+        chapterScopeMatches(current.body, '1');
+        if (current.body.chapter_state === 'selected') {
+          const authorityVersion: number = current.body.context.authority_version;
+          const chapterId: string = current.body.context.chapter_id;
+          const action: components['schemas']['P02ChapterAction'] | undefined = current.body.context.available_actions[0];
+          const selected = await exchangeSession('selectChapter', { ...common,
+            contextRevision: current.body.selection_revision,
+            body: { chapter_id: chapterId, membership_id: current.body.membership.membership_id,
+              expected_membership_version: current.body.membership.membership_version } });
+          if (selected.kind === 'response' && selected.status === 409) {
+            const next: 'refresh_context' = selected.body.next_action;
+            // @ts-expect-error Stale feedback discloses no current chapter or replacement revision.
+            selected.body.selection_revision;
+            void next;
+          }
+          void [authorityVersion, action];
+        } else {
+          // @ts-expect-error Empty/selection-required states have no checked chapter authority.
+          current.body.context.available_actions;
+        }
+        break;
+      case 400: break;
+      case 401: break;
+      case 403: break;
+      case 409: break;
+      case 429: break;
+      case 503: break;
+      default: { const exhaustive: never = current; void exhaustive; }
+    }
+  }
+  const page = await exchangeSession('listChapterMemberships', { ...common, query: { limit: 1 } });
+  if (page.kind === 'response' && page.status === 200 && page.body.next_cursor !== null) {
+    await exchangeSession('listChapterMemberships', { ...common, query: { limit: page.body.limit, cursor: page.body.next_cursor } });
+  }
+  // @ts-expect-error Required server selection guard cannot be omitted.
+  await exchangeSession('selectChapter', { ...common, body: { chapter_id: '1', membership_id: '2', expected_membership_version: 1 } });
+  // @ts-expect-error Chapter selection requires membership version.
+  await exchangeSession('selectChapter', { ...common, contextRevision: 'ctx_synthetic', body: { chapter_id: '1', membership_id: '2' } });
+  // @ts-expect-error Numeric chapter IDs lose exactness.
+  await exchangeSession('getChapterContext', { ...common, query: { chapter_id: 1 } });
+  // @ts-expect-error No caller-selected user/duty filter exists.
+  await exchangeSession('listChapterMemberships', { ...common, query: { user_id: '1' } });
+  // @ts-expect-error Browser-selected duty is not authority.
+  const badSelection: components['schemas']['SelectChapterRequest'] = { chapter_id: '1', membership_id: '2', expected_membership_version: 1, duty_code: 'CHAPTER_HEAD' };
+  // @ts-expect-error Catalogue is finite; no arbitrary action or wildcard.
+  const badAction: components['schemas']['P02Action'] = '*';
+  // @ts-expect-error Provider authority is separate from chapter actions.
+  const providerInChapter: components['schemas']['P02ChapterAction'] = 'provider.chapters.create';
+  // @ts-expect-error Provider is not a fifteenth chapter duty.
+  const badDuty: components['schemas']['ChapterDuty'] = 'provisioner';
+  void [badSelection, badAction, providerInChapter, badDuty];
 }

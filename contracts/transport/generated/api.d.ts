@@ -79,6 +79,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/session/chapter-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read authenticated chapter selection and checked current authority
+         * @description Proposed exact wire; see x-chapter-context-contract. Restricted MFA states return safe 403 with no chapter/provider/authority disclosure. Every result no-store. Reject duplicate/unknown query selectors; X-Chapter-Context is the only selection-guard header. Header names are case insensitive. Missing/malformed guard is 400.
+         */
+        get: operations["getChapterContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/session/chapter-memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List only current authorized membership choices
+         * @description Proposed exact wire; see x-chapter-context-contract. Restricted MFA states return safe 403 with no chapter/provider/authority disclosure. Every result no-store. Reject duplicate/unknown query selectors; X-Chapter-Context is the only selection-guard header. Header names are case insensitive. Missing/malformed guard is 400. Read choices with deterministic numeric ID order, limit 1..100 default 25, opaque user/epoch/limit-bound cursor; next_cursor null ends paging; no other filters.
+         */
+        get: operations["listChapterMemberships"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/session/chapter-selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Select an authorized chapter using the session selection guard
+         * @description Proposed exact wire; see x-chapter-context-contract. Restricted MFA states return safe 403 with no chapter/provider/authority disclosure. Every result no-store. Reject duplicate/unknown query selectors; X-Chapter-Context is the only selection-guard header. Header names are case insensitive. Missing/malformed guard is 400.
+         */
+        post: operations["selectChapter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/session/mfa/assisted-recovery": {
         parameters: {
             query?: never;
@@ -292,6 +352,84 @@ export interface components {
             /** @constant */
             message: "Bootstrap the current session before a reviewed next action.";
         };
+        /** @description Opaque server-issued session selection revision. Changes on selection or selected-membership invalidation; never an authority token. Compare atomically using X-Chapter-Context. */
+        ChapterContextRevision: string;
+        ChapterContextStale: {
+            /** @constant */
+            code: "chapter_context_stale";
+            /** @constant */
+            message: "Refresh current context and review the original scope before another attempt.";
+            /** @constant */
+            next_action: "refresh_context";
+        };
+        /** @description P02 wire projection of the unchanged Stage 0 CurrentContext. Finite P02 actions only; effective grants and checked user/chapter/membership tuple retain internal meaning. This is current action availability, never permission to execute. */
+        ChapterCurrentContext: {
+            authority_version: components["schemas"]["Version"];
+            available_actions: components["schemas"]["P02ChapterAction"][];
+            chapter_id: components["schemas"]["Id"];
+            chapter_name: string;
+            checked_at: components["schemas"]["UtcInstant"];
+            duty_grants: components["schemas"]["ChapterDutyGrant"][];
+            membership_id: components["schemas"]["Id"];
+            /** @constant */
+            mfa_satisfied: true;
+            provider_roles: ("provisioner" | "billing_admin" | "recovery_operator")[];
+            /** @constant */
+            schema_version: "1.0";
+            user_id: components["schemas"]["Id"];
+        };
+        /** @enum {unknown} */
+        ChapterDuty: "COMMITTEE_REQUESTER" | "RF_APPROVER" | "SALES_OFFICER" | "SALES_REVIEWER" | "FINANCE" | "INVENTORY" | "PURCHASING" | "BUDGET_APPROVER" | "RECEIVING" | "DISPATCH" | "BOOTH_CUSTODIAN" | "BOOTH_CASHIER" | "INDEPENDENT_REVIEWER" | "CHAPTER_HEAD";
+        /** @description Current effective grant read model. Expiry/revocation and contextual independence are checked by Access, not inferred by clients. */
+        ChapterDutyGrant: {
+            duty_code: components["schemas"]["ChapterDuty"];
+            ends_at: components["schemas"]["UtcInstant"] | null;
+            id: components["schemas"]["Id"];
+            requesting_unit_id: components["schemas"]["Id"] | null;
+            revoked_at: components["schemas"]["UtcInstant"] | null;
+            /** @enum {unknown} */
+            scope_kind: "chapter" | "unit";
+            starts_at: components["schemas"]["UtcInstant"];
+        } & unknown;
+        ChapterMembershipChoice: {
+            chapter_id: components["schemas"]["Id"];
+            chapter_name: string;
+            membership_id: components["schemas"]["Id"];
+            membership_version: components["schemas"]["Version"];
+        };
+        ChapterMembershipPage: {
+            items: components["schemas"]["ChapterMembershipChoice"][];
+            limit: number;
+            next_cursor: components["schemas"]["MembershipCursor"] | null;
+            session: components["schemas"]["AuthenticatedSession"];
+        };
+        ChapterQueryInvalid: {
+            /** @constant */
+            code: "invalid_selector";
+            /** @constant */
+            message: "Use only the documented single-valued selectors.";
+        };
+        ChapterSelectionInvalid: {
+            /** @constant */
+            code: "invalid_input";
+            field_errors: {
+                /** @constant */
+                code: "invalid";
+                /** @constant */
+                message: "Check this field.";
+                /** @enum {string} */
+                pointer: "/chapter_id" | "/membership_id" | "/expected_membership_version";
+            }[];
+            /** @constant */
+            message: "Check the submitted fields.";
+        };
+        ChapterSelectionRequired: {
+            /** @constant */
+            chapter_state: "selection_required";
+            selection_revision: components["schemas"]["ChapterContextRevision"];
+            session: components["schemas"]["AuthenticatedSession"];
+        };
+        ChapterSnapshot: components["schemas"]["NoChapterMemberships"] | components["schemas"]["ChapterSelectionRequired"] | components["schemas"]["SelectedChapterContext"];
         /** @description Normalized transport metadata, NOT a public generic command or HTTP body. Adapter derives chapter/action from the authorized route and key from Idempotency-Key; body contributes record reference and explicit expected versions. A body chapter/action/key override is rejected. Domain input is separately validated by the identity/evidence, IPC/RM and stock-hold schemas. Existing-record commands require the exact expected_row_version; creation explicitly uses null record and null row version. Approval/evidence-bound operations additionally REQUIRE expected_material_version in their own schema and check both versions at commit. No expected_version alias. Never accept actor authority, balances, approval state, allocation choices or payment verification as trusted client values. */
         CommandContext: {
             action_code: components["schemas"]["ActionCode"];
@@ -390,6 +528,7 @@ export interface components {
             /** @constant */
             lookup_state?: "unavailable";
         };
+        MembershipCursor: string;
         MfaChallenge: {
             expires_at: components["schemas"]["UtcInstant"];
             id: components["schemas"]["ChallengeId"];
@@ -405,6 +544,12 @@ export interface components {
             /** @enum {unknown} */
             code: "correct_input" | "refresh_record" | "lookup_operation" | "reconcile_activity" | "request_access" | "review_record";
             label: string;
+        };
+        NoChapterMemberships: {
+            /** @constant */
+            chapter_state: "no_authorized_memberships";
+            selection_revision: components["schemas"]["ChapterContextRevision"];
+            session: components["schemas"]["AuthenticatedSession"];
         };
         /** @description Only a durable, authorized terminal result uses committed/rejected. committed_at is the terminal-result transaction commit time, including a recorded rejection; it is not the physical occurrence or posting time. Unknown has no terminal time and cannot be a replay. Pre-operation validation/permission failures may have no operation at all. */
         Operation: {
@@ -438,6 +583,10 @@ export interface components {
             chapter_id: components["schemas"]["Id"];
             operation_id: components["schemas"]["OperationId"];
         };
+        /** @enum {string} */
+        P02Action: "memberships.read" | "memberships.prepare" | "memberships.authorize" | "memberships.revoke" | "duty_grants.read" | "duty_grants.prepare" | "duty_grants.authorize" | "duty_grants.revoke" | "alternates.read" | "alternates.prepare" | "alternates.authorize" | "alternates.revoke" | "memberships.disable" | "policy.status.read" | "policy.operational.read" | "policy.operational.prepare" | "policy.operational.approve" | "policy.financial.read" | "policy.financial.prepare" | "policy.financial.approve" | "identities.reference.read" | "provider.identities.reference.read" | "provider.chapters.prepare" | "provider.chapters.create" | "provider.initial_head.appoint" | "identity.disable";
+        /** @enum {string} */
+        P02ChapterAction: "memberships.read" | "memberships.prepare" | "memberships.authorize" | "memberships.revoke" | "duty_grants.read" | "duty_grants.prepare" | "duty_grants.authorize" | "duty_grants.revoke" | "alternates.read" | "alternates.prepare" | "alternates.authorize" | "alternates.revoke" | "memberships.disable" | "policy.status.read" | "policy.operational.read" | "policy.operational.prepare" | "policy.operational.approve" | "policy.financial.read" | "policy.financial.prepare" | "policy.financial.approve" | "identities.reference.read";
         /** @description Nonnegative DECIMAL(20,2) posted PHP magnitude with exactly two fractional places. Unit costs/intermediate valuations may use Quantity's DECIMAL(20,6) precision; they are NOT posted money. Approved Finance rounding/valuation policy governs final amounts and residual cents across batches. This contract chooses no rounding policy; missing required policy blocks posting. Never round through binary float. */
         PostedMoney: {
             amount: string;
@@ -536,6 +685,21 @@ export interface components {
         RegenerateRecoveryCodesRequest: {
             authenticator_code: components["schemas"]["AuthenticatorCode"];
             password: string;
+        };
+        SelectChapterRequest: {
+            chapter_id: components["schemas"]["Id"];
+            expected_membership_version: components["schemas"]["Version"];
+            membership_id: components["schemas"]["Id"];
+        };
+        SelectedChapterContext: {
+            /** @constant */
+            chapter_state: "selected";
+            context: components["schemas"]["ChapterCurrentContext"];
+            membership: components["schemas"]["ChapterMembershipChoice"];
+            selection_revision: components["schemas"]["ChapterContextRevision"];
+            /** @enum {string} */
+            selection_source: "sole_membership" | "restored" | "explicit";
+            session: components["schemas"]["AuthenticatedSession"];
         };
         SessionCsrfFailure: {
             /** @constant */
@@ -870,6 +1034,306 @@ export interface operations {
                 };
             };
             /** @description Unavailable. A lost/invalid response never establishes whether a prior unsafe exchange completed. */
+            503: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    getChapterContext: {
+        parameters: {
+            query?: {
+                /** @description Optional asserted selected scope; mismatch is safe 409, never a lookup of arbitrary chapter identity. */
+                chapter_id?: components["schemas"]["Id"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authenticated current result; no automatic authority follows from selection. */
+            200: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterSnapshot"];
+                };
+            };
+            /** @description Malformed/duplicate/unknown query selector; no scoped disclosure. */
+            400: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Session expired, revoked, disabled or missing; sign in. */
+            401: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Origin forbidden or current authentication state disallows this operation; no disclosure. */
+            403: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Selection revision, requested selected chapter, membership version or current selection is stale; no latest chapter identity or current revision disclosed here. */
+            409: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterContextStale"];
+                };
+            };
+            /** @description Throttled, respect server Retry-After; no automatic attempt. */
+            429: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value. */
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Service unavailable; uncertainty remains for any earlier mutation. */
+            503: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    listChapterMemberships: {
+        parameters: {
+            query?: {
+                cursor?: components["schemas"]["MembershipCursor"];
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authenticated current result; no automatic authority follows from selection. */
+            200: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterMembershipPage"];
+                };
+            };
+            /** @description Malformed/duplicate/unknown query selector; no scoped disclosure. */
+            400: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Session expired, revoked, disabled or missing; sign in. */
+            401: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Origin forbidden or current authentication state disallows this operation; no disclosure. */
+            403: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Throttled, respect server Retry-After; no automatic attempt. */
+            429: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value. */
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Service unavailable; uncertainty remains for any earlier mutation. */
+            503: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    selectChapter: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-XSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectChapterRequest"];
+            };
+        };
+        responses: {
+            /** @description Authenticated current result; no automatic authority follows from selection. */
+            200: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelectedChapterContext"];
+                };
+            };
+            /** @description Malformed/duplicate/unknown query selector; no scoped disclosure. */
+            400: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Session expired, revoked, disabled or missing; sign in. */
+            401: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Origin forbidden or current authentication state disallows this operation; no disclosure. */
+            403: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Selection revision, requested selected chapter, membership version or current selection is stale; no latest chapter identity or current revision disclosed here. */
+            409: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterContextStale"];
+                };
+            };
+            /** @description Missing/stale/malformed token, even when Sec-Fetch-Site is same-origin. Reject before credential validation or state change. Refresh only; no automatic unsafe retry. */
+            419: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Closed body validation failure; pointers identify actual submitted fields. Invalid transport headers are rejected as 400 before execution. */
+            422: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterSelectionInvalid"];
+                };
+            };
+            /** @description Throttled, respect server Retry-After; no automatic attempt. */
+            429: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value. */
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Service unavailable; uncertainty remains for any earlier mutation. */
             503: {
                 headers: {
                     /** @description Never cache session, credentials or CSRF responses. */

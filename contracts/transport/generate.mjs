@@ -53,19 +53,26 @@ for (const item of Object.values(resolved.paths)) {
   }
 }
 outputs['session-validation.json'] = `${JSON.stringify(consumerSchemas, null, 2)}\n`;
-const exchanges = (await Promise.all(['session', 'enrollment', 'mfa-recovery'].map(async slice =>
+const exchanges = (await Promise.all(['session', 'enrollment', 'mfa-recovery', 'chapter-context'].map(async slice =>
   JSON.parse(await readFile(new URL(`./v1/${slice}-exchanges.json`, import.meta.url), 'utf8'))))).flat();
 const examples = exchanges.map(({ operationId, request, response }) => ({
   operationId,
-  request: Object.hasOwn(request, 'body') ? { body: request.body } : {},
+  request: {
+    ...(Object.hasOwn(request, 'body') ? { body: request.body } : {}),
+    ...(request.query ? { query: request.query } : {}),
+    ...(request.header?.['X-Chapter-Context'] ? { contextRevision: request.header['X-Chapter-Context'] } : {}),
+  },
   response: { kind: 'response', status: response.status,
     ...(Object.hasOwn(response, 'body') ? { body: response.body } : {}),
     ...(response.status === 429 ? { retryAfter: response.headers['retry-after'] } : {}),
   },
 }));
 // Malformed request fixtures validate as rejections, not as valid typed requests.
-const invalidRequest = index => api.paths[exchanges[index].path][exchanges[index].method]
-  ['x-invalid-request-statuses']?.includes(exchanges[index].response.status);
+const invalidRequest = index => {
+  const operation = api.paths[exchanges[index].path][exchanges[index].method];
+  return [...(operation['x-invalid-request-statuses'] ?? []), ...(operation['x-invalid-parameter-statuses'] ?? [])]
+    .includes(exchanges[index].response.status);
+};
 const validExamples = examples.filter((_, index) => !invalidRequest(index));
 const invalidExamples = examples.filter((_, index) => invalidRequest(index))
   .map(({ operationId, response }) => ({ operationId, response }));
