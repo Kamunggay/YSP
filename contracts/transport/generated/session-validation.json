@@ -48,12 +48,34 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "state"
+                  "state",
+                  "challenge"
                 ],
                 "properties": {
                   "state": {
                     "type": "string",
                     "const": "mfa_challenge_required"
+                  },
+                  "challenge": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "expires_at"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^chl_[A-Za-z0-9_-]{32,96}$",
+                        "description": "Opaque current identity AND server-session binding, distinct from operation IDs; never an account selector or authority token."
+                      },
+                      "expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                      }
+                    }
                   }
                 }
               },
@@ -324,12 +346,34 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "state"
+                  "state",
+                  "challenge"
                 ],
                 "properties": {
                   "state": {
                     "type": "string",
                     "const": "mfa_challenge_required"
+                  },
+                  "challenge": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "expires_at"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^chl_[A-Za-z0-9_-]{32,96}$",
+                        "description": "Opaque current identity AND server-session binding, distinct from operation IDs; never an account selector or authority token."
+                      },
+                      "expires_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                        "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                      }
+                    }
                   }
                 }
               },
@@ -1776,6 +1820,1189 @@
                     }
                   }
                 }
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body",
+          "retryAfter"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 429
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "throttled"
+              },
+              "message": {
+                "type": "string",
+                "const": "Try again after the indicated delay."
+              }
+            }
+          },
+          "retryAfter": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 503
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "unavailable"
+              },
+              "message": {
+                "type": "string",
+                "const": "The session service is unavailable."
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "verifyMfaChallenge": {
+    "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 200
+          },
+          "body": {
+            "allOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "state",
+                  "user",
+                  "mfa",
+                  "provider_destinations"
+                ],
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "const": "authenticated"
+                  },
+                  "user": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "display_name"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                        "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                      },
+                      "display_name": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "mfa": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "status"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "const": "not_required"
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "status",
+                          "verified_at"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "const": "verified"
+                          },
+                          "verified_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                            "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "provider_destinations": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "kind",
+                        "scope"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "chapter_provisioning"
+                        },
+                        "scope": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "kind",
+                            "organization_id"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "organization"
+                            },
+                            "organization_id": {
+                              "type": "string",
+                              "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                              "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                            }
+                          }
+                        }
+                      },
+                      "description": "Independently authorized provisioning destination, not a chapter membership, duty or permission. No operational access follows from it. Other provider surfaces await their owning contracts."
+                    }
+                  }
+                },
+                "description": "P02 authenticated session core. The chapter-context slice extends this same schema with chapter choices/current authority. Absence of chapter fields here grants no chapter access. Required MFA is derived from current server authority, never client input."
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "mfa": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string",
+                        "const": "verified"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 400
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "invalid_factor_proof"
+              },
+              "message": {
+                "type": "string",
+                "const": "The factor proof was not accepted."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 401
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "authentication_required"
+              },
+              "message": {
+                "type": "string",
+                "const": "Sign in to continue."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 403
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "origin_forbidden"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "const": "This request is not permitted."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 409
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "challenge_unavailable"
+              },
+              "message": {
+                "type": "string",
+                "const": "Bootstrap the current session before a reviewed next action."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 419
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "csrf_mismatch"
+              },
+              "message": {
+                "type": "string",
+                "const": "Refresh CSRF before a reviewed new attempt."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 422
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "field_errors"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "invalid_input"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check the submitted fields."
+              },
+              "field_errors": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "pointer",
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "pointer": {
+                      "type": "string",
+                      "enum": [
+                        "/challenge_id",
+                        "/method",
+                        "/authenticator_code",
+                        "/recovery_code"
+                      ]
+                    },
+                    "code": {
+                      "type": "string",
+                      "const": "invalid"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Check this field."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body",
+          "retryAfter"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 429
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "throttled"
+              },
+              "message": {
+                "type": "string",
+                "const": "Try again after the indicated delay."
+              }
+            }
+          },
+          "retryAfter": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 503
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "unavailable"
+              },
+              "message": {
+                "type": "string",
+                "const": "The session service is unavailable."
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "regenerateRecoveryCodes": {
+    "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 200
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "session",
+              "recovery_codes"
+            ],
+            "properties": {
+              "session": {
+                "allOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "state",
+                      "user",
+                      "mfa",
+                      "provider_destinations"
+                    ],
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "const": "authenticated"
+                      },
+                      "user": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "display_name"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                            "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                          },
+                          "display_name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "mfa": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "status"
+                            ],
+                            "properties": {
+                              "status": {
+                                "type": "string",
+                                "const": "not_required"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "status",
+                              "verified_at"
+                            ],
+                            "properties": {
+                              "status": {
+                                "type": "string",
+                                "const": "verified"
+                              },
+                              "verified_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                                "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "provider_destinations": {
+                        "type": "array",
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "kind",
+                            "scope"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "chapter_provisioning"
+                            },
+                            "scope": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "kind",
+                                "organization_id"
+                              ],
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "const": "organization"
+                                },
+                                "organization_id": {
+                                  "type": "string",
+                                  "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+                                  "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+                                }
+                              }
+                            }
+                          },
+                          "description": "Independently authorized provisioning destination, not a chapter membership, duty or permission. No operational access follows from it. Other provider surfaces await their owning contracts."
+                        }
+                      }
+                    },
+                    "description": "P02 authenticated session core. The chapter-context slice extends this same schema with chapter choices/current authority. Absence of chapter fields here grants no chapter access. Required MFA is derived from current server authority, never client input."
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mfa": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "const": "verified"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              "recovery_codes": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "issued_at",
+                  "codes"
+                ],
+                "properties": {
+                  "issued_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+                    "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+                  },
+                  "codes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 32,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9]{4}(?:-[A-Z0-9]{4}){3}$"
+                    }
+                  }
+                },
+                "description": "One-time plaintext issuance only in successful confirmation (or separately protected existing-factor challenge/recovery regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 400
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "invalid_factor_proof"
+              },
+              "message": {
+                "type": "string",
+                "const": "The factor proof was not accepted."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 401
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "authentication_required"
+              },
+              "message": {
+                "type": "string",
+                "const": "Sign in to continue."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 403
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "origin_forbidden"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "const": "This request is not permitted."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 409
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "recent_proof_required"
+              },
+              "message": {
+                "type": "string",
+                "const": "Provide current password and authenticator proof in an explicit new request."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 419
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "csrf_mismatch"
+              },
+              "message": {
+                "type": "string",
+                "const": "Refresh CSRF before a reviewed new attempt."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 422
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "field_errors"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "invalid_input"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check the submitted fields."
+              },
+              "field_errors": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "pointer",
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "pointer": {
+                      "type": "string",
+                      "enum": [
+                        "/password",
+                        "/authenticator_code"
+                      ]
+                    },
+                    "code": {
+                      "type": "string",
+                      "const": "invalid"
+                    },
+                    "message": {
+                      "type": "string",
+                      "const": "Check this field."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body",
+          "retryAfter"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 429
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "throttled"
+              },
+              "message": {
+                "type": "string",
+                "const": "Try again after the indicated delay."
+              }
+            }
+          },
+          "retryAfter": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 503
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "unavailable"
+              },
+              "message": {
+                "type": "string",
+                "const": "The session service is unavailable."
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "getAssistedRecoveryGuidance": {
+    "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 200
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "availability",
+              "blocker",
+              "message",
+              "next_actions"
+            ],
+            "properties": {
+              "availability": {
+                "type": "string",
+                "const": "unavailable"
+              },
+              "blocker": {
+                "type": "string",
+                "const": "assisted_recovery_not_approved"
+              },
+              "message": {
+                "type": "string",
+                "const": "Assisted recovery is unavailable until an authorized proof and reset procedure is approved."
+              },
+              "next_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "bootstrap_session",
+                    "sign_out"
+                  ]
+                },
+                "uniqueItems": true,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 401
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "authentication_required"
+              },
+              "message": {
+                "type": "string",
+                "const": "Sign in to continue."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 403
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "origin_forbidden"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "const": "This request is not permitted."
               }
             }
           }

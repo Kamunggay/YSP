@@ -79,6 +79,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/session/mfa/assisted-recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read safe blocked assisted-recovery availability and approved navigation
+         * @description Review candidate; see x-mfa-recovery-contract. All results no-store. No caller identity, Idempotency-Key, durable operation lookup or code readback.
+         */
+        get: operations["getAssistedRecoveryGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/session/mfa/challenge/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify exactly one existing MFA factor for the current restricted challenge
+         * @description Review candidate; see x-mfa-recovery-contract. All results no-store. No caller identity, Idempotency-Key, durable operation lookup or code readback.
+         */
+        post: operations["verifyMfaChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/session/mfa/enrollment": {
         parameters: {
             query?: never;
@@ -113,6 +153,26 @@ export interface paths {
          * @description Contract candidate; see x-enrollment-contract. Requires current password-verified mfa_enrollment_required session and mandatory token AND origin guards. No caller user ID, Idempotency-Key, durable operation or replay readback. All responses no-store.
          */
         post: operations["confirmAuthenticatorEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/session/mfa/recovery-codes/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Explicitly replace the entire recovery-code set using fresh password and authenticator proof
+         * @description Review candidate; see x-mfa-recovery-contract. All results no-store. No caller identity, Idempotency-Key, durable operation lookup or code readback.
+         */
+        post: operations["regenerateRecoveryCodes"];
         delete?: never;
         options?: never;
         head?: never;
@@ -169,84 +229,40 @@ export interface components {
         ActionResult: {
             /** @enum {unknown} */
             action_result: "success" | "blocked" | "stale" | "forbidden" | "uncertain";
-            blocking_reason: {
-                code: string;
-                message: string;
-            } | null;
-            chapter_id: components["schemas"]["CommandContext"]["chapter_id"] | null;
+            blocking_reason: components["schemas"]["BlockingReason"] | null;
+            chapter_id: components["schemas"]["Id"] | null;
             /** @description Optional extension slot only. Endpoint owners MUST constrain/require it with their domain payload schema; this shared slice defines no domain properties. Forbidden and uncertain responses carry no data. Do not use this slot to bypass the owning source operation. */
             data?: Record<string, never> | null;
-            field_feedback: {
-                code: string;
-                message: string;
-                /** Format: json-pointer */
-                path: string;
-            }[];
+            field_feedback: components["schemas"]["FieldFeedback"][];
             /** @enum {unknown} */
             input_policy: "preserve" | "may_clear";
             /** @enum {unknown} */
             lookup_state: null | "not_attempted" | "pending_or_not_visible" | "unavailable";
-            operation: ({
-                committed_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"] | null;
-                /** @description Known attempt identity. Action/key are either both known or both null; ID-only lookup may have no visible action/key. Unknown operation ID stays null. The ID is never fabricated for a request that may not have reached the server. */
-                identity: {
-                    action_code: components["schemas"]["CommandContext"]["action_code"] | null;
-                    idempotency_key: components["schemas"]["CommandContext"]["idempotency_key"] | null;
-                    operation_id: components["schemas"]["OperationLookup"]["oneOf"]["1"]["operation_id"] | null;
-                } & ({
-                    action_code?: components["schemas"]["CommandContext"]["action_code"];
-                    idempotency_key?: components["schemas"]["CommandContext"]["idempotency_key"];
-                } | {
-                    action_code?: null;
-                    idempotency_key?: null;
-                    operation_id?: components["schemas"]["OperationLookup"]["oneOf"]["1"]["operation_id"];
-                });
-                /** @enum {unknown} */
-                outcome: "committed" | "rejected" | "unknown";
-                replayed: boolean;
-            } & unknown) | null;
-            permitted_next_actions: {
-                /** @enum {unknown} */
-                code: "correct_input" | "refresh_record" | "lookup_operation" | "reconcile_activity" | "request_access" | "review_record";
-                label: string;
-            }[];
-            record: {
-                material_version: components["schemas"]["CommandContext"]["expected_material_version"];
-                reference: components["schemas"]["CommandContext"]["record"]["anyOf"]["0"];
-                row_version: components["schemas"]["CommandContext"]["expected_material_version"];
-                states: {
-                    [key: string]: string;
-                };
-            } | null;
+            operation: components["schemas"]["Operation"] | null;
+            permitted_next_actions: components["schemas"]["NextAction"][];
+            record: components["schemas"]["RecordState"] | null;
             /** @constant */
             schema_version: "1.0";
         } & (unknown & unknown & unknown & unknown & unknown);
+        AssistedRecoveryGuidance: {
+            /** @constant */
+            availability: "unavailable";
+            /** @constant */
+            blocker: "assisted_recovery_not_approved";
+            /** @constant */
+            message: "Assisted recovery is unavailable until an authorized proof and reset procedure is approved.";
+            next_actions: ("bootstrap_session" | "sign_out")[];
+        };
         /** @description P02 authenticated session core. The chapter-context slice extends this same schema with chapter choices/current authority. Absence of chapter fields here grants no chapter access. Required MFA is derived from current server authority, never client input. */
         AuthenticatedSession: {
-            mfa: {
-                /** @constant */
-                status: "not_required";
-            } | {
-                /** @constant */
-                status: "verified";
-                verified_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
-            };
-            provider_destinations: {
-                /** @constant */
-                kind: "chapter_provisioning";
-                scope: {
-                    /** @constant */
-                    kind: "organization";
-                    organization_id: components["schemas"]["CommandContext"]["chapter_id"];
-                };
-            }[];
+            mfa: components["schemas"]["SessionMfa"];
+            provider_destinations: components["schemas"]["ProviderDestination"][];
             /** @constant */
             state: "authenticated";
-            user: {
-                display_name: string;
-                id: components["schemas"]["CommandContext"]["chapter_id"];
-            };
+            user: components["schemas"]["SessionUser"];
         };
+        /** @description Transient authenticator proof, never a recovery code or browser draft. */
+        AuthenticatorCode: string;
         /** @description Stable machine reason and scoped human explanation of why the action cannot proceed. Separate from field feedback and from a server-permitted next action. Domain-specific reason codes extend this shape; never disclose another chapter or unauthorized record. */
         BlockingReason: {
             code: string;
@@ -255,46 +271,39 @@ export interface components {
         /** @description Reusable meanings only. Endpoint payload owners choose which times apply; null means unestablished/not applicable, never fabricated equality. Posting/verification/deadline truth remains server-owned. UTC instants are displayed in Asia/Manila without changing elapsed-time comparisons. */
         BusinessTimes: {
             /** @description Server time the information was entered; delayed entry does not replace actual occurrence. */
-            entered_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"] | null;
+            entered_at: components["schemas"]["UtcInstant"] | null;
             /** @description Actual physical/commercial occurrence, retained separately from entry; client assertion is subject to domain verification. */
-            occurred_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"] | null;
+            occurred_at: components["schemas"]["UtcInstant"] | null;
             /** @description Server commit instant when the business posting became durable, null until a posting is established. A rejection result can commit without a business posting. */
-            posted_at: string | null;
+            posted_at: components["schemas"]["UtcInstant"] | null;
             /** @description Actual server-accepted verification instant, not inferred from upload time or backdated to gain timely protection. */
-            verified_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"] | null;
+            verified_at: components["schemas"]["UtcInstant"] | null;
         };
+        /** @description Opaque current identity AND server-session binding, distinct from operation IDs; never an account selector or authority token. */
+        ChallengeId: string;
         ChallengeRequiredSession: {
+            challenge: components["schemas"]["MfaChallenge"];
             /** @constant */
             state: "mfa_challenge_required";
         };
+        ChallengeUnavailable: {
+            /** @constant */
+            code: "challenge_unavailable";
+            /** @constant */
+            message: "Bootstrap the current session before a reviewed next action.";
+        };
         /** @description Normalized transport metadata, NOT a public generic command or HTTP body. Adapter derives chapter/action from the authorized route and key from Idempotency-Key; body contributes record reference and explicit expected versions. A body chapter/action/key override is rejected. Domain input is separately validated by the identity/evidence, IPC/RM and stock-hold schemas. Existing-record commands require the exact expected_row_version; creation explicitly uses null record and null row version. Approval/evidence-bound operations additionally REQUIRE expected_material_version in their own schema and check both versions at commit. No expected_version alias. Never accept actor authority, balances, approval state, allocation choices or payment verification as trusted client values. */
         CommandContext: {
-            /** @description Stable action identity, not a route or an authority grant. Endpoint providers assign action codes; the server rejects a mismatched action. Example names are illustrative until their owning contracts are accepted. */
-            action_code: string;
-            /** @description Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types. */
-            chapter_id: string;
-            /** @description INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap. */
-            expected_material_version?: number;
-            expected_row_version: components["schemas"]["CommandContext"]["expected_material_version"] | null;
-            /** @description Case-sensitive opaque client key, scoped by server-authorized chapter AND action. No trimming or case folding. Generate once before sending and retain with the original attempt and immutable payload. */
-            idempotency_key: string;
-            record: {
-                id: components["schemas"]["CommandContext"]["chapter_id"];
-                kind: string;
-            } | null;
+            action_code: components["schemas"]["ActionCode"];
+            chapter_id: components["schemas"]["Id"];
+            expected_material_version?: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"] | null;
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            record: components["schemas"]["RecordReference"] | null;
         } & unknown;
         ConfirmedEnrollment: {
-            /** @description One-time plaintext issuance only in successful confirmation (or separately protected existing-factor challenge/recovery regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration. */
-            recovery_codes: {
-                codes: string[];
-                issued_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
-            };
-            session: components["schemas"]["SessionSnapshot"]["oneOf"]["3"] & {
-                mfa?: {
-                    /** @constant */
-                    status?: "verified";
-                };
-            };
+            recovery_codes: components["schemas"]["RecoveryCodeIssuance"];
+            session: components["schemas"]["VerifiedSession"];
         };
         ConfirmEnrollmentInvalid: {
             /** @constant */
@@ -311,10 +320,8 @@ export interface components {
             message: "Check the submitted fields.";
         };
         ConfirmEnrollmentRequest: {
-            /** @description Transient authenticator proof, never a recovery code or browser draft. */
-            authenticator_code: string;
-            /** @description Opaque, bounded, case-sensitive identity AND current-session binding. Distinct from durable operation IDs. Never an authority token or user selector. */
-            enrollment_id: string;
+            authenticator_code: components["schemas"]["AuthenticatorCode"];
+            enrollment_id: components["schemas"]["EnrollmentId"];
         };
         EnrollmentConflict: {
             /** @constant */
@@ -347,7 +354,7 @@ export interface components {
             /** Format: json-pointer */
             path: string;
         };
-        ForbiddenResult: components["schemas"]["LookupTerminal"]["allOf"]["0"] & {
+        ForbiddenResult: components["schemas"]["ActionResult"] & {
             /** @constant */
             action_result?: "forbidden";
         };
@@ -355,75 +362,21 @@ export interface components {
         Id: string;
         /** @description Case-sensitive opaque client key, scoped by server-authorized chapter AND action. No trimming or case folding. Generate once before sending and retain with the original attempt and immutable payload. */
         IdempotencyKey: string;
-        InvalidLookup: components["schemas"]["LookupTerminal"]["allOf"]["0"] & {
+        InvalidLookup: components["schemas"]["ActionResult"] & {
             /** @constant */
             action_result?: "blocked";
             operation?: null;
             record?: null;
         };
         /** @description No terminal result visible after current authorization. Not a negative acknowledgment and not permission to repeat a business or physical action. */
-        LookupPending: components["schemas"]["LookupTerminal"]["allOf"]["0"] & {
+        LookupPending: components["schemas"]["ActionResult"] & {
             /** @constant */
             action_result?: "uncertain";
             /** @constant */
             lookup_state?: "pending_or_not_visible";
         };
         /** @description Authorized durable committed/rejected result returned by lookup. The original terminal identity/time is retained and replayed is true; redact/filter using current authorization. */
-        LookupTerminal: ({
-            /** @enum {unknown} */
-            action_result: "success" | "blocked" | "stale" | "forbidden" | "uncertain";
-            blocking_reason: {
-                code: string;
-                message: string;
-            } | null;
-            chapter_id: components["schemas"]["CommandContext"]["chapter_id"] | null;
-            /** @description Optional extension slot only. Endpoint owners MUST constrain/require it with their domain payload schema; this shared slice defines no domain properties. Forbidden and uncertain responses carry no data. Do not use this slot to bypass the owning source operation. */
-            data?: Record<string, never> | null;
-            field_feedback: {
-                code: string;
-                message: string;
-                /** Format: json-pointer */
-                path: string;
-            }[];
-            /** @enum {unknown} */
-            input_policy: "preserve" | "may_clear";
-            /** @enum {unknown} */
-            lookup_state: null | "not_attempted" | "pending_or_not_visible" | "unavailable";
-            operation: ({
-                committed_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"] | null;
-                /** @description Known attempt identity. Action/key are either both known or both null; ID-only lookup may have no visible action/key. Unknown operation ID stays null. The ID is never fabricated for a request that may not have reached the server. */
-                identity: {
-                    action_code: components["schemas"]["CommandContext"]["action_code"] | null;
-                    idempotency_key: components["schemas"]["CommandContext"]["idempotency_key"] | null;
-                    operation_id: components["schemas"]["OperationLookup"]["oneOf"]["1"]["operation_id"] | null;
-                } & ({
-                    action_code?: components["schemas"]["CommandContext"]["action_code"];
-                    idempotency_key?: components["schemas"]["CommandContext"]["idempotency_key"];
-                } | {
-                    action_code?: null;
-                    idempotency_key?: null;
-                    operation_id?: components["schemas"]["OperationLookup"]["oneOf"]["1"]["operation_id"];
-                });
-                /** @enum {unknown} */
-                outcome: "committed" | "rejected" | "unknown";
-                replayed: boolean;
-            } & unknown) | null;
-            permitted_next_actions: {
-                /** @enum {unknown} */
-                code: "correct_input" | "refresh_record" | "lookup_operation" | "reconcile_activity" | "request_access" | "review_record";
-                label: string;
-            }[];
-            record: {
-                material_version: components["schemas"]["CommandContext"]["expected_material_version"];
-                reference: components["schemas"]["CommandContext"]["record"]["anyOf"]["0"];
-                row_version: components["schemas"]["CommandContext"]["expected_material_version"];
-                states: {
-                    [key: string]: string;
-                };
-            } | null;
-            /** @constant */
-            schema_version: "1.0";
-        } & (unknown & unknown & unknown & unknown & unknown)) & {
+        LookupTerminal: components["schemas"]["ActionResult"] & {
             /** @enum {unknown} */
             action_result?: "success" | "blocked" | "stale";
             operation?: {
@@ -431,11 +384,21 @@ export interface components {
                 replayed?: true;
             };
         };
-        LookupUnavailable: components["schemas"]["LookupTerminal"]["allOf"]["0"] & {
+        LookupUnavailable: components["schemas"]["ActionResult"] & {
             /** @constant */
             action_result?: "uncertain";
             /** @constant */
             lookup_state?: "unavailable";
+        };
+        MfaChallenge: {
+            expires_at: components["schemas"]["UtcInstant"];
+            id: components["schemas"]["ChallengeId"];
+        };
+        MfaProofRejected: {
+            /** @constant */
+            code: "invalid_factor_proof";
+            /** @constant */
+            message: "The factor proof was not accepted.";
         };
         /** @description Server-permitted next step and readable label; not an authorization token. Recheck current authority when used. No transport outcome authorizes repeating a physical handover; reconciliation is separate from database retry. */
         NextAction: {
@@ -445,20 +408,8 @@ export interface components {
         };
         /** @description Only a durable, authorized terminal result uses committed/rejected. committed_at is the terminal-result transaction commit time, including a recorded rejection; it is not the physical occurrence or posting time. Unknown has no terminal time and cannot be a replay. Pre-operation validation/permission failures may have no operation at all. */
         Operation: {
-            committed_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"] | null;
-            /** @description Known attempt identity. Action/key are either both known or both null; ID-only lookup may have no visible action/key. Unknown operation ID stays null. The ID is never fabricated for a request that may not have reached the server. */
-            identity: {
-                action_code: components["schemas"]["CommandContext"]["action_code"] | null;
-                idempotency_key: components["schemas"]["CommandContext"]["idempotency_key"] | null;
-                operation_id: components["schemas"]["OperationLookup"]["oneOf"]["1"]["operation_id"] | null;
-            } & ({
-                action_code?: components["schemas"]["CommandContext"]["action_code"];
-                idempotency_key?: components["schemas"]["CommandContext"]["idempotency_key"];
-            } | {
-                action_code?: null;
-                idempotency_key?: null;
-                operation_id?: components["schemas"]["OperationLookup"]["oneOf"]["1"]["operation_id"];
-            });
+            committed_at: components["schemas"]["UtcInstant"] | null;
+            identity: components["schemas"]["OperationIdentity"];
             /** @enum {unknown} */
             outcome: "committed" | "rejected" | "unknown";
             replayed: boolean;
@@ -467,26 +418,25 @@ export interface components {
         OperationId: string;
         /** @description Known attempt identity. Action/key are either both known or both null; ID-only lookup may have no visible action/key. Unknown operation ID stays null. The ID is never fabricated for a request that may not have reached the server. */
         OperationIdentity: {
-            action_code: components["schemas"]["CommandContext"]["action_code"] | null;
-            idempotency_key: components["schemas"]["CommandContext"]["idempotency_key"] | null;
-            operation_id: components["schemas"]["OperationLookup"]["oneOf"]["1"]["operation_id"] | null;
+            action_code: components["schemas"]["ActionCode"] | null;
+            idempotency_key: components["schemas"]["IdempotencyKey"] | null;
+            operation_id: components["schemas"]["OperationId"] | null;
         } & ({
-            action_code?: components["schemas"]["CommandContext"]["action_code"];
-            idempotency_key?: components["schemas"]["CommandContext"]["idempotency_key"];
+            action_code?: components["schemas"]["ActionCode"];
+            idempotency_key?: components["schemas"]["IdempotencyKey"];
         } | {
             action_code?: null;
             idempotency_key?: null;
-            operation_id?: components["schemas"]["OperationLookup"]["oneOf"]["1"]["operation_id"];
+            operation_id?: components["schemas"]["OperationId"];
         });
         /** @description Exactly one lookup selector: action+key within the authorized chapter, or a known public operation ID within that same chapter. No key-only, unscoped-ID or mixed selector. Current membership/duty and record visibility are rechecked before reading or returning any saved result. An absent terminal row is not proof of failure. */
         OperationLookup: {
-            action_code: components["schemas"]["CommandContext"]["action_code"];
-            chapter_id: components["schemas"]["CommandContext"]["chapter_id"];
-            idempotency_key: components["schemas"]["CommandContext"]["idempotency_key"];
+            action_code: components["schemas"]["ActionCode"];
+            chapter_id: components["schemas"]["Id"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
         } | {
-            chapter_id: components["schemas"]["CommandContext"]["chapter_id"];
-            /** @description Opaque case-sensitive server public ULID, not the numeric operations table ID. Possession confers no access. */
-            operation_id: string;
+            chapter_id: components["schemas"]["Id"];
+            operation_id: components["schemas"]["OperationId"];
         };
         /** @description Nonnegative DECIMAL(20,2) posted PHP magnitude with exactly two fractional places. Unit costs/intermediate valuations may use Quantity's DECIMAL(20,6) precision; they are NOT posted money. Approved Finance rounding/valuation policy governs final amounts and residual cents across batches. This contract chooses no rounding policy; missing required policy blocks posting. Never round through binary float. */
         PostedMoney: {
@@ -496,8 +446,8 @@ export interface components {
         };
         PreparedEnrollment: {
             enrollment: {
-                expires_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
-                id: components["schemas"]["ConfirmEnrollmentRequest"]["enrollment_id"];
+                expires_at: components["schemas"]["UtcInstant"];
+                id: components["schemas"]["EnrollmentId"];
                 manual_key: string;
                 /** Format: uri */
                 setup_uri: string;
@@ -523,7 +473,7 @@ export interface components {
             /** @constant */
             intent: "begin";
         } | {
-            enrollment_id: components["schemas"]["ConfirmEnrollmentRequest"]["enrollment_id"];
+            enrollment_id: components["schemas"]["EnrollmentId"];
             /** @constant */
             intent: "replace_unconfirmed";
         };
@@ -534,29 +484,58 @@ export interface components {
             scope: {
                 /** @constant */
                 kind: "organization";
-                organization_id: components["schemas"]["CommandContext"]["chapter_id"];
+                organization_id: components["schemas"]["Id"];
             };
         };
         /** @description Nonnegative DECIMAL(20,6) magnitude: at most fourteen integral and six fractional digits. No exponent, sign, separators or binary floating point. Zero is a transport value; a domain operation may require a positive amount. Fractional trailing zeros are accepted. Canonical fingerprint representation uses six places, so 2 and 2.000000 denote the same exact quantity. Signed ledger deltas require a later explicit domain schema. */
         Quantity: string;
+        RecentProofRequired: {
+            /** @constant */
+            code: "recent_proof_required";
+            /** @constant */
+            message: "Provide current password and authenticator proof in an explicit new request.";
+        };
         /** @description Chapter-relative record identity. The enclosing authorized chapter and server checks establish scope; identifiers alone prove neither existence nor access. Line/evidence references and payloads belong to the identity, record and evidence contract. */
         RecordReference: {
-            id: components["schemas"]["CommandContext"]["chapter_id"];
+            id: components["schemas"]["Id"];
             kind: string;
         };
         /** @description Authorized resulting/current record metadata, not a domain record payload. row_version changes with relevant progress/concurrent writes; material_version pins immutable approved/evidence-bound content. Partial progress can move row 7 to 8 while material remains 3. A material edit increments both and invalidates affected approval with history. Domain schemas enumerate independent approval/fulfillment/payment/exception axes in states; a generic status must not replace them. Returned current state never silently rebases a draft or expected version. */
         RecordState: {
-            material_version: components["schemas"]["CommandContext"]["expected_material_version"];
-            reference: components["schemas"]["CommandContext"]["record"]["anyOf"]["0"];
-            row_version: components["schemas"]["CommandContext"]["expected_material_version"];
+            material_version: components["schemas"]["Version"];
+            reference: components["schemas"]["RecordReference"];
+            row_version: components["schemas"]["Version"];
             states: {
                 [key: string]: string;
             };
         };
+        RecoveryCode: string;
         /** @description One-time plaintext issuance only in successful confirmation (or separately protected existing-factor challenge/recovery regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration. */
         RecoveryCodeIssuance: {
-            codes: string[];
-            issued_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
+            codes: components["schemas"]["RecoveryCode"][];
+            issued_at: components["schemas"]["UtcInstant"];
+        };
+        RegeneratedRecoveryCodes: {
+            recovery_codes: components["schemas"]["RecoveryCodeIssuance"];
+            session: components["schemas"]["VerifiedSession"];
+        };
+        RegenerateRecoveryCodesInvalid: {
+            /** @constant */
+            code: "invalid_input";
+            field_errors: {
+                /** @constant */
+                code: "invalid";
+                /** @constant */
+                message: "Check this field.";
+                /** @enum {string} */
+                pointer: "/password" | "/authenticator_code";
+            }[];
+            /** @constant */
+            message: "Check the submitted fields.";
+        };
+        RegenerateRecoveryCodesRequest: {
+            authenticator_code: components["schemas"]["AuthenticatorCode"];
+            password: string;
         };
         SessionCsrfFailure: {
             /** @constant */
@@ -576,43 +555,10 @@ export interface components {
         } | {
             /** @constant */
             status: "verified";
-            verified_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
+            verified_at: components["schemas"]["UtcInstant"];
         };
         /** @description Closed state union. Restricted states disclose no user/chapter choices/context, duties, permissions, provider destinations or operation data. Disabled, expired and revoked sessions bootstrap as signed_out; reasons are deliberately indistinguishable. */
-        SessionSnapshot: {
-            /** @constant */
-            state: "signed_out";
-        } | {
-            /** @constant */
-            state: "mfa_enrollment_required";
-        } | {
-            /** @constant */
-            state: "mfa_challenge_required";
-        } | {
-            mfa: {
-                /** @constant */
-                status: "not_required";
-            } | {
-                /** @constant */
-                status: "verified";
-                verified_at: components["schemas"]["BusinessTimes"]["posted_at"]["anyOf"]["0"];
-            };
-            provider_destinations: {
-                /** @constant */
-                kind: "chapter_provisioning";
-                scope: {
-                    /** @constant */
-                    kind: "organization";
-                    organization_id: components["schemas"]["CommandContext"]["chapter_id"];
-                };
-            }[];
-            /** @constant */
-            state: "authenticated";
-            user: {
-                display_name: string;
-                id: components["schemas"]["CommandContext"]["chapter_id"];
-            };
-        };
+        SessionSnapshot: components["schemas"]["SignedOutSession"] | components["schemas"]["EnrollmentRequiredSession"] | components["schemas"]["ChallengeRequiredSession"] | components["schemas"]["AuthenticatedSession"];
         SessionThrottled: {
             /** @constant */
             code: "throttled";
@@ -633,7 +579,7 @@ export interface components {
         };
         SessionUser: {
             display_name: string;
-            id: components["schemas"]["CommandContext"]["chapter_id"];
+            id: components["schemas"]["Id"];
         };
         SignedOutSession: {
             /** @constant */
@@ -662,14 +608,46 @@ export interface components {
         /** @description A validating quantity example/read value with server-approved unit metadata. quantity_scale is NOT client authority: operations retrieve the current approved unit scale and recheck before SQL binding. Allowed scales 0–6 follow DATABASE-SCHEMA §2.1/§2.3. Pieces/kits use zero; fractional trailing zeros do not create fractional units. */
         UnitQuantity: {
             quantity_scale: number;
-            /** @description Nonnegative DECIMAL(20,6) magnitude: at most fourteen integral and six fractional digits. No exponent, sign, separators or binary floating point. Zero is a transport value; a domain operation may require a positive amount. Fractional trailing zeros are accepted. Canonical fingerprint representation uses six places, so 2 and 2.000000 denote the same exact quantity. Signed ledger deltas require a later explicit domain schema. */
-            value: string;
+            value: components["schemas"]["Quantity"];
         } & (unknown & unknown & unknown & unknown & unknown & unknown);
         /**
          * Format: date-time
          * @description UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting.
          */
         UtcInstant: string;
+        VerifiedSession: components["schemas"]["AuthenticatedSession"] & {
+            mfa?: {
+                /** @constant */
+                status?: "verified";
+            };
+        };
+        VerifyMfaChallengeInvalid: {
+            /** @constant */
+            code: "invalid_input";
+            field_errors: {
+                /** @constant */
+                code: "invalid";
+                /** @constant */
+                message: "Check this field.";
+                /** @enum {string} */
+                pointer: "/challenge_id" | "/method" | "/authenticator_code" | "/recovery_code";
+            }[];
+            /** @constant */
+            message: "Check the submitted fields.";
+        };
+        VerifyMfaChallengeRequest: {
+            authenticator_code: components["schemas"]["AuthenticatorCode"];
+            challenge_id: components["schemas"]["ChallengeId"];
+            /** @constant */
+            method: "authenticator";
+            recovery_code?: never;
+        } | {
+            authenticator_code?: never;
+            challenge_id: components["schemas"]["ChallengeId"];
+            /** @constant */
+            method: "recovery_code";
+            recovery_code: components["schemas"]["RecoveryCode"];
+        };
         /** @description INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap. */
         Version: number;
     };
@@ -904,6 +882,199 @@ export interface operations {
             };
         };
     };
+    getAssistedRecoveryGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stable safe unavailable result for current password-verified challenge/enrollment or authenticated session. No identity reset or side effects. */
+            200: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistedRecoveryGuidance"];
+                };
+            };
+            /** @description Session expired, revoked, disabled or missing; sign in. */
+            401: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Origin forbidden or current authentication state disallows this operation; no disclosure. */
+            403: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Throttled, respect server Retry-After; no automatic attempt. */
+            429: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value. */
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Service unavailable; uncertainty remains for any earlier mutation. */
+            503: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    verifyMfaChallenge: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Mandatory for success; optional here only to represent missing-token 419 examples. Same-origin does not bypass validation. */
+                "X-XSRF-TOKEN"?: string;
+            };
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyMfaChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Atomically consume proof/challenge, rotate session/CSRF and recompute current authority. No recovery-code issuance. */
+            200: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Separate Set-Cookie fields: host-only ysp_session (Secure; HttpOnly; Path=/; SameSite=Lax), XSRF-TOKEN (Secure; Path=/; SameSite=Lax; readable by JavaScript). No Domain. Values opaque; actual lifetime requires later security approval. Browser JavaScript cannot inspect Set-Cookie. */
+                    "Set-Cookie": string[];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifiedSession"];
+                };
+            };
+            /** @description Well-shaped invalid/expired authenticator proof or invalid/already consumed recovery code. Same safe result, no code existence disclosure. */
+            400: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaProofRejected"];
+                };
+            };
+            /** @description Session expired, revoked, disabled or missing; sign in. */
+            401: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Origin forbidden or current authentication state disallows this operation; no disclosure. */
+            403: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Same safe result for wrong-session, stale, expired or consumed challenge. Bootstrap before a reviewed next step. */
+            409: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChallengeUnavailable"];
+                };
+            };
+            /** @description CSRF failure, refresh before a reviewed attempt; never automatically repeat. */
+            419: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Malformed, mixed or extra proof/identity fields rejected, no secrets echoed. */
+            422: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyMfaChallengeInvalid"];
+                };
+            };
+            /** @description Throttled, respect server Retry-After; no automatic attempt. */
+            429: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value. */
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Service unavailable; uncertainty remains for any earlier mutation. */
+            503: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
     prepareAuthenticatorEnrollment: {
         parameters: {
             query?: never;
@@ -1125,6 +1296,129 @@ export interface operations {
                 };
             };
             /** @description Unavailable. A lost/invalid response never establishes whether a prior unsafe exchange completed. */
+            503: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    regenerateRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Mandatory for success; optional here only to represent missing-token 419 examples. Same-origin does not bypass validation. */
+                "X-XSRF-TOKEN"?: string;
+            };
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegenerateRecoveryCodesRequest"];
+            };
+        };
+        responses: {
+            /** @description Require authenticated verified-MFA session plus both live proofs. Atomically replace all old codes and rotate session/CSRF; new plaintext appears only here. */
+            200: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Separate Set-Cookie fields: host-only ysp_session (Secure; HttpOnly; Path=/; SameSite=Lax), XSRF-TOKEN (Secure; Path=/; SameSite=Lax; readable by JavaScript). No Domain. Values opaque; actual lifetime requires later security approval. Browser JavaScript cannot inspect Set-Cookie. */
+                    "Set-Cookie": string[];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegeneratedRecoveryCodes"];
+                };
+            };
+            /** @description Well-shaped incorrect password or invalid/expired authenticator proof; same safe result with no factor/account disclosure. */
+            400: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaProofRejected"];
+                };
+            };
+            /** @description Session expired, revoked, disabled or missing; sign in. */
+            401: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Origin forbidden or current authentication state disallows this operation; no disclosure. */
+            403: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Proof no longer recent under server-owned window at commit; no regeneration. Never substitute cached verification or recovery proof. */
+            409: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecentProofRequired"];
+                };
+            };
+            /** @description CSRF failure, refresh before a reviewed attempt; never automatically repeat. */
+            419: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Missing, malformed or extra fields; no secrets echoed. */
+            422: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegenerateRecoveryCodesInvalid"];
+                };
+            };
+            /** @description Throttled, respect server Retry-After; no automatic attempt. */
+            429: {
+                headers: {
+                    /** @description Never cache session, credentials or CSRF responses. */
+                    "Cache-Control": "no-store";
+                    /** @description Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value. */
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Service unavailable; uncertainty remains for any earlier mutation. */
             503: {
                 headers: {
                     /** @description Never cache session, credentials or CSRF responses. */

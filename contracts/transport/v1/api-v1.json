@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "YSP shared transport, session and operation lookup",
-    "version": "1.1.0-p02.02-review.1",
+    "version": "1.1.0-p02.04-review.1",
     "description": "Leader-authored P00 transport contract, 24 October 2026. Parent spec: https://github.com/Kamunggay/YSP/issues/2. This is a review candidate; no routes, authentication, durable operations, stock or money are implemented. Glenn's frontend/query review and Efren's posting review remain pending. PRD v1.2/TRD v2.1 retain review-candidate status.\n\nValidate from a clean checkout: `npm --prefix contracts/transport ci --ignore-scripts` then `npm --prefix contracts/transport test`. Node 24.11.1 was used for this contract harness only; P01 selects/pins supported application runtimes separately. Tests use strict Ajv 2020-12 with date-time format assertions and a formal OpenAPI validator. examples.json contains validating expected wire examples; executed schema checks never establish business acceptance.\n\nCommandContext is normalized adapter metadata, not an HTTP command body. Bind chapter/action to the authorized route, Idempotency-Key to the mutation header and explicit expected versions/reference to the endpoint body. Endpoint contracts supply their real domain payload and enumerate the ActionResult.data/state fields. There is no shared POST or public balance setter. Identity/record/evidence payloads are the identity, record and evidence contract, opening acceptance 02, inventory query/hold semantics 03; execution stays in Stage 1.\n\nFor eventual mutations, success uses 200/201 and action_result=success. Correctable field input uses 422/blocked; domain or changed-key conflicts use 409/blocked (an owning contract may retain its established 423 gate status). Concurrent stale row/material input uses 409/stale. Current authentication/authorization failure uses 401/403/forbidden. Unknown outcome is never fabricated as blocked or success. Lookup HTTP 200 can contain an uncertain result; inspect action_result and operation.outcome. Current authorization is checked for every lookup/replay; an old requester or public ID grants no inherited access.\n\nKeep editable draft data separate from the immutable attempted payload, chapter, action, key, versions and known operation ID. Validation errors preserve correct input and show JSON-pointer field feedback alongside the blocking reason and permitted next action. A stale response supplies authorized current metadata for comparison without overwriting the draft or silently substituting versions. Definitive correctable rejection permits a reviewed new attempt with a new key after changed payload; never silently mutate the payload under an old key. Physical actions already performed require reconciliation even if database commitment was rejected or is unknown.\n\nOn timeout, retain that exact attempt and look up action+key in its original authorized chapter; if known, a scoped operation ID is also supported. No visible terminal row may mean the original request is still in flight. Unavailable/malformed/non-JSON lookup keeps uncertainty. Do not issue automatic new attempts, switch chapter/key to bypass uncertainty, or offer another physical handover. After a visible terminal result, only the owning operation's current policy and authorized next steps govern any new reviewed attempt. An internal deadlock retry uses the unchanged business identity/payload and never redoes physical activity.",
     "x-requirements": [
       "TR-02",
@@ -1570,6 +1570,824 @@
           422
         ]
       }
+    },
+    "/session/mfa/challenge/verify": {
+      "post": {
+        "operationId": "verifyMfaChallenge",
+        "summary": "Verify exactly one existing MFA factor for the current restricted challenge",
+        "description": "Review candidate; see x-mfa-recovery-contract. All results no-store. No caller identity, Idempotency-Key, durable operation lookup or code readback.",
+        "security": [
+          {
+            "chapterSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Mandatory for success; optional here only to represent missing-token 419 examples. Same-origin does not bypass validation."
+          }
+        ],
+        "x-session-consumer": true,
+        "x-requirements": [
+          "SEC-01",
+          "SEC-02",
+          "SEC-03",
+          "TR-03",
+          "TR-16",
+          "TR-18",
+          "DOC-11",
+          "UX-02",
+          "UX-03"
+        ],
+        "responses": {
+          "200": {
+            "description": "Atomically consume proof/challenge, rotate session/CSRF and recompute current authority. No recovery-code issuance.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              },
+              "Set-Cookie": {
+                "required": true,
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 2
+                },
+                "description": "Separate Set-Cookie fields: host-only ysp_session (Secure; HttpOnly; Path=/; SameSite=Lax), XSRF-TOKEN (Secure; Path=/; SameSite=Lax; readable by JavaScript). No Domain. Values opaque; actual lifetime requires later security approval. Browser JavaScript cannot inspect Set-Cookie."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/VerifiedSession"
+                },
+                "examples": {
+                  "challenge-authenticator": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-authenticator"
+                  },
+                  "challenge-recovery": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-recovery"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session expired, revoked, disabled or missing; sign in.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "verifyMfaChallenge-401": {
+                    "$ref": "./mfa-recovery-examples.json#/verifyMfaChallenge-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin forbidden or current authentication state disallows this operation; no disclosure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "verifyMfaChallenge-403": {
+                    "$ref": "./mfa-recovery-examples.json#/verifyMfaChallenge-403"
+                  },
+                  "verifyMfaChallenge-origin": {
+                    "$ref": "./mfa-recovery-examples.json#/verifyMfaChallenge-origin"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF failure, refresh before a reviewed attempt; never automatically repeat.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "verifyMfaChallenge-419": {
+                    "$ref": "./mfa-recovery-examples.json#/verifyMfaChallenge-419"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Throttled, respect server Retry-After; no automatic attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "description": "Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "verifyMfaChallenge-429": {
+                    "$ref": "./mfa-recovery-examples.json#/verifyMfaChallenge-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable; uncertainty remains for any earlier mutation.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "verifyMfaChallenge-503": {
+                    "$ref": "./mfa-recovery-examples.json#/verifyMfaChallenge-503"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Well-shaped invalid/expired authenticator proof or invalid/already consumed recovery code. Same safe result, no code existence disclosure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MfaProofRejected"
+                },
+                "examples": {
+                  "challenge-invalid-proof": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-invalid-proof"
+                  },
+                  "challenge-expired-proof": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-expired-proof"
+                  },
+                  "challenge-consumed-code": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-consumed-code"
+                  },
+                  "challenge-replaced-code": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-replaced-code"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Same safe result for wrong-session, stale, expired or consumed challenge. Bootstrap before a reviewed next step.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChallengeUnavailable"
+                },
+                "examples": {
+                  "challenge-wrong-session": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-wrong-session"
+                  },
+                  "challenge-stale": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-stale"
+                  },
+                  "challenge-expired": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-expired"
+                  },
+                  "challenge-consumed": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-consumed"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Malformed, mixed or extra proof/identity fields rejected, no secrets echoed.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/VerifyMfaChallengeInvalid"
+                },
+                "examples": {
+                  "challenge-mixed-fields": {
+                    "$ref": "./mfa-recovery-examples.json#/challenge-mixed-fields"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/VerifyMfaChallengeRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
+    },
+    "/session/mfa/recovery-codes/regenerate": {
+      "post": {
+        "operationId": "regenerateRecoveryCodes",
+        "summary": "Explicitly replace the entire recovery-code set using fresh password and authenticator proof",
+        "description": "Review candidate; see x-mfa-recovery-contract. All results no-store. No caller identity, Idempotency-Key, durable operation lookup or code readback.",
+        "security": [
+          {
+            "chapterSession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Mandatory for success; optional here only to represent missing-token 419 examples. Same-origin does not bypass validation."
+          }
+        ],
+        "x-session-consumer": true,
+        "x-requirements": [
+          "SEC-01",
+          "SEC-02",
+          "SEC-03",
+          "TR-03",
+          "TR-16",
+          "TR-18",
+          "DOC-11",
+          "UX-02",
+          "UX-03"
+        ],
+        "responses": {
+          "200": {
+            "description": "Require authenticated verified-MFA session plus both live proofs. Atomically replace all old codes and rotate session/CSRF; new plaintext appears only here.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              },
+              "Set-Cookie": {
+                "required": true,
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minItems": 2
+                },
+                "description": "Separate Set-Cookie fields: host-only ysp_session (Secure; HttpOnly; Path=/; SameSite=Lax), XSRF-TOKEN (Secure; Path=/; SameSite=Lax; readable by JavaScript). No Domain. Values opaque; actual lifetime requires later security approval. Browser JavaScript cannot inspect Set-Cookie."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/RegeneratedRecoveryCodes"
+                },
+                "examples": {
+                  "recovery-regenerated": {
+                    "$ref": "./mfa-recovery-examples.json#/recovery-regenerated"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session expired, revoked, disabled or missing; sign in.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "regenerateRecoveryCodes-401": {
+                    "$ref": "./mfa-recovery-examples.json#/regenerateRecoveryCodes-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin forbidden or current authentication state disallows this operation; no disclosure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "regenerateRecoveryCodes-403": {
+                    "$ref": "./mfa-recovery-examples.json#/regenerateRecoveryCodes-403"
+                  },
+                  "regenerateRecoveryCodes-origin": {
+                    "$ref": "./mfa-recovery-examples.json#/regenerateRecoveryCodes-origin"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "CSRF failure, refresh before a reviewed attempt; never automatically repeat.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "regenerateRecoveryCodes-419": {
+                    "$ref": "./mfa-recovery-examples.json#/regenerateRecoveryCodes-419"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Throttled, respect server Retry-After; no automatic attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "description": "Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "regenerateRecoveryCodes-429": {
+                    "$ref": "./mfa-recovery-examples.json#/regenerateRecoveryCodes-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable; uncertainty remains for any earlier mutation.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "regenerateRecoveryCodes-503": {
+                    "$ref": "./mfa-recovery-examples.json#/regenerateRecoveryCodes-503"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Well-shaped incorrect password or invalid/expired authenticator proof; same safe result with no factor/account disclosure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MfaProofRejected"
+                },
+                "examples": {
+                  "regeneration-password-invalid": {
+                    "$ref": "./mfa-recovery-examples.json#/regeneration-password-invalid"
+                  },
+                  "regeneration-authenticator-invalid": {
+                    "$ref": "./mfa-recovery-examples.json#/regeneration-authenticator-invalid"
+                  },
+                  "regeneration-authenticator-expired": {
+                    "$ref": "./mfa-recovery-examples.json#/regeneration-authenticator-expired"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Proof no longer recent under server-owned window at commit; no regeneration. Never substitute cached verification or recovery proof.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/RecentProofRequired"
+                },
+                "examples": {
+                  "regeneration-proof-stale": {
+                    "$ref": "./mfa-recovery-examples.json#/regeneration-proof-stale"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Missing, malformed or extra fields; no secrets echoed.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/RegenerateRecoveryCodesInvalid"
+                },
+                "examples": {
+                  "regeneration-missing-password": {
+                    "$ref": "./mfa-recovery-examples.json#/regeneration-missing-password"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/RegenerateRecoveryCodesRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ]
+      }
+    },
+    "/session/mfa/assisted-recovery": {
+      "get": {
+        "operationId": "getAssistedRecoveryGuidance",
+        "summary": "Read safe blocked assisted-recovery availability and approved navigation",
+        "description": "Review candidate; see x-mfa-recovery-contract. All results no-store. No caller identity, Idempotency-Key, durable operation lookup or code readback.",
+        "security": [
+          {
+            "chapterSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "x-session-consumer": true,
+        "x-requirements": [
+          "SEC-01",
+          "SEC-02",
+          "SEC-03",
+          "TR-03",
+          "TR-16",
+          "TR-18",
+          "DOC-11",
+          "UX-02",
+          "UX-03"
+        ],
+        "responses": {
+          "200": {
+            "description": "Stable safe unavailable result for current password-verified challenge/enrollment or authenticated session. No identity reset or side effects.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/AssistedRecoveryGuidance"
+                },
+                "examples": {
+                  "assisted-recovery-blocked": {
+                    "$ref": "./mfa-recovery-examples.json#/assisted-recovery-blocked"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Session expired, revoked, disabled or missing; sign in.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "getAssistedRecoveryGuidance-401": {
+                    "$ref": "./mfa-recovery-examples.json#/getAssistedRecoveryGuidance-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origin forbidden or current authentication state disallows this operation; no disclosure.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "getAssistedRecoveryGuidance-403": {
+                    "$ref": "./mfa-recovery-examples.json#/getAssistedRecoveryGuidance-403"
+                  },
+                  "getAssistedRecoveryGuidance-origin": {
+                    "$ref": "./mfa-recovery-examples.json#/getAssistedRecoveryGuidance-origin"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Throttled, respect server Retry-After; no automatic attempt.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                },
+                "description": "Positive decimal delay seconds, server selected. Fixture delay is illustrative, not an approved rate-limit value."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "getAssistedRecoveryGuidance-429": {
+                    "$ref": "./mfa-recovery-examples.json#/getAssistedRecoveryGuidance-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable; uncertainty remains for any earlier mutation.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "Never cache session, credentials or CSRF responses."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionUnavailable"
+                },
+                "examples": {
+                  "getAssistedRecoveryGuidance-503": {
+                    "$ref": "./mfa-recovery-examples.json#/getAssistedRecoveryGuidance-503"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1740,6 +2558,27 @@
       },
       "ConfirmEnrollmentInvalid": {
         "$ref": "./transport.schema.json#/$defs/ConfirmEnrollmentInvalid"
+      },
+      "ChallengeId": {
+        "$ref": "./transport.schema.json#/$defs/ChallengeId"
+      },
+      "MfaChallenge": {
+        "$ref": "./transport.schema.json#/$defs/MfaChallenge"
+      },
+      "VerifyMfaChallengeRequest": {
+        "$ref": "./transport.schema.json#/$defs/VerifyMfaChallengeRequest"
+      },
+      "VerifiedSession": {
+        "$ref": "./transport.schema.json#/$defs/VerifiedSession"
+      },
+      "RegenerateRecoveryCodesRequest": {
+        "$ref": "./transport.schema.json#/$defs/RegenerateRecoveryCodesRequest"
+      },
+      "RegeneratedRecoveryCodes": {
+        "$ref": "./transport.schema.json#/$defs/RegeneratedRecoveryCodes"
+      },
+      "AssistedRecoveryGuidance": {
+        "$ref": "./transport.schema.json#/$defs/AssistedRecoveryGuidance"
       }
     },
     "responses": {
@@ -1976,8 +2815,53 @@
       "atomic success"
     ],
     "secrets": "Passwords, OTPs, setup URI/manual key, enrollment material and recovery codes are transient; never editable drafts, local/session storage, IndexedDB, durable browser state, URL history, analytics or logs. Clear transient secret UI on completion/navigation/expiry/sign-out; recovery-code download is an explicit user-held secret export, never a browser draft. Bootstrap, errors, chapter context and normal reads cannot disclose setup material or recovery codes.",
-    "lost_confirmation": "Never automatically repeat confirmation or restart enrollment. GET /session discovers current state, never recovery-code readback: authenticated/verified means the session succeeded but lost codes remain unavailable; mfa_enrollment_required does not prove rejection and needs reviewed next action; mfa_challenge_required requires the existing factor; signed_out requires sign-in. The existing-factor challenge/recovery slice owns explicit protected regeneration with fresh proof, or blocked assisted recovery when no usable factor remains. No existing-factor challenge/recovery slice route is invented or required for bootstrap validation.",
+    "lost_confirmation": "Never automatically repeat confirmation or restart enrollment. GET /session discovers current authentication only and never returns codes. See x-mfa-recovery-contract for explicit protected regeneration after bootstrap or safely blocked assisted recovery. A restricted snapshot does not establish rejection; no code delivery/readback is promised.",
     "synthetic": "All public fixtures, setup secrets, OTPs, codes, IDs, five-minute expiry, two-code example and Retry-After 30 are synthetic. Wire format/size bounds are not approved security limits. Actual MFA timing, code count/entropy, throttling/attempt values and proof policy require subsequent backend/security approval before runtime enablement.",
     "scope": "Schema and generated-consumer checks only. Binding, replacement invalidation, one-time verification/issuance, revocation, session rotation and pending-access denial are declarative server review obligations, not executed security enforcement. No production endpoints, code storage or UI."
+  },
+  "x-mfa-recovery-contract": {
+    "revision": "p02.04-review.1",
+    "authored_on": "2026-10-25",
+    "parent_spec": "https://github.com/Kamunggay/YSP/issues/5",
+    "authority": "Owner-authorized contract authoring; proposed wire behavior, not security/backend approval",
+    "review_status": "Glenn consumer, Efren domain/access and security/backend reviews pending; affected freeze/runtime gates remain",
+    "challenge_binding": "Sign-in and bootstrap return only restricted state with opaque challenge id and server expiry; never user, chapter, provider, duty or permission data. A challenge belongs to the current identity AND session. Bootstrap reports the current live challenge and never silently replaces it or extends expiry. Expired/consumed challenge with a remaining restricted session returns 409 on verify; bootstrap may report restricted state with expired metadata until reviewed sign-out/sign-in establishes a fresh challenge. No caller-selected account or challenge preparation endpoint.",
+    "allowed_states": {
+      "verifyMfaChallenge": [
+        "mfa_challenge_required"
+      ],
+      "regenerateRecoveryCodes": [
+        "authenticated with mfa.status verified plus fresh password AND authenticator in this request"
+      ],
+      "getAssistedRecoveryGuidance": [
+        "mfa_enrollment_required",
+        "mfa_challenge_required",
+        "authenticated"
+      ]
+    },
+    "verification": "Select exactly one method and matching proof; reject mixed/extra fields. In one atomic transition validate current disabled status, current MFA policy and authority, session binding, live unconsumed challenge, expiry and factor; consume challenge and single-use recovery code (when chosen), establish verified MFA, rotate session/CSRF and recompute current session/authority. Concurrent attempts permit at most one success. A recovery proof never creates membership, duty, provider authority or a different identity. Authenticator replay/time policy is server-owned.",
+    "failure_precedence": [
+      "origin 403",
+      "unsafe CSRF 419",
+      "throttle 429",
+      "unsafe request shape 422",
+      "current session including disabled/revoked/expired 401",
+      "allowed state 403",
+      "challenge binding/live state or stale recent proof 409",
+      "invalid factor proof 400",
+      "atomic success"
+    ],
+    "regeneration": "Only explicit POST regeneration with both password and live authenticator proof in this request; no cached recent flag, recovery code substitute or retry-triggered generation. Validate freshness again at atomic commit using server-owned proof window. Replace the entire prior set atomically; old unused and consumed codes remain unusable. Issue new plaintext once on this 200, never on bootstrap, errors, list/read, challenge success or replay. Repeating is a new explicit protected replacement, never readback or idempotent replay. Restricted sessions must finish a challenge first.",
+    "storage": "Store recovery-code verifiers using protected one-way storage with secret-safe audit, atomic conditional consumption and whole-set replacement. Protect authenticator material at rest under restricted key access. Never log proof, passwords, setup secrets or plaintext codes. Transient consumer secrets are never editable drafts, durable browser state, URLs or analytics; clear on completion/navigation/expiry/logout. User-held export does not establish delivery or server readback.",
+    "unknown_outcomes": "Unknown challenge or confirmation response requires explicit GET bootstrap before any reviewed next step; no automatic retries. Authenticated verified state establishes current authentication only, never code delivery. Restricted state does not prove the previous mutation failed. Lost confirmation/regeneration issuance promises neither plaintext delivery nor readback nor automatic regeneration. After bootstrap, an officer retaining an authenticator can explicitly regenerate with fresh password and authenticator proof in a verified session; challenge-required officers first verify a factor. Loss of both usable factors reaches only the blocked assisted-recovery guidance. Logout always remains available.",
+    "assisted_recovery": "Read-only stable unavailable/blocker response; only bootstrap_session and sign_out navigation. No reset authority, identity-proof upload, contact, email/SMS, support ticket, notification or reset operation is authorized. Restoring identity would never add chapter authority.",
+    "server_values": "Challenge lifetime, session lifetime, attempt limits, authenticator replay/time policy, recent password/authenticator proof window and code entropy/count require subsequent security/backend approval before runtime enablement. All fixture IDs, proofs, code count, UTC dates and Retry-After are public synthetic examples, never prototype defaults.",
+    "validation_boundary": "Executed schema/example validation, deterministic generation, strict positive/negative compile checks and synthetic consumer exchanges only. Scenarios marked declarative_server_review are obligations for future real backend security/concurrency/storage/revocation tests, not executed security evidence.",
+    "compatibility": {
+      "base_revision": "0a39e7512a7c5438b143914e39f2e15a72d85d56",
+      "stage_0": "Existing lookup routes and exact transport vectors unchanged; historical evidence retained in Git and successor reconciliation.",
+      "p02_challenge_snapshot": "Required challenge object (id/expires_at) added to mfa_challenge_required. Breaking for old producers and closed runtime validators; regenerate consumers and update sign-in/bootstrap fixtures together. Earlier P02 wire freeze remains pending. Other state discriminants and authenticated/enrollment shapes preserved.",
+      "generated_constraints": "False opposite-proof properties generate optional never fields, rejecting mixed proof variables and literals. Regex, time/ID ranges, array uniqueness/size and closure for general nonliteral objects remain runtime-only; generated TypeScript does not prove oneOf exclusivity generally."
+    }
   }
 }

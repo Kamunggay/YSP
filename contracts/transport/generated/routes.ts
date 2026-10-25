@@ -31,5 +31,17 @@ export const routes = {
   "confirmAuthenticatorEnrollment": {
     "method": "POST",
     "path": "/api/v1/session/mfa/enrollment/confirm"
+  },
+  "verifyMfaChallenge": {
+    "method": "POST",
+    "path": "/api/v1/session/mfa/challenge/verify"
+  },
+  "regenerateRecoveryCodes": {
+    "method": "POST",
+    "path": "/api/v1/session/mfa/recovery-codes/regenerate"
+  },
+  "getAssistedRecoveryGuidance": {
+    "method": "GET",
+    "path": "/api/v1/session/mfa/assisted-recovery"
   }
 } as const;

@@ -63,7 +63,11 @@ export const consumerExamples = [
       "kind": "response",
       "status": 200,
       "body": {
-        "state": "mfa_challenge_required"
+        "state": "mfa_challenge_required",
+        "challenge": {
+          "id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "expires_at": "2026-10-25T06:05:00.000000Z"
+        }
       }
     }
   },
@@ -162,7 +166,11 @@ export const consumerExamples = [
       "kind": "response",
       "status": 200,
       "body": {
-        "state": "mfa_challenge_required"
+        "state": "mfa_challenge_required",
+        "challenge": {
+          "id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "expires_at": "2026-10-25T06:05:00.000000Z"
+        }
       }
     }
   },
@@ -928,6 +936,594 @@ export const consumerExamples = [
         "message": "The session service is unavailable."
       }
     }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "state": "authenticated",
+        "user": {
+          "id": "9007199254740994",
+          "display_name": "Synthetic approver"
+        },
+        "mfa": {
+          "status": "verified",
+          "verified_at": "2026-10-25T06:01:00.000000Z"
+        },
+        "provider_destinations": []
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "recovery_code",
+        "recovery_code": "DEMO-CODE-0001-AAAA"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "state": "authenticated",
+        "user": {
+          "id": "9007199254740994",
+          "display_name": "Synthetic approver"
+        },
+        "mfa": {
+          "status": "verified",
+          "verified_at": "2026-10-25T06:01:00.000000Z"
+        },
+        "provider_destinations": []
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "origin_forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_factor_proof",
+        "message": "The factor proof was not accepted."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_factor_proof",
+        "message": "The factor proof was not accepted."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "method": "recovery_code",
+        "recovery_code": "DEMO-CODE-0001-AAAA"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_factor_proof",
+        "message": "The factor proof was not accepted."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+        "method": "recovery_code",
+        "recovery_code": "DEMO-CODE-0002-BBBB"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_factor_proof",
+        "message": "The factor proof was not accepted."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "challenge_unavailable",
+        "message": "Bootstrap the current session before a reviewed next action."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "challenge_unavailable",
+        "message": "Bootstrap the current session before a reviewed next action."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "challenge_unavailable",
+        "message": "Bootstrap the current session before a reviewed next action."
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "request": {
+      "body": {
+        "challenge_id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "method": "authenticator",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "challenge_unavailable",
+        "message": "Bootstrap the current session before a reviewed next action."
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "session": {
+          "state": "authenticated",
+          "user": {
+            "id": "9007199254740994",
+            "display_name": "Synthetic approver"
+          },
+          "mfa": {
+            "status": "verified",
+            "verified_at": "2026-10-25T06:01:00.000000Z"
+          },
+          "provider_destinations": []
+        },
+        "recovery_codes": {
+          "issued_at": "2026-10-25T06:01:00.000000Z",
+          "codes": [
+            "DEMO-NEWC-0001-AAAA",
+            "DEMO-NEWC-0002-BBBB"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "origin_forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_factor_proof",
+        "message": "The factor proof was not accepted."
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_factor_proof",
+        "message": "The factor proof was not accepted."
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_factor_proof",
+        "message": "The factor proof was not accepted."
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "request": {
+      "body": {
+        "password": "synthetic-only",
+        "authenticator_code": "123456"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 409,
+      "body": {
+        "code": "recent_proof_required",
+        "message": "Provide current password and authenticator proof in an explicit new request."
+      }
+    }
+  },
+  {
+    "operationId": "getAssistedRecoveryGuidance",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 200,
+      "body": {
+        "availability": "unavailable",
+        "blocker": "assisted_recovery_not_approved",
+        "message": "Assisted recovery is unavailable until an authorized proof and reset procedure is approved.",
+        "next_actions": [
+          "bootstrap_session",
+          "sign_out"
+        ]
+      }
+    }
+  },
+  {
+    "operationId": "getAssistedRecoveryGuidance",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "getAssistedRecoveryGuidance",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "getAssistedRecoveryGuidance",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "origin_forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "getAssistedRecoveryGuidance",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "30"
+    }
+  },
+  {
+    "operationId": "getAssistedRecoveryGuidance",
+    "request": {},
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    }
   }
 ] as const satisfies readonly ConsumerExample[];
 export const rejectedRequestResponses = [
@@ -978,6 +1574,42 @@ export const rejectedRequestResponses = [
         "field_errors": [
           {
             "pointer": "/authenticator_code",
+            "code": "invalid",
+            "message": "Check this field."
+          }
+        ]
+      }
+    }
+  },
+  {
+    "operationId": "verifyMfaChallenge",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "invalid_input",
+        "message": "Check the submitted fields.",
+        "field_errors": [
+          {
+            "pointer": "/method",
+            "code": "invalid",
+            "message": "Check this field."
+          }
+        ]
+      }
+    }
+  },
+  {
+    "operationId": "regenerateRecoveryCodes",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "invalid_input",
+        "message": "Check the submitted fields.",
+        "field_errors": [
+          {
+            "pointer": "/password",
             "code": "invalid",
             "message": "Check this field."
           }

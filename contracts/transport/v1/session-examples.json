@@ -32,7 +32,11 @@
   "bootstrap-challenge": {
     "summary": "bootstrap-challenge",
     "value": {
-      "state": "mfa_challenge_required"
+      "state": "mfa_challenge_required",
+      "challenge": {
+        "id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "expires_at": "2026-10-25T06:05:00.000000Z"
+      }
     }
   },
   "bootstrap-requester": {
@@ -96,7 +100,11 @@
   "sign-in-challenge": {
     "summary": "sign-in-challenge",
     "value": {
-      "state": "mfa_challenge_required"
+      "state": "mfa_challenge_required",
+      "challenge": {
+        "id": "chl_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "expires_at": "2026-10-25T06:05:00.000000Z"
+      }
     }
   },
   "sign-in-requester": {

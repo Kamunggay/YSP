@@ -4,8 +4,22 @@ import { fileURLToPath } from 'node:url';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import openapiTS, { astToString } from 'openapi-typescript';
 
+// Give shared definitions stable component names before bundling. Otherwise the
+// bundler can target a oneOf member and the generator emits invalid TS indexing.
+const source = JSON.parse(await readFile(new URL('./v1/api-v1.json', import.meta.url), 'utf8'));
+const shared = JSON.parse(await readFile(new URL('./v1/transport.schema.json', import.meta.url), 'utf8'));
+function nameSharedRefs(value, prefix) {
+  if (Array.isArray(value)) return value.map(child => nameSharedRefs(child, prefix));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, child]) => [key,
+    key === '$ref' && typeof child === 'string' && child.startsWith(prefix)
+      ? child.replace(prefix, '#/components/schemas/') : nameSharedRefs(child, prefix),
+  ]));
+  return value;
+}
+const input = nameSharedRefs(source, './transport.schema.json#/$defs/');
+Object.assign(input.components.schemas, nameSharedRefs(shared.$defs, '#/$defs/'));
 // Resolve local shared definitions first; generation must never fetch remote schemas.
-const api = await SwaggerParser.bundle(fileURLToPath(new URL('./v1/api-v1.json', import.meta.url)), {
+const api = await SwaggerParser.bundle(fileURLToPath(new URL('./v1/api-v1.json', import.meta.url)), input, {
   resolve: { http: false },
 });
 const types = astToString(await openapiTS(api, { alphabetize: true }));
@@ -39,7 +53,7 @@ for (const item of Object.values(resolved.paths)) {
   }
 }
 outputs['session-validation.json'] = `${JSON.stringify(consumerSchemas, null, 2)}\n`;
-const exchanges = (await Promise.all(['session', 'enrollment'].map(async slice =>
+const exchanges = (await Promise.all(['session', 'enrollment', 'mfa-recovery'].map(async slice =>
   JSON.parse(await readFile(new URL(`./v1/${slice}-exchanges.json`, import.meta.url), 'utf8'))))).flat();
 const examples = exchanges.map(({ operationId, request, response }) => ({
   operationId,

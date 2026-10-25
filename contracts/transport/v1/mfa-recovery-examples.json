@@ -1,0 +1,299 @@
+{
+  "challenge-authenticator": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "state": "authenticated",
+      "user": {
+        "id": "9007199254740994",
+        "display_name": "Synthetic approver"
+      },
+      "mfa": {
+        "status": "verified",
+        "verified_at": "2026-10-25T06:01:00.000000Z"
+      },
+      "provider_destinations": []
+    }
+  },
+  "challenge-recovery": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "state": "authenticated",
+      "user": {
+        "id": "9007199254740994",
+        "display_name": "Synthetic approver"
+      },
+      "mfa": {
+        "status": "verified",
+        "verified_at": "2026-10-25T06:01:00.000000Z"
+      },
+      "provider_destinations": []
+    }
+  },
+  "verifyMfaChallenge-401": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "verifyMfaChallenge-403": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "verifyMfaChallenge-origin": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "origin_forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "verifyMfaChallenge-419": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "verifyMfaChallenge-429": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "verifyMfaChallenge-503": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "challenge-invalid-proof": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "invalid_factor_proof",
+      "message": "The factor proof was not accepted."
+    }
+  },
+  "challenge-expired-proof": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "invalid_factor_proof",
+      "message": "The factor proof was not accepted."
+    }
+  },
+  "challenge-consumed-code": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "invalid_factor_proof",
+      "message": "The factor proof was not accepted."
+    }
+  },
+  "challenge-replaced-code": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "invalid_factor_proof",
+      "message": "The factor proof was not accepted."
+    }
+  },
+  "challenge-wrong-session": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "challenge_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "challenge-stale": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "challenge_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "challenge-expired": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "challenge_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "challenge-consumed": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "challenge_unavailable",
+      "message": "Bootstrap the current session before a reviewed next action."
+    }
+  },
+  "challenge-mixed-fields": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "invalid_input",
+      "message": "Check the submitted fields.",
+      "field_errors": [
+        {
+          "pointer": "/method",
+          "code": "invalid",
+          "message": "Check this field."
+        }
+      ]
+    }
+  },
+  "recovery-regenerated": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "session": {
+        "state": "authenticated",
+        "user": {
+          "id": "9007199254740994",
+          "display_name": "Synthetic approver"
+        },
+        "mfa": {
+          "status": "verified",
+          "verified_at": "2026-10-25T06:01:00.000000Z"
+        },
+        "provider_destinations": []
+      },
+      "recovery_codes": {
+        "issued_at": "2026-10-25T06:01:00.000000Z",
+        "codes": [
+          "DEMO-NEWC-0001-AAAA",
+          "DEMO-NEWC-0002-BBBB"
+        ]
+      }
+    }
+  },
+  "regenerateRecoveryCodes-401": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "regenerateRecoveryCodes-403": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "regenerateRecoveryCodes-origin": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "origin_forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "regenerateRecoveryCodes-419": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "csrf_mismatch",
+      "message": "Refresh CSRF before a reviewed new attempt."
+    }
+  },
+  "regenerateRecoveryCodes-429": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "regenerateRecoveryCodes-503": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  },
+  "regeneration-password-invalid": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "invalid_factor_proof",
+      "message": "The factor proof was not accepted."
+    }
+  },
+  "regeneration-authenticator-invalid": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "invalid_factor_proof",
+      "message": "The factor proof was not accepted."
+    }
+  },
+  "regeneration-authenticator-expired": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "invalid_factor_proof",
+      "message": "The factor proof was not accepted."
+    }
+  },
+  "regeneration-proof-stale": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "recent_proof_required",
+      "message": "Provide current password and authenticator proof in an explicit new request."
+    }
+  },
+  "regeneration-missing-password": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "invalid_input",
+      "message": "Check the submitted fields.",
+      "field_errors": [
+        {
+          "pointer": "/password",
+          "code": "invalid",
+          "message": "Check this field."
+        }
+      ]
+    }
+  },
+  "assisted-recovery-blocked": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "availability": "unavailable",
+      "blocker": "assisted_recovery_not_approved",
+      "message": "Assisted recovery is unavailable until an authorized proof and reset procedure is approved.",
+      "next_actions": [
+        "bootstrap_session",
+        "sign_out"
+      ]
+    }
+  },
+  "getAssistedRecoveryGuidance-401": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "authentication_required",
+      "message": "Sign in to continue."
+    }
+  },
+  "getAssistedRecoveryGuidance-403": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "getAssistedRecoveryGuidance-origin": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "origin_forbidden",
+      "message": "This request is not permitted."
+    }
+  },
+  "getAssistedRecoveryGuidance-429": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "throttled",
+      "message": "Try again after the indicated delay."
+    }
+  },
+  "getAssistedRecoveryGuidance-503": {
+    "summary": "Public synthetic fixture, not executed security evidence",
+    "value": {
+      "code": "unavailable",
+      "message": "The session service is unavailable."
+    }
+  }
+}

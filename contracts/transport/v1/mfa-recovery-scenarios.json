@@ -1,0 +1,380 @@
+[
+  {
+    "id": "authenticator",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Current password-verified restricted session owns live challenge A; authenticator is valid.",
+    "exchanges": [
+      "bootstrap-challenge",
+      "challenge-authenticator"
+    ],
+    "obligation": "Atomically verify proof under approved time/replay policy, consume A and rotate session/CSRF. Recompute disabled status, MFA requirement and authority before returning authenticated verified state. No codes or extra membership/duty are granted.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "single-use-recovery",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Current restricted session owns A and an unused recovery code.",
+    "exchanges": [
+      "bootstrap-challenge",
+      "challenge-recovery",
+      "bootstrap-approver"
+    ],
+    "obligation": "Compare protected verifier and atomically consume both code and challenge, then rotate session/CSRF. Concurrent use on different valid sessions/challenges has at most one success. Recovery restores only the same identity with its currently authorized membership/duties/provider scope; it cannot add any authority.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "consumed-code-reuse",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Code from successful challenge A is reused on fresh live challenge B of the same identity.",
+    "exchanges": [
+      "challenge-recovery",
+      "challenge-consumed-code"
+    ],
+    "obligation": "Return 400 invalid_factor_proof on B with the identical consumed code. Do not confuse code reuse with stale challenge failure. No existence/consumption detail or verification is disclosed. Code consumption remains atomic across sessions.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "wrong-session",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "A belongs to a different identity OR another session of this identity.",
+    "exchanges": [
+      "challenge-wrong-session"
+    ],
+    "obligation": "Return indistinguishable 409 challenge_unavailable before proof evaluation; no account selection, challenge replacement or authority. Never disclose owner/existence.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "stale-challenge",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "A was revoked, replaced by reauthentication or consumed.",
+    "exchanges": [
+      "challenge-stale",
+      "challenge-consumed",
+      "bootstrap-challenge"
+    ],
+    "obligation": "Return 409 for stale/consumed A; even valid factor proof cannot resurrect it. Bootstrap current state before reviewed sign-out/sign-in or factor action; it must not silently regenerate a challenge.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "expired-challenge",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Server expiry passed for A; or session itself expired.",
+    "exchanges": [
+      "challenge-expired",
+      "verifyMfaChallenge-401",
+      "bootstrap-signed-out"
+    ],
+    "obligation": "Expired challenge in live restricted session is 409; expired/revoked/disabled session is 401. Bootstrap first. GET does not extend expiry. Approved lifetimes remain server-owned review inputs, fixture timestamps are synthetic.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "invalid-proof",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Live matching A; proof is wrong or outside the approved authenticator time window.",
+    "exchanges": [
+      "challenge-invalid-proof",
+      "challenge-expired-proof",
+      "regeneration-password-invalid",
+      "regeneration-authenticator-invalid",
+      "regeneration-authenticator-expired"
+    ],
+    "obligation": "Return safe 400 without echoing secrets, verifying MFA, issuing codes or changing authority. Incorrect password and authenticator errors on regeneration do not identify which secret failed. Missing/malformed/mixed proof is instead 422.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "throttled",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Server-owned attempt policy throttles requests.",
+    "exchanges": [
+      "verifyMfaChallenge-429",
+      "regenerateRecoveryCodes-429",
+      "getAssistedRecoveryGuidance-429"
+    ],
+    "obligation": "Return positive Retry-After, no verification/regeneration and no automatic retry. Fixture delay 30 is not an approved rate limit.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "restricted-access",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Required MFA remains pending, including loss of both usable factors.",
+    "exchanges": [
+      "bootstrap-challenge",
+      "lookupOperationByKey-403-forbidden",
+      "regenerateRecoveryCodes-403",
+      "verifyMfaChallenge-419",
+      "logout"
+    ],
+    "obligation": "No protected chapter/provider/context/duty data before proof succeeds; regeneration cannot bypass challenge. Unsafe requests require both CSRF and origin guards. Logout remains available from restricted state and invalidates server session.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "regeneration",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Verified MFA session has current password AND live authenticator proof supplied explicitly.",
+    "exchanges": [
+      "recovery-regenerated",
+      "challenge-replaced-code",
+      "regeneration-missing-password",
+      "bootstrap-approver"
+    ],
+    "obligation": "Validate both proofs and freshness at atomic commit; replace entire old code set and issue new plaintext once on designated no-store 200. All old unused codes become invalid; concurrent consumption/replacement is serialized with at most one consumption per code. No read/list/bootstrap/retry can read back codes or automatically regenerate. Explicit repeat with new live proofs is a new replacement, never delivery/replay.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "stale-recent-proof",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Both well-shaped proofs were supplied but freshness elapsed before atomic regeneration commit.",
+    "exchanges": [
+      "regeneration-proof-stale"
+    ],
+    "obligation": "Return 409 recent_proof_required without replacing or issuing any codes; require explicit fresh password AND authenticator proof after reviewed current-state check. No caller timestamp/recent flag or cached session assertion substitutes. Timing policy is unapproved and server-owned.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "authority-reevaluation",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Account disabled, membership/duty revoked or MFA policy changes while a challenge/regeneration is in flight.",
+    "exchanges": [
+      "verifyMfaChallenge-401",
+      "regenerateRecoveryCodes-401",
+      "verifyMfaChallenge-403",
+      "challenge-authenticator",
+      "bootstrap-signed-out"
+    ],
+    "obligation": "Reevaluate current disabled status, authority and MFA policy at transition/privileged use, never trust the challenge issuance snapshot. Disabled/revoked session cannot verify or issue codes; changed state can deny with 403 and bootstrap. Recompute current access on success; recovery never restores revoked membership/duty. Disablement revokes sessions and prevents queued protected-output delivery under TR-16; production concurrency/revocation tests remain future work.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "protected-storage",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Codes and authenticator secrets exist server-side; transient proof/issuance appears in a client.",
+    "exchanges": [
+      "challenge-recovery",
+      "recovery-regenerated",
+      "bootstrap-approver"
+    ],
+    "obligation": "Use protected one-way code verifiers, restricted/encrypted authenticator material and secret-safe audit. Atomically consume code verifiers and replace sets. Passwords, OTPs, plaintext codes and setup secrets never enter logs, drafts, durable browser storage, URLs or analytics. Clear transient secrets on completion/navigation/expiry/sign-out. No ordinary read or error can disclose secrets; user export does not prove delivery.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  },
+  {
+    "id": "unknown-challenge",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Challenge response lost/malformed after possible successful transition.",
+    "exchanges": [
+      "challenge-authenticator",
+      "challenge-recovery",
+      "bootstrap-approver",
+      "bootstrap-challenge",
+      "bootstrap-enrollment",
+      "bootstrap-signed-out"
+    ],
+    "obligation": "Explicit bootstrap before any reviewed next step. Authenticated verified reports current identity state only. Pending state does not prove rejection; never automatically repeat proof or replace challenge. Use current challenge only after review or sign out to abandon. No additional chapter authority and no recovery-code issuance/readback.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests.",
+    "automatic_mutation_retries": []
+  },
+  {
+    "id": "lost-code-issuance",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Confirmation or explicit regeneration may have committed but plaintext response was lost.",
+    "exchanges": [
+      "enrollment-confirm-live",
+      "recovery-regenerated",
+      "bootstrap-approver",
+      "bootstrap-challenge",
+      "bootstrap-enrollment",
+      "bootstrap-signed-out",
+      "assisted-recovery-blocked"
+    ],
+    "obligation": "Bootstrap first after unknown confirmation or regeneration; no automatic retry/restart, delivery promise, code readback or automatic replacement. Verified state does not prove codes were seen. With authenticator retained, explicitly regenerate using fresh password AND authenticator proof from a verified session; if challenged, first verify a current factor. Without either usable factor, use only blocked assisted-recovery guidance. Recovery grants no membership or duty.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests.",
+    "automatic_mutation_retries": []
+  },
+  {
+    "id": "both-factors-lost",
+    "verification": "declarative_server_review",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-16",
+      "TR-18",
+      "DOC-11",
+      "UX-02",
+      "UX-03"
+    ],
+    "precondition": "Password-verified officer has lost authenticator and every usable recovery code.",
+    "exchanges": [
+      "assisted-recovery-blocked",
+      "bootstrap-challenge",
+      "logout"
+    ],
+    "obligation": "Read stable unavailable assisted_recovery_not_approved; only bootstrap_session or sign_out. No reset authority, proof upload, contact, email/SMS, ticket creation or notification is invented. Regeneration cannot use password alone. Logout remains available to abandon challenge. Future approved identity recovery still cannot add chapter authority.",
+    "limitations": "Executed checks validate wire shapes, generated types and synthetic consumer handling only. Binding, proof verification, single-use consumption, code storage, concurrency, policy/authority enforcement and rotation need future executed backend security tests."
+  }
+]

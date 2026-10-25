@@ -79,3 +79,55 @@ export async function compileEnrollment(signal: AbortSignal, fetcher: typeof fet
   // @ts-expect-error Caller cannot assert verified status.
   await exchangeSession('confirmAuthenticatorEnrollment', { ...common, body: { enrollment_id: 'enr_synthetic', authenticator_code: '123456', verified: true } });
 }
+
+export async function compileMfaRecovery(signal: AbortSignal, fetcher: typeof fetch): Promise<void> {
+  const common = { origin: 'https://ysp.example.test', cookie: '', signal, fetch: fetcher };
+  const bootstrap = await exchangeSession('getSession', common);
+  if (bootstrap.kind === 'response' && bootstrap.status === 200 && bootstrap.body.state === 'mfa_challenge_required') {
+    const challenge_id = bootstrap.body.challenge.id;
+    await exchangeSession('verifyMfaChallenge', { ...common, body: { challenge_id, method: 'authenticator', authenticator_code: '123456' } });
+    const proof = await exchangeSession('verifyMfaChallenge', { ...common, body: { challenge_id, method: 'recovery_code', recovery_code: 'DEMO-CODE-0001-AAAA' } });
+    if (proof.kind === 'response' && proof.status === 200) {
+      const verified: 'verified' = proof.body.mfa.status;
+      sessionNextAction(proof.body);
+      // @ts-expect-error Challenge success cannot issue or retrieve recovery codes.
+      proof.body.recovery_codes;
+      void verified;
+    }
+  }
+  const regeneration = await exchangeSession('regenerateRecoveryCodes', { ...common, body: { password: 'synthetic-only', authenticator_code: '123456' } });
+  if (regeneration.kind === 'response' && regeneration.status === 200) {
+    regeneration.body.recovery_codes.codes.forEach(code => code.toLowerCase());
+    const verified: 'verified' = regeneration.body.session.mfa.status;
+    void verified;
+  }
+  const guidance = await exchangeSession('getAssistedRecoveryGuidance', common);
+  if (guidance.kind === 'response' && guidance.status === 200) {
+    const blocked: 'unavailable' = guidance.body.availability;
+    const actions: readonly ('bootstrap_session' | 'sign_out')[] = guidance.body.next_actions;
+    // @ts-expect-error No reset URL or procedure is authorized.
+    guidance.body.reset_url;
+    void [blocked, actions];
+  }
+  // @ts-expect-error Missing matching authenticator proof.
+  await exchangeSession('verifyMfaChallenge', { ...common, body: { challenge_id: 'chl_synthetic', method: 'authenticator' } });
+  // @ts-expect-error A recovery method cannot carry authenticator proof.
+  await exchangeSession('verifyMfaChallenge', { ...common, body: { challenge_id: 'chl_synthetic', method: 'recovery_code', authenticator_code: '123456' } });
+  // @ts-expect-error Mixed proof literal is forbidden.
+  await exchangeSession('verifyMfaChallenge', { ...common, body: { challenge_id: 'chl_synthetic', method: 'authenticator', authenticator_code: '123456', recovery_code: 'DEMO-CODE-0001-AAAA' } });
+  const mixed: { challenge_id: string; method: 'recovery_code'; authenticator_code: string; recovery_code: string } = {
+    challenge_id: 'chl_synthetic', method: 'recovery_code', authenticator_code: '123456', recovery_code: 'DEMO-CODE-0001-AAAA',
+  };
+  // @ts-expect-error Explicit forbidden opposite field rejects mixed proof variables too.
+  await exchangeSession('verifyMfaChallenge', { ...common, body: mixed });
+  // @ts-expect-error Account identity is always server/session-owned.
+  await exchangeSession('verifyMfaChallenge', { ...common, body: { challenge_id: 'chl_synthetic', method: 'authenticator', authenticator_code: '123456', user_id: '1' } });
+  // @ts-expect-error Regeneration requires a password as well as authenticator proof.
+  await exchangeSession('regenerateRecoveryCodes', { ...common, body: { authenticator_code: '123456' } });
+  // @ts-expect-error A recovery code cannot substitute for an authenticator in regeneration.
+  await exchangeSession('regenerateRecoveryCodes', { ...common, body: { password: 'synthetic-only', recovery_code: 'DEMO-CODE-0001-AAAA' } });
+  // @ts-expect-error Recent proof time is server-owned.
+  await exchangeSession('regenerateRecoveryCodes', { ...common, body: { password: 'synthetic-only', authenticator_code: '123456', recent_proof_at: '2026-10-25T06:00:00.000000Z' } });
+  // @ts-expect-error Guidance accepts no identity/proof upload body.
+  await exchangeSession('getAssistedRecoveryGuidance', { ...common, body: { user_id: '1' } });
+}
