@@ -1,0 +1,335 @@
+{
+  "evidence_state": "expected",
+  "description": "Synthetic two-line IPC compatible with the identity, record and evidence contract; illustrative hashes/signatures are not real stored files or officer acceptance.",
+  "source": {
+    "state": {
+      "reference": {
+        "id": "9007199254740993",
+        "kind": "IPC"
+      },
+      "row_version": 8,
+      "material_version": 1,
+      "states": {
+        "approval": "approved",
+        "progress": "not_started",
+        "exception": "none"
+      }
+    },
+    "target": {
+      "chapter_id": "1",
+      "record": {
+        "id": "9007199254740993",
+        "kind": "IPC"
+      },
+      "material_version": 1,
+      "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+    },
+    "previous_version": null,
+    "material": {
+      "chapter_id": "1",
+      "record": {
+        "id": "9007199254740993",
+        "kind": "IPC"
+      },
+      "cutoff_at": "2026-10-23T23:00:00.000000Z",
+      "counted_at": "2026-10-24T06:00:00.000000Z",
+      "purpose": "Synthetic opening count; contract example only",
+      "policy_version_id": "42",
+      "counters": [
+        {
+          "user_id": "11",
+          "is_regular_custodian": true
+        },
+        {
+          "user_id": "12",
+          "is_regular_custodian": false
+        }
+      ],
+      "lines": [
+        {
+          "reference": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "line_id": "501",
+            "line_kind": "IPC",
+            "variant_id": "71"
+          },
+          "location_id": "81",
+          "custody_assignment_id": "82",
+          "condition_code": "usable",
+          "counted_quantity": {
+            "value": "10.000000",
+            "quantity_scale": 0
+          },
+          "unit_valuation": "25.000000",
+          "valuation_basis": "Synthetic approved test valuation",
+          "restriction_version_id": "83"
+        },
+        {
+          "reference": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "line_id": "502",
+            "line_kind": "IPC",
+            "variant_id": "71"
+          },
+          "location_id": "84",
+          "custody_assignment_id": "85",
+          "condition_code": "damaged",
+          "counted_quantity": {
+            "value": "2.000000",
+            "quantity_scale": 0
+          },
+          "unit_valuation": "25.000000",
+          "valuation_basis": "Synthetic approved test valuation",
+          "restriction_version_id": "83"
+        }
+      ]
+    },
+    "prepared_by": {
+      "chapter_id": "1",
+      "user_id": "11",
+      "membership_id": "111",
+      "duty_grant_id": "112",
+      "duty_code": "RECEIVING",
+      "actor_name": "Synthetic officer 11",
+      "chapter_name": "Synthetic chapter A",
+      "captured_at": "2026-10-24T06:00:00.000000Z"
+    },
+    "policy": {
+      "chapter_id": "1",
+      "policy_id": "41",
+      "policy_version_id": "42",
+      "version_no": 1,
+      "settings_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "approval": {
+        "chapter_id": "1",
+        "record": {
+          "id": "43",
+          "kind": "CONFIG"
+        },
+        "material_version": 1,
+        "material_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "effective_from": "2026-10-23T00:00:00.000000Z",
+      "effective_until": null
+    },
+    "decisions": [
+      {
+        "id": "201",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "policy": {
+          "chapter_id": "1",
+          "policy_id": "41",
+          "policy_version_id": "42",
+          "version_no": 1,
+          "settings_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "approval": {
+            "chapter_id": "1",
+            "record": {
+              "id": "43",
+              "kind": "CONFIG"
+            },
+            "material_version": 1,
+            "material_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "effective_from": "2026-10-23T00:00:00.000000Z",
+          "effective_until": null
+        },
+        "decision": "approve",
+        "actor": {
+          "chapter_id": "1",
+          "user_id": "21",
+          "membership_id": "211",
+          "duty_grant_id": "212",
+          "duty_code": "CHAPTER_HEAD",
+          "actor_name": "Synthetic officer 21",
+          "chapter_name": "Synthetic chapter A",
+          "captured_at": "2026-10-24T06:00:00.000000Z"
+        },
+        "decided_at": "2026-10-24T06:00:00.000000Z",
+        "reason": "Synthetic source review; required signatures remain separate ready evidence"
+      },
+      {
+        "id": "202",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "policy": {
+          "chapter_id": "1",
+          "policy_id": "41",
+          "policy_version_id": "42",
+          "version_no": 1,
+          "settings_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "approval": {
+            "chapter_id": "1",
+            "record": {
+              "id": "43",
+              "kind": "CONFIG"
+            },
+            "material_version": 1,
+            "material_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "effective_from": "2026-10-23T00:00:00.000000Z",
+          "effective_until": null
+        },
+        "decision": "approve",
+        "actor": {
+          "chapter_id": "1",
+          "user_id": "22",
+          "membership_id": "221",
+          "duty_grant_id": "222",
+          "duty_code": "FINANCE",
+          "actor_name": "Synthetic officer 22",
+          "chapter_name": "Synthetic chapter A",
+          "captured_at": "2026-10-24T06:00:00.000000Z"
+        },
+        "decided_at": "2026-10-24T06:00:00.000000Z",
+        "reason": "Synthetic source review; required signatures remain separate ready evidence"
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "id": "401",
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "material_version": 1,
+        "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "301",
+        "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "object_version": "djE="
+      },
+      "purpose_code": "ipc_signed_count_sheet",
+      "bound_by": {
+        "chapter_id": "1",
+        "user_id": "11",
+        "membership_id": "111",
+        "duty_grant_id": "112",
+        "duty_code": "RECEIVING",
+        "actor_name": "Synthetic officer 11",
+        "chapter_name": "Synthetic chapter A",
+        "captured_at": "2026-10-24T06:00:00.000000Z"
+      },
+      "bound_at": "2026-10-24T06:40:00.000000Z",
+      "operation_id": "01K8A6J0A00000000000000001"
+    },
+    {
+      "id": "402",
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "302",
+        "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "object_version": "djE="
+      },
+      "purpose_code": "rm_inspection",
+      "bound_by": {
+        "chapter_id": "1",
+        "user_id": "11",
+        "membership_id": "111",
+        "duty_grant_id": "112",
+        "duty_code": "RECEIVING",
+        "actor_name": "Synthetic officer 11",
+        "chapter_name": "Synthetic chapter A",
+        "captured_at": "2026-10-24T06:00:00.000000Z"
+      },
+      "bound_at": "2026-10-24T06:40:00.000000Z",
+      "operation_id": "01K8A6J0A00000000000000001"
+    },
+    {
+      "id": "403",
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "line": null,
+      "evidence": {
+        "chapter_id": "1",
+        "evidence_object_id": "303",
+        "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "object_version": "djE="
+      },
+      "purpose_code": "rm_discrepancy",
+      "bound_by": {
+        "chapter_id": "1",
+        "user_id": "11",
+        "membership_id": "111",
+        "duty_grant_id": "112",
+        "duty_code": "RECEIVING",
+        "actor_name": "Synthetic officer 11",
+        "chapter_name": "Synthetic chapter A",
+        "captured_at": "2026-10-24T06:00:00.000000Z"
+      },
+      "bound_at": "2026-10-24T06:40:00.000000Z",
+      "operation_id": "01K8A6J0A00000000000000001"
+    }
+  ],
+  "required_signer_user_ids": [
+    "11",
+    "12",
+    "21",
+    "22"
+  ],
+  "readiness": {
+    "lifecycle": "ready",
+    "exact_objects_available": true,
+    "required_signatures_verified": true,
+    "chapter_baseline": null,
+    "informal_movements_suspended": true,
+    "cutoff_approved": true,
+    "policy_effective": true,
+    "item_rop_target_approved": true
+  },
+  "expected_stock": {
+    "counted": "12.000000",
+    "usable_on_hand": "10.000000",
+    "available_to_allocate": "10.000000",
+    "documented_nonusable": "2.000000",
+    "missing": "0.000000",
+    "accepted_source_progress": "10.000000",
+    "condition": "unrestricted, no holds/reservations; synthetic approved item/restriction metadata only"
+  }
+}

@@ -1,0 +1,484 @@
+{
+  "success": {
+    "summary": "success",
+    "description": "Illustrative shared result, not executed IPC submission/acceptance. No business route is introduced.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "success",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "records.submit",
+          "idempotency_key": "attempt-01"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-24T04:00:00.000001Z",
+        "replayed": false
+      },
+      "record": {
+        "reference": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "row_version": 8,
+        "material_version": 3,
+        "states": {
+          "approval": "approved",
+          "progress": "partial"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": null,
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review the recorded result"
+        }
+      ],
+      "input_policy": "may_clear",
+      "lookup_state": null
+    }
+  },
+  "blocked-field": {
+    "summary": "blocked-field",
+    "description": "Field feedback points to /quantity in a later endpoint body. Preserve every draft field; correct input is not an instruction to replay a physical action.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": null,
+      "field_feedback": [
+        {
+          "path": "/quantity",
+          "code": "UNIT_PRECISION",
+          "message": "This approved unit permits whole quantities only."
+        }
+      ],
+      "blocking_reason": {
+        "code": "INVALID_INPUT",
+        "message": "Correct the highlighted quantity; no posting is confirmed by this response."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "correct_input",
+          "label": "Correct the quantity and review the draft"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "stale-progress": {
+    "summary": "stale-progress",
+    "description": "Partial execution advanced row 7 to 8 without revising material 3. A stale row cannot be silently rebased.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "stale",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "row_version": 8,
+        "material_version": 3,
+        "states": {
+          "approval": "approved",
+          "progress": "partial"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "STALE_ROW_VERSION",
+        "message": "Progress changed from row 7 to 8; material version 3 remains current. Review current state before a new attempt."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "refresh_record",
+          "label": "Compare current progress with your preserved draft"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "stale-material": {
+    "summary": "stale-material",
+    "description": "Material revision advances material 3 to 4 and requires affected approval/evidence review; history is retained.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "stale",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "row_version": 9,
+        "material_version": 4,
+        "states": {
+          "approval": "requires_review",
+          "progress": "partial"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "STALE_MATERIAL_VERSION",
+        "message": "Approved content changed from material 3 to 4; affected prior approval is invalid. Obtain the required current review/evidence."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "refresh_record",
+          "label": "Compare current progress with your preserved draft"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "forbidden": {
+    "summary": "forbidden",
+    "description": "No record, operation or other-chapter metadata is disclosed, even if the original attempt committed.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": null,
+      "action_result": "forbidden",
+      "operation": null,
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "FORBIDDEN",
+        "message": "Current authority does not permit this action or result."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "request_access",
+          "label": "Ask the authorized chapter administrator to review access"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "uncertain-not-visible": {
+    "summary": "uncertain-not-visible",
+    "description": "A lookup without a visible terminal row does not prove failure and does not authorize retry or another handover.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "records.submit",
+          "idempotency_key": "attempt-01"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "NO_VISIBLE_TERMINAL_RESULT",
+        "message": "No authorized terminal result is visible. The original request may still be in flight; failure is not established."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Check this chapter and action using the original key"
+        },
+        {
+          "code": "reconcile_activity",
+          "label": "Preserve and reconcile any actual physical activity"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "pending_or_not_visible"
+    }
+  },
+  "uncertain-unavailable": {
+    "summary": "uncertain-unavailable",
+    "description": "Unavailable lookup keeps outcome unknown; retain immutable attempted payload/key and local physical facts.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "records.submit",
+          "idempotency_key": "attempt-01"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "LOOKUP_UNAVAILABLE",
+        "message": "Lookup is unavailable. Preserve the attempt, payload and key; do not repeat a physical handover."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Check this chapter and action using the original key"
+        },
+        {
+          "code": "reconcile_activity",
+          "label": "Preserve and reconcile any actual physical activity"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "unavailable"
+    }
+  },
+  "uncertain-by-id": {
+    "summary": "uncertain-by-id",
+    "description": "Scoped ID lookup may know only the supplied public ID; no action/key is invented.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": null,
+          "idempotency_key": null
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "NO_VISIBLE_TERMINAL_RESULT",
+        "message": "No authorized terminal result is visible. The original request may still be in flight; failure is not established."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Check this chapter and action using the original key"
+        },
+        {
+          "code": "reconcile_activity",
+          "label": "Preserve and reconcile any actual physical activity"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "pending_or_not_visible"
+    }
+  },
+  "same-payload-replay": {
+    "summary": "same-payload-replay",
+    "description": "Expected replay retains terminal ID/time. The actual provider must reauthorize/filter and atomically persist the result.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "success",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000001",
+          "action_code": "records.submit",
+          "idempotency_key": "attempt-01"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-24T04:00:00.000001Z",
+        "replayed": true
+      },
+      "record": {
+        "reference": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "row_version": 8,
+        "material_version": 3,
+        "states": {
+          "approval": "approved",
+          "progress": "partial"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": null,
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review the recorded result"
+        }
+      ],
+      "input_policy": "may_clear",
+      "lookup_state": null
+    }
+  },
+  "changed-payload-key-reuse": {
+    "summary": "changed-payload-key-reuse",
+    "description": "Reject changed canonical payload under the original chapter/action/key without replacing its result or adding an effect.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "IDEMPOTENCY_KEY_REUSED",
+        "message": "This chapter/action/key was used with a different canonical payload. The attempted change is rejected; the original result is retained."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Look up the original action and key"
+        },
+        {
+          "code": "reconcile_activity",
+          "label": "Reconcile the original attempt before any new action"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "durable-rejection": {
+    "summary": "durable-rejection",
+    "description": "A terminal rejection transaction may commit without any business posting; its identity may later be replayed.",
+    "x-definition": "ActionResult",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000002",
+          "action_code": "records.submit",
+          "idempotency_key": "attempt-01"
+        },
+        "outcome": "rejected",
+        "committed_at": "2026-10-24T04:01:00.000001Z",
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [
+        {
+          "path": "/quantity",
+          "code": "UNIT_PRECISION",
+          "message": "This approved unit permits whole quantities only."
+        }
+      ],
+      "blocking_reason": {
+        "code": "INVALID_INPUT",
+        "message": "Correct the highlighted quantity; no posting is confirmed by this response."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "correct_input",
+          "label": "Correct the quantity and review the draft"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "command-context": {
+    "summary": "command-context",
+    "description": "Normalized adapter context only: chapter/action are server-authorized route context, key is a header, versions/ref come from the endpoint body. Domain input is omitted deliberately.",
+    "x-definition": "CommandContext",
+    "x-evidence-state": "expected",
+    "value": {
+      "chapter_id": "1",
+      "action_code": "records.submit",
+      "idempotency_key": "attempt-01",
+      "record": {
+        "id": "9007199254740993",
+        "kind": "IPC"
+      },
+      "expected_row_version": 7,
+      "expected_material_version": 3
+    }
+  },
+  "lookup-by-key": {
+    "summary": "lookup-by-key",
+    "description": "Key-only lookup is invalid; current authorization limits every response.",
+    "x-definition": "OperationLookup",
+    "x-evidence-state": "expected",
+    "value": {
+      "chapter_id": "1",
+      "action_code": "records.submit",
+      "idempotency_key": "attempt-01"
+    }
+  },
+  "lookup-by-id": {
+    "summary": "lookup-by-id",
+    "description": "A public operation ID remains chapter/duty scoped, not a bearer capability.",
+    "x-definition": "OperationLookup",
+    "x-evidence-state": "expected",
+    "value": {
+      "chapter_id": "1",
+      "operation_id": "01K8A6J0A00000000000000001"
+    }
+  },
+  "business-times": {
+    "summary": "business-times",
+    "description": "Actual occurrence, later entry, verification and posting remain distinct facts; Asia/Manila display changes no UTC instant or deadline.",
+    "x-definition": "BusinessTimes",
+    "x-evidence-state": "expected",
+    "value": {
+      "occurred_at": "2026-10-23T23:30:00.000000Z",
+      "verified_at": "2026-10-24T03:45:00.000000Z",
+      "entered_at": "2026-10-24T03:30:00.000000Z",
+      "posted_at": "2026-10-24T04:00:00.000001Z"
+    }
+  },
+  "lookup-invalid": {
+    "summary": "lookup-invalid",
+    "description": "Invalid lookup selector after chapter authorization; there is no request JSON body or business mutation.",
+    "x-definition": "InvalidLookup",
+    "x-evidence-state": "expected",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "INVALID_LOOKUP",
+        "message": "Supply action_code and idempotency_key together, or use the scoped operation-ID route."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "correct_input",
+          "label": "Correct the lookup selector"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  }
+}

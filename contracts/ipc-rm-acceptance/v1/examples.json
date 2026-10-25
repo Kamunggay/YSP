@@ -1,0 +1,1122 @@
+{
+  "inspection": {
+    "definition": "InspectedReceipt",
+    "evidence_state": "expected",
+    "description": "Synthetic persisted inspection; two distinct source/receipt lines separate ten usable and two damaged units. Empty representatives is valid only where current policy requires none.",
+    "value": {
+      "state": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "target": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "material": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "source": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "inspection_at": "2026-10-24T06:30:00.000000Z",
+        "inspector": {
+          "chapter_id": "1",
+          "user_id": "11",
+          "membership_id": "111",
+          "duty_grant_id": "112",
+          "duty_code": "RECEIVING",
+          "actor_name": "Synthetic officer 11",
+          "chapter_name": "Synthetic chapter A",
+          "captured_at": "2026-10-24T06:00:00.000000Z"
+        },
+        "representatives": [],
+        "policy": {
+          "chapter_id": "1",
+          "policy_id": "41",
+          "policy_version_id": "42",
+          "version_no": 1,
+          "settings_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "approval": {
+            "chapter_id": "1",
+            "record": {
+              "id": "43",
+              "kind": "CONFIG"
+            },
+            "material_version": 1,
+            "material_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "effective_from": "2026-10-23T00:00:00.000000Z",
+          "effective_until": null
+        },
+        "lines": [
+          {
+            "reference": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            },
+            "source_line": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254740993",
+                "kind": "IPC"
+              },
+              "line_id": "501",
+              "line_kind": "IPC",
+              "variant_id": "71"
+            },
+            "expected_quantity": {
+              "value": "10.000000",
+              "quantity_scale": 0
+            },
+            "delivered_quantity": {
+              "value": "10.000000",
+              "quantity_scale": 0
+            },
+            "accepted_quantity": {
+              "value": "10.000000",
+              "quantity_scale": 0
+            },
+            "rejected_quantity": {
+              "value": "0.000000",
+              "quantity_scale": 0
+            },
+            "held_quantity": {
+              "value": "0.000000",
+              "quantity_scale": 0
+            },
+            "missing_quantity": {
+              "value": "0.000000",
+              "quantity_scale": 0
+            },
+            "nonusable_recorded_quantity": {
+              "value": "0.000000",
+              "quantity_scale": 0
+            },
+            "location_id": "81",
+            "custody_assignment_id": "82",
+            "condition_code": "usable",
+            "restriction_version_id": "83",
+            "unit_valuation": "25.000000",
+            "valuation_basis": "Synthetic approved test valuation",
+            "condition_notes": "Ten inspected usable units; packaging/specification/variant match."
+          },
+          {
+            "reference": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "602",
+              "line_kind": "RM",
+              "variant_id": "71"
+            },
+            "source_line": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254740993",
+                "kind": "IPC"
+              },
+              "line_id": "502",
+              "line_kind": "IPC",
+              "variant_id": "71"
+            },
+            "expected_quantity": {
+              "value": "2.000000",
+              "quantity_scale": 0
+            },
+            "delivered_quantity": {
+              "value": "2.000000",
+              "quantity_scale": 0
+            },
+            "accepted_quantity": {
+              "value": "0.000000",
+              "quantity_scale": 0
+            },
+            "rejected_quantity": {
+              "value": "2.000000",
+              "quantity_scale": 0
+            },
+            "held_quantity": {
+              "value": "0.000000",
+              "quantity_scale": 0
+            },
+            "missing_quantity": {
+              "value": "0.000000",
+              "quantity_scale": 0
+            },
+            "nonusable_recorded_quantity": {
+              "value": "2.000000",
+              "quantity_scale": 0
+            },
+            "location_id": "84",
+            "custody_assignment_id": "85",
+            "condition_code": "damaged",
+            "restriction_version_id": "83",
+            "unit_valuation": "25.000000",
+            "valuation_basis": "Synthetic approved test valuation",
+            "condition_notes": "Two damaged units segregated in holding; unavailable; discrepancy remains open."
+          }
+        ]
+      }
+    }
+  },
+  "accept-input": {
+    "definition": "AcceptOpeningInput",
+    "evidence_state": "expected",
+    "description": "References and expected versions only; all source, signature, inspection and readiness facts are re-resolved by the server.",
+    "value": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    }
+  },
+  "accepted": {
+    "definition": "AcceptedOpeningResult",
+    "evidence_state": "expected",
+    "description": "Expected atomic result only: usable +10, nonusable documented +2, accepted source quantity 10, one locked chapter baseline; damage discrepancy stays open. No actual stock execution.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "success",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000002",
+          "action_code": "purchasing.accept_opening_rm",
+          "idempotency_key": "synthetic-opening-01"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-24T07:00:00.000000Z",
+        "replayed": false
+      },
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 5,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "posted",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": null,
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review locked opening baseline and open damage discrepancy"
+        }
+      ],
+      "input_policy": "may_clear",
+      "lookup_state": null,
+      "data": {
+        "source": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "source_state": {
+          "reference": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "row_version": 9,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "progress": "complete",
+            "exception": "open"
+          }
+        },
+        "baseline_id": "1001",
+        "cutover": {
+          "id": "1002",
+          "kind": "CUTOVER"
+        },
+        "posting_ids": [
+          "1101",
+          "1102"
+        ],
+        "stock_effects": [
+          {
+            "receipt_line": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            },
+            "posting_id": "1101",
+            "lot_id": "1201",
+            "position_id": "1301",
+            "movement_id": "1401",
+            "lot_kind": "accepted",
+            "condition_code": "usable",
+            "documented_quantity": {
+              "value": "10.000000",
+              "quantity_scale": 0
+            },
+            "accepted_quantity": {
+              "value": "10.000000",
+              "quantity_scale": 0
+            }
+          },
+          {
+            "receipt_line": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "602",
+              "line_kind": "RM",
+              "variant_id": "71"
+            },
+            "posting_id": "1102",
+            "lot_id": "1202",
+            "position_id": "1302",
+            "movement_id": "1402",
+            "lot_kind": "nonusable",
+            "condition_code": "damaged",
+            "documented_quantity": {
+              "value": "2.000000",
+              "quantity_scale": 0
+            },
+            "accepted_quantity": {
+              "value": "0.000000",
+              "quantity_scale": 0
+            }
+          }
+        ],
+        "discrepancy_ids": [
+          "1501"
+        ],
+        "audit_event_id": "1601",
+        "follow_up_task_ids": [
+          "1701",
+          "1702"
+        ]
+      }
+    }
+  },
+  "replayed": {
+    "definition": "AcceptedOpeningResult",
+    "evidence_state": "expected",
+    "description": "Authorized lookup or same-key/same-fingerprint replay returns the same committed references, versions and original commit time; no new stock.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "success",
+      "operation": {
+        "identity": {
+          "operation_id": "01K8A6J0A00000000000000002",
+          "action_code": "purchasing.accept_opening_rm",
+          "idempotency_key": "synthetic-opening-01"
+        },
+        "outcome": "committed",
+        "committed_at": "2026-10-24T07:00:00.000000Z",
+        "replayed": true
+      },
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 5,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "posted",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": null,
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Review locked opening baseline and open damage discrepancy"
+        }
+      ],
+      "input_policy": "may_clear",
+      "lookup_state": null,
+      "data": {
+        "source": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "source_state": {
+          "reference": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "row_version": 9,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "progress": "complete",
+            "exception": "open"
+          }
+        },
+        "baseline_id": "1001",
+        "cutover": {
+          "id": "1002",
+          "kind": "CUTOVER"
+        },
+        "posting_ids": [
+          "1101",
+          "1102"
+        ],
+        "stock_effects": [
+          {
+            "receipt_line": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "601",
+              "line_kind": "RM",
+              "variant_id": "71"
+            },
+            "posting_id": "1101",
+            "lot_id": "1201",
+            "position_id": "1301",
+            "movement_id": "1401",
+            "lot_kind": "accepted",
+            "condition_code": "usable",
+            "documented_quantity": {
+              "value": "10.000000",
+              "quantity_scale": 0
+            },
+            "accepted_quantity": {
+              "value": "10.000000",
+              "quantity_scale": 0
+            }
+          },
+          {
+            "receipt_line": {
+              "chapter_id": "1",
+              "record": {
+                "id": "901",
+                "kind": "RM"
+              },
+              "line_id": "602",
+              "line_kind": "RM",
+              "variant_id": "71"
+            },
+            "posting_id": "1102",
+            "lot_id": "1202",
+            "position_id": "1302",
+            "movement_id": "1402",
+            "lot_kind": "nonusable",
+            "condition_code": "damaged",
+            "documented_quantity": {
+              "value": "2.000000",
+              "quantity_scale": 0
+            },
+            "accepted_quantity": {
+              "value": "0.000000",
+              "quantity_scale": 0
+            }
+          }
+        ],
+        "discrepancy_ids": [
+          "1501"
+        ],
+        "audit_event_id": "1601",
+        "follow_up_task_ids": [
+          "1701",
+          "1702"
+        ]
+      }
+    }
+  },
+  "missing-source": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "SOURCE_REQUIRED",
+        "message": "Goods remain outside usable stock pending a valid opening IPC; do not invent another baseline."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "invalid-source": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "SOURCE_NOT_AUTHORIZED",
+        "message": "The IPC is not currently approved with required independent count and signers."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "unready-evidence": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "EVIDENCE_NOT_READY",
+        "message": "Required evidence is staged or validating; acceptance is blocked."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "missing-evidence": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "EVIDENCE_UNAVAILABLE",
+        "message": "The exact pinned required bytes are missing or archived; reconcile evidence."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "changed-evidence": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "EVIDENCE_IDENTITY_MISMATCH",
+        "message": "The stored immutable evidence identity differs from the submitted pin."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "wrong-parent": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "SOURCE_PARENT_MISMATCH",
+        "message": "Visible line belongs to another authorized IPC, not this source."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "wrong-variant": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "SOURCE_VARIANT_MISMATCH",
+        "message": "Visible RM line variant differs from its authorized IPC source line."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "duplicate-baseline": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "OPENING_ALREADY_POSTED",
+        "message": "Opening baseline is locked. Review the existing result; later discoveries require approved ADJ."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "changed-key-payload": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "IDEMPOTENCY_PAYLOAD_MISMATCH",
+        "message": "This chapter/action/key identifies a different original payload; retain the original attempt."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "stale-row": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "stale",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 5,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "STALE_ROW_VERSION",
+        "message": "Current RM progress changed; review without replacing the preserved draft."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "stale-material": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "stale",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 5,
+        "material_version": 2,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "STALE_MATERIAL_VERSION",
+        "message": "Approved source or inspection material changed; affected approval/evidence must be reviewed."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "invalid-quantity": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected server outcome, not an executed application check.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "blocked",
+      "operation": null,
+      "record": {
+        "reference": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "row_version": 4,
+        "material_version": 1,
+        "states": {
+          "inspection": "complete",
+          "posting": "draft",
+          "exception": "open"
+        }
+      },
+      "field_feedback": [
+        {
+          "path": "/lines/0/accepted_quantity/value",
+          "code": "UNIT_PRECISION",
+          "message": "Pieces require whole units; retain the entered inspection for correction."
+        }
+      ],
+      "blocking_reason": {
+        "code": "QUANTITY_INVALID",
+        "message": "Quantity must respect the approved unit scale and source partition."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "review_record",
+          "label": "Preserve input and review authorized source or evidence"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "forbidden": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Same redacted result for wrong chapter, unknown/invisible source and revoked/provider-only authority; no other chapter IDs leak.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": null,
+      "action_result": "forbidden",
+      "operation": null,
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "FORBIDDEN",
+        "message": "Requested record or action is unavailable."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "request_access",
+          "label": "Use a currently authorized chapter and duty"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": null
+    }
+  },
+  "lookup-unavailable": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected lost-response path; not an assertion of failed acceptance.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "purchasing.accept_opening_rm",
+          "idempotency_key": "synthetic-opening-01"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "LOOKUP_UNAVAILABLE",
+        "message": "Preserve original attempt, payload and key. No terminal result proves neither failure nor absence of stock."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Look up the original chapter/action/key before any retry"
+        },
+        {
+          "code": "reconcile_activity",
+          "label": "Reconcile physical facts; do not recount or repeat a handover automatically"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "unavailable"
+    }
+  },
+  "lookup-no-terminal": {
+    "definition": "UnacceptedResult",
+    "evidence_state": "expected",
+    "description": "Expected lost-response path; not an assertion of failed acceptance.",
+    "value": {
+      "schema_version": "1.0",
+      "chapter_id": "1",
+      "action_result": "uncertain",
+      "operation": {
+        "identity": {
+          "operation_id": null,
+          "action_code": "purchasing.accept_opening_rm",
+          "idempotency_key": "synthetic-opening-01"
+        },
+        "outcome": "unknown",
+        "committed_at": null,
+        "replayed": false
+      },
+      "record": null,
+      "field_feedback": [],
+      "blocking_reason": {
+        "code": "RESULT_NOT_VISIBLE",
+        "message": "Preserve original attempt, payload and key. No terminal result proves neither failure nor absence of stock."
+      },
+      "permitted_next_actions": [
+        {
+          "code": "lookup_operation",
+          "label": "Look up the original chapter/action/key before any retry"
+        },
+        {
+          "code": "reconcile_activity",
+          "label": "Reconcile physical facts; do not recount or repeat a handover automatically"
+        }
+      ],
+      "input_policy": "preserve",
+      "lookup_state": "pending_or_not_visible"
+    }
+  }
+}
