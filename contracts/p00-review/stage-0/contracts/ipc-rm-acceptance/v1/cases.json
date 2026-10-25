@@ -1,0 +1,1875 @@
+[
+  {
+    "name": "missing-source",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": false,
+    "server_facts": {
+      "source_documentation": "absent; goods held outside usable stock"
+    },
+    "result_example": "missing-source",
+    "expected": [
+      "422 SOURCE_REQUIRED; preserve inspection; no acceptance effects"
+    ]
+  },
+  {
+    "name": "invalid-source",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "ipc_approval": "requires_review",
+      "missing_signer": "FINANCE"
+    },
+    "result_example": "invalid-source",
+    "expected": [
+      "409 SOURCE_NOT_AUTHORIZED; no baseline or stock"
+    ]
+  },
+  {
+    "name": "wrong-chapter",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "2",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "authorized_chapter_id": "1",
+      "other_chapter_source_visible": false
+    },
+    "result_example": "forbidden",
+    "expected": [
+      "403 redacted; reveal no other chapter/source existence; no effects"
+    ]
+  },
+  {
+    "name": "wrong-parent",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "rm_line_id": "601",
+      "actual_ipc_line_parent_id": "902",
+      "actual_ipc_line_id": "501",
+      "expected_ipc_id": "9007199254740993",
+      "both_parents_visible": true
+    },
+    "result_example": "wrong-parent",
+    "expected": [
+      "409 SOURCE_PARENT_MISMATCH; schema shape alone does not detect persisted parent corruption"
+    ]
+  },
+  {
+    "name": "wrong-variant",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "rm_line_id": "601",
+      "rm_variant_id": "72",
+      "source_variant_id": "71",
+      "both_records_visible": true
+    },
+    "result_example": "wrong-variant",
+    "expected": [
+      "409 SOURCE_VARIANT_MISMATCH; reject even with matching quantity"
+    ]
+  },
+  {
+    "name": "unready-evidence",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "evidence_object_id": "301",
+      "lifecycle": "validating"
+    },
+    "result_example": "unready-evidence",
+    "expected": [
+      "409 EVIDENCE_NOT_READY; no provisional write commits"
+    ]
+  },
+  {
+    "name": "missing-evidence",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "evidence_object_id": "301",
+      "lifecycle": "missing",
+      "pinned_object_version": "djE="
+    },
+    "result_example": "missing-evidence",
+    "expected": [
+      "409 EVIDENCE_UNAVAILABLE; recovery does not silently swap evidence"
+    ]
+  },
+  {
+    "name": "changed-evidence",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djI="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "evidence_object_id": "301",
+      "actual_object_version": "djE=",
+      "immutable": true
+    },
+    "result_example": "changed-evidence",
+    "expected": [
+      "409 EVIDENCE_IDENTITY_MISMATCH"
+    ]
+  },
+  {
+    "name": "duplicate-baseline-new-key",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-02",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "chapter_opening_id": "1001",
+      "source_ipc_id": "9007199254740993",
+      "posted_rm_id": "901"
+    },
+    "result_example": "duplicate-baseline",
+    "expected": [
+      "409 OPENING_ALREADY_POSTED; no extra lot/movement; later finds require approved ADJ"
+    ]
+  },
+  {
+    "name": "stale-row",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "rm_row_version": 5,
+      "rm_material_version": 1,
+      "no_result_for_this_identity": true
+    },
+    "result_example": "stale-row",
+    "expected": [
+      "409 stale; current authorized RM state; preserve original draft/versions"
+    ]
+  },
+  {
+    "name": "stale-material",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "rm_row_version": 5,
+      "rm_material_version": 2,
+      "affected_approval": "requires_review",
+      "evidence_material_version": 1
+    },
+    "result_example": "stale-material",
+    "expected": [
+      "409 stale; require affected reapproval and matching evidence"
+    ]
+  },
+  {
+    "name": "changed-key-payload",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djI="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "existing_key": "synthetic-opening-01",
+      "saved_fingerprint_matches_original": true,
+      "saved_operation_id": "01K8A6J0A00000000000000002"
+    },
+    "result_example": "changed-key-payload",
+    "expected": [
+      "409 IDEMPOTENCY_PAYLOAD_MISMATCH; do not replay altered payload or append stock"
+    ]
+  },
+  {
+    "name": "revoked-authority",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "user_id": "11",
+      "membership_active": false,
+      "source_was_visible_at_screen_read": true
+    },
+    "result_example": "forbidden",
+    "expected": [
+      "403 redacted; commit-time current authority supersedes screen read"
+    ]
+  },
+  {
+    "name": "provider-only-authority",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "user_id": "99",
+      "provider_grant": "active",
+      "operational_chapter_grant": null
+    },
+    "result_example": "forbidden",
+    "expected": [
+      "403 redacted; provisioning authority never authorizes opening stock"
+    ]
+  },
+  {
+    "name": "lost-response-unavailable",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "server_may_have_committed": true,
+      "response_received": false,
+      "lookup": "unavailable"
+    },
+    "result_example": "lookup-unavailable",
+    "expected": [
+      "uncertain; preserve action/key/payload; never report failed posting or repeat physical activity"
+    ]
+  },
+  {
+    "name": "lost-response-no-terminal",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "original_request_may_be_in_flight": true,
+      "terminal_result_visible": false
+    },
+    "result_example": "lookup-no-terminal",
+    "expected": [
+      "uncertain pending_or_not_visible; no negative acknowledgment"
+    ]
+  },
+  {
+    "name": "authorized-replay",
+    "evidence_state": "expected",
+    "input": {
+      "context": {
+        "chapter_id": "1",
+        "action_code": "purchasing.accept_opening_rm",
+        "idempotency_key": "synthetic-opening-01",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "expected_row_version": 4,
+        "expected_material_version": 1
+      },
+      "receipt": {
+        "chapter_id": "1",
+        "record": {
+          "id": "901",
+          "kind": "RM"
+        },
+        "material_version": 1,
+        "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+      },
+      "source": {
+        "source_kind": "opening",
+        "target": {
+          "chapter_id": "1",
+          "record": {
+            "id": "9007199254740993",
+            "kind": "IPC"
+          },
+          "material_version": 1,
+          "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+        },
+        "expected_row_version": 8
+      },
+      "evidence": [
+        {
+          "binding_id": "401",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "9007199254740993",
+              "kind": "IPC"
+            },
+            "material_version": 1,
+            "material_hash": "bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "301",
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "object_version": "djE="
+          },
+          "purpose_code": "ipc_signed_count_sheet"
+        },
+        {
+          "binding_id": "402",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "302",
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_inspection"
+        },
+        {
+          "binding_id": "403",
+          "target": {
+            "chapter_id": "1",
+            "record": {
+              "id": "901",
+              "kind": "RM"
+            },
+            "material_version": 1,
+            "material_hash": "8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179"
+          },
+          "line": null,
+          "evidence": {
+            "chapter_id": "1",
+            "evidence_object_id": "303",
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "object_version": "djE="
+          },
+          "purpose_code": "rm_discrepancy"
+        }
+      ]
+    },
+    "input_shape_valid": true,
+    "server_facts": {
+      "terminal_result": "committed",
+      "current_result_visibility": true,
+      "same_fingerprint": true,
+      "chapter_opening_id": "1001"
+    },
+    "result_example": "replayed",
+    "expected": [
+      "200 same operation/baseline/posting/stock/audit/task IDs and original commit time; replay precedes stale/fence rejection"
+    ]
+  }
+]

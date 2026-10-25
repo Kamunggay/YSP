@@ -1,0 +1,79 @@
+{
+  "revision": "1.0.0-review.1",
+  "evidence_state": "expected",
+  "scope": "Authored P00 consistency fixtures; no application or database execution.",
+  "snapshots": [
+    {
+      "name": "rop-ten",
+      "evidence_state": "expected",
+      "query_example": "query-rop-ten",
+      "explanation": "Q1 literal: [0,2) held and RF reserved, [7,9) held only. Ten on hand remains above ROP eight while demand for two has shortage one."
+    },
+    {
+      "name": "same-three",
+      "evidence_state": "expected",
+      "query_example": "query-same-three",
+      "explanation": "Q7: two reasons reference the identical cell, not two quantity-three guesses."
+    },
+    {
+      "name": "clear-first",
+      "evidence_state": "expected",
+      "query_example": "query-clear-first",
+      "explanation": "Q8: clear A, retain B. No movement or condition change."
+    },
+    {
+      "name": "clear-last",
+      "evidence_state": "expected",
+      "query_example": "query-clear-last",
+      "explanation": "Clear B after A: ten eligible, no movement."
+    },
+    {
+      "name": "reserved-three",
+      "evidence_state": "expected",
+      "query_example": "query-reserved-three",
+      "explanation": "Three paid SO units covered by two independent reasons."
+    },
+    {
+      "name": "reserved-clear-first",
+      "evidence_state": "expected",
+      "query_example": "query-reserved-clear-first",
+      "explanation": "Clear A only, retain B and paid reservation."
+    },
+    {
+      "name": "reserved-clear-last",
+      "evidence_state": "expected",
+      "query_example": "query-reserved-clear-last",
+      "explanation": "Clear both reasons, retain paid reservation. Availability stays seven."
+    },
+    {
+      "name": "partial-overlap",
+      "evidence_state": "expected",
+      "query_example": "query-partial-overlap",
+      "explanation": "A [0,3), B [2,4): one unit shared. Held union four, not five."
+    },
+    {
+      "name": "partial-clear-A",
+      "evidence_state": "expected",
+      "query_example": "query-partial-clear-A",
+      "explanation": "Clear A leaves B [2,4), two blocked, eight available."
+    },
+    {
+      "name": "expiry-before",
+      "evidence_state": "expected",
+      "query_example": "query-expiry-before",
+      "explanation": "Only an unpaid expirable SO reservation can expire at its stored deadline."
+    },
+    {
+      "name": "expiry-keeps-holds",
+      "evidence_state": "expected",
+      "query_example": "query-expiry-keeps-holds",
+      "explanation": "Expiry removes R/intersection, both underlying holds remain; no receipt."
+    },
+    {
+      "name": "funded-protected",
+      "evidence_state": "expected",
+      "query_example": "query-funded-protected",
+      "explanation": "Funded protection is retained through holds, clearance and the unpaid timer."
+    }
+  ]
+}

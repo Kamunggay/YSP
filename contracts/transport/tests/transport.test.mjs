@@ -5,6 +5,7 @@ import test from 'node:test';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
+import { loadContract, httpMethods, validateExchange } from '../validation/operation-examples.mjs';
 
 const readJson = async (path) => JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
 const schema = await readJson('../v1/transport.schema.json');
@@ -74,20 +75,50 @@ test('TR-07: exact IDs, unit quantities, posted PHP and UTC instants cross JSON 
 });
 
 test('TR-03: OpenAPI and every reusable definition compile, including HTTP lookup responses', async () => {
-  const api = await SwaggerParser.validate(fileURLToPath(new URL('../v1/api-v1.json', import.meta.url)), {
-    resolve: { http: false },
-  });
+  const { api, ajv: operationAjv } = await loadContract();
   for (const name of Object.keys(schema.$defs)) validator(name);
-  assert.equal(Object.keys(api.paths).length, 2);
   for (const path of Object.values(api.paths)) {
-    assert.deepEqual(Object.keys(path), ['get'], 'no business mutation route');
-    for (const response of Object.values(path.get.responses)) {
-      const check = ajv.compile(response.content['application/json'].schema);
-      for (const example of Object.values(response.content['application/json'].examples)) {
-        assert.ok(check(example.value), ajv.errorsText(check.errors));
+    for (const method of httpMethods.filter(method => path[method])) {
+      for (const response of Object.values(path[method].responses)) {
+        for (const media of Object.values(response.content ?? {})) {
+          const check = operationAjv.compile(media.schema);
+          for (const example of Object.values(media.examples ?? {})) {
+            assert.ok(check(example.value), operationAjv.errorsText(check.errors));
+          }
+        }
       }
     }
   }
+  const exchanges = await readJson('../v1/operation-examples.json');
+  assert.equal(new Set(exchanges.map(e => e.name)).size, exchanges.length, 'unique exchange names');
+  for (const example of exchanges) validateExchange(api, operationAjv, example);
+  for (const [path, item] of Object.entries(api.paths)) {
+    for (const method of httpMethods.filter(method => item[method])) {
+      for (const [status, response] of Object.entries(item[method].responses)) {
+        for (const [mediaType, media] of Object.entries(response.content ?? {})) {
+          for (const example of Object.values(media.examples ?? {})) {
+            assert.ok(exchanges.some(e => e.path === path && e.method === method
+              && String(e.response.status) === status && e.response.mediaType === mediaType
+              && JSON.stringify(e.response.body) === JSON.stringify(example.value)),
+            `${method} ${path} ${status}: missing operation exchange`);
+          }
+        }
+      }
+    }
+  }
+});
+
+test('TR-03/DOC-11: Stage 0 lookup scopes, identities and response semantics remain compatible', async () => {
+  const { api } = await loadContract();
+  const archived = await SwaggerParser.validate(fileURLToPath(new URL('../../p00-review/stage-0/contracts/transport/v1/api-v1.json', import.meta.url)), {
+    resolve: { http: false },
+  });
+  assert.deepEqual(api.servers, archived.servers);
+  assert.deepEqual(api.security, archived.security);
+  assert.deepEqual(api.components.securitySchemes.chapterSession, archived.components.securitySchemes.chapterSession);
+  for (const [path, item] of Object.entries(archived.paths)) assert.deepEqual(api.paths[path], item, path);
+  const originalSchema = await readJson('../../p00-review/stage-0/contracts/transport/v1/transport.schema.json');
+  for (const [name, definition] of Object.entries(originalSchema.$defs)) assert.deepEqual(schema.$defs[name], definition, name);
 });
 
 test('TR-03/DOC-11/UX-02: examples distinguish terminal outcomes, corrections and uncertainty', async () => {

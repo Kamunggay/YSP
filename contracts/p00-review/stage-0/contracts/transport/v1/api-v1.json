@@ -1,0 +1,411 @@
+{
+  "openapi": "3.1.1",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "YSP shared transport and operation lookup",
+    "version": "1.0.0-review.1",
+    "description": "Leader-authored P00 transport contract, 24 October 2026. Parent spec: https://github.com/Kamunggay/YSP/issues/2. This is a review candidate; no routes, authentication, durable operations, stock or money are implemented. Glenn's frontend/query review and Efren's posting review remain pending. PRD v1.2/TRD v2.1 retain review-candidate status.\n\nValidate from a clean checkout: `npm --prefix contracts/transport ci --ignore-scripts` then `npm --prefix contracts/transport test`. Node 24.11.1 was used for this contract harness only; P01 selects/pins supported application runtimes separately. Tests use strict Ajv 2020-12 with date-time format assertions and a formal OpenAPI validator. examples.json contains validating expected wire examples; executed schema checks never establish business acceptance.\n\nCommandContext is normalized adapter metadata, not an HTTP command body. Bind chapter/action to the authorized route, Idempotency-Key to the mutation header and explicit expected versions/reference to the endpoint body. Endpoint contracts supply their real domain payload and enumerate the ActionResult.data/state fields. There is no shared POST or public balance setter. Identity/record/evidence payloads are the identity, record and evidence contract, opening acceptance 02, inventory query/hold semantics 03; execution stays in Stage 1.\n\nFor eventual mutations, success uses 200/201 and action_result=success. Correctable field input uses 422/blocked; domain or changed-key conflicts use 409/blocked (an owning contract may retain its established 423 gate status). Concurrent stale row/material input uses 409/stale. Current authentication/authorization failure uses 401/403/forbidden. Unknown outcome is never fabricated as blocked or success. Lookup HTTP 200 can contain an uncertain result; inspect action_result and operation.outcome. Current authorization is checked for every lookup/replay; an old requester or public ID grants no inherited access.\n\nKeep editable draft data separate from the immutable attempted payload, chapter, action, key, versions and known operation ID. Validation errors preserve correct input and show JSON-pointer field feedback alongside the blocking reason and permitted next action. A stale response supplies authorized current metadata for comparison without overwriting the draft or silently substituting versions. Definitive correctable rejection permits a reviewed new attempt with a new key after changed payload; never silently mutate the payload under an old key. Physical actions already performed require reconciliation even if database commitment was rejected or is unknown.\n\nOn timeout, retain that exact attempt and look up action+key in its original authorized chapter; if known, a scoped operation ID is also supported. No visible terminal row may mean the original request is still in flight. Unavailable/malformed/non-JSON lookup keeps uncertainty. Do not issue automatic new attempts, switch chapter/key to bypass uncertainty, or offer another physical handover. After a visible terminal result, only the owning operation's current policy and authorized next steps govern any new reviewed attempt. An internal deadlock retry uses the unchanged business identity/payload and never redoes physical activity.",
+    "x-requirements": [
+      "TR-02",
+      "TR-03",
+      "TR-06",
+      "TR-07",
+      "TR-08",
+      "TR-09",
+      "TR-10",
+      "TR-12",
+      "TR-15",
+      "DOC-11",
+      "UX-01",
+      "UX-02",
+      "UX-03",
+      "UX-04"
+    ]
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "chapterSession": []
+    }
+  ],
+  "paths": {
+    "/chapters/{chapter_id}/operations/by-key": {
+      "get": {
+        "operationId": "lookupOperationByKey",
+        "summary": "Look up the original action and key in an authorized chapter",
+        "description": "Read only. Reject missing action/key, unknown or mixed query selectors. No chapter/action/key uniqueness is widened. No visible result means uncertain, including an in-flight or not-yet-visible terminal transaction.",
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "description": "Selected chapter subject to current server membership/duty authorization, never an authority grant.",
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "name": "action_code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ActionCode"
+            }
+          },
+          {
+            "name": "idempotency_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/IdempotencyKey"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized terminal result, or uncertain when no terminal result is visible. An absent terminal result is never reported as confirmed failure.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/OperationCacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/LookupTerminal"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/LookupPending"
+                    }
+                  ]
+                },
+                "examples": {
+                  "same-payload-replay": {
+                    "$ref": "./examples.json#/same-payload-replay"
+                  },
+                  "uncertain-not-visible": {
+                    "$ref": "./examples.json#/uncertain-not-visible"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidLookup"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenLookup"
+          },
+          "503": {
+            "$ref": "#/components/responses/UnavailableLookup"
+          }
+        }
+      }
+    },
+    "/chapters/{chapter_id}/operations/by-id/{operation_id}": {
+      "get": {
+        "operationId": "lookupOperationById",
+        "summary": "Look up a known operation ID in an authorized chapter",
+        "description": "Read only. Reject query selectors. Resolve only inside the authorized chapter/record scope. A nonvisible ID does not prove absence or disclose an operation in another chapter.",
+        "parameters": [
+          {
+            "name": "chapter_id",
+            "in": "path",
+            "required": true,
+            "description": "Selected chapter subject to current server membership/duty authorization, never an authority grant.",
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/Id"
+            }
+          },
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "description": "Known public operation ID; always restricted to the authorized chapter and record scope.",
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/OperationId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized terminal result, or uncertain when no terminal result is visible. An absent terminal result is never reported as confirmed failure.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/OperationCacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "./transport.schema.json#/$defs/LookupTerminal"
+                    },
+                    {
+                      "$ref": "./transport.schema.json#/$defs/LookupPending"
+                    }
+                  ]
+                },
+                "examples": {
+                  "same-payload-replay": {
+                    "$ref": "./examples.json#/same-payload-replay"
+                  },
+                  "uncertain-not-visible": {
+                    "$ref": "./examples.json#/uncertain-not-visible"
+                  },
+                  "uncertain-by-id": {
+                    "$ref": "./examples.json#/uncertain-by-id"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidLookup"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationRequired"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenLookup"
+          },
+          "503": {
+            "$ref": "#/components/responses/UnavailableLookup"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "chapterSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ysp_session",
+        "description": "Proposed cookie transport name for the session binding; final identity/session details are owned by the identity, record and evidence contract/P02. Must be Secure/HttpOnly and revalidated for current membership/duty/record visibility. Provider authority grants no chapter membership. Declaring this scheme does not implement authentication."
+      }
+    },
+    "schemas": {
+      "Id": {
+        "$ref": "./transport.schema.json#/$defs/Id"
+      },
+      "Version": {
+        "$ref": "./transport.schema.json#/$defs/Version"
+      },
+      "Quantity": {
+        "$ref": "./transport.schema.json#/$defs/Quantity"
+      },
+      "UnitQuantity": {
+        "$ref": "./transport.schema.json#/$defs/UnitQuantity"
+      },
+      "PostedMoney": {
+        "$ref": "./transport.schema.json#/$defs/PostedMoney"
+      },
+      "UtcInstant": {
+        "$ref": "./transport.schema.json#/$defs/UtcInstant"
+      },
+      "ActionCode": {
+        "$ref": "./transport.schema.json#/$defs/ActionCode"
+      },
+      "IdempotencyKey": {
+        "$ref": "./transport.schema.json#/$defs/IdempotencyKey"
+      },
+      "OperationId": {
+        "$ref": "./transport.schema.json#/$defs/OperationId"
+      },
+      "RecordReference": {
+        "$ref": "./transport.schema.json#/$defs/RecordReference"
+      },
+      "CommandContext": {
+        "$ref": "./transport.schema.json#/$defs/CommandContext"
+      },
+      "OperationLookup": {
+        "$ref": "./transport.schema.json#/$defs/OperationLookup"
+      },
+      "OperationIdentity": {
+        "$ref": "./transport.schema.json#/$defs/OperationIdentity"
+      },
+      "Operation": {
+        "$ref": "./transport.schema.json#/$defs/Operation"
+      },
+      "RecordState": {
+        "$ref": "./transport.schema.json#/$defs/RecordState"
+      },
+      "FieldFeedback": {
+        "$ref": "./transport.schema.json#/$defs/FieldFeedback"
+      },
+      "BlockingReason": {
+        "$ref": "./transport.schema.json#/$defs/BlockingReason"
+      },
+      "NextAction": {
+        "$ref": "./transport.schema.json#/$defs/NextAction"
+      },
+      "BusinessTimes": {
+        "$ref": "./transport.schema.json#/$defs/BusinessTimes"
+      },
+      "ActionResult": {
+        "$ref": "./transport.schema.json#/$defs/ActionResult"
+      },
+      "LookupTerminal": {
+        "$ref": "./transport.schema.json#/$defs/LookupTerminal"
+      },
+      "LookupPending": {
+        "$ref": "./transport.schema.json#/$defs/LookupPending"
+      },
+      "LookupUnavailable": {
+        "$ref": "./transport.schema.json#/$defs/LookupUnavailable"
+      },
+      "ForbiddenResult": {
+        "$ref": "./transport.schema.json#/$defs/ForbiddenResult"
+      },
+      "InvalidLookup": {
+        "$ref": "./transport.schema.json#/$defs/InvalidLookup"
+      }
+    },
+    "responses": {
+      "InvalidLookup": {
+        "description": "Invalid lookup selector after chapter authorization; no operation is executed.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/OperationCacheControl"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/InvalidLookup"
+            },
+            "examples": {
+              "lookup-invalid": {
+                "$ref": "./examples.json#/lookup-invalid"
+              }
+            }
+          }
+        }
+      },
+      "AuthenticationRequired": {
+        "description": "Current authentication required. No stored operation or record details are returned.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/OperationCacheControl"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ForbiddenResult"
+            },
+            "examples": {
+              "forbidden": {
+                "$ref": "./examples.json#/forbidden"
+              }
+            }
+          }
+        }
+      },
+      "ForbiddenLookup": {
+        "description": "Current chapter/duty/record authority does not permit lookup. No details are disclosed, including whether a supplied other-chapter ID exists.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/OperationCacheControl"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/ForbiddenResult"
+            },
+            "examples": {
+              "forbidden": {
+                "$ref": "./examples.json#/forbidden"
+              }
+            }
+          }
+        }
+      },
+      "UnavailableLookup": {
+        "description": "Authorized lookup could not establish a terminal result. Proxies/network failures may provide no JSON at all; the client retains uncertainty locally.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/OperationCacheControl"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/LookupUnavailable"
+            },
+            "examples": {
+              "uncertain-unavailable": {
+                "$ref": "./examples.json#/uncertain-unavailable"
+              }
+            }
+          }
+        }
+      }
+    },
+    "headers": {
+      "OperationCacheControl": {
+        "required": true,
+        "description": "Do not cache scoped operation results or uncertainty.",
+        "schema": {
+          "type": "string",
+          "const": "no-store"
+        }
+      }
+    }
+  },
+  "x-fingerprint-contract": {
+    "identity": "Enforce UNIQUE(chapter_id, action_code, idempotency_key), using case-sensitive action/key. The key identifies an attempt and is not an authority token.",
+    "canonicalization": "Validate against the owning input schema and reject duplicate JSON member names/unknown body fields before fingerprinting. Build {chapter_id, action_code, input_schema, input}; input contains all semantic request fields, exact record/line IDs, explicit expected_row_version and required expected_material_version, actual quantities/money and immutable evidence object/version/hash bindings. Normalize quantities/unit costs to six places and posted PHP to two with exact string/decimal arithmetic, never binary float. IDs remain strings, versions bounded integers, timestamps six-place UTC. Retain array order unless the owning schema explicitly declares set semantics. Distinguish omitted and null unless that schema explicitly normalizes them. Apply RFC 8785 JCS to the normalized value, encode UTF-8 without BOM and hash SHA-256. The server computes this; a client digest is untrusted.",
+    "exclusions": "Exclude the idempotency key itself, cookies, CSRF/attempt transport headers, trace metadata, request arrival time and expiring signed URLs. Include stable evidence bindings instead. Exclude no semantic field without an explicit owning-schema normalization. The attempted semantic input remains immutable while its result is uncertain.",
+    "durability": "Persist canonical fingerprint, unique chapter/action/key, terminal operation ID/result, business changes, audit and required durable follow-up in the same owning MySQL transaction. Source/action/batch uniqueness remains independently required. Same canonical payload replays the existing terminal ID/time after current authorization; changed payload under the same identity is rejected without replacing that result or adding an effect. A current authorization failure reveals no saved result. Terminal rejection may commit a result without a business posting; no terminal row means uncertain, not failed.",
+    "reference": "https://www.rfc-editor.org/rfc/rfc8785"
+  },
+  "x-compatibility": [
+    {
+      "source": "../../INVENTORY-INTEGRATION-CONTRACT.md",
+      "status": "preserved proposal",
+      "agreement": "Shared chapter/action/key, exact values, explicit row/material versions and uncertainty align with Q3?Q5. Quantity views, holds and posting/transaction ownership remain with the stock-hold and IPC/RM contracts and actual consumers; no future operation is accepted here."
+    },
+    {
+      "source": "../../SALES-INTEGRATION-CONTRACT.md",
+      "status": "preserved proposal",
+      "agreement": "Shared replay/current authority, exact PHP and separate progress/material meanings apply. Payment/coverage, release ownership and later endpoint payloads remain proposed."
+    },
+    {
+      "source": "../../DELIVERY-INTEGRATION-CONTRACT.md",
+      "status": "preserved proposal",
+      "agreement": "Its proposed by-idempotency-key route maps to the chapter-scoped by-key selector with explicit action. Never accept key-only lookup. Source/recipient/batch/evidence payload and handover route remain proposed; no physical retry follows from database retry."
+    },
+    {
+      "source": "../../REQUISITION-API-CONTRACTS.md",
+      "status": "preserved review candidate",
+      "agreement": "The newly present R-24 key-only /operations/{idempotencyKey} proposal requires action-aware adaptation to Q3 before use. by-id has a separate literal namespace to avoid mistaking a key for an operation ID. Its current_material_version maps explicitly to shared material_version; its richer chapter/actor/record envelope needs a reviewed adapter, not an assumed drop-in match. No RF endpoint or candidate status is promoted."
+    }
+  ],
+  "x-review": {
+    "revision": "1.0.0-review.1",
+    "date": "2026-10-24",
+    "author": "Codex for Leader",
+    "scope": "Leader shared transport contribution only",
+    "Glenn_frontend_query_acceptance": "pending",
+    "Efren_posting_acceptance": "pending",
+    "P00_acceptance": "pending actual consumers and remaining contract slices",
+    "Stage_1_operations": "not implemented"
+  },
+  "externalDocs": {
+    "description": "JSON Schema 2020-12 validation vocabulary; consumers must enable format assertions.",
+    "url": "https://json-schema.org/draft/2020-12/json-schema-validation"
+  }
+}

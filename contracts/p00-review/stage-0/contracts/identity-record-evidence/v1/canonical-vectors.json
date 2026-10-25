@@ -1,0 +1,114 @@
+{
+  "revision": "ysp-opening-v1 / ysp-batch-v1 string encoding",
+  "valid": [
+    {
+      "name": "recipient-unicode-slash-controls",
+      "definition": "Recipient",
+      "value": {
+        "name": "Zoë / 😀 \"quoted\" \\ \b\t\n\f\r\u0000\u000b\u001f  ",
+        "user_id": null,
+        "capacity": "Committee recipient"
+      },
+      "canonical_json": "{\"name\":\"Zoë / 😀 \\\"quoted\\\" \\\\ \\b\\t\\n\\f\\r\\u0000\\u000b\\u001f  \",\"user_id\":null,\"capacity\":\"Committee recipient\"}",
+      "sha256": "908b0288ebfc165a3090cdba533d049719178ae113b45ee95725ccc5e59c99f0"
+    },
+    {
+      "name": "opening-with-cutoff",
+      "definition": "OpeningMaterial",
+      "value": {
+        "chapter_id": "1",
+        "record": {
+          "id": "9007199254740993",
+          "kind": "IPC"
+        },
+        "cutoff_at": "2026-10-23T23:00:00.000000Z",
+        "counted_at": "2026-10-24T06:00:00.000000Z",
+        "purpose": "Synthetic opening count; contract example only",
+        "policy_version_id": "42",
+        "counters": [
+          {
+            "user_id": "11",
+            "is_regular_custodian": true
+          },
+          {
+            "user_id": "12",
+            "is_regular_custodian": false
+          }
+        ],
+        "lines": [
+          {
+            "reference": {
+              "chapter_id": "1",
+              "record": {
+                "id": "9007199254740993",
+                "kind": "IPC"
+              },
+              "line_id": "501",
+              "line_kind": "IPC",
+              "variant_id": "71"
+            },
+            "location_id": "81",
+            "custody_assignment_id": "82",
+            "condition_code": "usable",
+            "counted_quantity": {
+              "value": "10.000000",
+              "quantity_scale": 0
+            },
+            "unit_valuation": "25.000000",
+            "valuation_basis": "Synthetic approved test valuation",
+            "restriction_version_id": "83"
+          }
+        ]
+      },
+      "canonical_json": "{\"chapter_id\":\"1\",\"record\":{\"id\":\"9007199254740993\",\"kind\":\"IPC\"},\"cutoff_at\":\"2026-10-23T23:00:00.000000Z\",\"counted_at\":\"2026-10-24T06:00:00.000000Z\",\"purpose\":\"Synthetic opening count; contract example only\",\"policy_version_id\":\"42\",\"counters\":[{\"user_id\":\"11\",\"is_regular_custodian\":true},{\"user_id\":\"12\",\"is_regular_custodian\":false}],\"lines\":[{\"reference\":{\"chapter_id\":\"1\",\"record\":{\"id\":\"9007199254740993\",\"kind\":\"IPC\"},\"line_id\":\"501\",\"line_kind\":\"IPC\",\"variant_id\":\"71\"},\"location_id\":\"81\",\"custody_assignment_id\":\"82\",\"condition_code\":\"usable\",\"counted_quantity\":{\"value\":\"10.000000\",\"quantity_scale\":0},\"unit_valuation\":\"25.000000\",\"valuation_basis\":\"Synthetic approved test valuation\",\"restriction_version_id\":\"83\"}]}",
+      "sha256": "51f26668f59dcab87be7cc46477605ce857f88823f2629a1527e778e021ecf8b"
+    },
+    {
+      "name": "exact-handover-batch",
+      "definition": "BatchSnapshot",
+      "value": {
+        "chapter_id": "1",
+        "record": {
+          "id": "601",
+          "kind": "IS_AR"
+        },
+        "material_version": 3,
+        "batch_id": "602",
+        "recipient": {
+          "name": "Synthetic recipient",
+          "user_id": null,
+          "capacity": "Committee recipient"
+        },
+        "lines": [
+          {
+            "line": {
+              "chapter_id": "1",
+              "record": {
+                "id": "601",
+                "kind": "IS_AR"
+              },
+              "line_id": "603",
+              "line_kind": "IS_AR",
+              "variant_id": "71"
+            },
+            "quantity": "2.000000"
+          }
+        ]
+      },
+      "canonical_json": "{\"chapter_id\":\"1\",\"record\":{\"id\":\"601\",\"kind\":\"IS_AR\"},\"material_version\":3,\"batch_id\":\"602\",\"recipient\":{\"name\":\"Synthetic recipient\",\"user_id\":null,\"capacity\":\"Committee recipient\"},\"lines\":[{\"line\":{\"chapter_id\":\"1\",\"record\":{\"id\":\"601\",\"kind\":\"IS_AR\"},\"line_id\":\"603\",\"line_kind\":\"IS_AR\",\"variant_id\":\"71\"},\"quantity\":\"2.000000\"}]}",
+      "sha256": "d72e4b3ec8d57858d26f3b068177bbd09a482f7c60bd1acc52c14e0bcc8b6d29"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "unpaired-high-surrogate",
+      "input_json": "{\"name\":\"\\ud800\",\"user_id\":null,\"capacity\":\"Recipient\"}",
+      "expected": "reject_invalid_unicode"
+    },
+    {
+      "name": "unpaired-low-surrogate",
+      "input_json": "{\"name\":\"\\udc00\",\"user_id\":null,\"capacity\":\"Recipient\"}",
+      "expected": "reject_invalid_unicode"
+    }
+  ]
+}
