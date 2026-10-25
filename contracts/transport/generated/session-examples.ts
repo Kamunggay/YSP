@@ -16717,6 +16717,452 @@ export const consumerExamples = [
         }
       }
     }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 419,
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "global_identity_disable_unavailable",
+        "message": "Global identity disable is unavailable.",
+        "next_action": "do_not_retry_mutation"
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableByKey",
+    "request": {
+      "query": {
+        "action_code": "identity.disable",
+        "idempotency_key": "global-disable-attempt-01"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableByKey",
+    "request": {
+      "query": {
+        "action_code": "identity.disable",
+        "idempotency_key": "global-disable-attempt-01"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableByKey",
+    "request": {
+      "query": {
+        "action_code": "identity.disable",
+        "idempotency_key": "global-disable-attempt-01"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableByKey",
+    "request": {
+      "query": {
+        "action_code": "identity.disable",
+        "idempotency_key": "global-disable-attempt-01"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "global_identity_disable_unavailable",
+        "message": "Global identity disable is unavailable.",
+        "next_action": "do_not_retry_mutation"
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 429,
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      },
+      "retryAfter": "60"
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "global_identity_disable_unavailable",
+        "message": "Global identity disable is unavailable.",
+        "next_action": "do_not_retry_mutation"
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 401,
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableByKey",
+    "request": {
+      "query": {
+        "action_code": "identity.disable",
+        "idempotency_key": "global-disable-attempt-01"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "global_identity_disable_unavailable",
+        "message": "Global identity disable is unavailable.",
+        "next_action": "do_not_retry_mutation"
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableById",
+    "request": {
+      "path": {
+        "operation_id": "01K8A6J0A00000000000000002"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 403,
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "request": {
+      "body": {
+        "idempotency_key": "global-disable-attempt-01",
+        "identity": {
+          "user_id": "18446744073709551615"
+        },
+        "expected_identity_version": 7,
+        "reason": "Explicit security action requested"
+      }
+    },
+    "response": {
+      "kind": "response",
+      "status": 503,
+      "body": {
+        "code": "global_identity_disable_unavailable",
+        "message": "Global identity disable is unavailable.",
+        "next_action": "do_not_retry_mutation"
+      }
+    }
   }
 ] as const satisfies readonly ConsumerExample[];
 export const rejectedRequestResponses = [
@@ -17579,6 +18025,58 @@ export const rejectedRequestResponses = [
   },
   {
     "operationId": "lookupProvisioningById",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "disableGlobalIdentity",
+    "response": {
+      "kind": "response",
+      "status": 422,
+      "body": {
+        "code": "validation_failed",
+        "message": "Correct the indicated field.",
+        "field_feedback": [
+          {
+            "path": "/identity/user_id",
+            "code": "INVALID",
+            "message": "Use a valid value."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableByKey",
+    "response": {
+      "kind": "response",
+      "status": 400,
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    }
+  },
+  {
+    "operationId": "lookupIdentityDisableById",
     "response": {
       "kind": "response",
       "status": 400,

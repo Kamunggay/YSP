@@ -6563,6 +6563,54 @@
           }
         }
       }
+    },
+    "GlobalIdentityDisableRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotency_key",
+        "identity",
+        "expected_identity_version",
+        "reason"
+      ],
+      "properties": {
+        "idempotency_key": {
+          "$ref": "#/$defs/IdempotencyKey"
+        },
+        "identity": {
+          "$ref": "#/$defs/MembershipIdentityLookupRequest"
+        },
+        "expected_identity_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "description": "Inert proposal while authority is unapproved. identity is only an exact target, never an authorization scope. ExistingIdentityReference is the canonical authorized read summary; do not accept caller display_name. expected_identity_version maps to users.auth_version. No enabled success, attempt creation or identity eligibility read."
+    },
+    "GlobalIdentityDisableUnavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "code": {
+          "const": "global_identity_disable_unavailable"
+        },
+        "message": {
+          "const": "Global identity disable is unavailable."
+        },
+        "next_action": {
+          "const": "do_not_retry_mutation"
+        }
+      },
+      "description": "Nonterminal boundary failure with no identity/result data. Says nothing about an earlier uncertain mutation; never mint another key or infer rejection."
     }
   },
   "$ref": "#/$defs/ActionResult"

@@ -13293,6 +13293,627 @@
           400
         ]
       }
+    },
+    "/identities/disable": {
+      "post": {
+        "operationId": "disableGlobalIdentity",
+        "summary": "Unavailable global individual identity disable",
+        "description": "Safely unavailable boundary only; no mutation, identity resolution or durable result disclosure. All runtime authority and success/lookup gates in x-global-identity-disable-contract remain unresolved. Safe failures cannot decide an earlier uncertain attempt.",
+        "security": [
+          {
+            "identitySession": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-XSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": false,
+            "schema": false,
+            "description": "Global identity target is not a chapter context. Reject this reserved selector; no provider or caller-selected authorization context."
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "disableGlobalIdentity-400": {
+                    "$ref": "./identity-disable-examples.json#/disableGlobalIdentity-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "disableGlobalIdentity-401": {
+                    "$ref": "./identity-disable-examples.json#/disableGlobalIdentity-401"
+                  },
+                  "expired-session": {
+                    "$ref": "./identity-disable-examples.json#/expired-session"
+                  },
+                  "revoked-session": {
+                    "$ref": "./identity-disable-examples.json#/revoked-session"
+                  },
+                  "disabled-session": {
+                    "$ref": "./identity-disable-examples.json#/disabled-session"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "disableGlobalIdentity-403": {
+                    "$ref": "./identity-disable-examples.json#/disableGlobalIdentity-403"
+                  },
+                  "chapter-head-only-denied": {
+                    "$ref": "./identity-disable-examples.json#/chapter-head-only-denied"
+                  },
+                  "provisioner-only-denied": {
+                    "$ref": "./identity-disable-examples.json#/provisioner-only-denied"
+                  },
+                  "recovery-operator-only-denied": {
+                    "$ref": "./identity-disable-examples.json#/recovery-operator-only-denied"
+                  },
+                  "mfa-incomplete-denied": {
+                    "$ref": "./identity-disable-examples.json#/mfa-incomplete-denied"
+                  }
+                }
+              }
+            }
+          },
+          "419": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionCsrfFailure"
+                },
+                "examples": {
+                  "disableGlobalIdentity-419": {
+                    "$ref": "./identity-disable-examples.json#/disableGlobalIdentity-419"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/MembershipInvalid"
+                },
+                "examples": {
+                  "disableGlobalIdentity-422": {
+                    "$ref": "./identity-disable-examples.json#/disableGlobalIdentity-422"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "disableGlobalIdentity-429": {
+                    "$ref": "./identity-disable-examples.json#/disableGlobalIdentity-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/GlobalIdentityDisableUnavailable"
+                },
+                "examples": {
+                  "disableGlobalIdentity-503": {
+                    "$ref": "./identity-disable-examples.json#/disableGlobalIdentity-503"
+                  },
+                  "unknown-target-unavailable": {
+                    "$ref": "./identity-disable-examples.json#/unknown-target-unavailable"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./transport.schema.json#/$defs/GlobalIdentityDisableRequest"
+              }
+            }
+          }
+        },
+        "x-invalid-request-statuses": [
+          422
+        ],
+        "x-enabled-boundary": false
+      }
+    },
+    "/identity-disable-operations/by-key": {
+      "get": {
+        "operationId": "lookupIdentityDisableByKey",
+        "summary": "Unavailable original global identity-disable attempt lookup",
+        "description": "Safely unavailable boundary only; no mutation, identity resolution or durable result disclosure. All runtime authority and success/lookup gates in x-global-identity-disable-contract remain unresolved. Safe failures cannot decide an earlier uncertain attempt.",
+        "security": [
+          {
+            "identitySession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "in": "query",
+            "name": "action_code",
+            "required": true,
+            "schema": {
+              "const": "identity.disable"
+            }
+          },
+          {
+            "in": "query",
+            "name": "idempotency_key",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/IdempotencyKey"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": false,
+            "schema": false,
+            "description": "Global identity target is not a chapter context. Reject this reserved selector; no provider or caller-selected authorization context."
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "lookupIdentityDisableByKey-400": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableByKey-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "lookupIdentityDisableByKey-401": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableByKey-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "lookupIdentityDisableByKey-403": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableByKey-403"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "lookupIdentityDisableByKey-429": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableByKey-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/GlobalIdentityDisableUnavailable"
+                },
+                "examples": {
+                  "lookupIdentityDisableByKey-503": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableByKey-503"
+                  },
+                  "redacted-result-unavailable": {
+                    "$ref": "./identity-disable-examples.json#/redacted-result-unavailable"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-enabled-boundary": false
+      }
+    },
+    "/identity-disable-operations/by-id/{operation_id}": {
+      "get": {
+        "operationId": "lookupIdentityDisableById",
+        "summary": "Unavailable global identity-disable operation lookup",
+        "description": "Safely unavailable boundary only; no mutation, identity resolution or durable result disclosure. All runtime authority and success/lookup gates in x-global-identity-disable-contract remain unresolved. Safe failures cannot decide an earlier uncertain attempt.",
+        "security": [
+          {
+            "identitySession": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "$ref": "./transport.schema.json#/$defs/OperationId"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ysp_session",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Chapter-Context",
+            "required": false,
+            "schema": false,
+            "description": "Global identity target is not a chapter context. Reject this reserved selector; no provider or caller-selected authorization context."
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/ChapterQueryInvalid"
+                },
+                "examples": {
+                  "lookupIdentityDisableById-400": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableById-400"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/EnrollmentUnauthorized"
+                },
+                "examples": {
+                  "lookupIdentityDisableById-401": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableById-401"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionForbidden"
+                },
+                "examples": {
+                  "lookupIdentityDisableById-403": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableById-403"
+                  },
+                  "newly-denied-lookup": {
+                    "$ref": "./identity-disable-examples.json#/newly-denied-lookup"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "Retry-After": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]*$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/SessionThrottled"
+                },
+                "examples": {
+                  "lookupIdentityDisableById-429": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableById-429"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./transport.schema.json#/$defs/GlobalIdentityDisableUnavailable"
+                },
+                "examples": {
+                  "lookupIdentityDisableById-503": {
+                    "$ref": "./identity-disable-examples.json#/lookupIdentityDisableById-503"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-session-consumer": true,
+        "x-invalid-parameter-statuses": [
+          400
+        ],
+        "x-enabled-boundary": false
+      }
     }
   },
   "components": {
@@ -13314,6 +13935,12 @@
         "in": "cookie",
         "name": "ysp_session",
         "description": "Same authenticated P02 session cookie; server requires active individual, required MFA, current separate provisioner grant in exactly one authorized organization. No chapter membership follows. Recheck on every provider read, write, replay and lookup. Billing/recovery grants alone fail. Scheme declaration implements no runtime enforcement."
+      },
+      "identitySession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ysp_session",
+        "description": "Same P02 individual cookie, current active identity and completed required MFA. No global-disable authority is currently approved. Chapter Head, provisioner, billing_admin and recovery_operator confer none. This scheme is a session requirement only, never an enabled security capability."
       }
     },
     "schemas": {
@@ -13784,6 +14411,12 @@
       },
       "AppointInitialHeadSuccess": {
         "$ref": "./transport.schema.json#/$defs/AppointInitialHeadSuccess"
+      },
+      "GlobalIdentityDisableRequest": {
+        "$ref": "./transport.schema.json#/$defs/GlobalIdentityDisableRequest"
+      },
+      "GlobalIdentityDisableUnavailable": {
+        "$ref": "./transport.schema.json#/$defs/GlobalIdentityDisableUnavailable"
       }
     },
     "responses": {
@@ -14261,5 +14894,78 @@
       "P03 owner agreement on exact nonchapter attempt namespace, fingerprint, selectors, atomic terminal resource result, audit and crash recovery; affected contract freeze blocked until agreement"
     ],
     "compatibility": "New provider paths and distinct resource-specific result only; existing chapter lookups, ActionResult, identity references and bootstrap schemas preserved. No provisioning branch added to chapter result union. Existing consumers remain valid; new consumers use generated provisioning types. Candidate authority and requirement IDs unchanged."
+  },
+  "x-global-identity-disable-contract": {
+    "revision": "p02.10-review.1",
+    "enabled_boundary": false,
+    "status": "Contract-authoring proposal only. No enabled global mutation or result lookup, no security approval, runtime revocation, persistence, P02 completion or live readiness is established.",
+    "requirements": [
+      "SEC-01",
+      "SEC-02",
+      "SEC-03",
+      "GOV-03",
+      "GOV-04",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "TR-16",
+      "TR-17",
+      "TR-18",
+      "DOC-10",
+      "DOC-11",
+      "AC-19",
+      "ADD-AC-09"
+    ],
+    "inventory": {
+      "mutation": "POST /identities/disable (disableGlobalIdentity)",
+      "lookup_by_key": "GET /identity-disable-operations/by-key (lookupIdentityDisableByKey)",
+      "lookup_by_id": "GET /identity-disable-operations/by-id/{operation_id} (lookupIdentityDisableById)",
+      "server_base": "/api/v1",
+      "action_code": "identity.disable",
+      "success_responses": []
+    },
+    "authorization": "All three operations are gated off. Require current active individual session and completed required MFA; anonymous, expired, revoked or disabled session -> uniform 401. Restricted MFA stage, insufficient authority, origin denial or attempts to infer authority from Chapter Head/provisioner/billing_admin/recovery_operator -> safe 403. A fully authenticated request may receive uniform 503 global_identity_disable_unavailable solely as boundary status, without implying authority. No duty/provider grant currently authorizes this action, including self-disable. Never resolve target existence or attempt/result existence to choose these errors. No account-status probe, directory or global result enumeration. Timing/rate-limit defenses remain backend obligations.",
+    "request": "GlobalIdentityDisableRequest is an inert exact-target proposal, not a buildable mutation. Reuses MembershipIdentityLookupRequest for exact existing user_id, IdempotencyKey and Version (users.auth_version); reason is bounded 1..500, meaningful nonblank requires server validation. Reuse ExistingIdentityReference only if a future authorized read/result can disclose a minimal identity. No fresh identities, display_name input, credentials, assisted reset or global target discovery. Target user_id is never the actor or authorization scope. Reject unknown/duplicate JSON members, extra/mixed/repeated/array selectors, chapter_id, provider/organization IDs, arbitrary scope, actor, fingerprint and X-Chapter-Context; no fallback to selected chapter/provider namespace.",
+    "state_and_csrf": "Inherit x-session-contract cookies, HTTPS, no-store, session/CSRF rotation, origin and token policy. Unsafe POST requires X-XSRF-TOKEN even same-origin; mismatch/expired token ->419, malformed body ->422 MembershipInvalid with FieldFeedback actual paths (/identity/user_id, /expected_identity_version, /idempotency_key, /reason); invalid selectors ->400 ChapterQueryInvalid. GET lookups require session/MFA/current access but no CSRF or chapter context. Rate limit ->429 with Retry-After, never automatic mutation retry. Runtime order: authenticate and apply origin/CSRF/state guards before target or durable store access; validate selectors/body without consulting identity state; return gated 403/503. Failure responses are shared safe metadata with no operation/resource and no proof about earlier uncertainty.",
+    "global_effect": "If separately enabled later: atomically disable the global individual identity, advance users.auth_version and record disabled_at; prevent password/MFA/recovery reauthentication, revoke ALL active sessions and invalidate remembered credentials across chapters/provider contexts. Every privileged read/write/approval/post/export rechecks active identity and current effective authority, including work prepared before disable; workers and protected download/output delivery recheck at execution AND immediately before delivery. Cancel/suppress protected delivery on lost access; already generated output or a queued job is never permission. Retain immutable individual ID, historical actor snapshots, memberships/grant history, audit and prior operation attribution. Never hard-delete or relabel history.",
+    "scope_distinction": "Chapter membership disable/revoke and duty-grant removal act only within their separately authorized chapter/unit/scope; no global disable or deletion follows and other independently authorized chapters remain unaffected. Authentication may be refreshed only for still-active identities; reauthentication/recovery restores neither disabled identity nor revoked membership/grants/provider authority. Global disable denies every context without rewriting historical chapter authority.",
+    "future_result_interface": {
+      "enabled": false,
+      "gate": "Design obligations only, not an HTTP success schema, supported result or approved authority. Freeze exact enabled schemas/selectors with P03/security/domain review before any runtime mutation or lookup succeeds.",
+      "namespace": "UNIQUE(actor_user_id, action_code, idempotency_key) for this global identity-security action; actor bound exclusively from current session, action fixed identity.disable. Target is part of fingerprint, not a caller-selectable authorization namespace. Original actor-private result visibility proposed; no delegated recovery or enumeration. This is distinct from ProvisionerScope organization/provider namespace and chapter OperationIdentity; do not use fabricated chapter/organization/provisioning/document records.",
+      "immutable_attempt": "Pin actor, action, key, target existing user_id, expected_identity_version, input_schema=GlobalIdentityDisableRequest@p02.10-review.1, canonical request body and known operation_id. Server SHA256 over RFC8785 UTF8-no-BOM {actor_user_id,action_code,input_schema,body}; body contains target/key/version/reason. Reject client fingerprint and semantic normalization. Cookie/CSRF transport metadata excluded. Later approved actor-capability/version/recent-proof guards must be finalized before enablement, and included in request/fingerprint if semantic.",
+      "terminal_result": {
+        "resource_type": "global_identity",
+        "server_bound_scope": "{kind: global_identity_security, actor_user_id: Id}; no client scope input",
+        "identity": "ExistingIdentityReference (authorized minimal target only)",
+        "identity_version": "Version mapped to users.auth_version",
+        "status": "disabled for a committed disable; no arbitrary membership status",
+        "disabled_at": "UtcInstant for committed disable",
+        "operation": "Same membership administration identity {operation_id: OperationId, action_code: identity.disable, idempotency_key: IdempotencyKey}, outcome committed/rejected, committed_at: UtcInstant, replayed: boolean. Reuse conventions without widening existing membership/provisioning operation action unions.",
+        "action_result": "MembershipSuccess success and MembershipRejected blocked discrimination conventions; definitive rejected terminal has its own operation, safe code and shared FieldFeedback/next_action when applicable, never a fabricated disabled identity. Exact closed reason catalogue/feedback paths remain an enablement prerequisite."
+      },
+      "lookup": "Only original actor with CURRENT separately approved global action/result permission may lookup; operation ID/key/target possession grants nothing. by-key requires exact action_code=identity.disable plus IdempotencyKey; by-id requires OperationId only; no query aliases, extra selector, array/duplicate key, target scope or list route. Same actor/action/key/target/known operation ID must match the immutable attempt. No row or invisible row -> pending_or_not_visible uncertainty; unavailable -> uncertainty; operation/resource absent or redacted. Never claim rejection from absent results. A new 401/403/503 or redaction cannot prove earlier mutation failed. Restore same active identity and current original access before lookup; never switch actor/scope to recover. An original actor disabled by its own approved future action would require a separately approved recovery/lookup procedure; none is invented here.",
+      "atomicity_and_replay": "P03 must atomically bind namespace uniqueness, target version lock, disabled state/auth_version, session revocation, terminal result, immutable security audit and protected-output invalidation/follow-up. Crash recovery must cover commit-before-response. Reauthorize original scope/action before saved result disclosure; then same fingerprint returns original operation_id/commit time/result with replayed:true and no re-execution. Changed payload/target/version under same key -> safe conflict with no saved data. Version checks for new attempts occur after authorized identical replay matching. Pending/unavailable are never terminal rejection. Do not accept success from an in-memory fake store."
+    },
+    "consumer_uncertainty": "No current exchange can report committed or durable rejected. 403/503/401/419/422/429 failures describe this request only. After any earlier uncertainty, retain original actor/action/key/target/payload/version/known operation ID and keep outcome uncertain, even after new validation or access denial. No automatic POST, new key, rebind, scope switch or guided reset; conceal protected edits after session interruption. Nonsecret draft correction is separate from the immutable attempt.",
+    "runtime_enablement_decisions": [
+      {
+        "decision": "Authorizing capability, allowed actors, target visibility, self-disable policy and audited authorizing procedure (including independence/recent-proof/notifications if required)",
+        "required_approval": "Separately authorized security/recovery authority and project owner/domain authority; Chapter Head, provisioner or recovery-operator label is insufficient. Record actual approving authority, date, scope and reviewed revision. This contract does not discover, assign or approve it."
+      },
+      {
+        "decision": "Enabled request/version guards, closed terminal schemas/rejection catalogue, actor-private result visibility and authorized lookup/recovery, including disabled original actor",
+        "required_approval": "Security/domain authority and P03 owner interface agreement, with actual Glenn consumer and Efren domain/non-author review before affected freeze."
+      },
+      {
+        "decision": "Atomic global disable/session revocation/result/audit/crash recovery and queued output reauthorization",
+        "required_approval": "Owning backend/P03/P24 implementation specifications and runtime security acceptance before enablement; fixtures are no approval or persistence evidence."
+      }
+    ],
+    "freeze_gates": [
+      "Actual Glenn and Efren consumer/domain review of this proposed unavailable boundary",
+      "Actual security/P03 agreement on future global namespace, visibility and result obligations; enabled-success/lookup remain separately blocked"
+    ],
+    "compatibility": "Existing session, membership, provider, result and chapter lookup schemas are unchanged. No global result added to chapter/provisioning unions. Catalogue identity.disable stays enabled_boundary:false with no duties/providers. No assisted reset/onboarding/general provider management."
   }
 }

@@ -183,5 +183,17 @@ export const routes = {
   "lookupProvisioningById": {
     "method": "GET",
     "path": "/api/v1/provider/provisioning-operations/by-id/{operation_id}"
+  },
+  "disableGlobalIdentity": {
+    "method": "POST",
+    "path": "/api/v1/identities/disable"
+  },
+  "lookupIdentityDisableByKey": {
+    "method": "GET",
+    "path": "/api/v1/identity-disable-operations/by-key"
+  },
+  "lookupIdentityDisableById": {
+    "method": "GET",
+    "path": "/api/v1/identity-disable-operations/by-id/{operation_id}"
   }
 } as const;

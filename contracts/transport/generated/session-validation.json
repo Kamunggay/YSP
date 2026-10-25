@@ -57110,5 +57110,679 @@
         }
       }
     ]
+  },
+  "disableGlobalIdentity": {
+    "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 400
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "invalid_selector"
+              },
+              "message": {
+                "type": "string",
+                "const": "Use only the documented single-valued selectors."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 401
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "authentication_required"
+              },
+              "message": {
+                "type": "string",
+                "const": "Sign in to continue."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 403
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "origin_forbidden"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "const": "This request is not permitted."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 419
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "csrf_mismatch"
+              },
+              "message": {
+                "type": "string",
+                "const": "Refresh CSRF before a reviewed new attempt."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 422
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "field_feedback",
+              "next_action"
+            ],
+            "properties": {
+              "code": {
+                "const": "validation_failed"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "field_feedback": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "path",
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "format": "json-pointer"
+                    },
+                    "code": {
+                      "type": "string",
+                      "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "description": "Correctable field feedback. path is an RFC 6901 pointer relative to the endpoint request JSON body (not CommandContext or a translated label). Empty pointer targets the body as a whole. Do not echo sensitive submitted data."
+                }
+              },
+              "next_action": {
+                "const": "correct_fields"
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body",
+          "retryAfter"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 429
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "throttled"
+              },
+              "message": {
+                "type": "string",
+                "const": "Try again after the indicated delay."
+              }
+            }
+          },
+          "retryAfter": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 503
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "next_action"
+            ],
+            "properties": {
+              "code": {
+                "const": "global_identity_disable_unavailable"
+              },
+              "message": {
+                "const": "Global identity disable is unavailable."
+              },
+              "next_action": {
+                "const": "do_not_retry_mutation"
+              }
+            },
+            "description": "Nonterminal boundary failure with no identity/result data. Says nothing about an earlier uncertain mutation; never mint another key or infer rejection."
+          }
+        }
+      }
+    ]
+  },
+  "lookupIdentityDisableByKey": {
+    "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 400
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "invalid_selector"
+              },
+              "message": {
+                "type": "string",
+                "const": "Use only the documented single-valued selectors."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 401
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "authentication_required"
+              },
+              "message": {
+                "type": "string",
+                "const": "Sign in to continue."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 403
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "origin_forbidden"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "const": "This request is not permitted."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body",
+          "retryAfter"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 429
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "throttled"
+              },
+              "message": {
+                "type": "string",
+                "const": "Try again after the indicated delay."
+              }
+            }
+          },
+          "retryAfter": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 503
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "next_action"
+            ],
+            "properties": {
+              "code": {
+                "const": "global_identity_disable_unavailable"
+              },
+              "message": {
+                "const": "Global identity disable is unavailable."
+              },
+              "next_action": {
+                "const": "do_not_retry_mutation"
+              }
+            },
+            "description": "Nonterminal boundary failure with no identity/result data. Says nothing about an earlier uncertain mutation; never mint another key or infer rejection."
+          }
+        }
+      }
+    ]
+  },
+  "lookupIdentityDisableById": {
+    "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 400
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "invalid_selector"
+              },
+              "message": {
+                "type": "string",
+                "const": "Use only the documented single-valued selectors."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 401
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "authentication_required"
+              },
+              "message": {
+                "type": "string",
+                "const": "Sign in to continue."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 403
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "forbidden",
+                  "origin_forbidden"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "const": "This request is not permitted."
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body",
+          "retryAfter"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 429
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "throttled"
+              },
+              "message": {
+                "type": "string",
+                "const": "Try again after the indicated delay."
+              }
+            }
+          },
+          "retryAfter": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        }
+      },
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "status",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "const": "response"
+          },
+          "status": {
+            "const": 503
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "next_action"
+            ],
+            "properties": {
+              "code": {
+                "const": "global_identity_disable_unavailable"
+              },
+              "message": {
+                "const": "Global identity disable is unavailable."
+              },
+              "next_action": {
+                "const": "do_not_retry_mutation"
+              }
+            },
+            "description": "Nonterminal boundary failure with no identity/result data. Says nothing about an earlier uncertain mutation; never mint another key or infer rejection."
+          }
+        }
+      }
+    ]
   }
 }

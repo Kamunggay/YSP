@@ -539,6 +539,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/identities/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unavailable global individual identity disable
+         * @description Safely unavailable boundary only; no mutation, identity resolution or durable result disclosure. All runtime authority and success/lookup gates in x-global-identity-disable-contract remain unresolved. Safe failures cannot decide an earlier uncertain attempt.
+         */
+        post: operations["disableGlobalIdentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/identity-disable-operations/by-id/{operation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unavailable global identity-disable operation lookup
+         * @description Safely unavailable boundary only; no mutation, identity resolution or durable result disclosure. All runtime authority and success/lookup gates in x-global-identity-disable-contract remain unresolved. Safe failures cannot decide an earlier uncertain attempt.
+         */
+        get: operations["lookupIdentityDisableById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/identity-disable-operations/by-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unavailable original global identity-disable attempt lookup
+         * @description Safely unavailable boundary only; no mutation, identity resolution or durable result disclosure. All runtime authority and success/lookup gates in x-global-identity-disable-contract remain unresolved. Safe failures cannot decide an earlier uncertain attempt.
+         */
+        get: operations["lookupIdentityDisableByKey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/provider/provisioning-context": {
         parameters: {
             query?: never;
@@ -1447,6 +1507,22 @@ export interface components {
         ForbiddenResult: components["schemas"]["ActionResult"] & {
             /** @constant */
             action_result?: "forbidden";
+        };
+        /** @description Inert proposal while authority is unapproved. identity is only an exact target, never an authorization scope. ExistingIdentityReference is the canonical authorized read summary; do not accept caller display_name. expected_identity_version maps to users.auth_version. No enabled success, attempt creation or identity eligibility read. */
+        GlobalIdentityDisableRequest: {
+            expected_identity_version: components["schemas"]["Version"];
+            idempotency_key: components["schemas"]["IdempotencyKey"];
+            identity: components["schemas"]["MembershipIdentityLookupRequest"];
+            reason: string;
+        };
+        /** @description Nonterminal boundary failure with no identity/result data. Says nothing about an earlier uncertain mutation; never mint another key or infer rejection. */
+        GlobalIdentityDisableUnavailable: {
+            /** @constant */
+            code: "global_identity_disable_unavailable";
+            /** @constant */
+            message: "Global identity disable is unavailable.";
+            /** @constant */
+            next_action: "do_not_retry_mutation";
         };
         /** @description Lowercase SHA-256 hex computed by the server. File bytes and canonical business snapshots have separate digests; a digest establishes integrity, never identity or authority. */
         Hash: string;
@@ -5252,6 +5328,237 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionUnavailable"];
+                };
+            };
+        };
+    };
+    disableGlobalIdentity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Global identity target is not a chapter context. Reject this reserved selector; no provider or caller-selected authorization context. */
+                "X-Chapter-Context"?: string;
+                "X-XSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GlobalIdentityDisableRequest"];
+            };
+        };
+        responses: {
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            419: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionCsrfFailure"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            422: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MembershipInvalid"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalIdentityDisableUnavailable"];
+                };
+            };
+        };
+    };
+    lookupIdentityDisableById: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Global identity target is not a chapter context. Reject this reserved selector; no provider or caller-selected authorization context. */
+                "X-Chapter-Context"?: string;
+            };
+            path: {
+                operation_id: components["schemas"]["OperationId"];
+            };
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalIdentityDisableUnavailable"];
+                };
+            };
+        };
+    };
+    lookupIdentityDisableByKey: {
+        parameters: {
+            query: {
+                action_code: "identity.disable";
+                idempotency_key: components["schemas"]["IdempotencyKey"];
+            };
+            header?: {
+                /** @description Global identity target is not a chapter context. Reject this reserved selector; no provider or caller-selected authorization context. */
+                "X-Chapter-Context"?: string;
+            };
+            path?: never;
+            cookie?: {
+                ysp_session?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            400: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterQueryInvalid"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            401: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentUnauthorized"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            403: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionForbidden"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            429: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    "Retry-After": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionThrottled"];
+                };
+            };
+            /** @description Closed safe failure; no target existence, saved outcome or protected result. An earlier uncertain attempt remains unresolved. */
+            503: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalIdentityDisableUnavailable"];
                 };
             };
         };

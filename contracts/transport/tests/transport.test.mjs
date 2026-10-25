@@ -98,6 +98,7 @@ test('TR-03: OpenAPI and every reusable definition compile, including HTTP looku
     ...await readJson('../v1/duty-grant-exchanges.json'),
     ...await readJson('../v1/policy-exchanges.json'),
     ...await readJson('../v1/provisioning-exchanges.json'),
+    ...await readJson('../v1/identity-disable-exchanges.json'),
   ];
   assert.equal(new Set(exchanges.map(e => e.name)).size, exchanges.length, 'unique exchange names');
   for (const example of exchanges) validateExchange(api, operationAjv, example);
