@@ -6121,8 +6121,8 @@ export const consumerExamples = [
           "replaces_grant_id": null,
           "revoked_at": null,
           "authorized": {
-            "user_id": "9007199254740996",
-            "at": "2026-10-25T06:00:00.123456Z"
+            "user_id": "9007199254741025",
+            "at": "2026-10-24T06:00:00.000000Z"
           },
           "last_changed": {
             "user_id": "9007199254740996",
@@ -6202,8 +6202,8 @@ export const consumerExamples = [
           "replaces_grant_id": null,
           "revoked_at": null,
           "authorized": {
-            "user_id": "9007199254740996",
-            "at": "2026-10-25T06:00:00.123456Z"
+            "user_id": "9007199254741025",
+            "at": "2026-10-24T06:00:00.000000Z"
           },
           "last_changed": {
             "user_id": "9007199254740996",
@@ -6725,8 +6725,8 @@ export const consumerExamples = [
           "replaces_grant_id": null,
           "revoked_at": null,
           "authorized": {
-            "user_id": "9007199254740996",
-            "at": "2026-10-25T06:00:00.123456Z"
+            "user_id": "9007199254741025",
+            "at": "2026-10-24T06:00:00.000000Z"
           },
           "last_changed": {
             "user_id": "9007199254740996",
@@ -6796,8 +6796,8 @@ export const consumerExamples = [
           "replaces_grant_id": null,
           "revoked_at": null,
           "authorized": {
-            "user_id": "9007199254740996",
-            "at": "2026-10-25T06:00:00.123456Z"
+            "user_id": "9007199254741025",
+            "at": "2026-10-24T06:00:00.000000Z"
           },
           "last_changed": {
             "user_id": "9007199254740996",
@@ -7198,8 +7198,8 @@ export const consumerExamples = [
           "replaces_grant_id": null,
           "revoked_at": "2026-10-25T06:00:00.123456Z",
           "authorized": {
-            "user_id": "9007199254740996",
-            "at": "2026-10-25T06:00:00.123456Z"
+            "user_id": "9007199254741025",
+            "at": "2026-10-24T06:00:00.000000Z"
           },
           "last_changed": {
             "user_id": "9007199254740996",
@@ -7268,8 +7268,8 @@ export const consumerExamples = [
           "replaces_grant_id": null,
           "revoked_at": "2026-10-25T06:00:00.123456Z",
           "authorized": {
-            "user_id": "9007199254740996",
-            "at": "2026-10-25T06:00:00.123456Z"
+            "user_id": "9007199254741025",
+            "at": "2026-10-24T06:00:00.000000Z"
           },
           "last_changed": {
             "user_id": "9007199254740996",
@@ -7704,8 +7704,8 @@ export const consumerExamples = [
           "replaces_grant_id": null,
           "revoked_at": null,
           "authorized": {
-            "user_id": "9007199254740996",
-            "at": "2026-10-25T06:00:00.123456Z"
+            "user_id": "9007199254741025",
+            "at": "2026-10-24T06:00:00.000000Z"
           },
           "last_changed": {
             "user_id": "9007199254740996",
@@ -7819,8 +7819,8 @@ export const consumerExamples = [
           "replaces_grant_id": null,
           "revoked_at": null,
           "authorized": {
-            "user_id": "9007199254740996",
-            "at": "2026-10-25T06:00:00.123456Z"
+            "user_id": "9007199254741025",
+            "at": "2026-10-24T06:00:00.000000Z"
           },
           "last_changed": {
             "user_id": "9007199254740996",

@@ -102,3 +102,20 @@ test('GOV-04/GOV-06: structural substitution results reject absent replaced gran
   assert.ok(response(s.expected_server_response.body),id);
  }
 });
+
+test('GOV-04/DOC-10: changes retain original attribution separately from latest actor/time',async()=>{
+ const exchanges=await read('duty-grant-exchanges');
+ for(const id of ['amendDutyGrant','endDutyGrant','revokeDutyGrant','substituteDutyGrant']){
+  const r=exchanges.find(e=>e.name===id+'-success').response.body;
+  const original=id==='substituteDutyGrant'?r.replaced_grant:r.grant;
+  assert.equal(original.authorized.user_id,'9007199254741025');
+  assert.equal(original.authorized.at,'2026-10-24T06:00:00.000000Z');
+  assert.equal(original.last_changed.user_id,'9007199254740996');
+  assert.equal(original.last_changed.at,r.operation.committed_at);
+  assert.notDeepEqual(original.authorized,original.last_changed);
+  if(id==='substituteDutyGrant'){
+   assert.deepEqual(r.grant.authorized,r.grant.last_changed);
+   assert.equal(r.grant.authorized.at,r.operation.committed_at);
+  }
+ }
+});
