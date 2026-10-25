@@ -22,6 +22,6 @@ COPY --chown=node:node frontend /workspace/frontend
 # generator-compatible compiler pinned in contracts/transport.
 RUN node ../contracts/transport/generate.mjs --fixtures \
     && node node_modules/typescript/bin/tsc -p ../contracts/transport/consumer/tsconfig.json
-RUN chown -R node:node /workspace/frontend /workspace/contracts/transport/generated /workspace/contracts/p02-review/v1
+RUN chown -R node:node /workspace/frontend /workspace/contracts/transport/generated /workspace/contracts/transport/v1 /workspace/contracts/p02-review/v1
 USER node
 CMD ["npm", "run", "test:browser"]

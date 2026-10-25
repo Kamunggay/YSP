@@ -46,8 +46,14 @@ npm --prefix contracts/transport test
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1
 ```
 
-The normal entry first builds the ignored runtime-validation and typed-example
-fixtures, then checks all generated outputs against the canonical sources. The
+The normal entry first derives OpenAPI response-example maps from the authored
+exchange fixtures, then builds the ignored runtime-validation and typed-example
+bundles and checks all generated outputs against their sources. From a clean
+checkout, run the normal entry or `npm --prefix contracts/transport run generate:fixtures`
+before opening the OpenAPI document in another tool so its example references resolve.
+The example maps are ignored build outputs; edit response bodies in the exchanges.
+Scenario files remain authored descriptions of server conditions and obligations.
+The
 compact `api.d.ts` and `routes.ts` remain tracked to detect contract/type drift;
 the expanded fixture bundles and review index are reproducible build outputs.
 It also checks strict positive/intentional

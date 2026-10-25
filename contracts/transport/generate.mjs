@@ -3,6 +3,11 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import openapiTS, { astToString } from 'openapi-typescript';
+import { exampleSlices, generateExamples } from './generate-examples.mjs';
+
+// OpenAPI references these derived example maps. Build/check them before resolving
+// the document so a clean checkout needs only the authored exchanges.
+await generateExamples({ check: process.argv.includes('--check') });
 
 // Give shared definitions stable component names before bundling. Otherwise the
 // bundler can target a oneOf member and the generator emits invalid TS indexing.
@@ -53,7 +58,7 @@ for (const item of Object.values(resolved.paths)) {
   }
 }
 outputs['session-validation.json'] = `${JSON.stringify(consumerSchemas, null, 2)}\n`;
-const exchanges = (await Promise.all(['session', 'enrollment', 'mfa-recovery', 'chapter-context', 'membership', 'duty-grant', 'policy', 'provisioning', 'identity-disable'].map(async slice =>
+const exchanges = (await Promise.all(exampleSlices.map(async slice =>
   JSON.parse(await readFile(new URL(`./v1/${slice}-exchanges.json`, import.meta.url), 'utf8'))))).flat();
 const examples = exchanges.map(({ operationId, request, response }) => ({
   operationId,

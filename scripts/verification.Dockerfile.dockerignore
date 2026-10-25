@@ -18,3 +18,5 @@
 contracts/transport/generated/session-validation.json
 contracts/transport/generated/session-examples.ts
 contracts/p02-review/v1/index.json
+contracts/transport/v1/*-examples.json
+!contracts/transport/v1/operation-examples.json
