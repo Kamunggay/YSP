@@ -3,13 +3,22 @@
   "version": "1.0.0-review.1",
   "private": true,
   "type": "module",
-  "description": "Stage 0 shared wire contract; no business operations or consumer acceptance implied.",
+  "description": "Shared Stage 0 and P02 wire contract validation; no runtime acceptance implied.",
   "scripts": {
-    "test": "node --test tests/*.test.mjs"
+    "generate": "node generate.mjs",
+    "generate:fixtures": "node generate.mjs --fixtures",
+    "generate:check": "node generate.mjs --check",
+    "typecheck": "tsc -p consumer/tsconfig.json",
+    "reconcile": "node ../p02-review/reconcile.mjs",
+    "reconcile:check": "node ../p02-review/reconcile.mjs --check",
+    "test": "npm run generate:fixtures && npm run generate:check && npm run typecheck && npm run reconcile && npm run reconcile:check && node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.1.0",
+    "@types/node": "24.19.2",
     "ajv": "8.20.0",
-    "ajv-formats": "3.0.1"
+    "ajv-formats": "3.0.1",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
   }
 }

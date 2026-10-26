@@ -33,6 +33,10 @@ function run() {
   const packageMap = byKey(index.packages);
   const sourcePackages = byKey(baseline.packages);
   const evidenceMap = byKey(index.evidence);
+  // The frozen index retains its original evidence hashes and authored outcomes.
+  // Explicit successor records pin changed current artifacts without rewriting
+  // that historical execution or accepting arbitrary future artifact drift.
+  const successors = JSON.parse(readFileSync(resolve(directory, 'v1/evidence-compatibility.json'), 'utf8'));
   const allowedScopes = ['contract', 'integration', 'inherited', 'rehearsal', 'activation'];
   const sameSet = (a, b) => isDeepStrictEqual([...new Set(a)].sort(), [...new Set(b)].sort());
   const requiredCounts = { packages: 30, nodes: 87, branches: 40, connectors: 7, loops: 6, narrative: 35, ambiguities: 21, requirements: 194, acceptance: 35, closure: 10, activation: 11, settings: 14 };
@@ -131,7 +135,9 @@ function run() {
     if (row.kind !== 'authored-contract-consistency' || row.status !== 'executed' || row.integrationAcceptance !== 'pending' || row.peerAcceptance !== 'pending') error(row.key, 'This revision records executed contract checks only, with integration and peer acceptance pending.', row.artifact, ['P00']);
     const path = resolve(checkout, row.artifact);
     const rel = relative(checkout, path);
-    if (rel.startsWith('..') || isAbsolute(rel) || !existsSync(path) || sha256(readFileSync(path)) !== row.artifactSha256) error(row.key, 'Evidence artifact is missing, outside checkout, or has changed since its recorded check.', row.artifact, ['P00']);
+    const successor = successors.artifacts.find(item => item.artifact === row.artifact && item.historicalSha256 === row.artifactSha256);
+    const expected = successor?.currentSha256 ?? row.artifactSha256;
+    if (rel.startsWith('..') || isAbsolute(rel) || !existsSync(path) || sha256(readFileSync(path)) !== expected) error(row.key, 'Evidence artifact is missing, outside checkout, or has changed since its recorded check or explicit successor reconciliation.', row.artifact, ['P00']);
   }
   for (const row of index.packages) for (const key of row.relatedEvidence) if (!evidenceMap.has(key)) error(row.key, `Dangling package evidence ${key}.`, sourcePackages.get(row.key)?.source, [row.key]);
   for (const conflict of index.conflicts) {

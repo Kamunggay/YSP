@@ -1,0 +1,4250 @@
+[
+  {
+    "name": "listMemberships-success",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "items": [
+          {
+            "membership_id": "9007199254740995",
+            "chapter_id": "1",
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic member"
+            },
+            "status": "authorized",
+            "version": 3,
+            "authority_version": 4,
+            "authorized": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "disabled": null,
+            "revoked": null,
+            "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "memberships-empty",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "items": [],
+        "next_cursor": null
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "memberships-page",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "query": {
+        "limit": 1,
+        "status": "authorized"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "items": [
+          {
+            "membership_id": "9007199254740995",
+            "chapter_id": "1",
+            "identity": {
+              "user_id": "9007199254740994",
+              "display_name": "Synthetic member"
+            },
+            "status": "authorized",
+            "version": 3,
+            "authority_version": 4,
+            "authorized": {
+              "user_id": "9007199254740996",
+              "at": "2026-10-25T06:00:00.123456Z"
+            },
+            "disabled": null,
+            "revoked": null,
+            "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          }
+        ],
+        "next_cursor": "cur_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "listMemberships-401",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 401,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "listMemberships-403",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 403,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "listMemberships-429",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 429,
+      "headers": {
+        "cache-control": "no-store",
+        "retry-after": "30"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "listMemberships-503",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "listMemberships-400",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "query": {
+        "unexpected": "1"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "listMemberships-chapter_context_stale",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "listMemberships-authority_stale",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "listMemberships-membership_stale",
+    "operationId": "listMemberships",
+    "path": "/chapters/{chapter_id}/memberships",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-success",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "membership_id": "9007199254740995",
+        "chapter_id": "1",
+        "identity": {
+          "user_id": "9007199254740994",
+          "display_name": "Synthetic member"
+        },
+        "status": "authorized",
+        "version": 3,
+        "authority_version": 4,
+        "authorized": {
+          "user_id": "9007199254740996",
+          "at": "2026-10-25T06:00:00.123456Z"
+        },
+        "disabled": null,
+        "revoked": null,
+        "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-401",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 401,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-403",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 403,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-429",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 429,
+      "headers": {
+        "cache-control": "no-store",
+        "retry-after": "30"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-503",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-400",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "query": {
+        "unexpected": "1"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-chapter_context_stale",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-authority_stale",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-membership_stale",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "readMembership-404",
+    "operationId": "readMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      }
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "membership_not_visible",
+        "message": "Membership unavailable."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-success",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "identity": {
+          "user_id": "9007199254740994",
+          "display_name": "Synthetic member"
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "identity-absent",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "identity": null
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "identity-disabled",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "identity": null
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "identity-not-visible",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "identity": null
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-401",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 401,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-403",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 403,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-429",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 429,
+      "headers": {
+        "cache-control": "no-store",
+        "retry-after": "30"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-503",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-400",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      },
+      "query": {
+        "unexpected": "1"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-chapter_context_stale",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-authority_stale",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-membership_stale",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-419",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "user_id": "9007199254740994"
+      }
+    },
+    "response": {
+      "status": 419,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupMembershipIdentity-422",
+    "operationId": "lookupMembershipIdentity",
+    "path": "/chapters/{chapter_id}/memberships/identity-reference",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {}
+    },
+    "response": {
+      "status": 422,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/user_id",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-success",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "authorized",
+          "version": 3,
+          "authority_version": 4,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-replay",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "authorized",
+          "version": 3,
+          "authority_version": 4,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-401",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 401,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-403",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 403,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-429",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 429,
+      "headers": {
+        "cache-control": "no-store",
+        "retry-after": "30"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-503",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-400",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      },
+      "query": {
+        "unexpected": "1"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-chapter_context_stale",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-authority_stale",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-membership_stale",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-idempotency_conflict",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740997"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-419",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 419,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-422",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        }
+      }
+    },
+    "response": {
+      "status": 422,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-success",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "disabled",
+          "version": 4,
+          "authority_version": 5,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.disable",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-replay",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "disabled",
+          "version": 4,
+          "authority_version": 5,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.disable",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-401",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 401,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-403",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 403,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-429",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 429,
+      "headers": {
+        "cache-control": "no-store",
+        "retry-after": "30"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-503",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-400",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "query": {
+        "unexpected": "1"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-chapter_context_stale",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-authority_stale",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-membership_stale",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-idempotency_conflict",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 4
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-419",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 419,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-422",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9
+      }
+    },
+    "response": {
+      "status": 422,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-success",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "revoked",
+          "version": 4,
+          "authority_version": 5,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.revoke",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-replay",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "revoked",
+          "version": 4,
+          "authority_version": 5,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.revoke",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-401",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 401,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authentication_required",
+        "message": "Sign in to continue."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-403",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 403,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "forbidden",
+        "message": "This request is not permitted."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-429",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 429,
+      "headers": {
+        "cache-control": "no-store",
+        "retry-after": "30"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "throttled",
+        "message": "Try again after the indicated delay."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-503",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 503,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "unavailable",
+        "message": "The session service is unavailable."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-400",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      },
+      "query": {
+        "unexpected": "1"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "invalid_selector",
+        "message": "Use only the documented single-valued selectors."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-chapter_context_stale",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "chapter_context_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-authority_stale",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "authority_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-membership_stale",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "membership_stale",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-idempotency_conflict",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 4
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "idempotency_conflict",
+        "message": "Review the original attempt with current access.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-419",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 419,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "csrf_mismatch",
+        "message": "Refresh CSRF before a reviewed new attempt."
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-422",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9
+      }
+    },
+    "response": {
+      "status": 422,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "code": "validation_failed",
+        "message": "Review marked fields.",
+        "field_feedback": [
+          {
+            "path": "/expected_membership_version",
+            "code": "REQUIRED",
+            "message": "This field is required."
+          }
+        ],
+        "next_action": "correct_fields"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupOperationByKey-membership",
+    "operationId": "lookupOperationByKey",
+    "path": "/chapters/{chapter_id}/operations/by-key",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "query": {
+        "action_code": "memberships.authorize",
+        "idempotency_key": "membership-attempt-01"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "authorized",
+          "version": 3,
+          "authority_version": 4,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupOperationById-membership",
+    "operationId": "lookupOperationById",
+    "path": "/chapters/{chapter_id}/operations/by-id/{operation_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "success",
+        "chapter_id": "1",
+        "membership": {
+          "membership_id": "9007199254740995",
+          "chapter_id": "1",
+          "identity": {
+            "user_id": "9007199254740994",
+            "display_name": "Synthetic member"
+          },
+          "status": "authorized",
+          "version": 3,
+          "authority_version": 4,
+          "authorized": {
+            "user_id": "9007199254740996",
+            "at": "2026-10-25T06:00:00.123456Z"
+          },
+          "disabled": null,
+          "revoked": null,
+          "history_reference": "mh_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        }
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupOperationByKey-membership-pending",
+    "requirements": [
+      "TR-03",
+      "DOC-11"
+    ],
+    "path": "/chapters/{chapter_id}/operations/by-key",
+    "method": "get",
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "query": {
+        "action_code": "memberships.authorize",
+        "idempotency_key": "membership-attempt-01"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "NO_VISIBLE_TERMINAL_RESULT",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "pending_or_not_visible"
+      }
+    },
+    "synthetic": true
+  },
+  {
+    "name": "lookupOperationByKey-membership-unavailable",
+    "requirements": [
+      "TR-03",
+      "DOC-11"
+    ],
+    "path": "/chapters/{chapter_id}/operations/by-key",
+    "method": "get",
+    "operationId": "lookupOperationByKey",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "query": {
+        "action_code": "memberships.authorize",
+        "idempotency_key": "membership-attempt-01"
+      }
+    },
+    "response": {
+      "status": 503,
+      "mediaType": "application/json",
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "LOOKUP_UNAVAILABLE",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "unavailable"
+      }
+    },
+    "synthetic": true
+  },
+  {
+    "name": "lookupOperationById-membership-pending",
+    "requirements": [
+      "TR-03",
+      "DOC-11"
+    ],
+    "path": "/chapters/{chapter_id}/operations/by-id/{operation_id}",
+    "method": "get",
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "NO_VISIBLE_TERMINAL_RESULT",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "pending_or_not_visible"
+      }
+    },
+    "synthetic": true
+  },
+  {
+    "name": "lookupOperationById-membership-unavailable",
+    "requirements": [
+      "TR-03",
+      "DOC-11"
+    ],
+    "path": "/chapters/{chapter_id}/operations/by-id/{operation_id}",
+    "method": "get",
+    "operationId": "lookupOperationById",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 503,
+      "mediaType": "application/json",
+      "headers": {
+        "Cache-Control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "uncertain",
+        "operation": {
+          "identity": {
+            "operation_id": null,
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "unknown",
+          "committed_at": null,
+          "replayed": false
+        },
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "LOOKUP_UNAVAILABLE",
+          "message": "Original membership outcome is not confirmed. Preserve original attempt."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "lookup_operation",
+            "label": "Check original chapter and attempt after current access review"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": "unavailable"
+      }
+    },
+    "synthetic": true
+  },
+  {
+    "name": "lookupOperationByKey-membership-rejected",
+    "operationId": "lookupOperationByKey",
+    "path": "/chapters/{chapter_id}/operations/by-key",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "query": {
+        "action_code": "memberships.authorize",
+        "idempotency_key": "membership-attempt-01"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "lookupOperationById-membership-rejected",
+    "operationId": "lookupOperationById",
+    "path": "/chapters/{chapter_id}/operations/by-id/{operation_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "operation_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": true
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "authorizeMembership-durable-rejection",
+    "operationId": "authorizeMembership",
+    "path": "/chapters/{chapter_id}/memberships/authorize",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "identity": {
+          "user_id": "9007199254740994"
+        },
+        "expected_membership_version": null
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.authorize",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "disableMembership-durable-rejection",
+    "operationId": "disableMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/disable",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.disable",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  },
+  {
+    "name": "revokeMembership-durable-rejection",
+    "operationId": "revokeMembership",
+    "path": "/chapters/{chapter_id}/memberships/{membership_id}/revoke",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "membership_id": "9007199254740995"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "X-XSRF-TOKEN": "synthetic-token"
+      },
+      "cookie": {
+        "ysp_session": "synthetic-session-cookie"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "idempotency_key": "membership-attempt-01",
+        "expected_authority_version": 9,
+        "expected_membership_version": 3
+      }
+    },
+    "response": {
+      "status": 409,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "resource_type": "membership",
+        "action_result": "blocked",
+        "chapter_id": "1",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "memberships.revoke",
+            "idempotency_key": "membership-attempt-01"
+          },
+          "outcome": "rejected",
+          "committed_at": "2026-10-25T06:00:00.123456Z",
+          "replayed": false
+        },
+        "code": "membership_state_conflict",
+        "message": "Membership state requires review.",
+        "next_action": "review_original_attempt"
+      }
+    },
+    "synthetic": true,
+    "requirements": [
+      "GOV-04",
+      "SEC-02",
+      "SEC-03",
+      "TR-03",
+      "TR-06",
+      "TR-12",
+      "UX-02",
+      "UX-03"
+    ]
+  }
+]

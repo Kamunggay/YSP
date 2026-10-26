@@ -1,0 +1,248 @@
+{
+  "revision": "p02-reconciliation-2026-10-25.1",
+  "recordedOn": "2026-10-25",
+  "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+  "artifactSetSha256": "a689e47af7ab1adefe00a9b621895832feab22dbfb13f952f7588b420e7e06c7",
+  "digestFormat": "sha256-utf8-lf",
+  "testedSourceRevision": "6e680d7b722aa297fa6638318b0d5eed316db907",
+  "scope": "The exact code/input revision and normalized artifact set above were tested. This execution record is excluded from its own input fingerprint; a later evidence-only commit does not change the tested artifact set.",
+  "host": {
+    "node": "v24.11.1",
+    "npm": "11.21.0",
+    "cleanInstall": {
+      "command": "npm --prefix contracts/transport ci --ignore-scripts",
+      "exitCode": 0,
+      "result": "48 locked packages installed; audit found 0 vulnerabilities"
+    },
+    "postScenarioCorrection": {
+      "sourceRevision": "df901d262ff5b903e5e86bf8d1b6f6bb446bd6df",
+      "artifactSetSha256": "c8b254b10c41a927ee85b3c9b33748504336cdd6d8d08f278d2d5bf06a250397",
+      "command": "npm --prefix contracts/transport test",
+      "exitCode": 0,
+      "tests": {
+        "passed": 99,
+        "failed": 0,
+        "skipped": 0
+      },
+      "result": "Generation/drift, strict positive/intentional-negative compilation, reconciliation and consumers passed. Later verifier metadata-copy/ignore changes were checked by focused host checks and the complete final image/combined run."
+    }
+  },
+  "combined": {
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+    "sourceRevision": "6e680d7b722aa297fa6638318b0d5eed316db907",
+    "artifactSetSha256": "a689e47af7ab1adefe00a9b621895832feab22dbfb13f952f7588b420e7e06c7",
+    "exitCode": 0,
+    "successMarker": "Combined verification passed for this checkout. Review and package acceptance are recorded separately.",
+    "result": "Pinned-image contract 99/99, generation and both compiler checks, dependency audits, frontend unit/lint/build, backend static/tests/fresh MySQL migration, same-origin browser and outage/recovery checks completed through the established verifier.",
+    "images": [
+      {
+        "tags": [
+          "ysp-verification:local"
+        ],
+        "id": "sha256:9f6083e884c90ba0210933c6d4ffb011060e018061ef7fab986c2474d1cd29e5",
+        "repoDigests": [
+          "ysp-verification@sha256:9f6083e884c90ba0210933c6d4ffb011060e018061ef7fab986c2474d1cd29e5"
+        ]
+      },
+      {
+        "tags": [
+          "ysp-backend:local"
+        ],
+        "id": "sha256:95b2650eb6b24efb4539240022fd50513940c40bf91bd08183635335d50d8cab",
+        "repoDigests": [
+          "ysp-backend@sha256:95b2650eb6b24efb4539240022fd50513940c40bf91bd08183635335d50d8cab"
+        ]
+      },
+      {
+        "tags": [
+          "ysp-frontend:local"
+        ],
+        "id": "sha256:cb319417adc165fbf1ccc432a75edd13539e8d1175103eec0a2c37195ca21bb4",
+        "repoDigests": [
+          "ysp-frontend@sha256:cb319417adc165fbf1ccc432a75edd13539e8d1175103eec0a2c37195ca21bb4"
+        ]
+      }
+    ],
+    "node": "v24.22.1",
+    "npm": "11.19.1"
+  },
+  "priorAttempts": [
+    {
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+      "exitCode": 1,
+      "result": "Reconciliation could not read /workspace/backend/composer.lock; verifier image lacked newly fingerprinted metadata inputs. Added exact public metadata copies."
+    },
+    {
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+      "exitCode": 1,
+      "result": "Dockerfile-specific ignore excluded the new COPY inputs. Added exact allowlist; no backend source or secrets copied."
+    }
+  ],
+  "reviews": {
+    "Standards": {
+      "findingsRemaining": 0,
+      "scope": "master merge-base through implementation, with focused re-reviews of scenario-boundary and verifier-image corrections"
+    },
+    "Spec": {
+      "initialFindings": 1,
+      "resolved": "Replaced generic forbidden data/next-step descriptions with response-specific schema fields, actual response/consumer actions and explicit unspecified boundaries.",
+      "findingsRemaining": 0
+    },
+    "human": "Completed on owner attestation as recorded in review.json; no direct reviewer notes, original dates or zero-findings assertion."
+  },
+  "locks": [
+    {
+      "path": "contracts/transport/package-lock.json",
+      "sha256Bytes": "f4987c2d0f6928c29269dd621e297197a1ffca14dbb6db14d3f83bba2fc544b2"
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "sha256Bytes": "6792a468c569e3baac43a1efcf9370b12fa1d0ec04ccdbb795d49c26df175dc8"
+    },
+    {
+      "path": "backend/composer.lock",
+      "sha256Bytes": "bbc816d24fd855aeb0c68b7d9fc34da3b0a11c12175c9883576e071597d6a33d"
+    }
+  ],
+  "coverage": {
+    "httpOperations": 49,
+    "formalP02Exchanges": 606,
+    "chapterLookupExamples": 13,
+    "authoredServerScenarios": 108,
+    "sessionExampleScenarios": 35,
+    "parentChecklistPositions": 18
+  },
+  "logs": [
+    {
+      "name": "11-clean-install.log",
+      "sha256Bytes": "de6607c4ddd29285b448c2d14cf952bfc84fb6fa7e2d892bb46c7e96a5c914b6",
+      "location": "Retained in the local execution evidence directory; not duplicated into tracked contract artifacts."
+    },
+    {
+      "name": "11-contract-tests.log",
+      "sha256Bytes": "35cede6a41b6b64aeae513c20be5c73166acd8cf6a93e39124b788d4b5e37453",
+      "location": "Retained in the local execution evidence directory; not duplicated into tracked contract artifacts."
+    },
+    {
+      "name": "11-final-contract-tests.log",
+      "sha256Bytes": "d157a076b349638a58969e697244fd0ffce71ad4cee8cfbeb030473cb401c12e",
+      "location": "Retained in the local execution evidence directory; not duplicated into tracked contract artifacts."
+    },
+    {
+      "name": "11-verification.log",
+      "sha256Bytes": "cd9d4eb3e8cdcd5f8e4d9c467591c68adf1329bbf98edcd33118856ea05c1119",
+      "location": "Retained in the local execution evidence directory; not duplicated into tracked contract artifacts."
+    },
+    {
+      "name": "11-final-verification.log",
+      "sha256Bytes": "0d9dc5a4906d71a1e110d182dd44de92e4ea8c83654bb61502afb74e695b8e87",
+      "location": "Retained in the local execution evidence directory; not duplicated into tracked contract artifacts."
+    },
+    {
+      "name": "11-combined-verified.log",
+      "sha256Bytes": "330474de64c2473e67423c77836623511889d5e201ee50a88e44013e0b6c64e7",
+      "location": "Retained in the local execution evidence directory; not duplicated into tracked contract artifacts."
+    }
+  ],
+  "limitations": [
+    "No environment limitation prevented the final run; the two prior code/build integration failures are retained above.",
+    "Contract-only checks require no production authentication, domain migration or cloud access. Combined application verification uses disposable local MySQL/browser services, not production.",
+    "Glenn/Efren reviews are completed on project-owner attestation; original reviewer notes, original dates and per-decision security/P03 approval were not supplied.",
+    "Schema/examples/type checks do not prove runtime authorization, MFA code consumption, session revocation, atomic persistence, queued-output enforcement, P02 completion, AC-19/ADD-AC-09 execution or live/MIG readiness.",
+    "Unresolved wire/security freeze choices and separate runtime-enablement gates remain in review.json. Stage 0 provenance, candidate requirements, IDs, roadmap DAG and parent issue remain unchanged."
+  ],
+  "outputCleanup": {
+    "sourceRevision": "0c35499dcea001f40b06c8f88f6986bc02efe24b",
+    "recordedOn": "2026-10-25",
+    "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+    "artifactSetSha256": "4504434d4ec512a2e7ffe46cc6460b12f0a36f7901f14e604112a67269e9805d",
+    "removedFromTracking": [
+      "contracts/transport/generated/session-validation.json",
+      "contracts/transport/generated/session-examples.ts",
+      "contracts/p02-review/v1/index.json"
+    ],
+    "removedGeneratedLines": 91145,
+    "retained": "Canonical OpenAPI/shared schemas, authored examples/exchanges/scenarios, consumer/check code, locked dependencies and compact generated declarations/routes remain tracked. The compact generated interface files still detect source/type drift.",
+    "verification": [
+      {
+        "command": "npm --prefix contracts/transport test",
+        "condition": "All three removed outputs were initially absent; normal entry regenerated them.",
+        "exitCode": 0,
+        "passed": 99,
+        "failed": 0
+      },
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+        "condition": "Docker context excludes all three expanded outputs; build and normal test entry regenerate required artifacts.",
+        "exitCode": 0,
+        "passedContractTests": 99
+      }
+    ],
+    "verificationImage": "sha256:4b138cba24765de383858571eb534be9d8d64efbf66e8e1373f41f6264c7263c",
+    "automatedReview": {
+      "Standards": 0,
+      "Spec": 0
+    },
+    "logs": [
+      {
+        "name": "output-cleanup-contract.log",
+        "sha256Bytes": "7280906f8904d5ec15c1c7ffb6e48a3275b16a1869d48fc9d084785e33af5ba2"
+      },
+      {
+        "name": "output-cleanup-combined.log",
+        "sha256Bytes": "5dd48c3509673a1a7554269d2c7c72e6a68acde39bdabffb4162413e84b92a8b"
+      }
+    ],
+    "archives": "No archive directories are present in the current change tree. Earlier archive copies were removed in 8168be3; historical commits are preserved. This cleanup does not rewrite Git history.",
+    "boundaries": "HTTP contract and requirement scope unchanged. Original execution evidence above remains tied to its original revision; this supplemental record identifies cleanup verification."
+  },
+  "exchangeCountCorrection": {
+    "previousReportedCount": 706,
+    "actualCount": 606,
+    "basis": "Counted the nine P02 exchange arrays directly; 600 named response examples match their exchange response bodies. This corrects summary arithmetic only; executed test results and contract content are unchanged."
+  },
+  "exampleGeneration": {
+    "sourceRevision": "72e19b340d551b84ee9a91a815372f49772d80c5",
+    "previousRevision": "a5c7efd32701eafee7d723d412e3dbbf9e0377a5",
+    "recordedOn": "2026-10-25",
+    "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+    "artifactSetSha256": "30cb3e2f81f17d925ffc1fa5c3d17d9e7cf7a211a196c62d58c2f08430121800",
+    "removedTrackedLines": 9159,
+    "generatedMaps": 9,
+    "preservedExampleObjects": 600,
+    "authoredExchanges": 606,
+    "source": "Response bodies are authored only in exchange fixtures; generation preserves all existing example objects, documentation labels, bodyless omissions and cross-surface ownership.",
+    "driftCheck": "An intentional generated session-example mutation was rejected by generate.mjs --check; the original generated file was restored.",
+    "validation": [
+      {
+        "command": "npm --prefix contracts/transport test",
+        "condition": "All twelve derived files were absent before the normal entry regenerated them.",
+        "exitCode": 0,
+        "passed": 102,
+        "failed": 0
+      },
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+        "condition": "Docker context excludes generated maps and expanded bundles; the build and test entry generate them before use.",
+        "exitCode": 0,
+        "passedContractTests": 102
+      }
+    ],
+    "reviews": {
+      "Standards": 0,
+      "Spec": 0
+    },
+    "verificationImage": "sha256:78352119dc3b4109bdb974f12109127364ad0226a17a5bd2d688708b3c966925",
+    "logs": [
+      {
+        "name": "example-generation-contract.log",
+        "sha256Bytes": "a3dec7453023900569d7097676d7c4d7563ec0ca9c1d26174c1bf86604bfdd0b"
+      },
+      {
+        "name": "example-generation-combined.log",
+        "sha256Bytes": "76acf354ba9c482a72d0f68772c0593428c0f70e9d24bfa8ec89a01ff602418e"
+      }
+    ],
+    "boundaries": "Canonical OpenAPI, shared schemas, authored exchanges/scenarios and tracked generated declarations/routes are unchanged. Original execution records remain tied to their original revisions."
+  }
+}

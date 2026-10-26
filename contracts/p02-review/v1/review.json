@@ -1,0 +1,600 @@
+{
+  "revision": "p02-reconciliation-2026-10-25.1",
+  "parentSpec": "https://github.com/Kamunggay/YSP/issues/5",
+  "authoredOn": "2026-10-25",
+  "author": "Codex for Leader",
+  "sourceContractRevision": "f5e89d64e54bd8cfc77d06d16389d4d11905cd96",
+  "authority": "Owner-authorized reconciliation of the existing candidate contract. Candidate/draft requirements, stable requirement IDs, roadmap DAG and parent issue remain unchanged.",
+  "inventory": {
+    "Session": [
+      "getSession",
+      "signIn",
+      "signOut"
+    ],
+    "CSRF": [
+      "initializeCsrf"
+    ],
+    "MFA enrollment": [
+      "prepareAuthenticatorEnrollment",
+      "confirmAuthenticatorEnrollment"
+    ],
+    "MFA challenge": [
+      "verifyMfaChallenge"
+    ],
+    "Recovery-code maintenance": [
+      "regenerateRecoveryCodes"
+    ],
+    "Assisted recovery": [
+      "getAssistedRecoveryGuidance"
+    ],
+    "Chapter context": [
+      "listChapterMemberships",
+      "getChapterContext",
+      "selectChapter"
+    ],
+    "Memberships": [
+      "listMemberships",
+      "readMembership",
+      "lookupMembershipIdentity",
+      "authorizeMembership",
+      "disableMembership",
+      "revokeMembership"
+    ],
+    "Duty grants": [
+      "readDutyCatalogue",
+      "listDutyGrants",
+      "readDutyGrant",
+      "authorizeDutyGrant",
+      "amendDutyGrant",
+      "endDutyGrant",
+      "revokeDutyGrant",
+      "substituteDutyGrant"
+    ],
+    "Identity disable": [
+      "disableGlobalIdentity",
+      "lookupIdentityDisableByKey",
+      "lookupIdentityDisableById"
+    ],
+    "Minimum policy roots": [
+      "readPolicyStatus",
+      "listPolicyRoots",
+      "readPolicyRoot",
+      "listPolicyVersions",
+      "readPolicyVersion",
+      "savePolicyDraft",
+      "submitPolicyVersion",
+      "reviewPolicyVersion",
+      "approvePolicyVersion",
+      "returnPolicyVersion"
+    ],
+    "Limited provisioning": [
+      "getProvisioningContext",
+      "lookupProvisioningIdentity",
+      "createProvisionedChapter",
+      "listProvisionings",
+      "appointInitialHead",
+      "readProvisioning"
+    ],
+    "Outcome recovery": [
+      "lookupOperationByKey",
+      "lookupOperationById",
+      "lookupProvisioningByKey",
+      "lookupProvisioningById"
+    ]
+  },
+  "packs": {
+    "Entry": [
+      "session/"
+    ],
+    "MFA": [
+      "enrollment/",
+      "mfa-recovery/"
+    ],
+    "Membership/context": [
+      "chapter-context/"
+    ],
+    "Administration": [
+      "membership/",
+      "duty-grant/",
+      "identity-disable/"
+    ],
+    "Policy": [
+      "policy/"
+    ],
+    "Provisioning": [
+      "provisioning/"
+    ],
+    "Outcomes": [
+      "membership/uncertainty",
+      "membership/original-replay",
+      "policy/row-versus-material",
+      "policy/uncertain-attempt",
+      "duty-grant/unknown",
+      "provisioning/scoped-uncertain-lookup",
+      "provisioning/uncertainty-and-expiry",
+      "identity-disable/redacted-uncertain-lookup",
+      "session/"
+    ]
+  },
+  "checklist": [
+    {
+      "position": 1,
+      "criterion": "One canonical reviewed OpenAPI revision contains every in-scope operation, exact wire shape, status/header/security requirement and named example; no duplicate transport definitions",
+      "trace": [
+        "TR-03",
+        "implementation plan shared agreements and P02"
+      ],
+      "evidence": [
+        "contracts/transport/tests/operation-examples.test.mjs",
+        "contracts/transport/tests/session.test.mjs",
+        "contracts/transport/tests/p02-review.test.mjs"
+      ],
+      "assessment": "Operation inventory reconciled. Contract freeze remains qualified by the decision gates; independent implementation readiness is not asserted."
+    },
+    {
+      "position": 2,
+      "criterion": "Valid bootstrap/login examples distinguish signed out, enrollment pending, challenge pending and authenticated; negative schemas reject chapter/provider/permission disclosure before required MFA",
+      "trace": [
+        "SEC-01",
+        "TR-16–TR-17",
+        "F-01",
+        "S-01"
+      ],
+      "evidence": [
+        "contracts/transport/tests/session.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 3,
+      "criterion": "Enrollment/challenge/recovery examples distinguish preparation, verified MFA, expiry, throttling, one-time code use/issuance and blocked assisted recovery; no scenario adds authority",
+      "trace": [
+        "SEC-01–SEC-03",
+        "TR-16/TR-18",
+        "F-01"
+      ],
+      "evidence": [
+        "contracts/transport/tests/enrollment.test.mjs",
+        "contracts/transport/tests/mfa-recovery.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 4,
+      "criterion": "Cookie/CSRF exchange includes its true base URL, request/header/cookie requirements, bodyless response, rotation and typed failures; no redirect/HTML is treated as a valid JSON success",
+      "trace": [
+        "TR-16",
+        "UX-02–UX-03",
+        "F-01/F-11"
+      ],
+      "evidence": [
+        "contracts/transport/tests/session.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 5,
+      "criterion": "Zero/one/many memberships, differing per-chapter duties, chapter switches and stale context have typed outcomes; attempted mutations and lookup retain their original scope",
+      "trace": [
+        "GOV-01–GOV-02",
+        "TR-06/TR-17",
+        "ADD-07",
+        "ADD-AC-04",
+        "F-01"
+      ],
+      "evidence": [
+        "contracts/transport/tests/chapter-context.test.mjs",
+        "contracts/transport/tests/membership.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 6,
+      "criterion": "A finite action/authority matrix covers membership/duty/alternate administration, operational versus financial approval, disable/revoke and provider separation, without granting arbitrary client permissions",
+      "trace": [
+        "GOV-03–GOV-08",
+        "SEC-02–SEC-03",
+        "TR-17 Appendix D",
+        "AC-19",
+        "ADD-AC-09"
+      ],
+      "evidence": [
+        "contracts/transport/tests/chapter-context.test.mjs",
+        "contracts/transport/tests/membership.test.mjs",
+        "contracts/transport/tests/duty-grant.test.mjs",
+        "contracts/transport/tests/policy.test.mjs",
+        "contracts/transport/tests/identity-disable.test.mjs",
+        "contracts/transport/tests/provisioning.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 7,
+      "criterion": "Grant schemas/examples constrain unit scope, effective dates, limit meaning, alternates and versions; actual-identity independence is documented without a blanket preparer prohibition",
+      "trace": [
+        "GOV-04–GOV-07",
+        "TR-06/TR-10/TR-17",
+        "ADD-07"
+      ],
+      "evidence": [
+        "contracts/transport/tests/duty-grant.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 8,
+      "criterion": "Disable/revoke examples identify account versus membership/grant scope, retain attribution, recheck stale authority and state queued protected-output obligations",
+      "trace": [
+        "SEC-02–SEC-03",
+        "TR-06/TR-16–TR-18",
+        "AC-19"
+      ],
+      "evidence": [
+        "contracts/transport/tests/membership.test.mjs",
+        "contracts/transport/tests/duty-grant.test.mjs",
+        "contracts/transport/tests/identity-disable.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 9,
+      "criterion": "Policy examples distinguish incomplete root metadata, complete submitted material, appropriate duty approval, current/future effectiveness and unsupported payloads; missing setup blocks only its affected action",
+      "trace": [
+        "GOV-08–GOV-09",
+        "DOC-04–DOC-05",
+        "TR-09–TR-10",
+        "F-01",
+        "S-21"
+      ],
+      "evidence": [
+        "contracts/transport/tests/policy.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 10,
+      "criterion": "Field errors point to actual request fields; safe blockers, responsible duties and next actions do not leak restricted values or imply permission",
+      "trace": [
+        "DOC-03",
+        "SEC-03",
+        "UX-01–UX-04",
+        "ADD-08",
+        "APP-FLOW blocking feedback"
+      ],
+      "evidence": [
+        "contracts/transport/tests/membership.test.mjs",
+        "contracts/transport/tests/policy.test.mjs",
+        "contracts/transport/tests/provisioning.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 11,
+      "criterion": "IDs above safe-integer range, row/material/authority versions, exact UTC instants and immutable references survive validation and typed consumer use",
+      "trace": [
+        "TR-06–TR-09",
+        "DOC-05/DOC-10–DOC-11",
+        "shared Q4 agreement"
+      ],
+      "evidence": [
+        "contracts/transport/tests/transport.test.mjs",
+        "contracts/transport/tests/identity-record-evidence.test.mjs",
+        "contracts/transport/tests/session.test.mjs",
+        "contracts/transport/tests/policy.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 12,
+      "criterion": "Known rejection, stale state, forbidden access, expiry/CSRF and uncertain mutation outcome have distinct operation-linked examples; unknown outcomes never offer automatic new attempts",
+      "trace": [
+        "DOC-11",
+        "UX-02–UX-03",
+        "TR-10–TR-12",
+        "F-11",
+        "shared Q3 agreement"
+      ],
+      "evidence": [
+        "contracts/transport/tests/session.test.mjs",
+        "contracts/transport/tests/membership.test.mjs",
+        "contracts/transport/tests/duty-grant.test.mjs",
+        "contracts/transport/tests/policy.test.mjs",
+        "contracts/transport/tests/provisioning.test.mjs",
+        "contracts/transport/tests/identity-disable.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 13,
+      "criterion": "Existing chapter lookup remains compatible; necessary nonchapter durable-result scopes are explicitly authorized and cannot use fabricated chapter authority or expose other results",
+      "trace": [
+        "GOV-03",
+        "SEC-03",
+        "TR-12/TR-17",
+        "P03 boundary"
+      ],
+      "evidence": [
+        "contracts/transport/tests/operation-examples.test.mjs",
+        "contracts/transport/tests/provisioning.test.mjs",
+        "contracts/transport/tests/identity-disable.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 14,
+      "criterion": "Provisioning examples separate chapter creation, initial appointment and operational membership; provider-only identity sees no chapter transactions",
+      "trace": [
+        "GOV-03",
+        "SEC-03",
+        "ADD-07",
+        "AC-19",
+        "ADD-AC-09",
+        "limited S-22"
+      ],
+      "evidence": [
+        "contracts/transport/tests/provisioning.test.mjs",
+        "contracts/transport/tests/chapter-context.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 15,
+      "criterion": "All schemas and operation examples validate; intended invalid cases fail; deterministic generation and positive/negative consumer compilation run through the normal validation boundary",
+      "trace": [
+        "TR-03",
+        "implementation plan shared typed-client/CI agreements"
+      ],
+      "evidence": [
+        "contracts/transport/tests/operation-examples.test.mjs",
+        "contracts/transport/tests/session.test.mjs",
+        "contracts/transport/tests/p02-review.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 16,
+      "criterion": "Prior shared-contract and health consumers remain compatible or have an explicit reviewed migration; historical Stage 0 evidence is preserved and new results identify the tested revision",
+      "trace": [
+        "TR-03",
+        "P00/P01 shared agreements"
+      ],
+      "evidence": [
+        "contracts/transport/tests/transport.test.mjs",
+        "contracts/transport/tests/identity-record-evidence.test.mjs",
+        "contracts/transport/tests/ipc-rm-acceptance.test.mjs",
+        "contracts/transport/tests/stock-holds.test.mjs",
+        "contracts/transport/tests/health.test.mjs",
+        "contracts/transport/tests/p00-review.test.mjs"
+      ],
+      "assessment": "Executed contract checks cover shape/type/consumer behavior. Stateful server obligations remain declarative and require owning-package runtime tests."
+    },
+    {
+      "position": 17,
+      "criterion": "Glenn records actual request/response/example usability review and Efren records actual domain/access and nonauthor review; findings are resolved or explicitly block affected contract readiness",
+      "trace": [
+        "Implementation plan responsibilities/review and shared agreements"
+      ],
+      "evidence": [
+        "contracts/transport/tests/p02-review.test.mjs"
+      ],
+      "assessment": "Completed reviews reported by the project owner; no original reviewer notes, per-decision approvals or original review date supplied. See peerReviews."
+    },
+    {
+      "position": 18,
+      "criterion": "Review records state that contract checks do not establish runtime authorization, revocation, code consumption, persistence, P02 completion, AC-19/ADD-AC-09 execution or live readiness",
+      "trace": [
+        "TR-28–TR-29",
+        "SEC-01–SEC-03",
+        "package completion boundary"
+      ],
+      "evidence": [
+        "contracts/transport/tests/p02-review.test.mjs",
+        "contracts/transport/tests/full-mvp-coverage.test.mjs"
+      ],
+      "assessment": "Boundary retained. Contract checks do not establish runtime security, persistence, package acceptance or live readiness."
+    }
+  ],
+  "peerReviews": [
+    {
+      "reviewer": "Glenn",
+      "scope": "Request/response/example and frontend consumer usability",
+      "status": "completed_owner_attested",
+      "reportedOn": "2026-10-25",
+      "originalReviewDate": null,
+      "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+      "source": "Project owner in this implementation conversation: \"yes record them as done they have already reviewed it\".",
+      "revisionBinding": "Interpreted as review of the existing combined contract at sourceContractRevision; reconciliation changes no HTTP/schema/generated consumer wire content.",
+      "findings": [],
+      "findingsMeaning": "No individual findings or resolutions supplied; empty list does not assert the reviewers reported zero findings.",
+      "evidenceLimitations": "Owner attestation only; no direct reviewer statement, notes or per-decision security approval provided. Automated Standards/Spec review is separate."
+    },
+    {
+      "reviewer": "Efren",
+      "scope": "Domain/access and nonauthor review of Leader-authored changes",
+      "status": "completed_owner_attested",
+      "reportedOn": "2026-10-25",
+      "originalReviewDate": null,
+      "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+      "source": "Project owner in this implementation conversation: \"yes record them as done they have already reviewed it\".",
+      "revisionBinding": "Interpreted as review of the existing combined contract at sourceContractRevision; reconciliation changes no HTTP/schema/generated consumer wire content.",
+      "findings": [],
+      "findingsMeaning": "No individual findings or resolutions supplied; empty list does not assert the reviewers reported zero findings.",
+      "evidenceLimitations": "Owner attestation only; no direct reviewer statement, notes or per-decision security approval provided. Automated Standards/Spec review is separate."
+    }
+  ],
+  "freezeDecisions": [
+    {
+      "id": "csrf",
+      "decision": "GET /csrf-cookie on root origin, bodyless 204; ysp_session HttpOnly plus readable XSRF-TOKEN; host-only / Secure SameSite=Lax HTTPS. Mandatory decoded X-XSRF-TOKEN plus origin guard, not default origin-OR-token acceptance.",
+      "canonicalSource": "contracts/transport/v1/api-v1.json#/x-session-contract",
+      "fields": "adapter, cookies, forgery_policy",
+      "authority": "Codex proposal in owner-authorized contract slices; owner reports completed Glenn/Efren reviews. No separate security/P03 decision approval asserted.",
+      "date": "2026-10-25",
+      "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+      "scope": "Affected P02 candidate HTTP interfaces",
+      "state": "authored_choice_peer_review_owner_attested_remaining_gate_visible",
+      "remaining": "Exact adapter/security approval not separately supplied."
+    },
+    {
+      "id": "identity-lookup",
+      "decision": "POST exact user_id lookup, minimal existing identity; absent/nonvisible/disabled uniformly identity:null. No email search/global directory.",
+      "canonicalSource": "contracts/transport/v1/api-v1.json#/x-membership-contract",
+      "fields": "identity_lookup",
+      "authority": "Codex proposal in owner-authorized contract slices; owner reports completed Glenn/Efren reviews. No separate security/P03 decision approval asserted.",
+      "date": "2026-10-25",
+      "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+      "scope": "Affected P02 candidate HTTP interfaces",
+      "state": "authored_choice_peer_review_owner_attested_remaining_gate_visible",
+      "remaining": "Security visibility/nonenumeration confirmation remains a freeze gate."
+    },
+    {
+      "id": "policy-variants",
+      "decision": "Constrained draft metadata only; no arbitrary settings payload. Complete material review/approval requires registered owning-domain schema and P03 immutable references; category visibility and Finance ownership retained.",
+      "canonicalSource": "contracts/transport/v1/api-v1.json#/x-policy-contract",
+      "fields": "writable_metadata, concrete_settings_payload_variants, visibility, material",
+      "authority": "Codex proposal in owner-authorized contract slices; owner reports completed Glenn/Efren reviews. No separate security/P03 decision approval asserted.",
+      "date": "2026-10-25",
+      "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+      "scope": "Affected P02 candidate HTTP interfaces",
+      "state": "authored_choice_peer_review_owner_attested_remaining_gate_visible",
+      "remaining": "Owning-domain payload/visibility approval not inferred. Unsupported variants stay blocked."
+    },
+    {
+      "id": "context-concurrency",
+      "decision": "Server selection_revision with X-Chapter-Context guards; stale selection gets safe 409. Original attempted chapter/action/key remains fixed for lookup.",
+      "canonicalSource": "contracts/transport/v1/api-v1.json#/x-chapter-context-contract",
+      "fields": "concurrency",
+      "authority": "Codex proposal in owner-authorized contract slices; owner reports completed Glenn/Efren reviews. No separate security/P03 decision approval asserted.",
+      "date": "2026-10-25",
+      "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+      "scope": "Affected P02 candidate HTTP interfaces",
+      "state": "authored_choice_peer_review_owner_attested_remaining_gate_visible",
+      "remaining": "No extra field/header decision approval supplied separately from completed peer reviews."
+    },
+    {
+      "id": "nonchapter-scopes",
+      "decision": "Actor-private server-bound provisioning scope; exact action/key or scoped operation ID; client cannot inject actor/scope/chapter. Identity-disable lookup stays unavailable.",
+      "canonicalSource": "contracts/transport/v1/api-v1.json#/x-provisioning-contract",
+      "fields": "lookup, attempt, p03_dependencies",
+      "authority": "Codex proposal in owner-authorized contract slices; owner reports completed Glenn/Efren reviews. No separate security/P03 decision approval asserted.",
+      "date": "2026-10-25",
+      "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+      "scope": "Affected P02 candidate HTTP interfaces",
+      "state": "authored_choice_peer_review_owner_attested_remaining_gate_visible",
+      "remaining": "P03/security provider scope agreement remains required before freeze/enablement of affected implementations."
+    },
+    {
+      "id": "generator",
+      "decision": "Locked openapi-typescript 7.13.0, alphabetize:true, locally bundled named shared refs, HTTP resolution disabled; deterministic generation and strict positive/negative consumer compilation.",
+      "canonicalSource": "contracts/transport/v1/api-v1.json#/x-session-contract",
+      "fields": "tooling",
+      "authority": "Codex proposal in owner-authorized contract slices; owner reports completed Glenn/Efren reviews. No separate security/P03 decision approval asserted.",
+      "date": "2026-10-25",
+      "contractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+      "scope": "Affected P02 candidate HTTP interfaces",
+      "state": "demonstrated_tooling_choice",
+      "remaining": "Tool behavior demonstrated by checks; security/runtime constraints remain outside TypeScript."
+    }
+  ],
+  "runtimeEnablementGates": [
+    {
+      "gate": "security-timing",
+      "owner": "Security/backend owner",
+      "required": "Approve session/enrollment/challenge lifetime, attempt limits and recent-proof windows. Fixture values are illustrative."
+    },
+    {
+      "gate": "global-disable",
+      "owner": "Security/recovery authority and domain owner",
+      "required": "Approve real capability/procedure, self/target policy, global revocation, result lookup and protected queued delivery. Three operations remain safely unavailable."
+    },
+    {
+      "gate": "new-identity",
+      "owner": "Security/domain owner",
+      "required": "Approve onboarding/credential delivery; existing-identity references confer no identity creation authority."
+    },
+    {
+      "gate": "assisted-recovery",
+      "owner": "Security/recovery authority",
+      "required": "Approve actual proof/reset/contact/notification procedure before enabling it. Guidance stays blocked."
+    },
+    {
+      "gate": "durable-providers",
+      "owner": "P03 and backend/frontend spec owners",
+      "required": "Arrange real registry/history/result/audit/transaction/outbox providers before dependent durable actions. Reuse the canonical operation IDs, state/outcome semantics and requirement references; no fake stores or roadmap DAG changes."
+    }
+  ],
+  "compatibility": [
+    {
+      "surface": "Existing chapter HTTP transport and lookup",
+      "classification": "No change to retained enums/nullability/required fields/envelopes; P02 adds operation-specific unions, not new members to old envelopes.",
+      "evidence": [
+        "contracts/transport/tests/transport.test.mjs",
+        "contracts/transport/tests/operation-examples.test.mjs",
+        "contracts/transport/tests/p00-review.test.mjs"
+      ]
+    },
+    {
+      "surface": "Internal current context, identity/evidence and material references",
+      "classification": "Original internal contracts preserved. Public session uses a separate discriminated union; not a drop-in replacement. Internal MFA boolean is gate satisfaction, including not currently required, and does not assert factor proof. Separate public response uses explicit MFA status. Nullable incomplete policy material applies only to P02 policy roots; no legacy required-material relaxation.",
+      "evidence": [
+        "contracts/transport/tests/identity-record-evidence.test.mjs",
+        "contracts/transport/tests/chapter-context.test.mjs",
+        "contracts/transport/tests/policy.test.mjs"
+      ]
+    },
+    {
+      "surface": "IPC/RM, stock holds and canonical hashes",
+      "classification": "No schema/vector migration; original exact-value and canonicalization consumers remain authoritative at their own boundaries.",
+      "evidence": [
+        "contracts/transport/tests/ipc-rm-acceptance.test.mjs",
+        "contracts/transport/tests/stock-holds.test.mjs",
+        "contracts/transport/tests/identity-record-evidence.test.mjs"
+      ]
+    },
+    {
+      "surface": "Actual application health consumer",
+      "classification": "No health envelope/enum/nullability/required-field change. Existing real frontend TypeScript health client remains checked.",
+      "evidence": [
+        "contracts/transport/tests/health.test.mjs"
+      ]
+    },
+    {
+      "surface": "New session, administration, provisioning and unavailable identity-disable consumers",
+      "classification": "New auth-state/status unions require exhaustive consumers. Identity/provider operations do not fabricate chapter/versioned business success envelopes. Existing business ActionResult is unchanged. Schema ranges, regex formats, cross-field semantic equality and unknown-key rejection are not generally expressible by generated TypeScript.",
+      "evidence": [
+        "contracts/transport/tests/session.test.mjs",
+        "contracts/transport/tests/membership.test.mjs",
+        "contracts/transport/tests/provisioning.test.mjs",
+        "contracts/transport/tests/identity-disable.test.mjs",
+        "contracts/transport/consumer/typechecks.ts"
+      ]
+    }
+  ],
+  "limitations": [
+    "Contract-only synthetic checks do not prove runtime authorization, MFA code consumption, session revocation, nonenumeration timing, atomic persistence or queued-output enforcement.",
+    "No P02 completion, AC-19/ADD-AC-09 runtime execution, live/MIG readiness or operational acceptance is claimed.",
+    "TypeScript preserves discriminants, required versions and string IDs where representable; runtime Ajv enforces formats/ranges/closed objects. Interval order, identity independence, scope binding, canonical material equality and durable replay need real server tests.",
+    "Historical Stage 0 evidence is preserved at its original revision and files; its original pending flags are not rewritten. The owner states Stage 0 is complete. This successor record changes neither historical execution results nor baseline acceptance.",
+    "Completed peer reviews are recorded from owner attestation; unresolved wire/security and runtime provider approvals remain visible and prevent independent implementation readiness claims for affected operations."
+  ],
+  "commands": {
+    "cleanInstall": "npm --prefix contracts/transport ci --ignore-scripts",
+    "normalEntry": "npm --prefix contracts/transport test",
+    "generation": "npm --prefix contracts/transport run generate:check",
+    "compilation": "npm --prefix contracts/transport run typecheck",
+    "reconciliation": "npm --prefix contracts/transport run reconcile:check",
+    "combined": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1"
+  },
+  "tooling": {
+    "digestFormat": "sha256-utf8-lf",
+    "generator": "openapi-typescript 7.13.0; alphabetize:true; local shared refs named before bundling; HTTP refs disabled",
+    "compiler": "TypeScript 5.9.3; strict consumer tsconfig plus frontend compiler in pinned verification image",
+    "validation": "Swagger Parser 13.1.0; Ajv 8.20.0 strict JSON Schema 2020-12/allErrors/validateFormats with ajv-formats 3.0.1",
+    "locks": [
+      "contracts/transport/package-lock.json",
+      "frontend/package-lock.json",
+      "backend/composer.lock"
+    ],
+    "evidence": "index.json fingerprints the tested sources, schema/examples/generated types and tools. Execution commands/results and image identities are retained in results.json for this revision."
+  }
+}

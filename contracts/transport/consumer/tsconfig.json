@@ -1,0 +1,10 @@
+{
+  "extends": "../../../frontend/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "skipLibCheck": false,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["./*.ts", "../generated/*.ts"]
+}
