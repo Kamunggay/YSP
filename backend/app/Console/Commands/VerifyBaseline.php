@@ -13,7 +13,7 @@ final class VerifyBaseline extends Command
 {
     protected $signature = 'baseline:verify';
 
-    protected $description = 'Verify the P01 MySQL/InnoDB migration checkpoint without business data';
+    protected $description = 'Verify the installed MySQL/InnoDB foundation and contract identities';
 
     public function handle(DatabaseManager $database): int
     {
@@ -33,18 +33,33 @@ final class VerifyBaseline extends Command
             $tables = $connection->select(
                 'SELECT TABLE_NAME AS name, ENGINE AS engine FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()'
             );
-            if (count($tables) !== 1 || $tables[0]->name !== 'migrations' || $tables[0]->engine !== 'InnoDB') {
+            $expectedTables = ['migrations', 'sessions', 'users', 'global_security_events', 'session_throttles',
+                'organizations', 'chapters', 'provider_role_grants', 'memberships', 'roles', 'requesting_units', 'duty_grants'];
+            sort($expectedTables);
+            $actualTables = array_map(fn (object $table): string => $table->name, $tables);
+            sort($actualTables);
+            if ($actualTables !== $expectedTables || array_filter($tables, fn (object $table): bool => $table->engine !== 'InnoDB') !== []) {
                 throw new RuntimeException('Unexpected baseline tables');
             }
-            $migrations = $connection->table('migrations')->pluck('migration')->all();
-            if ($migrations !== ['0001_01_01_000000_health_baseline']) {
+            $migrations = $connection->table('migrations')->orderBy('migration')->pluck('migration')->all();
+            $files = glob(database_path('migrations/*.php')) ?: [];
+            $migrationHashes = [];
+            foreach ($files as $file) {
+                $migrationHashes[basename($file, '.php')] = hash_file('sha256', $file);
+            }
+            ksort($migrationHashes);
+            if ($migrations !== array_keys($migrationHashes)) {
                 throw new RuntimeException('Unexpected migration checkpoint');
             }
             $this->line(json_encode([
                 'database' => 'MySQL',
                 'version' => $server->version,
                 'engine' => $server->engine,
-                'migration' => $migrations[0],
+                'migration' => end($migrations),
+                'migrations' => $migrations,
+                'tables' => $actualTables,
+                'schema_sha256' => hash('sha256', json_encode($migrationHashes, JSON_THROW_ON_ERROR)),
+                'contracts' => json_decode((string) file_get_contents(resource_path('contracts/session-runtime.json')), true, flags: JSON_THROW_ON_ERROR)['sources'],
                 'laravel' => app()->version(),
                 'php' => PHP_VERSION,
             ], JSON_THROW_ON_ERROR));
