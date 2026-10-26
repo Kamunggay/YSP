@@ -24,6 +24,7 @@ Invoke-Checked docker @('run', '--rm', 'ysp-verification:local', 'npm', 'audit',
 
 # Reuse the existing locked build/static/test and fresh MySQL migration checks.
 & "$PSScriptRoot/verify-backend.ps1"
+& "$PSScriptRoot/verify-sessions.ps1"
 # Builds frontend with lint + strict TypeScript + Vite and exercises the real origin.
 & "$PSScriptRoot/verify-same-origin.ps1" -BrowserImage 'ysp-verification:local'
 Invoke-Checked docker @('run', '--rm', 'ysp-verification:local', 'node', '--version')

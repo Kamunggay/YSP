@@ -7,9 +7,9 @@ import { fileURLToPath } from 'node:url';
 const sources = {};
 const documents = {};
 for (const name of ['api-v1.json', 'transport.schema.json', 'p02-action-catalogue.json']) {
-  const bytes = await readFile(new URL(`./v1/${name}`, import.meta.url));
-  sources[name] = createHash('sha256').update(bytes).digest('hex');
-  documents[name] = JSON.parse(bytes);
+  const source = (await readFile(new URL(`./v1/${name}`, import.meta.url), 'utf8')).replaceAll('\r\n', '\n');
+  sources[name] = createHash('sha256').update(source).digest('hex');
+  documents[name] = JSON.parse(source);
 }
 const api = documents['api-v1.json'];
 const definitions = documents['transport.schema.json'].$defs;

@@ -64,6 +64,7 @@ match ($argv[1] ?? '') {
         'mfa_confirmed_at' => now(), 'mfa_secret_ciphertext' => encrypt('Synthetic-test-factor'),
     ]),
     'clear-throttles' => DB::table('session_throttles')->delete(),
+    'unsigned-identity-id' => DB::statement('ALTER TABLE users AUTO_INCREMENT = 9223372036854775808'),
     'expire-throttles' => DB::table('session_throttles')->update(['expires_at' => time() - 1]),
     default => throw new RuntimeException('Unknown fixture'),
 };

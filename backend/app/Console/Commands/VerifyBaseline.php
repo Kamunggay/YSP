@@ -45,7 +45,7 @@ final class VerifyBaseline extends Command
             $files = glob(database_path('migrations/*.php')) ?: [];
             $migrationHashes = [];
             foreach ($files as $file) {
-                $migrationHashes[basename($file, '.php')] = hash_file('sha256', $file);
+                $migrationHashes[basename($file, '.php')] = hash('sha256', str_replace("\r\n", "\n", (string) file_get_contents($file)));
             }
             ksort($migrationHashes);
             if ($migrations !== array_keys($migrationHashes)) {

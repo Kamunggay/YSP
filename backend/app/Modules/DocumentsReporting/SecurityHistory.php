@@ -8,14 +8,14 @@ use Illuminate\Support\Facades\DB;
 
 final class SecurityHistory
 {
-    public function identityCreated(string $userId): void
+    public function identityCreated(string $userId, string $operatorReference): void
     {
         DB::table('global_security_events')->insert([
             'user_id' => $userId,
             'event_code' => 'identity_created',
-            'operator_reference' => 'os-uid:'.posix_geteuid(),
+            'operator_reference' => $operatorReference,
             'occurred_at' => now(),
-            'details' => json_encode(['channel' => 'restricted_cli'], JSON_THROW_ON_ERROR),
+            'details' => json_encode(['channel' => 'restricted_cli', 'service_uid' => posix_geteuid()], JSON_THROW_ON_ERROR),
         ]);
     }
 }

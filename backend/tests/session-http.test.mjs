@@ -45,7 +45,7 @@ async function createIdentity(email, password) {
   const child = spawn('docker', ['exec', '-i', container, 'script', '-qec',
     'php artisan identity:create --no-ansi', '/dev/null']);
   let output = '';
-  const answers = [['Display name', 'Synthetic officer'], ['Email', email],
+  const answers = [['Operator audit reference', 'Synthetic operator / test terminal record'], ['Display name', 'Synthetic officer'], ['Email', email],
     ['Password', password], ['Confirm password', password]];
   let next = 0;
   const timer = setTimeout(() => child.kill(), 60000);
@@ -62,6 +62,7 @@ async function createIdentity(email, password) {
   clearTimeout(timer);
   assert.equal(code, 0, output.replaceAll(password, '[redacted]'));
   assert.ok(!output.includes(password), 'Secret must never echo in a terminal');
+  assert.match(output, /Operator audit reference/);
   assert.match(output, /Identity created: [1-9][0-9]*/);
   return output.match(/Identity created: ([1-9][0-9]*)/)[1];
 }
@@ -332,4 +333,30 @@ test('storage outage gives a typed no-store 503 after the origin guard',
   const response = await new Browser().request('/csrf-cookie');
   assert.equal(response.status, 503);
   assert.deepEqual(await response.json(), { code: 'unavailable', message: 'The session service is unavailable.' });
+});
+
+test('identity CLI and session JSON preserve unsigned IDs above the PHP integer range', async () => {
+  arrangeState('unsigned-identity-id', '1');
+  const { browser, id } = await signedInBrowser('unsigned-id');
+  assert.ok(BigInt(id) > 9223372036854775807n);
+  const response = await browser.request('/api/v1/session');
+  assert.equal((await response.json()).user.id, id);
+});
+
+test('identity-throttled requests still consume the additional IP attempt allowance', async () => {
+  arrangeState('clear-throttles', '1');
+  const browser = new Browser();
+  await browser.request('/csrf-cookie');
+  const headers = { 'X-XSRF-TOKEN': decodeURIComponent(browser.cookies.get('XSRF-TOKEN')) };
+  const email = `exhausted-${Date.now()}@example.test`;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const response = await browser.request('/api/v1/session/sign-in', {
+      method: 'POST', body: { email, password: 'incorrect' }, headers,
+    });
+    assert.equal(response.status, attempt < 5 ? 401 : 429);
+  }
+  const differentIdentity = await browser.request('/api/v1/session/sign-in', {
+    method: 'POST', body: {}, headers,
+  });
+  assert.equal(differentIdentity.status, 429);
 });

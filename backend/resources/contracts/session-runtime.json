@@ -1,8 +1,8 @@
 {
   "sources": {
-    "api-v1.json": "54bff51ccd46ce26c9798e307070842b92e7261f0485af15555e043d0b10fe73",
-    "transport.schema.json": "530d8bb0d48f5f60533ad52d82e7d9866745b59583afce724bf107e84425e6d4",
-    "p02-action-catalogue.json": "020f27386e07eab52be3d3ce86a863c7f9bf2d58a7b88da035bd28223828b0c0"
+    "api-v1.json": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+    "transport.schema.json": "368e4afe01a8e83d0de7edda4c5157e6b4d168827c3980ca36764b02f8399c04",
+    "p02-action-catalogue.json": "a58911bb8317998f6605ac6f36a5884ba1ea53eb8e5c922879ce6eef1f598554"
   },
   "operations": {
     "getSession": {

@@ -23,6 +23,12 @@ final class CreateIdentity extends Command
 
             return self::FAILURE;
         }
+        $operator = trim((string) $this->ask('Operator audit reference'));
+        if ($operator === '' || mb_strlen($operator) > 160 || preg_match('/[\x00-\x1F\x7F]/', $operator)) {
+            $this->error('A technical operator identity or terminal audit reference is required.');
+
+            return self::FAILURE;
+        }
         $name = trim((string) $this->ask('Display name'));
         $email = strtolower(trim((string) $this->ask('Email')));
         if ($name === '' || mb_strlen($name) > 160 || strlen($email) > 254 || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -40,13 +46,14 @@ final class CreateIdentity extends Command
         $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
         unset($password, $confirmation);
         try {
-            $id = DB::transaction(function () use ($name, $email, $hash, $history): string {
-                $id = (string) DB::table('users')->insertGetId([
+            $id = DB::transaction(function () use ($name, $email, $hash, $history, $operator): string {
+                DB::table('users')->insert([
                     'public_id' => (string) Str::ulid(), 'name' => $name,
                     'email' => $email, 'email_key' => $email, 'password_hash' => $hash,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
-                $history->identityCreated($id);
+                $id = DB::connection()->getPdo()->lastInsertId();
+                $history->identityCreated($id, $operator);
 
                 return $id;
             });
