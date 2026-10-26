@@ -30,42 +30,60 @@ $expire = static function (string $kind) use ($id): void {
         ]);
     }
 };
-$provider = static function () use ($id): void {
+$provider = static function (array $overrides = []) use ($id): void {
     $organization = DB::table('organizations')->insertGetId(['name' => 'Synthetic organization']);
-    DB::table('provider_role_grants')->insert([
+    DB::table('provider_role_grants')->insert(array_merge([
         'organization_id' => $organization, 'user_id' => $id, 'role_code' => 'provisioner',
         'granted_by_user_id' => $id, 'starts_at' => now()->subMinute(), 'reason' => 'Synthetic test approval',
-    ]);
+    ], $overrides));
 };
-$duty = static function (string $role) use ($id): void {
+$duty = static function (string $role, array $grantOverrides = [], array $membershipOverrides = []) use ($id): void {
     $db = DB::class;
     $organization = $db::table('organizations')->insertGetId(['name' => 'Synthetic organization']);
     $chapter = $db::table('chapters')->insertGetId([
         'organization_id' => $organization, 'code' => 'TEST-'.bin2hex(random_bytes(8)),
         'name' => 'Synthetic chapter', 'provisioned_by_user_id' => $id,
     ]);
-    $membership = $db::table('memberships')->insertGetId([
+    $membership = $db::table('memberships')->insertGetId(array_merge([
         'chapter_id' => $chapter, 'user_id' => $id, 'authorized_by_user_id' => $id, 'authorized_at' => now(),
-    ]);
-    $db::table('duty_grants')->insert([
+    ], $membershipOverrides));
+    $db::table('duty_grants')->insert(array_merge([
         'chapter_id' => $chapter, 'membership_id' => $membership,
         'role_id' => $db::table('roles')->where('code', $role)->value('id'),
         'scope_kind' => 'chapter', 'starts_at' => now()->subMinute(),
-    ]);
+    ], $grantOverrides));
 };
-match ($argv[1] ?? '') {
-    'disable' => DB::table('users')->where('id', $id)->update(['status' => 'disabled']),
-    'auth-version' => DB::table('users')->where('id', $id)->increment('auth_version'),
-    'absolute-expired', 'idle-expired' => $expire($argv[1]),
-    'provider' => $provider(),
-    'requester' => $duty('COMMITTEE_REQUESTER'),
-    'head' => $duty('CHAPTER_HEAD'),
-    'confirmed-factor' => DB::table('users')->where('id', $id)->update([
-        'mfa_confirmed_at' => now(), 'mfa_secret_ciphertext' => encrypt('Synthetic-test-factor'),
-    ]),
-    'clear-throttles' => DB::table('session_throttles')->delete(),
-    'unsigned-identity-id' => DB::statement('ALTER TABLE users AUTO_INCREMENT = 9223372036854775808'),
-    'expire-throttles' => DB::table('session_throttles')->update(['expires_at' => time() - 1]),
-    default => throw new RuntimeException('Unknown fixture'),
-};
+$action = $argv[1] ?? '';
+if (str_starts_with($action, 'duty:')) {
+    $duty(substr($action, 5));
+} elseif (str_starts_with($action, 'duty-revoked:')) {
+    $duty(substr($action, 13), ['revoked_at' => now()->subMinute()]);
+} elseif (str_starts_with($action, 'duty-expired:')) {
+    $duty(substr($action, 13), ['starts_at' => now()->subHours(2), 'ends_at' => now()->subHour()]);
+} elseif (str_starts_with($action, 'duty-future:')) {
+    $duty(substr($action, 12), ['starts_at' => now()->addHour()]);
+} elseif (str_starts_with($action, 'membership-disabled:')) {
+    $duty(substr($action, 20), [], ['disabled_at' => now()->subMinute()]);
+} elseif (str_starts_with($action, 'membership-revoked:')) {
+    $duty(substr($action, 19), [], ['status' => 'revoked']);
+} else {
+    match ($action) {
+        'disable' => DB::table('users')->where('id', $id)->update(['status' => 'disabled']),
+        'auth-version' => DB::table('users')->where('id', $id)->increment('auth_version'),
+        'absolute-expired', 'idle-expired' => $expire($action),
+        'provider' => $provider(),
+        'provider-revoked' => $provider(['revoked_at' => now()->subMinute()]),
+        'provider-expired' => $provider(['starts_at' => now()->subHours(2), 'ends_at' => now()->subHour()]),
+        'provider-future' => $provider(['starts_at' => now()->addHour()]),
+        'requester' => $duty('COMMITTEE_REQUESTER'),
+        'head' => $duty('CHAPTER_HEAD'),
+        'confirmed-factor' => DB::table('users')->where('id', $id)->update([
+            'mfa_confirmed_at' => now(), 'mfa_secret_ciphertext' => encrypt('Synthetic-test-factor'),
+        ]),
+        'clear-throttles' => DB::table('session_throttles')->delete(),
+        'unsigned-identity-id' => DB::statement('ALTER TABLE users AUTO_INCREMENT = 9223372036854775808'),
+        'expire-throttles' => DB::table('session_throttles')->update(['expires_at' => time() - 1]),
+        default => throw new RuntimeException('Unknown fixture: '.$action),
+    };
+}
 echo 'Fixture applied';

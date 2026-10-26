@@ -55,6 +55,7 @@ try {
     $env:YSP_TEST_BROWSER_ORIGIN = $env:YSP_SESSION_APP_URL
     $env:YSP_TEST_PROFILE = 'production'
     Invoke-SessionCompose up -d --no-deps --wait --wait-timeout 90 backend
+    $env:YSP_TEST_CONTAINER = (& docker compose --env-file backend/.env -f compose.yaml -f $sessionOverride --project-name $sessionProject ps -q backend).Trim()
     & node --test --test-name-pattern='production cookies' backend/tests/session-http.test.mjs
     if ($LASTEXITCODE -ne 0) { throw 'Production cookie checks failed' }
     Write-Output 'Session foundation passed through the gateway and interactive CLI on disposable MySQL 8.4.'
