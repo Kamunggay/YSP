@@ -39,7 +39,7 @@ try {
     Invoke-Compose build backend frontend
     & "$PSScriptRoot/check-config.ps1"
     Invoke-Compose up -d --wait --wait-timeout 180
-    Invoke-Compose exec -T backend php artisan migrate --force
+    Invoke-Compose run --rm --no-deps migrate
     Invoke-Compose exec -T backend php artisan baseline:verify
     $published = & docker compose --env-file backend/.env --project-name $verificationProject port frontend 8080
     if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve frontend HTTP port' }

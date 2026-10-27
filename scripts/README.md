@@ -16,6 +16,8 @@ pwsh -File scripts/verify.ps1
 
 Install Git, Docker with Compose/BuildKit, and PowerShell. No host PHP, Composer, Node or browser installation is required. Allow dependency/image downloads, at least 4 GB of Docker memory and enough disk space for images. Compose 2.38.2 and 5.1.3 have been exercised; other versions have not been verified.
 
+The session verifier builds a pinned Node/Docker CLI test image and uses the Docker socket to target disposable containers. Schema migrations run through the short-lived `migrate` service; its elevated database secret is never mounted into the HTTP backend. Ordinary runtime credentials have DML privileges only, with database guards protecting identity history.
+
 Setup creates missing `backend/.env` and `frontend/.env` files from their committed examples. Existing files are preserved. Use generated local credentials and disposable data. The frontend currently requires no variables. Never commit populated environment files or put credentials in browser configuration.
 
 ## What runs, in order

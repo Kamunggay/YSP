@@ -5,6 +5,8 @@
   "type": "module",
   "description": "Shared Stage 0 and P02 wire contract validation; no runtime acceptance implied.",
   "scripts": {
+    "generate:runtime": "node generate-runtime.mjs",
+    "generate:runtime:check": "node generate-runtime.mjs --check",
     "generate": "node generate.mjs",
     "generate:fixtures": "node generate.mjs --fixtures",
     "generate:check": "node generate.mjs --check",

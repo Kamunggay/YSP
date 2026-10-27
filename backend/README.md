@@ -16,7 +16,7 @@ Run from repository root. On Linux/macOS replace `powershell -NoProfile -File` w
 powershell -NoProfile -File scripts/init-local.ps1
 docker compose --env-file backend/.env build backend frontend
 docker compose --env-file backend/.env up -d --wait --wait-timeout 180
-docker compose --env-file backend/.env exec -T backend php artisan migrate --force
+docker compose --env-file backend/.env run --rm --no-deps migrate
 docker compose --env-file backend/.env exec -T backend php artisan baseline:verify
 docker compose --env-file backend/.env exec -T backend php scripts/http-smoke.php
 Invoke-RestMethod http://localhost:8080/api/v1/health

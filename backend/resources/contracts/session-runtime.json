@@ -1,0 +1,1059 @@
+{
+  "sources": {
+    "api-v1.json": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+    "transport.schema.json": "368e4afe01a8e83d0de7edda4c5157e6b4d168827c3980ca36764b02f8399c04",
+    "p02-action-catalogue.json": "a58911bb8317998f6605ac6f36a5884ba1ea53eb8e5c922879ce6eef1f598554"
+  },
+  "operations": {
+    "getSession": {
+      "method": "GET",
+      "path": "/api/v1/session"
+    },
+    "signIn": {
+      "method": "POST",
+      "path": "/api/v1/session/sign-in"
+    },
+    "signOut": {
+      "method": "POST",
+      "path": "/api/v1/session/sign-out"
+    },
+    "initializeCsrf": {
+      "method": "GET",
+      "path": "/csrf-cookie"
+    },
+    "prepareAuthenticatorEnrollment": {
+      "method": "POST",
+      "path": "/api/v1/session/mfa/enrollment"
+    },
+    "confirmAuthenticatorEnrollment": {
+      "method": "POST",
+      "path": "/api/v1/session/mfa/enrollment/confirm"
+    },
+    "verifyMfaChallenge": {
+      "method": "POST",
+      "path": "/api/v1/session/mfa/challenge/verify"
+    },
+    "regenerateRecoveryCodes": {
+      "method": "POST",
+      "path": "/api/v1/session/mfa/recovery-codes/regenerate"
+    }
+  },
+  "session": {
+    "revision": "p02.02-review.1",
+    "authored_on": "2026-10-25",
+    "authority": "Codex contract proposal under owner-authorized session slice; not Glenn/Efren/security approval",
+    "review_status": "pending; affected contract freeze blocked",
+    "framework": {
+      "package": "laravel/framework",
+      "version": "v13.38.0",
+      "source_revision": "c42f9abd4a3d2f9a3cd6be109255ddce8092ceb8"
+    },
+    "adapter": "Proposed application-owned GET /csrf-cookie in Laravel web session/cookie stack; empty 204 response; EncryptCookies and shared MySQL session store. No Sanctum selected or installed.",
+    "forgery_policy": {
+      "token": "Mandatory X-XSRF-TOKEN on every unsafe P02 request, including same-origin; URL-decode readable encrypted XSRF-TOKEN cookie once, framework decrypts and compares to session token.",
+      "origin": "Additional application guard rejects Sec-Fetch-Site values other than same-origin when present and any supplied Origin not exactly equal to configured browser origin. If Fetch Metadata is absent, require exact Origin or same-origin Referer; otherwise 403 origin_forbidden. No same-site sibling allowance. HTTP loopback needs the same token/origin checks.",
+      "framework_difference": "Pinned PreventRequestForgery::handle uses hasValidOrigin OR tokensMatch. A dedicated adapter must enforce token AND origin; originOnly and the default middleware alone cannot satisfy this policy. Do not exempt unsafe routes. Reject _token and X-CSRF-TOKEN alternatives in the JSON adapter to avoid competing token precedence.",
+      "failure_precedence": [
+        "origin guard 403 origin_forbidden",
+        "CSRF guard 419 csrf_mismatch",
+        "rate limiter 429 with Retry-After",
+        "credential shape 422",
+        "credential/current identity check 401 invalid_credentials",
+        "current state/authority 403 forbidden",
+        "success"
+      ],
+      "same_origin_missing_token": "419 csrf_mismatch, even with valid credentials. It rejects this attempt only; an earlier uncertain attempt stays unresolved."
+    },
+    "cookies": {
+      "production": {
+        "transport": "HTTPS only",
+        "domain": "omitted (host-only)",
+        "path": "/",
+        "same_site": "Lax",
+        "secure": true,
+        "ysp_session": {
+          "http_only": true
+        },
+        "XSRF-TOKEN": {
+          "http_only": false
+        },
+        "session_store": "Shared MySQL; no replica-local session state"
+      },
+      "http_loopback": {
+        "scope": "Explicit local development profile only; localhost/127.0.0.1, never deployment",
+        "secure": false,
+        "other_attributes": "same names, host-only, Path=/, SameSite=Lax; session HttpOnly; same token/origin policy"
+      },
+      "rotation": "Sign-in, successful MFA, privilege elevation and logout regenerate session ID and CSRF token. Logout invalidates old server session then issues fresh anonymous cookies; bootstrap revalidates disabled/revoked identity. GET /csrf-cookie reissues current CSRF token without unconditional rotation. Read current cookie immediately before each unsafe request; do not cache token in local storage.",
+      "lifetime": "Numeric session/MFA lifetimes, attempt limits and recent-proof windows need subsequent security/backend approval. No fixture value approves a runtime default."
+    },
+    "consumer": "Browser credentials: include; Accept: application/json; JSON Content-Type only with a JSON request body; redirect: error. Every result no-store. 204 has no body or Content-Type. No automatic unsafe retry after CSRF/429/network/protocol failure. Refresh/bootstrap can inform next action but never prove an earlier business attempt rejected.",
+    "freeze_gates": [
+      "Glenn reviews exact route/base, cookies, adapter, status/examples and generated consumer usability at this revision",
+      "Efren reviews restricted states, provider separation and Leader-authored access contract",
+      "Backend/security owner approves dedicated token AND origin adapter before affected contract freeze; numeric security values before runtime enablement"
+    ],
+    "deferred": "The chapter-context slice extends AuthenticatedSession with chapter details; MFA slices own MFA operations. This slice implements no route, session persistence, authorization or screen.",
+    "security_scheme_compatibility": "Adopt ysp_session as the exact P02 session cookie spelling. Preserve the Stage 0 chapterSession scheme and lookup operations byte-semantically; its older proposed description is historical, with this extension supplying the current session details.",
+    "tooling": {
+      "generator": "openapi-typescript 7.13.0, locked in package-lock.json; Node API alphabetize: true; all other options default",
+      "resolution": "Swagger Parser 13.1.0 bundle/dereference with resolve.http=false; canonical api-v1.json and external local transport.schema.json definitions; no network schema resolution",
+      "outputs": "generated/api.d.ts, routes.ts, session-validation.json and session-examples.ts are deterministic and never hand-edited. Runtime schemas and typed fixtures are generated from the same operations/exchanges, not handwritten transport interfaces.",
+      "compatibility": "Generator declares TypeScript ^5.x. Contract compiler pinned to 5.9.3, inheriting frontend strict settings; frontend compiler 6.0.3 also checked by combined verification. Node 24 strip-types executes the validation consumer. No production client/runtime library is added.",
+      "runtime_only_constraints": [
+        "String regex/range and email/date-time formats are runtime Ajv constraints, not TypeScript refinements",
+        "TypeScript structural assignment cannot guarantee closed objects for nonliteral variables; runtime rejects extra fields",
+        "oneOf exclusivity, array uniqueness/minimums and header value patterns require runtime validation",
+        "Browser Set-Cookie is not script-readable; synthetic fixtures check cookie attributes, not actual browser/backend security"
+      ],
+      "commands": {
+        "clean_install": "npm --prefix contracts/transport ci --ignore-scripts",
+        "generate": "npm --prefix contracts/transport run generate",
+        "drift_check": "npm --prefix contracts/transport run generate:check",
+        "typecheck": "npm --prefix contracts/transport run typecheck",
+        "contract_entry": "npm --prefix contracts/transport test",
+        "combined": "powershell -NoProfile -File scripts/verify.ps1"
+      }
+    }
+  },
+  "duties": [
+    "COMMITTEE_REQUESTER",
+    "RF_APPROVER",
+    "SALES_OFFICER",
+    "SALES_REVIEWER",
+    "FINANCE",
+    "INVENTORY",
+    "PURCHASING",
+    "BUDGET_APPROVER",
+    "RECEIVING",
+    "DISPATCH",
+    "BOOTH_CUSTODIAN",
+    "BOOTH_CASHIER",
+    "INDEPENDENT_REVIEWER",
+    "CHAPTER_HEAD"
+  ],
+  "$defs": {
+    "SessionSnapshot": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SignedOutSession"
+        },
+        {
+          "$ref": "#/$defs/EnrollmentRequiredSession"
+        },
+        {
+          "$ref": "#/$defs/ChallengeRequiredSession"
+        },
+        {
+          "$ref": "#/$defs/AuthenticatedSession"
+        }
+      ],
+      "description": "Closed state union. Restricted states disclose no user/chapter choices/context, duties, permissions, provider destinations or operation data. Disabled, expired and revoked sessions bootstrap as signed_out; reasons are deliberately indistinguishable."
+    },
+    "SignedOutSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "const": "signed_out"
+        }
+      }
+    },
+    "EnrollmentRequiredSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "const": "mfa_enrollment_required"
+        }
+      }
+    },
+    "ChallengeRequiredSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "challenge"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "const": "mfa_challenge_required"
+        },
+        "challenge": {
+          "$ref": "#/$defs/MfaChallenge"
+        }
+      }
+    },
+    "MfaChallenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "expires_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/ChallengeId"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/UtcInstant"
+        }
+      }
+    },
+    "ChallengeId": {
+      "type": "string",
+      "pattern": "^chl_[A-Za-z0-9_-]{32,96}$",
+      "description": "Opaque current identity AND server-session binding, distinct from operation IDs; never an account selector or authority token."
+    },
+    "UtcInstant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "description": "UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting."
+    },
+    "AuthenticatedSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "user",
+        "mfa",
+        "provider_destinations"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "const": "authenticated"
+        },
+        "user": {
+          "$ref": "#/$defs/SessionUser"
+        },
+        "mfa": {
+          "$ref": "#/$defs/SessionMfa"
+        },
+        "provider_destinations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ProviderDestination"
+          }
+        }
+      },
+      "description": "P02 authenticated session core. The chapter-context slice extends this same schema with chapter choices/current authority. Absence of chapter fields here grants no chapter access. Required MFA is derived from current server authority, never client input."
+    },
+    "SessionUser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "display_name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Id": {
+      "type": "string",
+      "pattern": "^(?:[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)$",
+      "description": "Positive BIGINT UNSIGNED ID as exact base-10 text, range 1?18446744073709551615, without leading zeros. Never convert to JavaScript Number or PHP float. Pattern enforces the storage range; the server also enforces scoped reference existence and authorization. Human document references and public operation IDs are distinct types."
+    },
+    "SessionMfa": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "not_required"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "verified_at"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "verified"
+            },
+            "verified_at": {
+              "$ref": "#/$defs/UtcInstant"
+            }
+          }
+        }
+      ]
+    },
+    "ProviderDestination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "scope"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "chapter_provisioning"
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "organization_id"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "organization"
+            },
+            "organization_id": {
+              "$ref": "#/$defs/Id"
+            }
+          }
+        }
+      },
+      "description": "Independently authorized provisioning destination, not a chapter membership, duty or permission. No operational access follows from it. Other provider surfaces await their owning contracts."
+    },
+    "SignInRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "email",
+        "password"
+      ],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 1
+        },
+        "password": {
+          "type": "string",
+          "minLength": 1,
+          "writeOnly": true
+        }
+      },
+      "description": "Individual credentials only. Never log/echo/store the password in client persistence. Successful exchange creates no business record, operation ID, replay key or chapter context before required MFA."
+    },
+    "SessionUnauthorized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_credentials"
+        },
+        "message": {
+          "type": "string",
+          "const": "Unable to sign in."
+        }
+      }
+    },
+    "SessionForbidden": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "forbidden",
+            "origin_forbidden"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "const": "This request is not permitted."
+        }
+      }
+    },
+    "SessionCsrfFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "csrf_mismatch"
+        },
+        "message": {
+          "type": "string",
+          "const": "Refresh CSRF before a reviewed new attempt."
+        }
+      }
+    },
+    "SessionThrottled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "throttled"
+        },
+        "message": {
+          "type": "string",
+          "const": "Try again after the indicated delay."
+        }
+      }
+    },
+    "SessionUnavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "unavailable"
+        },
+        "message": {
+          "type": "string",
+          "const": "The session service is unavailable."
+        }
+      }
+    },
+    "SignInInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "field_errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_input"
+        },
+        "message": {
+          "type": "string",
+          "const": "Check the submitted fields."
+        },
+        "field_errors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pointer",
+              "code",
+              "message"
+            ],
+            "properties": {
+              "pointer": {
+                "type": "string",
+                "enum": [
+                  "/email",
+                  "/password"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "const": "invalid"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check this field."
+              }
+            }
+          }
+        }
+      }
+    },
+    "PrepareEnrollmentRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "intent"
+          ],
+          "properties": {
+            "intent": {
+              "type": "string",
+              "const": "begin"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "intent",
+            "enrollment_id"
+          ],
+          "properties": {
+            "intent": {
+              "type": "string",
+              "const": "replace_unconfirmed"
+            },
+            "enrollment_id": {
+              "$ref": "#/$defs/EnrollmentId"
+            }
+          }
+        }
+      ]
+    },
+    "EnrollmentId": {
+      "type": "string",
+      "pattern": "^enr_[A-Za-z0-9_-]{32,96}$",
+      "description": "Opaque, bounded, case-sensitive identity AND current-session binding. Distinct from durable operation IDs. Never an authority token or user selector."
+    },
+    "ConfirmEnrollmentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enrollment_id",
+        "authenticator_code"
+      ],
+      "properties": {
+        "enrollment_id": {
+          "$ref": "#/$defs/EnrollmentId"
+        },
+        "authenticator_code": {
+          "$ref": "#/$defs/AuthenticatorCode"
+        }
+      }
+    },
+    "AuthenticatorCode": {
+      "type": "string",
+      "pattern": "^[0-9]{6}$",
+      "description": "Transient authenticator proof, never a recovery code or browser draft."
+    },
+    "PreparedEnrollment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "enrollment"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "const": "mfa_enrollment_required"
+        },
+        "enrollment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "expires_at",
+            "setup_uri",
+            "manual_key"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/EnrollmentId"
+            },
+            "expires_at": {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            "setup_uri": {
+              "type": "string",
+              "format": "uri",
+              "maxLength": 2048,
+              "pattern": "^otpauth://totp/[^?#]+\\?[^#]+$"
+            },
+            "manual_key": {
+              "type": "string",
+              "pattern": "^[A-Z2-7]{32}$"
+            }
+          }
+        }
+      }
+    },
+    "ConfirmedEnrollment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "recovery_codes"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/VerifiedSession"
+        },
+        "recovery_codes": {
+          "$ref": "#/$defs/RecoveryCodeIssuance"
+        }
+      }
+    },
+    "VerifiedSession": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/AuthenticatedSession"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mfa": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "const": "verified"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "RecoveryCodeIssuance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issued_at",
+        "codes"
+      ],
+      "properties": {
+        "issued_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "codes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/RecoveryCode"
+          }
+        }
+      },
+      "description": "One-time plaintext issuance only in successful confirmation (or separately protected existing-factor challenge/recovery regeneration). Never returned by bootstrap, normal reads, errors or replay. Array bounds and sample count constrain wire size, not approved security configuration."
+    },
+    "RecoveryCode": {
+      "type": "string",
+      "pattern": "^[A-Z0-9]{4}(?:-[A-Z0-9]{4}){3}$"
+    },
+    "EnrollmentUnauthorized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "authentication_required"
+        },
+        "message": {
+          "type": "string",
+          "const": "Sign in to continue."
+        }
+      }
+    },
+    "EnrollmentConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "enrollment_unavailable"
+        },
+        "message": {
+          "type": "string",
+          "const": "Bootstrap the current session before a reviewed next action."
+        }
+      }
+    },
+    "EnrollmentProofRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_authenticator_proof"
+        },
+        "message": {
+          "type": "string",
+          "const": "The authenticator proof was not accepted."
+        }
+      }
+    },
+    "PrepareEnrollmentInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "field_errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_input"
+        },
+        "message": {
+          "type": "string",
+          "const": "Check the submitted fields."
+        },
+        "field_errors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pointer",
+              "code",
+              "message"
+            ],
+            "properties": {
+              "pointer": {
+                "type": "string",
+                "enum": [
+                  "/intent",
+                  "/enrollment_id"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "const": "invalid"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check this field."
+              }
+            }
+          }
+        }
+      }
+    },
+    "ConfirmEnrollmentInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "field_errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_input"
+        },
+        "message": {
+          "type": "string",
+          "const": "Check the submitted fields."
+        },
+        "field_errors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pointer",
+              "code",
+              "message"
+            ],
+            "properties": {
+              "pointer": {
+                "type": "string",
+                "enum": [
+                  "/enrollment_id",
+                  "/authenticator_code"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "const": "invalid"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check this field."
+              }
+            }
+          }
+        }
+      }
+    },
+    "VerifyMfaChallengeRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "challenge_id",
+            "method",
+            "authenticator_code"
+          ],
+          "properties": {
+            "challenge_id": {
+              "$ref": "#/$defs/ChallengeId"
+            },
+            "method": {
+              "type": "string",
+              "const": "authenticator"
+            },
+            "authenticator_code": {
+              "$ref": "#/$defs/AuthenticatorCode"
+            },
+            "recovery_code": false
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "challenge_id",
+            "method",
+            "recovery_code"
+          ],
+          "properties": {
+            "challenge_id": {
+              "$ref": "#/$defs/ChallengeId"
+            },
+            "method": {
+              "type": "string",
+              "const": "recovery_code"
+            },
+            "recovery_code": {
+              "$ref": "#/$defs/RecoveryCode"
+            },
+            "authenticator_code": false
+          }
+        }
+      ]
+    },
+    "RegenerateRecoveryCodesRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "password",
+        "authenticator_code"
+      ],
+      "properties": {
+        "password": {
+          "type": "string",
+          "minLength": 1,
+          "writeOnly": true
+        },
+        "authenticator_code": {
+          "$ref": "#/$defs/AuthenticatorCode"
+        }
+      }
+    },
+    "RegeneratedRecoveryCodes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "recovery_codes"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/VerifiedSession"
+        },
+        "recovery_codes": {
+          "$ref": "#/$defs/RecoveryCodeIssuance"
+        }
+      }
+    },
+    "MfaProofRejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_factor_proof"
+        },
+        "message": {
+          "type": "string",
+          "const": "The factor proof was not accepted."
+        }
+      }
+    },
+    "ChallengeUnavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "challenge_unavailable"
+        },
+        "message": {
+          "type": "string",
+          "const": "Bootstrap the current session before a reviewed next action."
+        }
+      }
+    },
+    "RecentProofRequired": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "recent_proof_required"
+        },
+        "message": {
+          "type": "string",
+          "const": "Provide current password and authenticator proof in an explicit new request."
+        }
+      }
+    },
+    "VerifyMfaChallengeInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "field_errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_input"
+        },
+        "message": {
+          "type": "string",
+          "const": "Check the submitted fields."
+        },
+        "field_errors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pointer",
+              "code",
+              "message"
+            ],
+            "properties": {
+              "pointer": {
+                "type": "string",
+                "enum": [
+                  "/challenge_id",
+                  "/method",
+                  "/authenticator_code",
+                  "/recovery_code"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "const": "invalid"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check this field."
+              }
+            }
+          }
+        }
+      }
+    },
+    "RegenerateRecoveryCodesInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "field_errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_input"
+        },
+        "message": {
+          "type": "string",
+          "const": "Check the submitted fields."
+        },
+        "field_errors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pointer",
+              "code",
+              "message"
+            ],
+            "properties": {
+              "pointer": {
+                "type": "string",
+                "enum": [
+                  "/password",
+                  "/authenticator_code"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "const": "invalid"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check this field."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

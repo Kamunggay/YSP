@@ -1,0 +1,16 @@
+**
+!contracts/
+!contracts/**
+!backend/
+!backend/resources/
+!backend/resources/contracts/
+!backend/resources/contracts/**
+!backend/tests/
+!backend/tests/**
+!scripts/
+!scripts/run-http-tests.mjs
+!scripts/session-tests.Dockerfile
+!scripts/session-tests.Dockerfile.dockerignore
+**/node_modules
+**/.env*
+**/*.log

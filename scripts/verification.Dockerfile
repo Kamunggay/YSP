@@ -15,6 +15,7 @@ RUN npx --no-install playwright install --with-deps chromium \
 # Reconciliation fingerprints the verifier and dependency identities as well as
 # contract inputs. Copy only these public inputs, not backend source or secrets.
 COPY backend/composer.lock /workspace/backend/composer.lock
+COPY backend/resources/contracts/session-runtime.json /workspace/backend/resources/contracts/session-runtime.json
 COPY scripts/verification.Dockerfile scripts/verification.Dockerfile.dockerignore scripts/verify.ps1 /workspace/scripts/
 COPY contracts /workspace/contracts
 COPY --chown=node:node frontend /workspace/frontend

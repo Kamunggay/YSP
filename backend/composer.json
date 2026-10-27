@@ -6,7 +6,8 @@
     "require": {
         "php": "~8.4.0",
         "ext-pdo_mysql": "*",
-        "laravel/framework": "^13.0"
+        "laravel/framework": "^13.0",
+        "spomky-labs/otphp": "^11.5"
     },
     "require-dev": {
         "laravel/pint": "^1.27",
@@ -33,7 +34,7 @@
             "@composer validate --strict",
             "@php scripts/lint.php",
             "@php vendor/bin/pint --test",
-            "@php vendor/bin/phpstan analyse --no-progress"
+            "@php vendor/bin/phpstan analyse --no-progress --memory-limit=256M"
         ],
         "test": "@php artisan test"
     },
