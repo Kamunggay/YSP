@@ -6,6 +6,7 @@ use App\Http\Controllers\SessionController;
 use App\Http\Middleware\SessionBoundary;
 use App\Http\Middleware\SessionForgeryGuard;
 use App\Modules\AccessChapterAdministration\AuthenticatorEnrollments;
+use App\Modules\AccessChapterAdministration\ChapterProvisioning;
 use App\Modules\AccessChapterAdministration\MfaChallenges;
 use App\Modules\AccessChapterAdministration\SessionContract;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::class, SessionForgeryGuard::class])
     ->group(function (): void {
+        Route::get('/api/v1/provider/provisioning-context', [ChapterProvisioning::class, 'context']);
+        Route::post('/api/v1/provider/provisionings', [ChapterProvisioning::class, 'createProvisionedChapter']);
         $operations = app(SessionContract::class)->metadata()['operations'];
         Route::match([$operations['initializeCsrf']['method']], $operations['initializeCsrf']['path'], fn () => response()->noContent());
         Route::match([$operations['signIn']['method']], $operations['signIn']['path'], [SessionController::class, 'signIn']);

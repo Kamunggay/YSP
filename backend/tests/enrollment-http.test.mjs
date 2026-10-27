@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { loadContract } from '../../contracts/transport/validation/operation-examples.mjs';
 
@@ -13,16 +13,16 @@ assert.ok(origin, 'Set YSP_TEST_ORIGIN to the disposable gateway origin');
 
 class Browser {
   cookies = new Map();
-  async request(path, { method = 'GET', body, headers = {} } = {}) {
+  async request(path, { method = 'GET', body, rawBody, headers = {} } = {}) {
     const requestHeaders = { Accept: 'application/json', Origin: browserOrigin,
       Cookie: [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; '),
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      ...(body === undefined && rawBody === undefined ? {} : { 'Content-Type': 'application/json' }),
       ...(this.worker ? { 'X-Test-Worker': this.worker } : {}), ...headers };
     for (const key of Object.keys(requestHeaders)) if (requestHeaders[key] === null) delete requestHeaders[key];
     const response = await fetch(origin + path, {
       method, redirect: 'error',
       headers: requestHeaders,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: rawBody ?? (body === undefined ? undefined : JSON.stringify(body)),
     });
     for (const cookie of response.headers.getSetCookie()) {
       const [name, ...value] = cookie.split(';')[0].split('=');
@@ -42,10 +42,10 @@ class Browser {
   }
 }
 
-async function runIdentityCli(answers) {
+async function runIdentityCli(answers, command = 'identity:create') {
   assert.ok(container, 'Set YSP_TEST_CONTAINER to the disposable backend container');
   const child = spawn('docker', ['exec', '-i', container, 'script', '-qec',
-    'php artisan identity:create --no-ansi', '/dev/null']);
+    `php artisan ${command} --no-ansi`, '/dev/null']);
   let output = '';
   let next = 0;
   const timer = setTimeout(() => child.kill(), 60000);
@@ -1175,4 +1175,331 @@ test('ticket03 lost-response recovery via bootstrap recovers verified session wi
   });
   assert.equal(freshVerify.status, 200);
   assert.equal((await freshVerify.json()).state, 'authenticated');
+});
+
+function provisioningFixture(action, id, input = {}) {
+  const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/provisioning-state.php', action, id], {encoding:'utf8', input:JSON.stringify(input)});
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return JSON.parse(result.stdout);
+}
+
+async function installProvisioner(id, organization, approver) {
+  return runIdentityCli([
+    ['Operator audit reference', 'Synthetic restricted operator'],
+    ['Provider identity ID', id], ['Organization ID', organization],
+    ['Independent approver identity ID', approver],
+    ['Approval evidence reference', 'Synthetic independently approved test authorization'],
+  ], 'provider:install-initial');
+}
+
+test('ticket05 restricted CLI installs separately approved initial provider once', async () => {
+  const {id, browser} = await signedInBrowser('p05-cli');
+  const approver = await createIdentity(`p05-approval-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const {organization} = provisioningFixture('organization', id);
+  const noninteractive = spawnSync('docker', ['exec', container, 'php', 'artisan', 'provider:install-initial', '--no-interaction'], {encoding:'utf8'});
+  assert.equal(noninteractive.status, 1);
+  assert.match(noninteractive.stdout, /interactive terminal/);
+  const self = await installProvisioner(id, organization, id);
+  assert.equal(self.code, 1, self.output);
+  const installed = await installProvisioner(id, organization, approver);
+  assert.equal(installed.code, 0, installed.output);
+  const repeated = await installProvisioner(id, organization, approver);
+  assert.equal(repeated.code, 1, repeated.output);
+  assert.deepEqual(await (await browser.request('/api/v1/session')).json(), {state:'mfa_enrollment_required'});
+  const state = provisioningFixture('installed', id);
+  assert.equal(state.one_approved_installation, true);
+  assert.equal(state.no_chapter_authority, true);
+});
+
+const provisioningPath = '/api/v1/provider/provisionings';
+async function verifiedProvisioner(label) {
+  const officer = await signedInBrowser(label);
+  const approver = await createIdentity(`${label}-approver-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const {organization} = provisioningFixture('organization', officer.id);
+  const installed = await installProvisioner(officer.id, organization, approver);
+  assert.equal(installed.code, 0, installed.output);
+  assert.equal((await (await officer.browser.request('/api/v1/session')).json()).state, 'mfa_enrollment_required');
+  const prepared = await (await post(officer.browser, enrollmentPath, {intent:'begin'})).json();
+  const confirmed = await post(officer.browser, enrollmentPath + '/confirm', {
+    enrollment_id:prepared.enrollment.id, authenticator_code:authenticatorCode(prepared.enrollment.manual_key),
+  });
+  assert.equal(confirmed.status, 200);
+  return {...officer, organization};
+}
+const createChapterBody = code => ({idempotency_key:`key-${code}`, expected_provider_authority_version:1,
+  chapter:{code, name:'Synthetic chapter / \u00e9 \ud83c\udf31'}});
+
+test('ticket05 core write creates an awaiting initial Head chapter with no operational authority', async () => {
+  const {browser, id, organization} = await verifiedProvisioner('p05-write');
+  const context = await browser.request('/api/v1/provider/provisioning-context');
+  assert.equal(context.status, 200);
+  assert.deepEqual((await context.json()).scope, {kind:'provisioner', organization_id:organization, provider_user_id:id});
+  const body = createChapterBody('P05_' + Date.now());
+  // Literal property order comes from the contract's JCS wrapper, independent of the PHP encoder.
+  const canonical = JSON.stringify({action_code:'provider.chapters.create', body:{chapter:{code:body.chapter.code, name:body.chapter.name},
+    expected_provider_authority_version:1, idempotency_key:body.idempotency_key}, input_schema:'CreateProvisionedChapterRequest@p02.09-review.1',
+    provisioning_id:null, scope:{kind:'provisioner', organization_id:organization, provider_user_id:id}});
+  const expectedHash = createHash('sha256').update(canonical, 'utf8').digest('hex');
+  const response = await post(browser, provisioningPath, body);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.action_result, 'success');
+  assert.equal(result.provisioning.status, 'awaiting_initial_head');
+  assert.equal(result.provisioning.initial_head, null);
+  assert.equal(result.provisioning.initial_head_membership_authorization, 'not_applicable');
+  assert.deepEqual(result.provisioning.chapter, {...body.chapter, id:result.provisioning.chapter.id});
+  assert.equal(result.operation.replayed, false);
+  assert.equal(result.operation.identity.action_code, 'provider.chapters.create');
+  assert.equal(result.operation.identity.idempotency_key, body.idempotency_key);
+  for (const [name, passed] of Object.entries(provisioningFixture('created', id, {body, result, expectedHash}))) assert.equal(passed, true, name);
+});
+
+test('ticket05 identical replay returns original snapshot before new stale guards', async () => {
+  const {browser, id} = await verifiedProvisioner('p05-replay');
+  const body = createChapterBody('REPLAY_' + Date.now());
+  const first = await post(browser, provisioningPath, body);
+  assert.equal(first.status, 200);
+  const original = await first.json();
+  provisioningFixture('advance-authority', id);
+  const replay = await post(browser, provisioningPath, {chapter:{name:body.chapter.name, code:body.chapter.code},
+    expected_provider_authority_version:1, idempotency_key:body.idempotency_key});
+  assert.equal(replay.status, 200);
+  const result = await replay.json();
+  assert.deepEqual(result, {...original, operation:{...original.operation, replayed:true}});
+  for (const [name, passed] of Object.entries(provisioningFixture('created', id, {body, result:original}))) assert.equal(passed, true, name);
+});
+
+test('ticket05 changed semantic payload conflicts without replacing the original outcome', async () => {
+  const {browser, id} = await verifiedProvisioner('p05-conflict');
+  const body = createChapterBody('CONFLICT_' + Date.now());
+  const original = await (await post(browser, provisioningPath, body)).json();
+  const changed = await post(browser, provisioningPath, {...body, chapter:{...body.chapter, name:'Changed name'}});
+  assert.equal(changed.status, 409);
+  assert.equal((await changed.json()).code, 'idempotency_conflict');
+  const replay = await (await post(browser, provisioningPath, body)).json();
+  assert.deepEqual(replay, {...original, operation:{...original.operation, replayed:true}});
+  for (const [name, passed] of Object.entries(provisioningFixture('created', id, {body, result:original}))) assert.equal(passed, true, name);
+});
+
+test('ticket05 new stale authority attempt has no durable outcome and version changes conflict on a used key', async () => {
+  const {browser, id} = await verifiedProvisioner('p05-stale');
+  const body = createChapterBody('STALE_' + Date.now());
+  const original = await (await post(browser, provisioningPath, body)).json();
+  provisioningFixture('advance-authority', id);
+  const staleBody = {...body, idempotency_key:'new-stale-key', chapter:{...body.chapter, code:body.chapter.code + 'A'}};
+  const stale = await post(browser, provisioningPath, staleBody);
+  assert.equal(stale.status, 409);
+  assert.equal((await stale.json()).code, 'provider_authority_stale');
+  const changed = await post(browser, provisioningPath, {...body, expected_provider_authority_version:2});
+  assert.equal(changed.status, 409);
+  assert.equal((await changed.json()).code, 'idempotency_conflict');
+  for (const [name, passed] of Object.entries(provisioningFixture('created', id, {body, result:original}))) assert.equal(passed, true, name);
+  assert.equal(provisioningFixture('attempt-count', id).count, 1);
+});
+
+test('ticket05 chapter code collision is a durable terminal rejection and replays before stale checks', async () => {
+  const {browser, id} = await verifiedProvisioner('p05-rejection');
+  const body = createChapterBody('TAKEN_' + Date.now());
+  const created = await post(browser, provisioningPath, body);
+  assert.equal(created.status, 200);
+  const rejectedBody = {...body, idempotency_key:'rejected-key', chapter:{...body.chapter, name:'Competing chapter'}};
+  const rejected = await post(browser, provisioningPath, rejectedBody);
+  assert.equal(rejected.status, 409);
+  const original = await rejected.json();
+  assert.equal(original.code, 'chapter_code_unavailable');
+  assert.equal(original.action_result, 'blocked');
+  assert.equal(original.provisioning_id, null);
+  assert.equal(original.operation.outcome, 'rejected');
+  assert.equal(original.operation.replayed, false);
+  provisioningFixture('advance-authority', id);
+  const replay = await post(browser, provisioningPath, rejectedBody);
+  assert.equal(replay.status, 409);
+  assert.deepEqual(await replay.json(), {...original, operation:{...original.operation, replayed:true}});
+  assert.equal(provisioningFixture('attempt-count', id).count, 2);
+  assert.equal(provisioningFixture('chapter-count', id).count, 1);
+  const other = await verifiedProvisioner('p05-other-org');
+  assert.equal((await post(other.browser, provisioningPath, body)).status, 200, 'Code uniqueness is per organization');
+});
+
+test('ticket05 malformed or ambiguous semantic requests never create an attempt', async () => {
+  const {browser, id} = await verifiedProvisioner('p05-invalid');
+  const body = createChapterBody('INVALID_' + Date.now());
+  for (const bad of [
+    {...body, chapter:{...body.chapter, name:' \u00a0\u2003 '}},
+    {...body, organization_id:'1'}, {...body, scope:{}}, {...body, expected_provider_authority_version:1.5},
+    {...body, chapter:{...body.chapter, code:'lowercase'}}, {...body, chapter:{...body.chapter, name:''}},
+  ]) assert.equal((await post(browser, provisioningPath, bad)).status, 422);
+  for (const rawBody of [
+    JSON.stringify(body).replace('"chapter":', '"idempotency_key":"duplicate","chapter":'),
+    JSON.stringify(body).replace('"code":', '"co\\u0064e":"OTHER","code":'),
+    JSON.stringify(body).replace('"name":', '"name":"hidden","name":'),
+    JSON.stringify(body).replace('"name":', '"name":"' + 'a'.repeat(100000) + '","name":'),
+    '{"chapter":',
+  ]) {
+    const response = await browser.request(provisioningPath, {method:'POST', rawBody,
+      headers:{'X-XSRF-TOKEN':decodeURIComponent(browser.cookies.get('XSRF-TOKEN'))}});
+    assert.equal(response.status, 422, `Reject ambiguous JSON (${rawBody.length} bytes)`);
+  }
+  assert.equal(provisioningFixture('attempt-count', id).count, 0);
+  assert.equal(provisioningFixture('chapter-count', id).count, 0);
+});
+
+test('ticket05 current provider authority and verified MFA guard both writes and replay disclosure', async () => {
+  const {browser:basic, id:basicId} = await signedInBrowser('p05-no-grant');
+  const body = createChapterBody('AUTH_' + Date.now());
+  assert.equal((await post(basic, provisioningPath, body)).status, 403);
+  assert.equal(provisioningFixture('attempt-count', basicId).count, 0);
+  const {browser, id} = await verifiedProvisioner('p05-authority');
+  assert.equal((await post(browser, provisioningPath, body)).status, 200);
+  assert.equal((await browser.request('/api/v1/provider/provisioning-context?organization_id=1')).status, 403);
+  assert.equal((await browser.request('/api/v1/provider/provisioning-context', {headers:{'X-Chapter-Context':'forbidden'}})).status, 403);
+  provisioningFixture('ambiguous', id);
+  assert.equal((await post(browser, provisioningPath, body)).status, 403);
+  provisioningFixture('revoke', id);
+  assert.equal((await post(browser, provisioningPath, body)).status, 403);
+  assert.equal(provisioningFixture('attempt-count', id).count, 1);
+});
+
+test('ticket05 terminal history has effective insert-only runtime privileges and immutable guards', async () => {
+  const {browser, id} = await verifiedProvisioner('p05-history');
+  const body = createChapterBody('HISTORY_' + Date.now());
+  assert.equal((await post(browser, provisioningPath, body)).status, 200);
+  for (const [name, passed] of Object.entries(provisioningFixture('immutable', id))) assert.equal(passed, true, name);
+  const guards = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+    'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=\'ysp_local\' AND (EVENT_OBJECT_TABLE LIKE \'provider_%\' OR EVENT_OBJECT_TABLE=\'initial_provider_installations\')"'], {encoding:'utf8'});
+  assert.equal(guards.status, 0, guards.stderr);
+  assert.equal(guards.stdout.trim(), '12');
+});
+
+test('ticket05 a failure before terminal-result insert rolls back the chapter and permits the same attempt', async () => {
+  const {browser, id} = await verifiedProvisioner('p05-rollback');
+  const body = createChapterBody('ROLLBACK_' + Date.now());
+  mysqlFault("CREATE TRIGGER ticket05_abort BEFORE INSERT ON provider_operations FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Synthetic precommit failure'");
+  try {
+    assert.equal((await post(browser, provisioningPath, body)).status, 503);
+    assert.equal(provisioningFixture('attempt-count', id).count, 0);
+    assert.equal(provisioningFixture('chapter-count', id).count, 0);
+  } finally { mysqlFault('DROP TRIGGER IF EXISTS ticket05_abort'); }
+  assert.equal((await post(browser, provisioningPath, body)).status, 200);
+  assert.equal(provisioningFixture('attempt-count', id).count, 1);
+  assert.equal(provisioningFixture('chapter-count', id).count, 1);
+});
+
+for (const mode of ['identical key', 'changed payload', 'competing code']) {
+  test(`ticket05 overlapping MySQL transactions fence ${mode} attempts`, async t => {
+    const {browser, id} = await verifiedProvisioner('p05-race');
+    const contender = new Browser();
+    contender.cookies = new Map(browser.cookies);
+    contender.worker = 'contender';
+    const body = createChapterBody('RACE_' + Date.now());
+    const second = mode === 'identical key' ? body : mode === 'changed payload'
+      ? {...body, chapter:{...body.chapter, name:'Contending payload'}} : {...body, idempotency_key:'competing-code-key'};
+    const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+      'php', 'tests/fixtures/enrollment-state.php', 'hold', id]);
+    t.after(() => holder.stdin.end('\n'));
+    await new Promise((resolve, reject) => {
+      holder.once('error', reject);
+      holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+      holder.once('exit', () => reject(new Error('Lock holder exited')));
+    });
+    const requests = Promise.all([post(browser, provisioningPath, body), post(contender, provisioningPath, second)]);
+    let waiting = 0;
+    try {
+      for (let i = 0; i < 40; i++) {
+        const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+          'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], {encoding:'utf8'});
+        assert.equal(probe.status, 0, probe.stderr);
+        waiting = Number(probe.stdout.trim());
+        if (waiting >= 2) break;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    } finally { holder.stdin.end('\n'); }
+    const responses = await requests;
+    assert.ok(waiting >= 2, `Two independent HTTP transactions must overlap; waiters=${waiting}`);
+    assert.deepEqual(responses.map(r => r.status).sort(), mode === 'identical key' ? [200, 200] : [200, 409]);
+    const results = await Promise.all(responses.map(r => r.json()));
+    if (mode === 'identical key') {
+      assert.equal(results[0].operation.identity.operation_id, results[1].operation.identity.operation_id);
+      assert.equal(results.filter(r => r.operation.replayed).length, 1);
+    } else {
+      assert.equal(results.find(r => r.code)?.code, mode === 'changed payload' ? 'idempotency_conflict' : 'chapter_code_unavailable');
+    }
+    assert.equal(provisioningFixture('attempt-count', id).count, mode === 'competing code' ? 2 : 1);
+    assert.equal(provisioningFixture('chapter-count', id).count, 1);
+  });
+}
+
+test('ticket05 signed-out provisioning uses the authenticated-operation contract and has no effect', async () => {
+  const browser = new Browser();
+  await browser.request('/csrf-cookie');
+  const response = await post(browser, provisioningPath, createChapterBody('SIGNED_OUT'));
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).code, 'authentication_required');
+});
+
+test('ticket05 independent providers competing for one code retain one chapter and one terminal rejection', async t => {
+  const first = await verifiedProvisioner('p05-org-race-first');
+  const second = await verifiedProvisioner('p05-org-race-second');
+  second.browser.worker = 'contender';
+  provisioningFixture('approved-same-organization', second.id, {organization:first.organization, approver:first.id});
+  const body = createChapterBody('ORG_RACE_' + Date.now());
+  const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/provisioning-state.php', 'hold-organization', first.organization]);
+  t.after(() => holder.stdin.end('\n'));
+  await new Promise((resolve, reject) => {
+    holder.once('error', reject);
+    holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+    holder.once('exit', () => reject(new Error('Organization holder exited')));
+  });
+  // Equal keys still belong to distinct actor-private namespaces.
+  const requests = Promise.all([post(first.browser, provisioningPath, body), post(second.browser, provisioningPath, body)]);
+  let waiting = 0;
+  try {
+    for (let i = 0; i < 40; i++) {
+      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], {encoding:'utf8'});
+      assert.equal(probe.status, 0, probe.stderr);
+      waiting = Number(probe.stdout.trim());
+      if (waiting >= 2) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } finally { holder.stdin.end('\n'); }
+  const responses = await requests;
+  assert.ok(waiting >= 2, `Both providers must wait on the organization; waiters=${waiting}`);
+  assert.deepEqual(responses.map(r => r.status).sort(), [200, 409]);
+  const results = await Promise.all(responses.map(r => r.json()));
+  assert.equal(results.find(r => r.code)?.code, 'chapter_code_unavailable');
+  assert.notEqual(results[0].operation.identity.operation_id, results[1].operation.identity.operation_id);
+  assert.equal(provisioningFixture('attempt-count', first.id).count, 1);
+  assert.equal(provisioningFixture('attempt-count', second.id).count, 1);
+  assert.equal(provisioningFixture('chapter-count', first.id).count + provisioningFixture('chapter-count', second.id).count, 1);
+});
+
+test('ticket05 unsigned twenty-digit scope and persistence IDs remain exact through installation and creation', async () => {
+  const huge = (10000000000000000000n + BigInt(Date.now()) * 1000000n).toString();
+  for (const table of ['users', 'provider_role_grants', 'chapters', 'chapter_provisionings', 'provider_operation_attempts', 'provider_actor_attributions', 'provider_operations']) {
+    mysqlFault(`ALTER TABLE ${table} AUTO_INCREMENT = ${huge}`);
+  }
+  mysqlFault(`INSERT INTO organizations (id, name) VALUES (${huge}, 'Synthetic unsigned organization')`);
+  const {browser, id} = await signedInBrowser('p05-uint64');
+  assert.equal(id, huge);
+  const approver = await createIdentity(`p05-uint64-approver-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const installed = await installProvisioner(id, huge, approver);
+  assert.equal(installed.code, 0, installed.output);
+  await browser.request('/api/v1/session');
+  const prepared = await (await post(browser, enrollmentPath, {intent:'begin'})).json();
+  assert.equal((await post(browser, enrollmentPath + '/confirm', {enrollment_id:prepared.enrollment.id,
+    authenticator_code:authenticatorCode(prepared.enrollment.manual_key)})).status, 200);
+  const body = createChapterBody('UINT64');
+  const response = await post(browser, provisioningPath, body);
+  assert.equal(response.status, 200);
+  const original = await response.json();
+  assert.equal(original.scope.organization_id, huge);
+  assert.equal(original.scope.provider_user_id, huge);
+  assert.equal(original.provisioning.chapter.id, huge);
+  assert.equal(original.provisioning.id, huge);
+  const replay = await post(browser, provisioningPath, body);
+  assert.equal(replay.status, 200);
+  assert.deepEqual(await replay.json(), {...original, operation:{...original.operation, replayed:true}});
 });

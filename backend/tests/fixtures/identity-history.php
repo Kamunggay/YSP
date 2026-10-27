@@ -27,7 +27,8 @@ foreach (['update', 'delete'] as $operation) {
     try {
         $operation === 'update' ? $events->update(['operator_reference' => 'tampered']) : $events->delete();
     } catch (QueryException $exception) {
-        $rejected = ($exception->errorInfo[0] ?? null) === '45000';
+        // Table privileges now reject the mutation before the trigger runs.
+        $rejected = ($exception->errorInfo[1] ?? null) === 1142;
     } finally {
         // A failing security assertion must not destroy its own evidence.
         DB::rollBack();
