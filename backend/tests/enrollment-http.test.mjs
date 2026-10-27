@@ -1239,11 +1239,26 @@ function assertHeadResponse(status, body) {
   const validate = ajv.compile(operation.responses[status].content['application/json'].schema);
   assert.ok(validate(body), JSON.stringify(validate.errors));
 }
-async function headApprovalCli(command, user, executor, document, verified = 'yes') {
+function assertLookupResponse(status, body) {
+  const operation = api.paths['/provider/provisioning-identities/lookup'].post;
+  const validate = ajv.compile(operation.responses[status].content['application/json'].schema);
+  assert.ok(validate(body), JSON.stringify(validate.errors));
+}
+function assertReadProvisioning(status, body) {
+  const operation = api.paths['/provider/provisionings/{provisioning_id}'].get;
+  const validate = ajv.compile(operation.responses[status].content['application/json'].schema);
+  assert.ok(validate(body), JSON.stringify(validate.errors));
+}
+function assertListProvisionings(status, body) {
+  const operation = api.paths['/provider/provisionings'].get;
+  const validate = ajv.compile(operation.responses[status].content['application/json'].schema);
+  assert.ok(validate(body), JSON.stringify(validate.errors));
+}
+async function headApprovalCli(command, user, executor, document, verified = 'yes', operator = 'Synthetic executor') {
   const approval = provisioningFixture('approval-document', user, document);
   return runIdentityCli([
     ['Approval document path', approval.path], ['Technical executor identity ID', executor],
-    ['Operator audit reference', 'Synthetic executor'], ['Approval independently verified (yes/no)', verified],
+    ['Operator audit reference', operator], ['Approval independently verified (yes/no)', verified],
   ], command);
 }
 async function initialHeadScenario(label) {
@@ -1283,77 +1298,181 @@ test('ticket06 designation commits a durable P03 appointment without operational
   const read = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
   assert.deepEqual(await read.json(), original.provisioning);
 });
-test('ticket06 restricted bootstrap atomically grants the initial Head once and retains exact approved repeats', async () => {
-  const scenario = await initialHeadScenario('p06-bootstrap');
-  const appointment = await post(scenario.browser, scenario.path, scenario.body);
-  assert.equal(appointment.status, 200);
-  const designated = await appointment.json();
-  const document = {purpose:'initial_head_membership', organization_id:scenario.organization,
-    chapter_id:scenario.provisioning.chapter.id, provisioning_id:scenario.provisioning.id,
-    designation_operation_id:designated.operation.identity.operation_id, approved_by_user_id:scenario.id};
-  const invoke = (data = document, target = scenario.head) => headApprovalCli('chapter:bootstrap-initial-head', target, scenario.head, data);
-  const installed = await invoke();
-  assert.equal(installed.code, 0, installed.output);
-  const result = JSON.parse(installed.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]);
-  assert.equal(result.user_id, scenario.head);
-  assert.equal(result.chapter_id, scenario.provisioning.chapter.id);
-  assert.equal(result.duty, 'CHAPTER_HEAD');
-  const repeated = await invoke();
-  assert.equal(repeated.code, 0, repeated.output);
-  assert.deepEqual(JSON.parse(repeated.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]), result);
-  const changed = await invoke({...document, approval_reference:'Different independent approval'});
-  assert.equal(changed.code, 1, changed.output);
-  const competing = await invoke(document, scenario.id);
-  assert.equal(competing.code, 1, competing.output);
-  const state = provisioningFixture('head-authority', scenario.head);
-  assert.equal(state.memberships, 1);
-  assert.equal(state.grants, 1);
-  assert.equal(state.initial_head_roots_valid, true);
-  const read = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
-  assert.equal((await read.json()).initial_head_membership_authorization, 'authorized');
-  const originalReplay = await (await post(scenario.browser, scenario.path, scenario.body)).json();
-  assert.equal(originalReplay.provisioning.initial_head_membership_authorization, 'not_authorized', 'P03 replay preserves its original snapshot');
+
+test('ticket06 provider read and list projections distinguish awaiting, designated, authorized and ended states', async () => {
+  const scenario = await initialHeadScenario('p06-projections');
+
+  // State 1: Awaiting Initial Head (created but not designated)
+  const read1 = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
+  assert.equal(read1.status, 200);
+  assert.match(read1.headers.get('cache-control'), /no-store/);
+  const body1 = await read1.json();
+  assertReadProvisioning(200, body1);
+  assert.equal(body1.status, 'awaiting_initial_head');
+  assert.equal(body1.initial_head, null);
+  assert.equal(body1.initial_head_membership_authorization, 'not_applicable');
+  assert.equal(body1.version, 1);
+
+  const listAwaiting = await scenario.browser.request(`${provisioningPath}?status=awaiting_initial_head`);
+  assert.equal(listAwaiting.status, 200);
+  const listAwaitingBody = await listAwaiting.json();
+  assertListProvisionings(200, listAwaitingBody);
+  const foundAwaiting = listAwaitingBody.items.find(item => item.id === scenario.provisioning.id);
+  assert.ok(foundAwaiting, 'Awaiting chapter must appear in awaiting_initial_head list');
+  assert.deepEqual(foundAwaiting, body1);
+
+  const listDesignatedEmpty = await scenario.browser.request(`${provisioningPath}?status=initial_head_designated`);
+  assert.equal(listDesignatedEmpty.status, 200);
+  assert.ok(!(await listDesignatedEmpty.json()).items.some(item => item.id === scenario.provisioning.id));
+
+  // State 2: Initial Head Designated (appointed, but CLI membership not authorized)
+  const appointRes = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(appointRes.status, 200);
+  const appointBody = await appointRes.json();
+  assertHeadResponse(200, appointBody);
+
+  const read2 = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
+  assert.equal(read2.status, 200);
+  const body2 = await read2.json();
+  assertReadProvisioning(200, body2);
+  assert.equal(body2.status, 'initial_head_designated');
+  assert.equal(body2.initial_head.identity.user_id, scenario.head);
+  assert.equal(body2.initial_head_membership_authorization, 'not_authorized');
+  assert.equal(body2.version, 2);
+
+  const listDesignated = await scenario.browser.request(`${provisioningPath}?status=initial_head_designated`);
+  assert.equal(listDesignated.status, 200);
+  const listDesignatedBody = await listDesignated.json();
+  assertListProvisionings(200, listDesignatedBody);
+  const foundDesignated = listDesignatedBody.items.find(item => item.id === scenario.provisioning.id);
+  assert.ok(foundDesignated, 'Designated chapter must appear in initial_head_designated list');
+  assert.deepEqual(foundDesignated, body2);
+
+  const listAwaiting2 = await scenario.browser.request(`${provisioningPath}?status=awaiting_initial_head`);
+  assert.ok(!(await listAwaiting2.json()).items.some(item => item.id === scenario.provisioning.id));
+
+  // State 3: CLI Membership Authorized
+  const document = {
+    purpose: 'initial_head_membership',
+    organization_id: scenario.organization,
+    chapter_id: scenario.provisioning.chapter.id,
+    provisioning_id: scenario.provisioning.id,
+    designation_operation_id: appointBody.operation.identity.operation_id,
+    approved_by_user_id: scenario.id,
+  };
+  const bootstrapRes = await headApprovalCli('chapter:bootstrap-initial-head', scenario.head, scenario.head, document);
+  assert.equal(bootstrapRes.code, 0, bootstrapRes.output);
+
+  const read3 = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
+  assert.equal(read3.status, 200);
+  const body3 = await read3.json();
+  assertReadProvisioning(200, body3);
+  assert.equal(body3.status, 'initial_head_designated');
+  assert.equal(body3.initial_head.identity.user_id, scenario.head);
+  assert.equal(body3.initial_head_membership_authorization, 'authorized');
+  assert.equal(body3.version, 3);
+
+  const listAuthorized = await scenario.browser.request(`${provisioningPath}?status=initial_head_designated`);
+  assert.equal(listAuthorized.status, 200);
+  const foundAuthorized = (await listAuthorized.json()).items.find(item => item.id === scenario.provisioning.id);
+  assert.deepEqual(foundAuthorized, body3);
+
+  // Replay of appointment operation still preserves original not_authorized snapshot
+  const replayAppoint = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(replayAppoint.status, 200);
+  assert.equal((await replayAppoint.json()).provisioning.initial_head_membership_authorization, 'not_authorized');
+
+  // State 4: CLI Membership Ended
   provisioningFixture('end-head-authority', scenario.head);
-  const retained = await invoke();
-  assert.equal(retained.code, 0, retained.output);
-  assert.deepEqual(JSON.parse(retained.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]), result);
-  const ended = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
-  assert.equal((await ended.json()).initial_head_membership_authorization, 'ended', 'Bootstrap repeat never repairs ended authority');
+
+  const read4 = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
+  assert.equal(read4.status, 200);
+  const body4 = await read4.json();
+  assertReadProvisioning(200, body4);
+  assert.equal(body4.status, 'initial_head_designated');
+  assert.equal(body4.initial_head.identity.user_id, scenario.head);
+  assert.equal(body4.initial_head_membership_authorization, 'ended');
+  assert.equal(body4.version, 3);
+
+  const listEnded = await scenario.browser.request(`${provisioningPath}?status=initial_head_designated`);
+  assert.equal(listEnded.status, 200);
+  const foundEnded = (await listEnded.json()).items.find(item => item.id === scenario.provisioning.id);
+  assert.deepEqual(foundEnded, body4);
 });
-test('ticket06 exact candidate lookup hides unapproved identities and returns only approved reference', async () => {
+
+test('ticket06 exact candidate lookup returns uniform null across missing disabled unapproved wrong-org identities', async () => {
   const provider = await verifiedProvisioner('p06-lookup');
-  const target = await createIdentity(`p06-candidate-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
   const lookup = async user_id => {
     const response = await post(provider.browser, headLookupPath, {user_id});
     assert.equal(response.status, 200);
-    return response.json();
+    assert.match(response.headers.get('cache-control'), /no-store/);
+    const body = await response.json();
+    assertLookupResponse(200, body);
+    return body;
   };
-  assert.deepEqual(await lookup(target), {identity:null});
+
+  // 1. Missing identity: non-existent ID in users table
   assert.deepEqual(await lookup('18446744073709551615'), {identity:null});
-  const approval = provisioningFixture('approval-document', target, {organization_id:provider.organization,
-    purpose:'initial_head_appointment', approved_by_user_id:provider.id});
-  const authorized = await runIdentityCli([
-    ['Approval document path', approval.path], ['Technical executor identity ID', target],
+
+  // 2. Unapproved identity: registered user in the database with no initial_head_candidates record
+  const unapprovedTarget = await createIdentity(`p06-unapproved-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  assert.deepEqual(await lookup(unapprovedTarget), {identity:null});
+
+  // 3. Wrong-org identity: candidate approved for Organization B, queried by provider of Organization A
+  const otherProvider = await verifiedProvisioner('p06-other-org');
+  const otherTarget = await createIdentity(`p06-other-cand-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const otherApproval = provisioningFixture('approval-document', otherTarget, {
+    organization_id: otherProvider.organization, purpose: 'initial_head_appointment', approved_by_user_id: otherProvider.id,
+  });
+  const otherAuth = await runIdentityCli([
+    ['Approval document path', otherApproval.path], ['Technical executor identity ID', otherTarget],
     ['Operator audit reference', 'Synthetic executor'], ['Approval independently verified (yes/no)', 'yes'],
   ], 'candidate:authorize-initial-head');
-  assert.equal(authorized.code, 0, authorized.output);
-  assert.deepEqual(await lookup(target), {identity:{user_id:target, display_name:'Synthetic officer'}});
-  const otherProvider = await verifiedProvisioner('p06-nonvisible');
-  const hidden = await post(otherProvider.browser, headLookupPath, {user_id:target});
-  assert.equal(hidden.status, 200);
-  assert.deepEqual(await hidden.json(), {identity:null});
-  provisioningFixture('revoke-candidate', target);
-  assert.deepEqual(await lookup(target), {identity:null});
-  const reapproved = await headApprovalCli('candidate:authorize-initial-head', target, target, {
-    organization_id:provider.organization, purpose:'initial_head_appointment', approved_by_user_id:provider.id,
+  assert.equal(otherAuth.code, 0, otherAuth.output);
+  const otherLookup = await post(otherProvider.browser, headLookupPath, {user_id:otherTarget});
+  assert.equal(otherLookup.status, 200);
+  assert.deepEqual(await otherLookup.json(), {identity:{user_id:otherTarget, display_name:'Synthetic officer'}});
+  assert.deepEqual(await lookup(otherTarget), {identity:null});
+
+  // 4. Approved candidate in provider's organization: visible
+  const approvedTarget = await createIdentity(`p06-approved-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const approvedDoc = provisioningFixture('approval-document', approvedTarget, {
+    organization_id: provider.organization, purpose: 'initial_head_appointment', approved_by_user_id: provider.id,
   });
-  assert.equal(reapproved.code, 0, reapproved.output);
-  arrangeState('disable', target);
-  assert.deepEqual(await lookup(target), {identity:null});
+  const authRes = await runIdentityCli([
+    ['Approval document path', approvedDoc.path], ['Technical executor identity ID', approvedTarget],
+    ['Operator audit reference', 'Synthetic executor'], ['Approval independently verified (yes/no)', 'yes'],
+  ], 'candidate:authorize-initial-head');
+  assert.equal(authRes.code, 0, authRes.output);
+  assert.deepEqual(await lookup(approvedTarget), {identity:{user_id:approvedTarget, display_name:'Synthetic officer'}});
+
+  // 5. Revoked candidate: candidate approval revoked -> uniform null
+  provisioningFixture('revoke-candidate', approvedTarget);
+  assert.deepEqual(await lookup(approvedTarget), {identity:null});
+
+  // 6. Disabled identity: candidate user disabled -> uniform null
+  const disabledTarget = await createIdentity(`p06-disabled-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const disabledDoc = provisioningFixture('approval-document', disabledTarget, {
+    organization_id: provider.organization, purpose: 'initial_head_appointment', approved_by_user_id: provider.id,
+  });
+  const disabledAuth = await headApprovalCli('candidate:authorize-initial-head', disabledTarget, disabledTarget, {
+    organization_id: provider.organization, purpose: 'initial_head_appointment', approved_by_user_id: provider.id,
+  });
+  assert.equal(disabledAuth.code, 0, disabledAuth.output);
+  assert.deepEqual(await lookup(disabledTarget), {identity:{user_id:disabledTarget, display_name:'Synthetic officer'}});
+  arrangeState('disable', disabledTarget);
+  assert.deepEqual(await lookup(disabledTarget), {identity:null});
 });
 
-test('ticket06 appointment rechecks candidate revocation under a real MySQL lock', async t => {
-  const scenario = await initialHeadScenario('p06-recheck');
+test('ticket06 candidate becoming ineligible between lookup and appointInitialHead lock is durably rejected', async t => {
+  const scenario = await initialHeadScenario('p06-ineligible-lock');
+
+  // 1. Candidate is confirmed eligible at lookup time
+  const lookupBefore = await post(scenario.browser, headLookupPath, {user_id:scenario.head});
+  assert.equal(lookupBefore.status, 200);
+  assert.deepEqual(await lookupBefore.json(), {identity:{user_id:scenario.head, display_name:'Synthetic officer'}});
+
+  // 2. Candidate becomes ineligible between lookup and appointInitialHead acquisition of the lock
   const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
     'php', 'tests/fixtures/provisioning-state.php', 'hold-candidate-revocation', scenario.head]);
   t.after(() => holder.stdin.end('\n'));
@@ -1362,6 +1481,7 @@ test('ticket06 appointment rechecks candidate revocation under a real MySQL lock
     holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
     holder.once('exit', () => reject(new Error('Candidate lock holder exited')));
   });
+
   const pending = post(scenario.browser, scenario.path, scenario.body);
   let waiting = 0;
   try {
@@ -1374,17 +1494,324 @@ test('ticket06 appointment rechecks candidate revocation under a real MySQL lock
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   } finally { holder.stdin.end('\n'); }
+
   const response = await pending;
-  assert.ok(waiting >= 1, 'Appointment must reach the locked candidate row');
+  assert.ok(waiting >= 1, 'Appointment must reach and wait on the locked candidate row');
   assert.equal(response.status, 409);
   const rejected = await response.json();
   assertHeadResponse(409, rejected);
   assert.equal(rejected.code, 'identity_not_eligible');
   assert.equal(rejected.operation.outcome, 'rejected');
   assert.equal((await (await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`)).json()).status, 'awaiting_initial_head');
+
+  // 3. Lookup after revocation returns uniform null
+  const lookupAfter = await post(scenario.browser, headLookupPath, {user_id:scenario.head});
+  assert.equal(lookupAfter.status, 200);
+  assert.deepEqual(await lookupAfter.json(), {identity:null});
+
+  // 4. Replay returns the exact durable terminal rejection
   const replay = await (await post(scenario.browser, scenario.path, scenario.body)).json();
   assert.deepEqual(replay, {...rejected, operation:{...rejected.operation, replayed:true}});
   assert.equal(provisioningFixture('head-authority', scenario.head).memberships, 0);
+});
+
+test('ticket06 attempting CLI bootstrap without prior designation is rejected with zero authority', async () => {
+  const provider = await verifiedProvisioner('p06-no-desig');
+  const candidate = await createIdentity(`p06-cnd-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const approved = await headApprovalCli('candidate:authorize-initial-head', candidate, candidate, {
+    organization_id: provider.organization, purpose: 'initial_head_appointment', approved_by_user_id: provider.id,
+  });
+  assert.equal(approved.code, 0, approved.output);
+
+  // Chapter is created, but Initial Head has NOT been designated (status remains awaiting_initial_head)
+  const created = await post(provider.browser, provisioningPath, createChapterBody(`NODESIG_${Date.now()}`));
+  assert.equal(created.status, 200);
+  const provisioning = (await created.json()).provisioning;
+  assert.equal(provisioning.status, 'awaiting_initial_head');
+
+  // Attempt CLI bootstrap without prior designation
+  const document = {
+    purpose: 'initial_head_membership',
+    organization_id: provider.organization,
+    chapter_id: provisioning.chapter.id,
+    provisioning_id: provisioning.id,
+    designation_operation_id: '01K8A6J0A00000000000000002',
+    approved_by_user_id: provider.id,
+  };
+  const result = await headApprovalCli('chapter:bootstrap-initial-head', candidate, candidate, document);
+  assert.equal(result.code, 1, 'Bootstrap must fail without prior designation');
+  assert.match(result.output, /Initial Head bootstrap rejected; check designation, eligibility, approval and prior bootstrap\./);
+
+  // Database retains zero memberships and zero duty grants
+  const stats = provisioningFixture('bootstrap-count', provisioning.chapter.id);
+  assert.equal(stats.bootstraps, 0);
+  assert.equal(stats.memberships, 0);
+  assert.equal(stats.duty_grants, 0);
+
+  // Provisioning read remains awaiting_initial_head with not_applicable
+  const read = await provider.browser.request(`${provisioningPath}/${provisioning.id}`);
+  assert.equal(read.status, 200);
+  const readBody = await read.json();
+  assertReadProvisioning(200, readBody);
+  assert.equal(readBody.status, 'awaiting_initial_head');
+  assert.equal(readBody.initial_head, null);
+  assert.equal(readBody.initial_head_membership_authorization, 'not_applicable');
+  assert.equal(readBody.version, 1);
+});
+
+test('ticket06 rejecting identical approving-authority and technical-executor attribution in candidate authorization and bootstrap', async () => {
+  const provider = await verifiedProvisioner('p06-attr');
+  const target = await createIdentity(`p06-target-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+
+  // 1. Candidate authorization CLI: approver is also executor -> rejected
+  const candidateDoc = provisioningFixture('approval-document', target, {
+    organization_id: provider.organization, purpose: 'initial_head_appointment', approved_by_user_id: provider.id,
+  });
+  const badCandidateAuth = await runIdentityCli([
+    ['Approval document path', candidateDoc.path], ['Technical executor identity ID', provider.id], // Same as approved_by_user_id!
+    ['Operator audit reference', 'Synthetic executor'], ['Approval independently verified (yes/no)', 'yes'],
+  ], 'candidate:authorize-initial-head');
+  assert.equal(badCandidateAuth.code, 1, 'Candidate authorization must reject identical approver and executor');
+  assert.match(badCandidateAuth.output, /Candidate authorization rejected; check approval and attribution\./);
+
+  // Candidate is NOT authorized in DB
+  const lookup = await post(provider.browser, headLookupPath, {user_id:target});
+  assert.deepEqual(await lookup.json(), {identity:null});
+
+  // Now authorize candidate properly with distinct approver and executor
+  const goodCandidateAuth = await runIdentityCli([
+    ['Approval document path', candidateDoc.path], ['Technical executor identity ID', target],
+    ['Operator audit reference', 'Synthetic executor'], ['Approval independently verified (yes/no)', 'yes'],
+  ], 'candidate:authorize-initial-head');
+  assert.equal(goodCandidateAuth.code, 0, goodCandidateAuth.output);
+
+  // Create chapter and designate Head
+  const created = await post(provider.browser, provisioningPath, createChapterBody(`ATTR_${Date.now()}`));
+  assert.equal(created.status, 200);
+  const provisioning = (await created.json()).provisioning;
+  const appoint = await post(provider.browser, `${provisioningPath}/${provisioning.id}/initial-head`, {
+    idempotency_key: `head-attr-${Date.now()}`, expected_provider_authority_version: 1, expected_provisioning_version: 1,
+    identity: {user_id:target}, reason: 'Synthetic approved initial Head designation',
+  });
+  assert.equal(appoint.status, 200);
+  const designated = await appoint.json();
+
+  // 2. Initial Head bootstrap CLI: approver is also executor -> rejected
+  const membershipDoc = {
+    purpose: 'initial_head_membership',
+    organization_id: provider.organization,
+    chapter_id: provisioning.chapter.id,
+    provisioning_id: provisioning.id,
+    designation_operation_id: designated.operation.identity.operation_id,
+    approved_by_user_id: provider.id,
+  };
+  const badBootstrap = await headApprovalCli('chapter:bootstrap-initial-head', target, provider.id, membershipDoc);
+  assert.equal(badBootstrap.code, 1, 'Bootstrap must reject identical approver and executor');
+  assert.match(badBootstrap.output, /Initial Head bootstrap rejected; check designation, eligibility, approval and prior bootstrap\./);
+
+  // Verify no membership or duty grant created
+  const stats = provisioningFixture('bootstrap-count', provisioning.chapter.id);
+  assert.equal(stats.bootstraps, 0);
+  assert.equal(stats.memberships, 0);
+  assert.equal(stats.duty_grants, 0);
+
+  // Read remains designated with not_authorized
+  const read = await provider.browser.request(`${provisioningPath}/${provisioning.id}`);
+  assert.equal((await read.json()).initial_head_membership_authorization, 'not_authorized');
+});
+
+test('ticket06 idempotent exact CLI repeat vs mutated bootstrap conflict', async () => {
+  const scenario = await initialHeadScenario('p06-repeat-conflict');
+  const appointment = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(appointment.status, 200);
+  const designated = await appointment.json();
+
+  const document = {
+    purpose: 'initial_head_membership',
+    organization_id: scenario.organization,
+    chapter_id: scenario.provisioning.chapter.id,
+    provisioning_id: scenario.provisioning.id,
+    designation_operation_id: designated.operation.identity.operation_id,
+    approved_by_user_id: scenario.id,
+  };
+  const invoke = (data = document, executor = scenario.head, operator = 'Synthetic executor') =>
+    headApprovalCli('chapter:bootstrap-initial-head', scenario.head, executor, data, 'yes', operator);
+
+  // 1. Initial valid bootstrap execution
+  const installed = await invoke();
+  assert.equal(installed.code, 0, installed.output);
+  const result = JSON.parse(installed.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]);
+  assert.equal(result.user_id, scenario.head);
+  assert.equal(result.chapter_id, scenario.provisioning.chapter.id);
+  assert.equal(result.duty, 'CHAPTER_HEAD');
+
+  // Verify database state: exactly 1 bootstrap, 1 membership, 1 grant
+  const stats1 = provisioningFixture('bootstrap-count', scenario.provisioning.chapter.id);
+  assert.equal(stats1.bootstraps, 1);
+  assert.equal(stats1.memberships, 1);
+  assert.equal(stats1.duty_grants, 1);
+  assert.equal(stats1.authority_version, 2);
+
+  // 2. Idempotent exact CLI repeat with identical document, executor, operator
+  const repeated = await invoke();
+  assert.equal(repeated.code, 0, repeated.output);
+  assert.deepEqual(JSON.parse(repeated.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]), result);
+
+  // Database counts unchanged
+  const stats2 = provisioningFixture('bootstrap-count', scenario.provisioning.chapter.id);
+  assert.equal(stats2.bootstraps, 1);
+  assert.equal(stats2.memberships, 1);
+  assert.equal(stats2.duty_grants, 1);
+  assert.equal(stats2.authority_version, 2);
+
+  // 3. Mutated bootstrap conflict: mutated approval_reference
+  const changedRef = await invoke({...document, approval_reference: 'Mutated independent approval reference'});
+  assert.equal(changedRef.code, 1, 'Must reject mutated approval reference');
+  assert.match(changedRef.output, /Initial Head bootstrap rejected; check designation, eligibility, approval and prior bootstrap\./);
+
+  // 4. Mutated bootstrap conflict: mutated technical executor
+  const otherExecutor = await createIdentity(`p06-other-exec-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const changedExec = await invoke(document, otherExecutor);
+  assert.equal(changedExec.code, 1, 'Must reject mutated technical executor');
+  assert.match(changedExec.output, /Initial Head bootstrap rejected; check designation, eligibility, approval and prior bootstrap\./);
+
+  // 5. Mutated bootstrap conflict: mutated operator audit reference
+  const changedOp = await invoke(document, scenario.head, 'Mutated operator audit reference');
+  assert.equal(changedOp.code, 1, 'Must reject mutated operator reference');
+  assert.match(changedOp.output, /Initial Head bootstrap rejected; check designation, eligibility, approval and prior bootstrap\./);
+
+  // 6. Mutated bootstrap conflict: competing candidate target
+  const competingTarget = await invoke(document, scenario.id);
+  assert.equal(competingTarget.code, 1, 'Must reject competing candidate target');
+
+  // In all conflict cases, database counts remain strictly unchanged
+  const stats3 = provisioningFixture('bootstrap-count', scenario.provisioning.chapter.id);
+  assert.equal(stats3.bootstraps, 1);
+  assert.equal(stats3.memberships, 1);
+  assert.equal(stats3.duty_grants, 1);
+
+  // Read still reports authorized
+  const read = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
+  assert.equal((await read.json()).initial_head_membership_authorization, 'authorized');
+});
+
+test('ticket06 concurrent CLI bootstrap attempts serialize under MySQL lock with exact replay or conflict rejection', async t => {
+  // --- Case A: Concurrent identical CLI bootstrap attempts ---
+  const scenarioA = await initialHeadScenario('p06-concurrent-exact');
+  const appointmentA = await post(scenarioA.browser, scenarioA.path, scenarioA.body);
+  assert.equal(appointmentA.status, 200);
+  const designatedA = await appointmentA.json();
+
+  const documentA = {
+    purpose: 'initial_head_membership',
+    organization_id: scenarioA.organization,
+    chapter_id: scenarioA.provisioning.chapter.id,
+    provisioning_id: scenarioA.provisioning.id,
+    designation_operation_id: designatedA.operation.identity.operation_id,
+    approved_by_user_id: scenarioA.id,
+  };
+  const invokeA = () => headApprovalCli('chapter:bootstrap-initial-head', scenarioA.head, scenarioA.head, documentA);
+
+  const holderA = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/provisioning-state.php', 'hold-organization', scenarioA.organization]);
+  t.after(() => holderA.stdin.end('\n'));
+  await new Promise((resolve, reject) => {
+    holderA.once('error', reject);
+    holderA.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+    holderA.once('exit', () => reject(new Error('Organization lock holder exited')));
+  });
+
+  const pendingA = Promise.all([invokeA(), invokeA()]);
+  let waitingA = 0;
+  try {
+    for (let i = 0; i < 40; i++) {
+      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], {encoding:'utf8'});
+      assert.equal(probe.status, 0, probe.stderr);
+      waitingA = Number(probe.stdout.trim());
+      if (waitingA >= 2) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } finally { holderA.stdin.end('\n'); }
+
+  assert.ok(waitingA >= 2, `Both concurrent CLI bootstrap processes must wait on MySQL lock; waiters=${waitingA}`);
+  const [resA1, resA2] = await pendingA;
+  assert.equal(resA1.code, 0, resA1.output);
+  assert.equal(resA2.code, 0, resA2.output);
+  const parsedA1 = JSON.parse(resA1.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]);
+  const parsedA2 = JSON.parse(resA2.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]);
+  assert.deepEqual(parsedA1, parsedA2, 'Both concurrent attempts must return identical bootstrap result');
+
+  // Verify MySQL state: exactly 1 membership, 1 duty grant, 1 bootstrap row
+  const statsA = provisioningFixture('bootstrap-count', scenarioA.provisioning.chapter.id);
+  assert.equal(statsA.bootstraps, 1);
+  assert.equal(statsA.memberships, 1);
+  assert.equal(statsA.duty_grants, 1);
+  assert.equal(statsA.authority_version, 2);
+
+  const readA = await scenarioA.browser.request(`${provisioningPath}/${scenarioA.provisioning.id}`);
+  assert.equal((await readA.json()).initial_head_membership_authorization, 'authorized');
+
+  // --- Case B: Concurrent mutated/competing CLI bootstrap attempts ---
+  const scenarioB = await initialHeadScenario('p06-concurrent-competing');
+  const appointmentB = await post(scenarioB.browser, scenarioB.path, scenarioB.body);
+  assert.equal(appointmentB.status, 200);
+  const designatedB = await appointmentB.json();
+
+  const documentB1 = {
+    purpose: 'initial_head_membership',
+    organization_id: scenarioB.organization,
+    chapter_id: scenarioB.provisioning.chapter.id,
+    provisioning_id: scenarioB.provisioning.id,
+    designation_operation_id: designatedB.operation.identity.operation_id,
+    approved_by_user_id: scenarioB.id,
+  };
+  const documentB2 = {
+    ...documentB1,
+    approval_reference: 'Competing approval reference under race',
+  };
+
+  const invokeB1 = () => headApprovalCli('chapter:bootstrap-initial-head', scenarioB.head, scenarioB.head, documentB1);
+  const invokeB2 = () => headApprovalCli('chapter:bootstrap-initial-head', scenarioB.head, scenarioB.head, documentB2);
+
+  const holderB = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/provisioning-state.php', 'hold-organization', scenarioB.organization]);
+  t.after(() => holderB.stdin.end('\n'));
+  await new Promise((resolve, reject) => {
+    holderB.once('error', reject);
+    holderB.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+    holderB.once('exit', () => reject(new Error('Organization lock holder exited')));
+  });
+
+  const pendingB = Promise.all([invokeB1(), invokeB2()]);
+  let waitingB = 0;
+  try {
+    for (let i = 0; i < 40; i++) {
+      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], {encoding:'utf8'});
+      assert.equal(probe.status, 0, probe.stderr);
+      waitingB = Number(probe.stdout.trim());
+      if (waitingB >= 2) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } finally { holderB.stdin.end('\n'); }
+
+  assert.ok(waitingB >= 2, `Both competing CLI bootstrap processes must wait on MySQL lock; waiters=${waitingB}`);
+  const [resB1, resB2] = await pendingB;
+  const codes = [resB1.code, resB2.code].sort();
+  assert.deepEqual(codes, [0, 1], 'One competing attempt must succeed and the other must be rejected');
+  const rejectedOutput = resB1.code === 1 ? resB1.output : resB2.output;
+  assert.match(rejectedOutput, /Initial Head bootstrap rejected; check designation, eligibility, approval and prior bootstrap\./);
+
+  // Database retains exactly 1 bootstrap, 1 membership, 1 grant
+  const statsB = provisioningFixture('bootstrap-count', scenarioB.provisioning.chapter.id);
+  assert.equal(statsB.bootstraps, 1);
+  assert.equal(statsB.memberships, 1);
+  assert.equal(statsB.duty_grants, 1);
+  assert.equal(statsB.authority_version, 2);
+
+  const readB = await scenarioB.browser.request(`${provisioningPath}/${scenarioB.provisioning.id}`);
+  assert.equal((await readB.json()).initial_head_membership_authorization, 'authorized');
 });
 
 test('ticket06 restricted bootstrap rejects unverified mismatched approval and lost eligibility without grants', async () => {

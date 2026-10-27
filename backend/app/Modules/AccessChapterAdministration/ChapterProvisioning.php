@@ -139,7 +139,7 @@ final class ChapterProvisioning
                     'display_name' => $row->user_name,
                 ],
                 'created_at' => Carbon::parse($row->provisioning_created_at)->utc()->format('Y-m-d\TH:i:s.u\Z'),
-                'status' => 'awaiting_initial_head',
+                'status' => $row->status,
                 'initial_head' => null,
                 'initial_head_membership_authorization' => 'not_applicable',
             ]))->values()->all();
@@ -289,7 +289,7 @@ final class ChapterProvisioning
                     'display_name' => $row->user_name,
                 ],
                 'created_at' => Carbon::parse($row->provisioning_created_at)->utc()->format('Y-m-d\TH:i:s.u\Z'),
-                'status' => 'awaiting_initial_head',
+                'status' => $row->status,
                 'initial_head' => null,
                 'initial_head_membership_authorization' => 'not_applicable',
             ]));
@@ -509,7 +509,9 @@ final class ChapterProvisioning
             if ($bootstrap !== null) {
                 $active = DB::table('memberships')->join('duty_grants', function ($join): void {
                     $join->on('duty_grants.membership_id', '=', 'memberships.id')->on('duty_grants.chapter_id', '=', 'memberships.chapter_id');
-                })->where('memberships.id', $bootstrap->membership_id)->where('memberships.status', 'active')->whereNull('memberships.disabled_at')
+                })->join('users', 'users.id', '=', 'memberships.user_id')
+                    ->where('memberships.id', $bootstrap->membership_id)->where('memberships.status', 'active')->whereNull('memberships.disabled_at')
+                    ->where('users.status', 'active')->whereNull('users.disabled_at')
                     ->where('duty_grants.id', $bootstrap->duty_grant_id)->whereNull('duty_grants.revoked_at')->where('duty_grants.starts_at', '<=', now())
                     ->where(fn ($query) => $query->whereNull('duty_grants.ends_at')->orWhere('duty_grants.ends_at', '>', now()))->exists();
                 $projection['initial_head_membership_authorization'] = $active ? 'authorized' : 'ended';

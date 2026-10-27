@@ -132,6 +132,13 @@ if ($action === 'head-history-privileges') {
         }
     }
     echo json_encode($assertions, JSON_THROW_ON_ERROR);
+} elseif ($action === 'bootstrap-count') {
+    echo json_encode([
+        'bootstraps' => DB::table('initial_head_bootstraps')->where('chapter_id', $id)->count(),
+        'memberships' => DB::table('memberships')->where('chapter_id', $id)->count(),
+        'duty_grants' => DB::table('duty_grants')->where('chapter_id', $id)->count(),
+        'authority_version' => DB::table('chapter_control_guards')->where('chapter_id', $id)->value('authority_version'),
+    ], JSON_THROW_ON_ERROR);
 } elseif ($action === 'approved-same-organization') {
     DB::table('provider_role_grants')->where('user_id', $id)->update(['revoked_at' => now()]);
     DB::table('provider_role_grants')->insert([
