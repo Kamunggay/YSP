@@ -34,7 +34,8 @@ final class VerifyBaseline extends Command
                 'SELECT TABLE_NAME AS name, ENGINE AS engine FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()'
             );
             $expectedTables = ['migrations', 'sessions', 'users', 'global_security_events', 'session_throttles',
-                'organizations', 'chapters', 'provider_role_grants', 'memberships', 'roles', 'requesting_units', 'duty_grants'];
+                'organizations', 'chapters', 'provider_role_grants', 'memberships', 'roles', 'requesting_units', 'duty_grants',
+                'authenticator_enrollments', 'user_recovery_codes'];
             sort($expectedTables);
             $actualTables = array_map(fn (object $table): string => $table->name, $tables);
             sort($actualTables);

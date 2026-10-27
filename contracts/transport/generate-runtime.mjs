@@ -13,7 +13,7 @@ for (const name of ['api-v1.json', 'transport.schema.json', 'p02-action-catalogu
 }
 const api = documents['api-v1.json'];
 const definitions = documents['transport.schema.json'].$defs;
-const wanted = new Set(['getSession', 'signIn', 'signOut', 'initializeCsrf']);
+const wanted = new Set(['getSession', 'signIn', 'signOut', 'initializeCsrf', 'prepareAuthenticatorEnrollment', 'confirmAuthenticatorEnrollment']);
 const operations = {};
 for (const [path, item] of Object.entries(api.paths)) {
   for (const [method, operation] of Object.entries(item)) {
@@ -31,7 +31,10 @@ function include(name) {
   for (const match of JSON.stringify(definitions[name]).matchAll(/#\/\$defs\/([^"\s]+)/g)) include(match[1]);
 }
 for (const name of ['SessionSnapshot', 'SignInRequest', 'SessionUnauthorized', 'SessionForbidden',
-  'SessionCsrfFailure', 'SessionThrottled', 'SessionUnavailable', 'SignInInvalid']) include(name);
+  'SessionCsrfFailure', 'SessionThrottled', 'SessionUnavailable', 'SignInInvalid',
+  'PrepareEnrollmentRequest', 'ConfirmEnrollmentRequest', 'PreparedEnrollment', 'ConfirmedEnrollment',
+  'EnrollmentUnauthorized', 'EnrollmentConflict', 'EnrollmentProofRejected',
+  'PrepareEnrollmentInvalid', 'ConfirmEnrollmentInvalid']) include(name);
 const output = JSON.stringify({ sources, operations, session: api['x-session-contract'],
   duties: documents['p02-action-catalogue.json'].duties, $defs: selected }, null, 2) + '\n';
 const outputIndex = process.argv.indexOf('--output');

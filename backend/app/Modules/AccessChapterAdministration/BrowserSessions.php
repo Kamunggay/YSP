@@ -11,6 +11,14 @@ final class BrowserSessions
 {
     public function __construct(private CurrentAuthority $authority) {}
 
+    public function verifyMfa(Request $request, string $verifiedAt): void
+    {
+        $request->session()->regenerate(true);
+        $request->session()->regenerateToken();
+        $request->session()->forget('mfa_challenge');
+        $request->session()->put('mfa_verified_at', $verifiedAt);
+    }
+
     /** @return array<string, mixed>|null */
     public function signIn(Request $request, string $email, string $password): ?array
     {
@@ -46,7 +54,7 @@ final class BrowserSessions
 
             return ['state' => 'signed_out'];
         }
-        if ($this->authority->requiresMfa((string) $user->id)) {
+        if ($this->authority->requiresMfa((string) $user->id) && ! $request->session()->has('mfa_verified_at')) {
             if (! $request->session()->get('mfa_required', false)) {
                 $request->session()->regenerate(true);
                 $request->session()->regenerateToken();
@@ -69,6 +77,8 @@ final class BrowserSessions
 
         return ['state' => 'authenticated',
             'user' => ['id' => (string) $user->id, 'display_name' => $user->name],
-            'mfa' => ['status' => 'not_required'], 'provider_destinations' => []];
+            'mfa' => $request->session()->has('mfa_verified_at')
+                ? ['status' => 'verified', 'verified_at' => $request->session()->get('mfa_verified_at')]
+                : ['status' => 'not_required'], 'provider_destinations' => []];
     }
 }
