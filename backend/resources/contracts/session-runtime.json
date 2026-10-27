@@ -36,6 +36,18 @@
     "regenerateRecoveryCodes": {
       "method": "POST",
       "path": "/api/v1/session/mfa/recovery-codes/regenerate"
+    },
+    "listChapterMemberships": {
+      "method": "GET",
+      "path": "/api/v1/session/chapter-memberships"
+    },
+    "getChapterContext": {
+      "method": "GET",
+      "path": "/api/v1/session/chapter-context"
+    },
+    "selectChapter": {
+      "method": "POST",
+      "path": "/api/v1/session/chapter-selection"
     }
   },
   "session": {
@@ -131,6 +143,253 @@
     "BOOTH_CASHIER",
     "INDEPENDENT_REVIEWER",
     "CHAPTER_HEAD"
+  ],
+  "actions": [
+    {
+      "action": "memberships.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "memberships.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "memberships.authorize",
+      "category": "approval",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "memberships.revoke",
+      "category": "revoke",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "duty_grants.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "duty_grants.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "duty_grants.authorize",
+      "category": "approval",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "duty_grants.revoke",
+      "category": "revoke",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "alternates.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "alternates.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "alternates.authorize",
+      "category": "approval",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "alternates.revoke",
+      "category": "revoke",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "memberships.disable",
+      "category": "disable",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.status.read",
+      "category": "safe_read",
+      "chapter_duties": [
+        "COMMITTEE_REQUESTER",
+        "RF_APPROVER",
+        "SALES_OFFICER",
+        "SALES_REVIEWER",
+        "FINANCE",
+        "INVENTORY",
+        "PURCHASING",
+        "BUDGET_APPROVER",
+        "RECEIVING",
+        "DISPATCH",
+        "BOOTH_CUSTODIAN",
+        "BOOTH_CASHIER",
+        "INDEPENDENT_REVIEWER",
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.operational.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.operational.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.operational.approve",
+      "category": "approval",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.financial.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "FINANCE"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.financial.prepare",
+      "category": "preparation",
+      "chapter_duties": [
+        "FINANCE"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "policy.financial.approve",
+      "category": "approval",
+      "chapter_duties": [
+        "FINANCE"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "identities.reference.read",
+      "category": "sensitive_read",
+      "chapter_duties": [
+        "CHAPTER_HEAD"
+      ],
+      "provider_authorities": [],
+      "enabled_boundary": true
+    },
+    {
+      "action": "provider.identities.reference.read",
+      "category": "sensitive_read",
+      "chapter_duties": [],
+      "provider_authorities": [
+        "provisioner"
+      ],
+      "enabled_boundary": true
+    },
+    {
+      "action": "provider.chapters.prepare",
+      "category": "preparation",
+      "chapter_duties": [],
+      "provider_authorities": [
+        "provisioner"
+      ],
+      "enabled_boundary": true
+    },
+    {
+      "action": "provider.chapters.create",
+      "category": "approval",
+      "chapter_duties": [],
+      "provider_authorities": [
+        "provisioner"
+      ],
+      "enabled_boundary": true
+    },
+    {
+      "action": "provider.initial_head.appoint",
+      "category": "approval",
+      "chapter_duties": [],
+      "provider_authorities": [
+        "provisioner"
+      ],
+      "enabled_boundary": true
+    },
+    {
+      "action": "identity.disable",
+      "category": "disable",
+      "chapter_duties": [],
+      "provider_authorities": [],
+      "enabled_boundary": false
+    }
   ],
   "$defs": {
     "SessionSnapshot": {
@@ -1052,6 +1311,495 @@
               }
             }
           }
+        }
+      }
+    },
+    "ChapterSnapshot": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/NoChapterMemberships"
+        },
+        {
+          "$ref": "#/$defs/ChapterSelectionRequired"
+        },
+        {
+          "$ref": "#/$defs/SelectedChapterContext"
+        }
+      ]
+    },
+    "NoChapterMemberships": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "selection_revision",
+        "chapter_state"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/AuthenticatedSession"
+        },
+        "selection_revision": {
+          "$ref": "#/$defs/ChapterContextRevision"
+        },
+        "chapter_state": {
+          "type": "string",
+          "const": "no_authorized_memberships"
+        }
+      }
+    },
+    "ChapterContextRevision": {
+      "type": "string",
+      "minLength": 36,
+      "maxLength": 100,
+      "pattern": "^ctx_[A-Za-z0-9_-]{32,96}$",
+      "description": "Opaque server-issued session selection revision. Changes on selection or selected-membership invalidation; never an authority token. Compare atomically using X-Chapter-Context."
+    },
+    "ChapterSelectionRequired": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "selection_revision",
+        "chapter_state"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/AuthenticatedSession"
+        },
+        "selection_revision": {
+          "$ref": "#/$defs/ChapterContextRevision"
+        },
+        "chapter_state": {
+          "type": "string",
+          "const": "selection_required"
+        }
+      }
+    },
+    "SelectedChapterContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "selection_revision",
+        "chapter_state",
+        "selection_source",
+        "membership",
+        "context"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/AuthenticatedSession"
+        },
+        "selection_revision": {
+          "$ref": "#/$defs/ChapterContextRevision"
+        },
+        "chapter_state": {
+          "type": "string",
+          "const": "selected"
+        },
+        "selection_source": {
+          "type": "string",
+          "enum": [
+            "sole_membership",
+            "restored",
+            "explicit"
+          ]
+        },
+        "membership": {
+          "$ref": "#/$defs/ChapterMembershipChoice"
+        },
+        "context": {
+          "$ref": "#/$defs/ChapterCurrentContext"
+        }
+      }
+    },
+    "ChapterMembershipChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "chapter_name",
+        "membership_id",
+        "membership_version"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "chapter_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "membership_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "membership_version": {
+          "$ref": "#/$defs/Version"
+        }
+      }
+    },
+    "Version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295,
+      "description": "INT UNSIGNED positive version, exactly representable as a JSON integer. A counter reaching the storage maximum must fail rather than wrap."
+    },
+    "ChapterCurrentContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "user_id",
+        "chapter_id",
+        "chapter_name",
+        "membership_id",
+        "authority_version",
+        "checked_at",
+        "mfa_satisfied",
+        "duty_grants",
+        "available_actions",
+        "provider_roles"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "user_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "chapter_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
+        },
+        "membership_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "authority_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "checked_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "mfa_satisfied": {
+          "type": "boolean",
+          "const": true
+        },
+        "duty_grants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChapterDutyGrant"
+          }
+        },
+        "available_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/P02ChapterAction"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "provider_roles": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "enum": [
+              "provisioner",
+              "billing_admin",
+              "recovery_operator"
+            ]
+          }
+        }
+      },
+      "description": "P02 wire projection of the unchanged Stage 0 CurrentContext. Finite P02 actions only; effective grants and checked user/chapter/membership tuple retain internal meaning. This is current action availability, never permission to execute."
+    },
+    "ChapterDutyGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "duty_code",
+        "scope_kind",
+        "requesting_unit_id",
+        "starts_at",
+        "ends_at",
+        "revoked_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "duty_code": {
+          "$ref": "#/$defs/ChapterDuty"
+        },
+        "scope_kind": {
+          "enum": [
+            "chapter",
+            "unit"
+          ]
+        },
+        "requesting_unit_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "starts_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "ends_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UtcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "Current effective grant read model. Expiry/revocation and contextual independence are checked by Access, not inferred by clients.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope_kind": {
+                "const": "unit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "requesting_unit_id": {
+                "$ref": "#/$defs/Id"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "requesting_unit_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ChapterDuty": {
+      "enum": [
+        "COMMITTEE_REQUESTER",
+        "RF_APPROVER",
+        "SALES_OFFICER",
+        "SALES_REVIEWER",
+        "FINANCE",
+        "INVENTORY",
+        "PURCHASING",
+        "BUDGET_APPROVER",
+        "RECEIVING",
+        "DISPATCH",
+        "BOOTH_CUSTODIAN",
+        "BOOTH_CASHIER",
+        "INDEPENDENT_REVIEWER",
+        "CHAPTER_HEAD"
+      ]
+    },
+    "P02ChapterAction": {
+      "type": "string",
+      "enum": [
+        "memberships.read",
+        "memberships.prepare",
+        "memberships.authorize",
+        "memberships.revoke",
+        "duty_grants.read",
+        "duty_grants.prepare",
+        "duty_grants.authorize",
+        "duty_grants.revoke",
+        "alternates.read",
+        "alternates.prepare",
+        "alternates.authorize",
+        "alternates.revoke",
+        "memberships.disable",
+        "policy.status.read",
+        "policy.operational.read",
+        "policy.operational.prepare",
+        "policy.operational.approve",
+        "policy.financial.read",
+        "policy.financial.prepare",
+        "policy.financial.approve",
+        "identities.reference.read"
+      ]
+    },
+    "ChapterMembershipPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session",
+        "items",
+        "limit",
+        "next_cursor"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/$defs/AuthenticatedSession"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChapterMembershipChoice"
+          },
+          "maxItems": 100
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "next_cursor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MembershipCursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "MembershipCursor": {
+      "type": "string",
+      "minLength": 36,
+      "maxLength": 100,
+      "pattern": "^cur_[A-Za-z0-9_-]{32,96}$"
+    },
+    "SelectChapterRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "membership_id",
+        "expected_membership_version"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "membership_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "expected_membership_version": {
+          "$ref": "#/$defs/Version"
+        }
+      }
+    },
+    "ChapterQueryInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_selector"
+        },
+        "message": {
+          "type": "string",
+          "const": "Use only the documented single-valued selectors."
+        }
+      }
+    },
+    "ChapterContextStale": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "next_action"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "chapter_context_stale"
+        },
+        "message": {
+          "type": "string",
+          "const": "Refresh current context and review the original scope before another attempt."
+        },
+        "next_action": {
+          "type": "string",
+          "const": "refresh_context"
+        }
+      }
+    },
+    "ChapterSelectionInvalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "field_errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "const": "invalid_input"
+        },
+        "message": {
+          "type": "string",
+          "const": "Check the submitted fields."
+        },
+        "field_errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pointer",
+              "code",
+              "message"
+            ],
+            "properties": {
+              "pointer": {
+                "type": "string",
+                "enum": [
+                  "/chapter_id",
+                  "/membership_id",
+                  "/expected_membership_version"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "const": "invalid"
+              },
+              "message": {
+                "type": "string",
+                "const": "Check this field."
+              }
+            }
+          },
+          "minItems": 1
         }
       }
     }

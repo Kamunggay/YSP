@@ -37,9 +37,9 @@ final class BaselineTest extends TestCase
         $identity = json_decode($verify->getOutput(), true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame('MySQL', $identity['database']);
         $this->assertSame('InnoDB', $identity['engine']);
-        $this->assertSame('2026_10_27_000012_create_initial_head_bootstrap_roots', $identity['migration']);
-        $this->assertCount(13, $identity['migrations']);
-        $this->assertCount(25, $identity['tables']);
+        $this->assertSame('2026_10_27_000014_create_membership_cursors', $identity['migration']);
+        $this->assertCount(15, $identity['migrations']);
+        $this->assertCount(27, $identity['tables']);
         $this->assertStringStartsWith('8.4.', $identity['version']);
     }
 }

@@ -1184,6 +1184,292 @@ function provisioningFixture(action, id, input = {}) {
   return JSON.parse(result.stdout);
 }
 
+test('ticket07 zero memberships is an authenticated empty context with a stable server revision', async () => {
+  const {browser} = await signedInBrowser('p07-empty');
+  const response = await browser.request('/api/v1/session/chapter-context');
+  assert.equal(response.status, 200);
+  const snapshot = await response.json();
+  assert.equal(snapshot.chapter_state, 'no_authorized_memberships');
+  assert.match(snapshot.selection_revision, /^ctx_[A-Za-z0-9_-]{32,96}$/);
+  assert.deepEqual(await (await browser.request('/api/v1/session/chapter-context')).json(), snapshot);
+  const choices = await (await browser.request('/api/v1/session/chapter-memberships')).json();
+  assert.deepEqual(choices, {session:snapshot.session, items:[], limit:25, next_cursor:null});
+});
+
+function chapterFixture(action, user, input = {}) {
+  const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/chapter-context-state.php', action, user], {encoding:'utf8', input:JSON.stringify(input)});
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return JSON.parse(result.stdout);
+}
+const contextPath = '/api/v1/session/chapter-context';
+const selectionPath = '/api/v1/session/chapter-selection';
+const selectChapter = (browser, revision, target) => browser.request(selectionPath, {
+  method:'POST', body:target, headers:{'X-Chapter-Context':revision,
+    'X-XSRF-TOKEN':decodeURIComponent(browser.cookies.get('XSRF-TOKEN'))},
+});
+
+test('ticket07 invalidated selection first returns safe stale then recomputes without relabeling a rejected attempt', async () => {
+  const {browser, id} = await signedInBrowser('p07-invalidate');
+  const first = chapterFixture('membership', id);
+  const selected = await (await browser.request(contextPath)).json();
+  assert.equal(selected.chapter_state, 'selected');
+  const second = chapterFixture('membership', id);
+  chapterFixture('end-membership', id, first);
+  assert.equal((await selectChapter(browser, selected.selection_revision, second)).status, 409,
+    'An invalidated selected membership cannot authorize switching under its old revision');
+  const stale = await browser.request(contextPath);
+  assert.equal(stale.status, 409);
+  assert.equal((await stale.json()).selection_revision, undefined);
+  const next = await (await browser.request(contextPath)).json();
+  assert.equal(next.selection_source, 'sole_membership');
+  assert.equal(next.context.chapter_id, second.chapter_id);
+  assert.notEqual(next.selection_revision, selected.selection_revision);
+  assert.equal((await selectChapter(browser, selected.selection_revision, first)).status, 409);
+  assert.equal((await selectChapter(browser, next.selection_revision, first)).status, 403);
+  assert.equal((await (await browser.request(contextPath)).json()).selection_revision, next.selection_revision);
+  chapterFixture('end-membership', id, second);
+  assert.equal((await browser.request(contextPath)).status, 409);
+  assert.equal((await (await browser.request(contextPath)).json()).chapter_state, 'no_authorized_memberships');
+});
+
+test('ticket07 membership pages are bounded ordered opaque and reject duplicate or foreign selectors', async () => {
+  const {browser, id} = await signedInBrowser('p07-pages');
+  const first = chapterFixture('membership', id);
+  const second = chapterFixture('membership', id);
+  const path = '/api/v1/session/chapter-memberships';
+  const one = await (await browser.request(path + '?limit=1')).json();
+  assert.equal(one.limit, 1);
+  assert.deepEqual(one.items.map(x => x.chapter_id), [first.chapter_id]);
+  assert.match(one.next_cursor, /^cur_[A-Za-z0-9_-]{32,96}$/);
+  const two = await (await browser.request(path + '?limit=1&cursor=' + one.next_cursor)).json();
+  assert.deepEqual(two.items.map(x => x.chapter_id), [second.chapter_id]);
+  assert.equal(two.next_cursor, null);
+  const other = await signedInBrowser('p07-foreign');
+  assert.equal((await other.browser.request(path + '?limit=1&cursor=' + one.next_cursor)).status, 400);
+  for (const query of ['limit=0','limit=101','limit=1&%6cimit=2','limit[]=1','user_id=' + id,
+    'cursor=','limit=2&cursor=' + one.next_cursor,'limit=1&cursor=cur_' + 'x'.repeat(32)]) {
+    assert.equal((await browser.request(path + '?' + query)).status, 400, query);
+  }
+  for (const query of ['chapter_id=1&chapter_id=2','chapter_id[]=1','chapter_id=18446744073709551616','chapter_id=01','approved=true']) {
+    assert.equal((await browser.request(contextPath + '?' + query)).status, 400, query);
+  }
+});
+
+test('ticket07 protected execution binds original tuple revision action and exact monetary authority', async () => {
+  const {browser, id} = await signedInBrowser('p07-guard');
+  const member = chapterFixture('membership', id);
+  const selected = await (await browser.request(contextPath)).json();
+  const scope = {chapter_id:member.chapter_id, membership_id:member.membership_id,
+    expected_authority_version:selected.context.authority_version, action:'policy.status.read'};
+  const invoke = overrides => chapterFixture('execute', id, {revision:selected.selection_revision, scope:{...scope,...overrides}});
+  assert.deepEqual(invoke({}), {status:200, body:{executed:true}, effect_committed:true});
+  for (const changes of [{action:'memberships.authorize'}, {action:'provider.chapters.create'},
+    {amount:'0.00'}, {requesting_unit_id:'18446744073709551615'}]) {
+    const denied = invoke(changes);
+    assert.equal(denied.status, 403, JSON.stringify(changes));
+    assert.equal(denied.effect_committed, false);
+  }
+  for (const changes of [{chapter_id:'18446744073709551615'}, {membership_id:'18446744073709551615'}, {expected_authority_version:99}]) {
+    const stale = invoke(changes);
+    assert.equal(stale.status, 409);
+    assert.equal(stale.effect_committed, false);
+  }
+  assert.equal(chapterFixture('execute', id, {revision:'ctx_' + 'x'.repeat(64), scope}).status, 409);
+  assert.equal((await (await browser.request(contextPath)).json()).selection_revision, selected.selection_revision);
+});
+
+test('ticket07 provider-only access stays empty and separately authorized fourteen duties expose only chapter actions', async () => {
+  const provider = await verifiedProvisioner('p07-provider');
+  const empty = await (await provider.browser.request(contextPath)).json();
+  assert.equal(empty.chapter_state, 'no_authorized_memberships');
+  assert.equal(empty.context, undefined);
+  const duties = ['COMMITTEE_REQUESTER','RF_APPROVER','SALES_OFFICER','SALES_REVIEWER','FINANCE','INVENTORY',
+    'PURCHASING','BUDGET_APPROVER','RECEIVING','DISPATCH','BOOTH_CUSTODIAN','BOOTH_CASHIER','INDEPENDENT_REVIEWER','CHAPTER_HEAD'];
+  const member = chapterFixture('membership', provider.id, {duties});
+  const current = await (await provider.browser.request(contextPath)).json();
+  assert.deepEqual(current.context.duty_grants.map(g => g.duty_code), duties);
+  assert.deepEqual(current.context.provider_roles, ['provisioner']);
+  assert.ok(current.context.available_actions.includes('policy.financial.approve'));
+  assert.ok(!current.context.available_actions.some(a => a.startsWith('provider.') || a === 'identity.disable'));
+  const scope = {chapter_id:member.chapter_id, membership_id:member.membership_id,
+    expected_authority_version:current.context.authority_version, action:'provider.chapters.create'};
+  assert.equal(chapterFixture('execute', provider.id, {revision:current.selection_revision, scope}).status, 403);
+  assert.equal((await provider.browser.request('/api/v1/provider/provisioning-context', {
+    headers:{'X-Chapter-Context':current.selection_revision},
+  })).status, 403);
+});
+
+test('ticket07 effective grants enforce half-open intervals active unit ownership and exact null zero finite caps', async () => {
+  const {browser, id} = await signedInBrowser('p07-terms');
+  const member = chapterFixture('membership', id, {duties:[]});
+  chapterFixture('grant', id, {...member, starts_at:'2037-01-01 00:00:00.000000'});
+  chapterFixture('grant', id, {...member, starts_at:'2020-01-01 00:00:00.000000', ends_at:'2020-01-02 00:00:00.000000'});
+  chapterFixture('grant', id, {...member, revoked_at:'2020-01-01 00:00:00.000000'});
+  chapterFixture('grant', id, {...member, unit:true, active:false});
+  const zero = chapterFixture('grant', id, {...member, unit:true, limit:'0.00'});
+  const finite = chapterFixture('grant', id, {...member, unit:true, limit:'99999999999999999.98'});
+  const current = await (await browser.request(contextPath)).json();
+  assert.deepEqual(current.context.duty_grants.map(g => g.id), [zero.grant_id, finite.grant_id]);
+  assert.deepEqual(current.context.available_actions, []);
+  const invoke = changes => chapterFixture('execute', id, {revision:current.selection_revision, scope:{
+    chapter_id:member.chapter_id, membership_id:member.membership_id, expected_authority_version:1,
+    action:'policy.status.read', ...changes,
+  }});
+  assert.equal(invoke({}).status, 403);
+  assert.equal(invoke({requesting_unit_id:zero.requesting_unit_id, amount:'0.00'}).status, 200);
+  assert.equal(invoke({requesting_unit_id:zero.requesting_unit_id, amount:'0.01'}).status, 403);
+  assert.equal(invoke({requesting_unit_id:finite.requesting_unit_id, amount:'99999999999999999.98'}).status, 200);
+  assert.equal(invoke({requesting_unit_id:finite.requesting_unit_id, amount:'99999999999999999.99'}).status, 403);
+  const other = chapterFixture('membership', id);
+  const foreign = chapterFixture('grant', id, {...other, unit:true, limit:'9.00'});
+  assert.equal(invoke({requesting_unit_id:foreign.requesting_unit_id}).status, 403);
+});
+
+test('ticket07 protected commitment rechecks real time expiry and rolls back the attempted effect', async () => {
+  const {browser, id} = await signedInBrowser('p07-commit-expiry');
+  const member = chapterFixture('membership', id, {duties:[]});
+  const grant = chapterFixture('grant', id, {...member, ttl_ms:2000});
+  const current = await (await browser.request(contextPath)).json();
+  assert.deepEqual(current.context.duty_grants.map(g => g.id), [grant.grant_id]);
+  const scope = {chapter_id:member.chapter_id, membership_id:member.membership_id,
+    expected_authority_version:1, action:'policy.status.read'};
+  const result = chapterFixture('execute', id, {revision:current.selection_revision, scope, wait_until:grant.ends_at});
+  assert.equal(result.status, 403);
+  assert.equal(result.effect_committed, false);
+  const after = await (await browser.request(contextPath)).json();
+  assert.equal(after.selection_revision, current.selection_revision);
+  assert.deepEqual(after.context.duty_grants, []);
+  assert.deepEqual(after.context.available_actions, []);
+});
+
+test('ticket07 live account and identity-wide MFA gate cannot be overridden by browser flags', async () => {
+  const {browser, id} = await signedInBrowser('p07-live');
+  const member = chapterFixture('membership', id);
+  const current = await (await browser.request(contextPath)).json();
+  for (const flags of [{approved:true}, {mfa_satisfied:true}, {actor_id:id}, {roles:['CHAPTER_HEAD']}, {available_actions:['memberships.authorize']}]) {
+    assert.equal((await selectChapter(browser, current.selection_revision, {...member,...flags})).status, 422);
+  }
+  const scope = {chapter_id:member.chapter_id, membership_id:member.membership_id, expected_authority_version:1, action:'policy.status.read'};
+  for (const revision of ['', 'ctx_bad']) {
+    const malformed = chapterFixture('execute', id, {revision, scope});
+    assert.equal(malformed.status, 400);
+    assert.equal(malformed.effect_committed, false);
+  }
+  chapterFixture('membership', id, {duties:['FINANCE']});
+  for (const path of [contextPath, '/api/v1/session/chapter-memberships']) {
+    const restricted = await browser.request(path, {headers:{'X-MFA-Satisfied':'true','X-Role':'CHAPTER_HEAD'}});
+    assert.equal(restricted.status, 403);
+    assert.deepEqual(await restricted.json(), {code:'forbidden',message:'This request is not permitted.'});
+  }
+  assert.equal((await selectChapter(browser, current.selection_revision, member)).status, 403);
+  assert.equal(chapterFixture('execute', id, {revision:current.selection_revision, scope}).status, 403);
+  arrangeState('disable', id);
+  assert.equal((await browser.request(contextPath)).status, 401);
+  assert.equal((await browser.request('/api/v1/session/chapter-memberships')).status, 401);
+  assert.equal((await selectChapter(browser, current.selection_revision, member)).status, 401);
+});
+
+test('ticket07 concurrent tabs overlap real MySQL transactions and accept only one selection revision', async t => {
+  const {browser, id} = await signedInBrowser('p07-race');
+  const first = chapterFixture('membership', id);
+  const second = chapterFixture('membership', id);
+  const initial = await (await browser.request(contextPath)).json();
+  const contender = new Browser();
+  contender.cookies = new Map(browser.cookies);
+  contender.worker = 'contender';
+  const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/enrollment-state.php', 'hold', id]);
+  t.after(() => holder.stdin.end('\n'));
+  await Promise.race([new Promise((resolve, reject) => {
+    holder.once('error', reject);
+    holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+    holder.once('exit', () => reject(new Error('Chapter context lock holder exited')));
+  }), new Promise((_, reject) => setTimeout(() => reject(new Error('Lock timeout')), 5000))]);
+  const pending = Promise.all([selectChapter(browser, initial.selection_revision, first),
+    selectChapter(contender, initial.selection_revision, second)]);
+  let waiting = 0;
+  try {
+    for (let i = 0; i < 40; i++) {
+      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], {encoding:'utf8'});
+      assert.equal(probe.status, 0, probe.stderr);
+      waiting = Number(probe.stdout.trim());
+      if (waiting >= 2) break;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  } finally { holder.stdin.end('\n'); }
+  const responses = await pending;
+  assert.ok(waiting >= 2, `Both independent HTTP transactions must overlap; waiters=${waiting}`);
+  assert.deepEqual(responses.map(r => r.status).sort(), [200,409]);
+  const accepted = await responses.find(r => r.status === 200).json();
+  const denied = await responses.find(r => r.status === 409).json();
+  assert.deepEqual(Object.keys(denied).sort(), ['code','message','next_action']);
+  const restored = await (await browser.request(contextPath)).json();
+  assert.equal(restored.selection_revision, accepted.selection_revision);
+  assert.equal(restored.context.chapter_id, accepted.context.chapter_id);
+});
+
+test('ticket07 chapter IDs above JavaScript safe integer stay exact and pages use numeric ordering', async () => {
+  const {browser, id} = await signedInBrowser('p07-exact');
+  // Distinct numeric order differs from lexical order, both exceed Number safety.
+  const suffix = Date.now().toString();
+  const highId = '1000' + suffix;
+  const lowId = '910' + suffix;
+  chapterFixture('membership', id, {chapter_id:highId});
+  const low = chapterFixture('membership', id, {chapter_id:lowId});
+  const initial = await (await browser.request(contextPath)).json();
+  const page = await (await browser.request('/api/v1/session/chapter-memberships')).json();
+  assert.deepEqual(page.items.map(m => m.chapter_id), [lowId,highId]);
+  const response = await selectChapter(browser, initial.selection_revision, low);
+  assert.equal(response.status, 200);
+  const selected = await response.json();
+  assert.equal(selected.context.chapter_id, lowId);
+  assert.match(selected.context.checked_at, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/);
+  assert.equal(typeof selected.context.duty_grants[0].id, 'string');
+});
+
+test('ticket07 multi membership explicit selection rejects stale tabs and preserves the attempted scope', async () => {
+  const {browser, id} = await signedInBrowser('p07-multi');
+  const first = chapterFixture('membership', id);
+  const second = chapterFixture('membership', id);
+  const initial = await (await browser.request(contextPath)).json();
+  assert.equal(initial.chapter_state, 'selection_required');
+  const tab = new Browser();
+  tab.cookies = new Map(browser.cookies);
+  const selected = await selectChapter(browser, initial.selection_revision, second);
+  assert.equal(selected.status, 200);
+  const current = await selected.json();
+  assert.equal(current.selection_source, 'explicit');
+  assert.equal(current.context.chapter_id, second.chapter_id);
+  assert.notEqual(current.selection_revision, initial.selection_revision);
+  const stale = await selectChapter(tab, initial.selection_revision, first);
+  assert.equal(stale.status, 409);
+  assert.deepEqual(await stale.json(), {code:'chapter_context_stale',
+    message:'Refresh current context and review the original scope before another attempt.', next_action:'refresh_context'});
+  assert.equal(first.chapter_id === second.chapter_id, false);
+  const restored = await (await tab.request(contextPath)).json();
+  assert.equal(restored.selection_source, 'restored');
+  assert.equal(restored.context.chapter_id, second.chapter_id);
+  assert.equal(restored.selection_revision, current.selection_revision);
+  assert.equal((await browser.request(contextPath + '?chapter_id=' + first.chapter_id)).status, 409);
+  assert.equal((await (await browser.request(contextPath)).json()).selection_revision, current.selection_revision);
+  const repeated = await selectChapter(browser, current.selection_revision, second);
+  assert.equal(repeated.status, 200);
+  assert.notEqual((await repeated.json()).selection_revision, current.selection_revision);
+});
+
+test('ticket07 asserted sole scope selects only its exact membership and rejects an unrelated assertion without selecting', async () => {
+  const {browser, id} = await signedInBrowser('p07-asserted-sole');
+  const member = chapterFixture('membership', id);
+  assert.equal((await browser.request(contextPath + '?chapter_id=18446744073709551615')).status, 409);
+  const response = await browser.request(contextPath + '?chapter_id=' + member.chapter_id);
+  assert.equal(response.status, 200);
+  const selected = await response.json();
+  assert.equal(selected.selection_source, 'sole_membership');
+  assert.equal(selected.context.chapter_id, member.chapter_id);
+});
+
 async function installProvisioner(id, organization, approver) {
   return runIdentityCli([
     ['Operator audit reference', 'Synthetic restricted operator'],
@@ -1263,7 +1549,8 @@ async function headApprovalCli(command, user, executor, document, verified = 'ye
 }
 async function initialHeadScenario(label) {
   const provider = await verifiedProvisioner(label);
-  const head = await createIdentity(`${label}-head-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const headEmail = `${label}-head-${Date.now()}@example.test`;
+  const head = await createIdentity(headEmail, 'Synthetic-only-secret-42!');
   const approved = await headApprovalCli('candidate:authorize-initial-head', head, head, {
     organization_id:provider.organization, purpose:'initial_head_appointment', approved_by_user_id:provider.id,
   });
@@ -1274,8 +1561,65 @@ async function initialHeadScenario(label) {
   const path = `${provisioningPath}/${provisioning.id}/initial-head`;
   const body = {idempotency_key:`head-${Date.now()}`, expected_provider_authority_version:1,
     expected_provisioning_version:1, identity:{user_id:head}, reason:'Synthetic approved initial Head designation'};
-  return {...provider, head, provisioning, path, body};
+  return {...provider, head, headEmail, provisioning, path, body};
 }
+
+async function bootstrappedHead(label) {
+  const scenario = await initialHeadScenario(label);
+  const appointment = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(appointment.status, 200);
+  const appointed = await appointment.json();
+  const result = await headApprovalCli('chapter:bootstrap-initial-head', scenario.head, scenario.head, {
+    purpose:'initial_head_membership', organization_id:scenario.organization,
+    chapter_id:scenario.provisioning.chapter.id, provisioning_id:scenario.provisioning.id,
+    designation_operation_id:appointed.operation.identity.operation_id, approved_by_user_id:scenario.id,
+  });
+  assert.equal(result.code, 0, result.output);
+  const browser = new Browser();
+  await browser.request('/csrf-cookie');
+  assert.equal((await post(browser, '/api/v1/session/sign-in', {
+    email:scenario.headEmail, password:'Synthetic-only-secret-42!',
+  })).status, 200);
+  return {...scenario, browser};
+}
+
+test('ticket07 real initial Head bootstrap requires MFA before sole selection and exposes canonical current actions', async () => {
+  const head = await bootstrappedHead('p07-real');
+  for (const path of ['chapter-context','chapter-memberships']) {
+    const restricted = await head.browser.request('/api/v1/session/' + path);
+    assert.equal(restricted.status, 403);
+    assert.deepEqual(await restricted.json(), {code:'forbidden', message:'This request is not permitted.'});
+  }
+  const prepared = await (await post(head.browser, enrollmentPath, {intent:'begin'})).json();
+  const remaining = 30000 - Date.now() % 30000;
+  if (remaining < 3000) await new Promise(resolve => setTimeout(resolve, remaining + 100));
+  assert.equal((await post(head.browser, enrollmentPath + '/confirm', {
+    enrollment_id:prepared.enrollment.id, authenticator_code:authenticatorCode(prepared.enrollment.manual_key),
+  })).status, 200);
+  const response = await head.browser.request('/api/v1/session/chapter-context');
+  assert.equal(response.status, 200);
+  const selected = await response.json();
+  assert.equal(selected.chapter_state, 'selected');
+  assert.equal(selected.selection_source, 'sole_membership');
+  assert.equal(selected.context.user_id, head.head);
+  assert.equal(selected.context.chapter_id, head.provisioning.chapter.id);
+  assert.equal(selected.context.membership_id, selected.membership.membership_id);
+  assert.equal(selected.context.mfa_satisfied, true);
+  assert.deepEqual(selected.context.provider_roles, []);
+  assert.deepEqual(selected.context.duty_grants.map(g => g.duty_code), ['CHAPTER_HEAD']);
+  assert.deepEqual(selected.context.available_actions, [
+    'memberships.read','memberships.prepare','memberships.authorize','memberships.revoke',
+    'duty_grants.read','duty_grants.prepare','duty_grants.authorize','duty_grants.revoke',
+    'alternates.read','alternates.prepare','alternates.authorize','alternates.revoke',
+    'memberships.disable','policy.status.read','policy.operational.read','policy.operational.prepare',
+    'policy.operational.approve','identities.reference.read',
+  ]);
+  const restored = await (await head.browser.request('/api/v1/session/chapter-context')).json();
+  assert.equal(restored.selection_source, 'restored');
+  assert.equal(restored.selection_revision, selected.selection_revision);
+  const page = await (await head.browser.request('/api/v1/session/chapter-memberships')).json();
+  assert.deepEqual(page.items, [selected.membership]);
+});
 test('ticket06 designation commits a durable P03 appointment without operational membership', async () => {
   const scenario = await initialHeadScenario('p06-appoint');
   const response = await post(scenario.browser, scenario.path, scenario.body);

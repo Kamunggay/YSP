@@ -13,7 +13,7 @@ for (const name of ['api-v1.json', 'transport.schema.json', 'p02-action-catalogu
 }
 const api = documents['api-v1.json'];
 const definitions = documents['transport.schema.json'].$defs;
-const wanted = new Set(['getSession', 'signIn', 'signOut', 'initializeCsrf', 'prepareAuthenticatorEnrollment', 'confirmAuthenticatorEnrollment', 'verifyMfaChallenge', 'regenerateRecoveryCodes']);
+const wanted = new Set(['getSession', 'signIn', 'signOut', 'initializeCsrf', 'prepareAuthenticatorEnrollment', 'confirmAuthenticatorEnrollment', 'verifyMfaChallenge', 'regenerateRecoveryCodes', 'listChapterMemberships', 'getChapterContext', 'selectChapter']);
 const operations = {};
 for (const [path, item] of Object.entries(api.paths)) {
   for (const [method, operation] of Object.entries(item)) {
@@ -36,9 +36,10 @@ for (const name of ['SessionSnapshot', 'SignInRequest', 'SessionUnauthorized', '
   'EnrollmentUnauthorized', 'EnrollmentConflict', 'EnrollmentProofRejected',
   'PrepareEnrollmentInvalid', 'ConfirmEnrollmentInvalid', 'VerifyMfaChallengeRequest',
   'RegenerateRecoveryCodesRequest', 'RegeneratedRecoveryCodes', 'MfaProofRejected',
-  'ChallengeUnavailable', 'RecentProofRequired', 'VerifyMfaChallengeInvalid', 'RegenerateRecoveryCodesInvalid']) include(name);
+  'ChallengeUnavailable', 'RecentProofRequired', 'VerifyMfaChallengeInvalid', 'RegenerateRecoveryCodesInvalid',
+  'ChapterSnapshot', 'ChapterMembershipPage', 'SelectChapterRequest', 'ChapterQueryInvalid', 'ChapterContextStale', 'ChapterSelectionInvalid']) include(name);
 const output = JSON.stringify({ sources, operations, session: api['x-session-contract'],
-  duties: documents['p02-action-catalogue.json'].duties, $defs: selected }, null, 2) + '\n';
+  duties: documents['p02-action-catalogue.json'].duties, actions: documents['p02-action-catalogue.json'].actions, $defs: selected }, null, 2) + '\n';
 const outputIndex = process.argv.indexOf('--output');
 const target = outputIndex >= 0 ? process.argv[outputIndex + 1]
   : fileURLToPath(new URL('../../backend/resources/contracts/session-runtime.json', import.meta.url));

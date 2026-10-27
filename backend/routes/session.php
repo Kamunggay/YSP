@@ -6,6 +6,7 @@ use App\Http\Controllers\SessionController;
 use App\Http\Middleware\SessionBoundary;
 use App\Http\Middleware\SessionForgeryGuard;
 use App\Modules\AccessChapterAdministration\AuthenticatorEnrollments;
+use App\Modules\AccessChapterAdministration\ChapterContext;
 use App\Modules\AccessChapterAdministration\ChapterProvisioning;
 use App\Modules\AccessChapterAdministration\MfaChallenges;
 use App\Modules\AccessChapterAdministration\SessionContract;
@@ -15,6 +16,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::class, SessionForgeryGuard::class])
     ->group(function (): void {
+        Route::get('/api/v1/session/chapter-context', [ChapterContext::class, 'context']);
+        Route::get('/api/v1/session/chapter-memberships', [ChapterContext::class, 'memberships']);
+        Route::post('/api/v1/session/chapter-selection', [ChapterContext::class, 'select']);
         Route::get('/api/v1/provider/provisioning-context', [ChapterProvisioning::class, 'context']);
         Route::get('/api/v1/provider/provisionings', [ChapterProvisioning::class, 'list']);
         Route::post('/api/v1/provider/provisionings', [ChapterProvisioning::class, 'createProvisionedChapter']);
