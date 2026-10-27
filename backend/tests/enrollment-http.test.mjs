@@ -560,3 +560,222 @@ DELIMITER ;\n`);
     mysqlFault('DROP TRIGGER IF EXISTS enrollment_test_reject_session;');
   }
 });
+
+// Ticket 03 exercises the same gateway/CLI/MySQL seam as enrollment.
+const challengePath = '/api/v1/session/mfa/challenge/verify';
+const regeneratePath = '/api/v1/session/mfa/recovery-codes/regenerate';
+async function returningBrowser(officer, worker) {
+  const browser = new Browser();
+  browser.worker = worker;
+  await browser.request('/csrf-cookie');
+  const response = await post(browser, '/api/v1/session/sign-in', { email: officer.email, password: officer.password });
+  assert.equal(response.status, 200);
+  const snapshot = await response.json();
+  assert.equal(snapshot.state, 'mfa_challenge_required');
+  return { browser, challenge: snapshot.challenge };
+}
+async function enrolledOfficer(label) {
+  const officer = await preparedOfficer(label);
+  const { enrollment } = officer.prepared;
+  const enrollmentCode = authenticatorCode(enrollment.manual_key);
+  const response = await post(officer.browser, enrollmentPath + '/confirm', {
+    enrollment_id: enrollment.id, authenticator_code: enrollmentCode,
+  });
+  assert.equal(response.status, 200);
+  return { ...officer, enrollmentCode, secret: enrollment.manual_key, codes: (await response.json()).recovery_codes.codes };
+}
+async function nextTotpStep() {
+  await new Promise(resolve => setTimeout(resolve, 30100 - Date.now() % 30000));
+}
+
+test('ticket03 authenticator challenge accepts a fresh step once across sessions and rotates credentials', async () => {
+  const officer = await enrolledOfficer('challenge-totp');
+  const first = await returningBrowser(officer);
+  const second = await returningBrowser(officer);
+  // The enrollment proof already consumed this step.
+  const proof = { method: 'authenticator', authenticator_code: officer.enrollmentCode };
+  assert.equal((await post(first.browser, challengePath, { ...proof, challenge_id: first.challenge.id })).status, 400);
+  await nextTotpStep();
+  proof.authenticator_code = authenticatorCode(officer.secret);
+  const oldCookies = new Map(first.browser.cookies);
+  const accepted = await post(first.browser, challengePath, { ...proof, challenge_id: first.challenge.id });
+  assert.equal(accepted.status, 200);
+  const snapshot = await accepted.json();
+  assert.equal(snapshot.state, 'authenticated');
+  assert.equal(snapshot.mfa.status, 'verified');
+  assert.deepEqual(snapshot.provider_destinations, []);
+  assert.equal(snapshot.recovery_codes, undefined);
+  assert.notEqual(first.browser.cookies.get('XSRF-TOKEN'), oldCookies.get('XSRF-TOKEN'));
+  const stale = new Browser();
+  stale.cookies = oldCookies;
+  assert.deepEqual(await (await stale.request('/api/v1/session')).json(), { state: 'signed_out' });
+  assert.deepEqual(await (await first.browser.request('/api/v1/session')).json(), snapshot);
+  assert.equal((await post(second.browser, challengePath, { ...proof, challenge_id: second.challenge.id })).status, 400);
+});
+
+for (const method of ['recovery_code', 'authenticator', 'same_challenge']) {
+  test(`ticket03 concurrent ${method} replay across sessions accepts exactly one use`, async t => {
+    const officer = await enrolledOfficer('recovery-race');
+    const first = await returningBrowser(officer);
+    const second = method === 'same_challenge'
+      ? { browser: new Browser(), challenge: first.challenge } : await returningBrowser(officer, 'contender');
+    if (method === 'same_challenge') {
+      second.browser.cookies = new Map(first.browser.cookies);
+      second.browser.worker = 'contender';
+    }
+    if (method === 'authenticator') await nextTotpStep();
+    const factor = method === 'authenticator' ? { method, authenticator_code: authenticatorCode(officer.secret) }
+      : { method: 'recovery_code', recovery_code: officer.codes[0] };
+    const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+      'php', 'tests/fixtures/enrollment-state.php', 'hold', officer.id]);
+    t.after(() => holder.stdin.end('\n'));
+    await new Promise((resolve, reject) => {
+      holder.once('error', reject);
+      holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+      holder.once('exit', () => reject(new Error('Lock holder exited')));
+    });
+    const submit = ({ browser, challenge }) => post(browser, challengePath, { challenge_id: challenge.id, ...factor });
+    const requests = [submit(first)];
+    let secondStarted = false;
+    let waiting = 0;
+    let lockDetails = "";
+    try {
+      for (let i = 0; i < 40; i++) {
+        const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+          'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], { encoding: 'utf8' });
+        assert.equal(probe.status, 0, probe.stderr);
+        waiting = Number(probe.stdout.trim());
+        // Stage the second request after the first reaches the identity barrier.
+        // Both proof transactions still overlap; unrelated IP-counter acquisition is outside this seam.
+        if (waiting >= 1 && !secondStarted) {
+          requests.push(submit(second));
+          secondStarted = true;
+        }
+        if (waiting >= 2) break;
+        if (i === 39) {
+          const details = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+            'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT l.OBJECT_NAME,l.INDEX_NAME,l.LOCK_MODE FROM performance_schema.data_lock_waits w JOIN performance_schema.data_locks l ON w.REQUESTING_ENGINE_LOCK_ID=l.ENGINE_LOCK_ID"'], { encoding: 'utf8' });
+          lockDetails = details.stdout;
+        }
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    } finally {
+      holder.stdin.end('\n');
+    }
+    const results = await Promise.all(requests);
+    assert.ok(waiting >= 2, `Expected overlapping server transactions, saw ${waiting} waiters; statuses=${results.map(r => r.status)}; locks=${lockDetails}`);
+    const rejectedStatus = method === 'same_challenge' ? 409 : 400;
+    assert.deepEqual(results.map(r => r.status).sort(), [200, rejectedStatus]);
+    const rejectedIndex = results.findIndex(r => r.status === rejectedStatus);
+    assert.equal((await results[rejectedIndex].json()).recovery_codes, undefined);
+    const loser = [first, second][rejectedIndex];
+    const retry = await post(loser.browser, challengePath, {
+      challenge_id: loser.challenge.id, method: 'recovery_code', recovery_code: officer.codes[1],
+    });
+    if (method === 'same_challenge') {
+      assert.ok([409, 419].includes(retry.status), 'A consumed challenge cannot accept another unused code');
+      assert.deepEqual(await (await loser.browser.request('/api/v1/session')).json(), { state: 'signed_out' });
+    } else {
+      assert.equal(retry.status, 200);
+    }
+    const third = await returningBrowser(officer);
+    assert.equal((await post(third.browser, challengePath, {
+      challenge_id: third.challenge.id, ...factor,
+    })).status, 400);
+});
+}
+
+test('ticket03 identity throttle survives fresh cookies and restarted challenges', async () => {
+  const officer = await enrolledOfficer('challenge-throttle');
+  const wrong = 'ZZZZ-ZZZZ-ZZZZ-ZZZZ';
+  assert.ok(!officer.codes.includes(wrong));
+  for (let i = 0; i < 5; i++) {
+    const { browser, challenge } = await returningBrowser(officer);
+    const response = await post(browser, challengePath, {
+      challenge_id: challenge.id, method: 'recovery_code', recovery_code: wrong,
+    });
+    assert.equal(response.status, 400);
+  }
+  const { browser, challenge } = await returningBrowser(officer);
+  const response = await post(browser, challengePath, {
+    challenge_id: challenge.id, method: 'recovery_code', recovery_code: officer.codes[0],
+  });
+  assert.equal(response.status, 429);
+  assert.match(response.headers.get('Retry-After'), /^[1-9][0-9]*$/);
+  assert.equal((await response.json()).recovery_codes, undefined);
+  assert.equal((await (await browser.request('/api/v1/session')).json()).state, 'mfa_challenge_required');
+});
+
+test('ticket03 regeneration replaces the whole set only with both fresh request proofs', async () => {
+  const officer = await enrolledOfficer('regenerate');
+  const proof = { password: officer.password, authenticator_code: authenticatorCode(officer.secret) };
+  assert.equal((await post(officer.browser, regeneratePath, { authenticator_code: proof.authenticator_code })).status, 422);
+  assert.equal((await post(officer.browser, regeneratePath, { password: officer.password, recovery_code: officer.codes[0] })).status, 422);
+  const wrongPassword = await post(officer.browser, regeneratePath, { ...proof, password: 'Incorrect-password!' });
+  assert.equal(wrongPassword.status, 400);
+  assert.equal((await wrongPassword.json()).recovery_codes, undefined);
+  const before = await returningBrowser(officer);
+  assert.equal((await post(before.browser, challengePath, {
+    challenge_id: before.challenge.id, method: 'recovery_code', recovery_code: officer.codes[2],
+  })).status, 200, 'Failed regeneration preserves the old set');
+  await nextTotpStep();
+  proof.authenticator_code = authenticatorCode(officer.secret);
+  const oldCookies = new Map(officer.browser.cookies);
+  mysqlFault(`CREATE TRIGGER mfa_test_reject_codes BEFORE INSERT ON user_recovery_codes FOR EACH ROW
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Synthetic recovery issuance failure';`);
+  try {
+    assert.equal((await post(officer.browser, regeneratePath, proof)).status, 503);
+  } finally {
+    mysqlFault('DROP TRIGGER IF EXISTS mfa_test_reject_codes;');
+  }
+  storageProbe('confirmed', officer.id, { secret: officer.secret, codes: officer.codes });
+  const response = await post(officer.browser, regeneratePath, proof);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.session.state, 'authenticated');
+  assert.equal(result.session.mfa.status, 'verified');
+  assert.equal(result.recovery_codes.codes.length, 10);
+  assert.equal(new Set(result.recovery_codes.codes).size, 10);
+  for (const code of result.recovery_codes.codes) {
+    assert.match(code, /^[A-Z0-9]{4}(?:-[A-Z0-9]{4}){3}$/);
+    assert.ok(!officer.codes.includes(code));
+  }
+  assert.notEqual(officer.browser.cookies.get('XSRF-TOKEN'), oldCookies.get('XSRF-TOKEN'));
+  assert.deepEqual(await (await officer.browser.request('/api/v1/session')).json(), result.session);
+  storageProbe('confirmed', officer.id, { secret: officer.secret, codes: result.recovery_codes.codes });
+  const after = await returningBrowser(officer);
+  for (const code of [officer.codes[0], officer.codes[9]]) {
+    assert.equal((await post(after.browser, challengePath, {
+      challenge_id: after.challenge.id, method: 'recovery_code', recovery_code: code,
+    })).status, 400);
+  }
+  assert.equal((await post(after.browser, challengePath, {
+    challenge_id: after.challenge.id, method: 'recovery_code', recovery_code: result.recovery_codes.codes[0],
+  })).status, 200);
+  const replay = await post(officer.browser, regeneratePath, proof);
+  assert.equal(replay.status, 400);
+  assert.equal((await replay.json()).recovery_codes, undefined);
+});
+
+test('ticket03 an exhausted challenge stays exhausted when the identity window expires', async () => {
+  const officer = await enrolledOfficer('challenge-window');
+  const { browser, challenge } = await returningBrowser(officer);
+  const wrong = 'ZZZZ-ZZZZ-ZZZZ-ZZZZ';
+  assert.ok(!officer.codes.includes(wrong));
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await post(browser, challengePath, {
+      challenge_id: challenge.id, method: 'recovery_code', recovery_code: wrong,
+    })).status, 400);
+  }
+  // An identity window may predate this challenge; its expiry cannot replenish this challenge.
+  arrangeState('expire-throttles', officer.id);
+  const response = await post(browser, challengePath, {
+    challenge_id: challenge.id, method: 'recovery_code', recovery_code: officer.codes[0],
+  });
+  assert.equal(response.status, 429);
+  assert.match(response.headers.get('Retry-After'), /^[1-9][0-9]*$/);
+  const restarted = await returningBrowser(officer);
+  assert.equal((await post(restarted.browser, challengePath, {
+    challenge_id: restarted.challenge.id, method: 'recovery_code', recovery_code: officer.codes[0],
+  })).status, 200, 'Identity lockout is bounded while the exhausted challenge remains unusable');
+});

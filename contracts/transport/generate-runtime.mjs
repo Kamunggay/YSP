@@ -13,7 +13,7 @@ for (const name of ['api-v1.json', 'transport.schema.json', 'p02-action-catalogu
 }
 const api = documents['api-v1.json'];
 const definitions = documents['transport.schema.json'].$defs;
-const wanted = new Set(['getSession', 'signIn', 'signOut', 'initializeCsrf', 'prepareAuthenticatorEnrollment', 'confirmAuthenticatorEnrollment']);
+const wanted = new Set(['getSession', 'signIn', 'signOut', 'initializeCsrf', 'prepareAuthenticatorEnrollment', 'confirmAuthenticatorEnrollment', 'verifyMfaChallenge', 'regenerateRecoveryCodes']);
 const operations = {};
 for (const [path, item] of Object.entries(api.paths)) {
   for (const [method, operation] of Object.entries(item)) {
@@ -34,7 +34,9 @@ for (const name of ['SessionSnapshot', 'SignInRequest', 'SessionUnauthorized', '
   'SessionCsrfFailure', 'SessionThrottled', 'SessionUnavailable', 'SignInInvalid',
   'PrepareEnrollmentRequest', 'ConfirmEnrollmentRequest', 'PreparedEnrollment', 'ConfirmedEnrollment',
   'EnrollmentUnauthorized', 'EnrollmentConflict', 'EnrollmentProofRejected',
-  'PrepareEnrollmentInvalid', 'ConfirmEnrollmentInvalid']) include(name);
+  'PrepareEnrollmentInvalid', 'ConfirmEnrollmentInvalid', 'VerifyMfaChallengeRequest',
+  'RegenerateRecoveryCodesRequest', 'RegeneratedRecoveryCodes', 'MfaProofRejected',
+  'ChallengeUnavailable', 'RecentProofRequired', 'VerifyMfaChallengeInvalid', 'RegenerateRecoveryCodesInvalid']) include(name);
 const output = JSON.stringify({ sources, operations, session: api['x-session-contract'],
   duties: documents['p02-action-catalogue.json'].duties, $defs: selected }, null, 2) + '\n';
 const outputIndex = process.argv.indexOf('--output');

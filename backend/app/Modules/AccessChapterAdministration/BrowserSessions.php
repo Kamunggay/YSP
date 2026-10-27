@@ -19,14 +19,19 @@ final class BrowserSessions
         $request->session()->put('mfa_verified_at', $verifiedAt);
     }
 
+    public function passwordMatches(string $password, string $hash): bool
+    {
+        return password_verify($password, $hash) && strlen($password) <= 72;
+    }
+
     /** @return array<string, mixed>|null */
     public function signIn(Request $request, string $email, string $password): ?array
     {
         $user = DB::table('users')->where('email_key', strtolower(trim($email)))->first();
         // The dummy verifier keeps nonexistent and disabled logins on the hashing path.
         $hash = $user->password_hash ?? '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
-        $matches = password_verify($password, $hash);
-        if (! $matches || strlen($password) > 72 || $user === null || $user->status !== 'active') {
+        $matches = $this->passwordMatches($password, $hash);
+        if (! $matches || $user === null || $user->status !== 'active') {
             return null;
         }
         $request->session()->invalidate();

@@ -76,9 +76,8 @@ final class AuthenticatorEnrollments
                     if ($enrollment->failed_attempts >= 5) {
                         return $this->throttled($enrollment->attempt_window_expires_at);
                     }
-                    $totp = TOTP::createFromSecret(Crypt::decryptString($enrollment->secret_ciphertext), new InternalClock);
-                    // Bounded skew: current 30-second step only. Never accept a used step.
-                    if (! $totp->verify($body['authenticator_code'], $now->getTimestamp())) {
+                    // Bounded skew: current 30-second step only.
+                    if (! app(AuthenticatorProofs::class)->accepts($enrollment->secret_ciphertext, $body['authenticator_code'], $now)) {
                         DB::table('authenticator_enrollments')->where('user_id', $user->id)->increment('failed_attempts');
 
                         return $this->contract->failure('EnrollmentProofRejected', 400);
@@ -90,21 +89,7 @@ final class AuthenticatorEnrollments
                     DB::table('authenticator_enrollments')->where('user_id', $user->id)->update([
                         'consumed_at' => $now, 'secret_ciphertext' => null,
                     ]);
-                    $codes = [];
-                    for ($i = 0; $i < 10; $i++) {
-                        do {
-                            $code = '';
-                            for ($j = 0; $j < 16; $j++) {
-                                // random_int uses uniform CSPRNG range sampling, without modulo bias.
-                                $code .= 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[random_int(0, 35)];
-                            }
-                            $code = implode('-', str_split($code, 4));
-                        } while (in_array($code, $codes, true));
-                        $codes[] = $code;
-                        // High-entropy verifiers match the schema's individually hashed BINARY(32) contract.
-                        DB::table('user_recovery_codes')->insert(['user_id' => $user->id,
-                            'code_hash' => hash('sha256', $code, true), 'issued_at' => $now]);
-                    }
+                    $codes = app(AuthenticatorProofs::class)->issueCodes((string) $user->id, $now);
                     DB::table('global_security_events')->insert(['user_id' => $user->id,
                         'event_code' => 'authenticator_confirmed', 'operator_reference' => 'authenticated_identity',
                         'occurred_at' => $now, 'details' => json_encode(['recovery_code_count' => 10], JSON_THROW_ON_ERROR)]);
@@ -164,12 +149,12 @@ final class AuthenticatorEnrollments
         }
     }
 
-    private function throttleIp(Request $request): ?JsonResponse
+    public function throttleIp(Request $request, string $scope = 'enrollment'): ?JsonResponse
     {
         // Commit the IP counter before entering the identity transaction: independent
         // identities do not hold a network-wide lock throughout proof verification.
-        return DB::transaction(function () use ($request): ?JsonResponse {
-            $key = hash('sha256', 'enrollment-ip:'.$request->ip());
+        return DB::transaction(function () use ($request, $scope): ?JsonResponse {
+            $key = hash('sha256', $scope.'-ip:'.$request->ip());
             $now = time();
             DB::table('session_throttles')->insertOrIgnore([
                 'key' => $key, 'attempts' => 0, 'expires_at' => $now + self::IP_WINDOW_SECONDS,
