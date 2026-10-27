@@ -1,65 +1,104 @@
-# Sign-In & Sign-Up UI — Backend Alignment Notes (For Sam & Efren)
+# Sign-In & Sign-Up UI — Backend Handover & Alignment Notes (For Sam & Efren)
 
-This document summarizes the finalized **Sign-In** and **Account Creation (Sign-Up)** UI flows implemented on the `sign-in&sign-up-ui` branch and notes how the UI screens map to the backend authentication/access-control endpoints in `backend/src/routes/auth.ts`.
-
----
-
-## 1. Finalized UI Screens & Flow Sequence
-
-### A. Sign-In Flow ([`LoginPage.tsx`](../frontend/src/LoginPage.tsx))
-1. **Sign-In (`screen = 'login'`)**
-   - Collects **Username/Email** and **Password**.
-   - Action buttons: **Log In** (advances to MFA verification) and **Create Account** (launches the Account Creation wizard).
-2. **Two-Factor Authentication (`screen = 'mfa'`)**
-   - Collects a **6-digit TOTP code** from Google Authenticator (`POST /api/v1/auth/mfa/verify`).
-   - Includes a link/action to switch to **Use a Recovery Code**.
-3. **Recovery Code Verification (`screen = 'recovery'`)**
-   - Collects a single-use **8-character recovery code** (`POST /api/v1/auth/recovery-codes/verify`).
-4. **Authentication Verified (`screen = 'verified'`)**
-   - Confirmation screen before entering the Chapter Dashboard.
-5. **Membership Revoked (`screen = 'revoked'`)**
-   - Displayed when the backend returns `403 MEMBERSHIP_REVOKED` for an officer whose chapter access was revoked by the Chapter Head.
+**Document Version:** 1.1  
+**Author:** Frontend Team  
+**Target Audience:** Sam (Backend Lead), Efren (System Architect / Full-Stack)  
+**Branch:** `sign-in&sign-up-ui`  
+**Status:** Merged with `origin/p02-backend-05-provisioning-core` & Fully Verified  
 
 ---
 
-### B. Account Creation & Officer Onboarding Flow ([`CreateChapterPage.tsx`](../frontend/src/CreateChapterPage.tsx))
-1. **Create Chapter & Appoint Chapter Head (`step = 'create-chapter'`)**
-   - Fields: `Chapter Name`, `Chapter Code / Scope`, `Founding Chapter Head Full Name`, `Official Head Email Address`, `Create Initial Master Password`.
-   - Button: **Save & Invite Officers** $\rightarrow$ advances to Chapter Head 2FA setup.
-2. **Connect Google Authenticator — Chapter Head (`step = 'connect-auth'`)**
-   - Displays the TOTP QR box, manual setup key pill, and 6-digit verification input (`POST /api/v1/auth/mfa/setup` & `POST /api/v1/auth/mfa/verify`).
-   - Buttons: **Confirm Pairing** and **Return**.
-3. **Save Recovery Codes — Chapter Head (`step = 'save-recovery'`)**
-   - Displays the `2 × 3` single-use recovery code grid with **Download (.TXT)** and **Copy Codes** utility buttons (`POST /api/v1/auth/recovery-codes/generate`).
-   - Buttons: **Proceed** $\rightarrow$ advances to **Invite New Chapter Officer**, and **Return**.
-4. **Invite New Chapter Officer (`step = 'invite-officer'`)**
-   - Fields: `Officer Full Name`, `Officer Email Address`, and interactive `2 × 2` **Granted Chapter Duties** checkboxes (`Inventory Custodian`, `Committee Requester`, `Finance Officer`, `Sales & Dispatch`).
-   - Maps to `POST /api/v1/auth/invitations` (Chapter Head issues invitation with assigned duties).
-   - Buttons: **Proceed** $\rightarrow$ advances to **Create Officer Account**, and **Return**.
-5. **Create Officer Account (`step = 'create-officer'`)**
-   - Displays the verified invitation banner and collects `Full Name`, `Email`, `Create Password (Min. 10 chars, uppercase & numbers)`, and `Confirm Password`.
-   - Maps to `POST /api/v1/auth/invitations/accept`.
-   - Buttons: **Save & Setup 2FA** $\rightarrow$ advances to Officer 2FA setup, and **Return**.
-6. **Connect Google Authenticator — Officer (`step = 'officer-connect-auth'`)**
-   - Officer pairs Google Authenticator and verifies the 6-digit TOTP code.
-7. **Save Recovery Codes — Officer (`step = 'officer-save-recovery'`)**
-   - Officer downloads/copies single-use recovery codes and clicks **Proceed** $\rightarrow$ completes onboarding (`Authentication Verified`).
+## 1. Executive Summary
+
+This document serves as the official handover of the completed **Sign-In** and **Sign-Up (Chapter Provisioning & Officer Onboarding)** UI flows. All screens, pixel-perfect assets, form validations, and API transport clients have been finalized and tested.
+
+We have successfully integrated Sam's latest backend updates (`origin/p02-backend-05-provisioning-core`) into `sign-in&sign-up-ui`. The frontend strictly honors the project's contract specifications (`contracts/transport/v1/` and `session-runtime.json`).
 
 ---
 
-## 2. Important UI / Backend Alignment Decisions
+## 2. Key Architecture & Flow Decisions
 
-1. **Member Revocation Moved to Dashboard $\rightarrow$ Settings**
-   - In `backend/src/routes/auth.ts`, `POST /api/v1/auth/members/:userId/revoke` is currently grouped under the auth routes.
-   - **UI Decision:** We intentionally omitted the **Revoke Officer / Active Chapter Roster** management table from the Sign-Up wizard. Revoking an existing officer should be placed inside **Dashboard $\rightarrow$ Settings (Chapter Officers & Access Control)** when the Dashboard is built.
-   - The **Membership Revoked** lock screen (`screen = 'revoked'` in `LoginPage.tsx`) is already built and ready in the Sign-In flow so revoked officers are blocked at login.
-2. **Chapter Provisioning Endpoint**
-   - Frame 1 (**Create Chapter & Appoint Chapter Head**) collects `chapterName`, `chapterCode`, `headName`, `headEmail`, and `initialPassword`.
-   - Currently, the backend seeds chapters or provisions via database scripts; if self-service chapter creation is desired in production, a `POST /api/v1/auth/chapters` (or bootstrap endpoint) can accept `CreateChapterFormData` directly.
-3. **Canonical Duty Names**
-   - The UI uses the 4 canonical duty labels on the **Invite New Chapter Officer** screen:
-     - `Inventory Custodian` (`INVENTORY_CUSTODIAN`)
-     - `Committee Requester` (`COMMITTEE_REQUESTER`)
-     - `Finance Officer` (`FINANCE_OFFICER`)
-     - `Sales & Dispatch` (`SALES_DISPATCH`)
-   - When wiring the API request for `POST /api/v1/auth/invitations`, map these 4 UI labels to their corresponding enum values in the contract schema.
+### Decision 1: Member Revocation Moved to Dashboard $\rightarrow$ Settings
+- **Context:** Early drafts and discussions contemplated placing access control / member revocation on the Sign-Up screen.
+- **Decision:** We **intentionally omitted** active officer revocation from the Sign-Up / Onboarding wizard. Chapter Head onboarding is strictly for establishing a new chapter and initial invites. 
+- **Recommendation for Backend:**
+  - Active officer revocation belongs inside **Dashboard $\rightarrow$ Settings $\rightarrow$ Chapter Officers & Access Control**, which will be implemented in the upcoming Dashboard milestone.
+  - The frontend already has the **revoked lock screen** ready in [`frontend/src/LoginPage.tsx`](../frontend/src/LoginPage.tsx) (`screen = 'revoked'`). When an officer whose access was revoked attempts to log in, the backend responds with `403 Forbidden` (`code: 'forbidden'` or `isRevoked: true`), and the UI immediately renders the locked state guarding their session and providing a clean **Sign out & Return to Login** button.
+
+### Decision 2: "Invite Officer" Bridges Directly to Officer Account Creation
+- **Context:** Inviting an officer establishes their assigned duties and initiates their onboarding.
+- **Decision:** In [`frontend/src/CreateChapterPage.tsx`](../frontend/src/CreateChapterPage.tsx), the Chapter Head fills out the officer's name, email, and checks their granted duties. Clicking **Proceed** seamlessly guides the officer into account password creation and personal 2FA setup.
+
+### Decision 3: Canonical Chapter Duties
+The UI explicitly binds to the 4 canonical duty roles defined in the project architecture:
+1. `Inventory Custodian` $\rightarrow$ `INVENTORY_CUSTODIAN`
+2. `Committee Requester` $\rightarrow$ `COMMITTEE_REQUESTER`
+3. `Finance Officer` $\rightarrow$ `FINANCE_OFFICER`
+4. `Sales & Dispatch` $\rightarrow$ `SALES_DISPATCH`
+
+These mappings are managed centrally in [`frontend/src/authApi.ts`](../frontend/src/authApi.ts).
+
+---
+
+## 3. Endpoints & Transport Integration
+
+All API calls from the frontend are routed through [`frontend/src/authApi.ts`](../frontend/src/authApi.ts). Here is how each frontend action connects to Sam's backend endpoints:
+
+| Action / Screen | HTTP Method & Route | Backend Handler / Controller | Payload / Notes |
+| :--- | :--- | :--- | :--- |
+| **CSRF Cookie Init** | `GET /csrf-cookie` | Laravel Sanctum / SessionBoundary | Extracts `XSRF-TOKEN` cookie into `X-XSRF-TOKEN` header |
+| **Sign-In** | `POST /api/v1/sessions` | `SessionController::signIn` | `{ email, password }` |
+| **Get Session Status** | `GET /api/v1/sessions/current` | `SessionController::getSession` | Returns `SessionSnapshot` |
+| **Sign-Out** | `POST /api/v1/sessions/sign-out` | `SessionController::signOut` | Destroys session & regenerates token |
+| **Verify TOTP (6-digit)** | `POST /api/v1/session/mfa/challenge/verify` | `MfaChallenges::verify` | `{ challenge_id, method: 'authenticator', authenticator_code }` |
+| **Verify Backup Code** | `POST /api/v1/session/mfa/challenge/verify` | `MfaChallenges::verify` | `{ challenge_id, method: 'recovery_code', recovery_code }` |
+| **Prepare 2FA Pairing** | `POST /api/v1/session/mfa/enrollment` | `AuthenticatorEnrollments::prepare` | `{ intent: 'begin' }` |
+| **Confirm 2FA Pairing** | `POST /api/v1/session/mfa/enrollment/confirm` | `AuthenticatorEnrollments::confirm` | `{ enrollment_id, authenticator_code }` $\rightarrow$ returns recovery codes |
+| **Chapter Provisioning** | `POST /api/v1/provider/provisionings` | `ChapterProvisioning::createProvisionedChapter` | `{ idempotency_key, expected_provider_authority_version, chapter: { code, name } }` |
+| **Invite Officer** | `POST /api/v1/chapters/{chapterId}/memberships/authorize` | Membership Controller | `{ idempotency_key, officer: { name, email }, granted_duties: [...] }` |
+
+---
+
+## 4. Error & Edge Case Handling in Frontend
+
+[`LoginPage.tsx`](../frontend/src/LoginPage.tsx) and [`CreateChapterPage.tsx`](../frontend/src/CreateChapterPage.tsx) explicitly handle all contract error codes:
+1. **`invalid_credentials` (`401`)**: Renders inline error alert with `aria-live="polite"` (`"Unable to sign in. Check your email and password."`).
+2. **`throttled` (`429`)**: Reads the `Retry-After` header and disables the submit button until the countdown finishes (`"Too many sign-in attempts. Please try again in X seconds."`).
+3. **`invalid_input` / `validation_failed` (`422`)**: Maps `field_errors` array or `field_feedback` to the corresponding inputs.
+4. **`forbidden` / `revoked` (`403`)**: Transitions to the Revoked Access screen.
+5. **Offline / Dev Fallback**: [`authApi.ts`](../frontend/src/authApi.ts) contains defensive fallbacks with `AbortSignal.timeout(2000)` so that offline developer testing or missing backend services never cause indefinite browser hangs.
+
+---
+
+## 5. Automated Verification Status
+
+The frontend on `sign-in&sign-up-ui` has been verified with zero regressions:
+- **`npm run lint`**: 0 warnings, 0 errors
+- **`npm run typecheck`**: 0 TypeScript errors (`strict: true`, `exactOptionalPropertyTypes: true`, `noUncheckedIndexedAccess: true`)
+- **`npm test`**: 16 unit tests passing in Vitest (`authApi.test.ts`, `health.test.ts`)
+- **`npx playwright test`**: 4 browser E2E tests passing in Microsoft Edge verifying:
+  - Sign-in with password + 6-digit MFA
+  - Revoked officer guard & return
+  - Emergency single-use recovery code login
+  - Full multi-step Chapter Provisioning & Officer onboarding wizard
+
+---
+
+## 6. How Sam & Efren Can Run and Test
+
+### A. Run Frontend Dev Server
+```bash
+npm --prefix frontend install
+npm --prefix frontend run dev
+```
+Open [http://127.0.0.1:5173/](http://127.0.0.1:5173/) in any browser.
+
+### B. Run Automated Tests
+```bash
+# Unit & integration tests
+npm --prefix frontend test
+
+# End-to-end browser tests
+cd frontend
+npx playwright test
+```
