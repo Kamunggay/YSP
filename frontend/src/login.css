@@ -1,75 +1,87 @@
-/* YSP Chapter Operations — Sign-In & Auth Styles */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,700;1,900&display=swap');
+/* 3OfClubs Night Login, Auth & Recovery Styles — Pure Photo Elements & Roboto Font */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
 
-/* Viewport Root */
+* {
+  box-sizing: border-box;
+}
+
 .kamunggay-viewport {
   position: relative;
   width: 100vw;
-  min-height: 100vh;
-  background-color: #0d1a2d;
+  height: 100vh;
+  min-height: 640px;
+  overflow: hidden;
+  font-family: 'Roboto', sans-serif;
+  background-color: #120e0b;
   background-image: url('/assets/kamunggay/bg-night-forest.png');
   background-size: cover;
-  background-position: center;
+  background-position: center left;
   background-repeat: no-repeat;
-  overflow-x: hidden;
-  display: flex;
-  box-sizing: border-box;
+  user-select: none;
+  color: #ffffff;
 }
 
-.kamunggay-viewport *,
-.kamunggay-viewport *::before,
-.kamunggay-viewport *::after {
-  box-sizing: border-box;
+/* Atmospheric bottom & right-edge vignette matching Login Page */
+.kamunggay-viewport::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(20, 15, 12, 0) 68%, rgba(20, 15, 12, 0.86) 94%, #140f0c 100%),
+    linear-gradient(90deg, rgba(18, 18, 17, 0) 62%, rgba(18, 18, 17, 0.84) 86%, #121211 100%);
+  pointer-events: none;
+  z-index: 1;
 }
 
-/* Centered Mode for MFA / Recovery / Revoked / Verified Screens */
+/* Edge vignette matching Auth & Recovery Page */
 .kamunggay-viewport.centered-mode {
-  align-items: center;
-  justify-content: center;
-  padding: clamp(20px, 4vh, 60px) clamp(16px, 3vw, 40px);
+  background-position: center center;
 }
 
-/* Top-Left YSP Logo */
+.kamunggay-viewport.centered-mode::before {
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(18, 14, 11, 0.02) 38%, rgba(10, 9, 12, 0.72) 86%, rgba(8, 7, 9, 0.94) 100%),
+    linear-gradient(180deg, rgba(12, 10, 14, 0.35) 0%, rgba(12, 10, 14, 0) 18%, rgba(12, 10, 14, 0) 76%, rgba(10, 8, 10, 0.88) 100%);
+}
+
+/* Top-Left YSP Cebu Logo (Login Page only) */
 .kamunggay-ysp-logo {
   position: absolute;
-  top: clamp(16px, 2.5vh, 32px);
-  left: clamp(24px, 3.8vw, 72px);
-  width: clamp(75px, 6.7vw, 128px);
+  top: 2.6%;
+  left: 2.5%;
+  width: clamp(96px, 6.7vw, 130px);
   height: auto;
-  z-index: 10;
+  z-index: 3;
   pointer-events: none;
-  user-select: none;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
 }
 
 /* Left-Center Characters Collage */
 .kamunggay-characters-collage {
   position: absolute;
-  left: clamp(24px, 4.2vw, 80px);
-  top: 50%;
-  transform: translateY(-56%);
-  width: clamp(280px, 28vw, 538px);
+  left: 11.2%;
+  top: 19.5%;
+  width: clamp(340px, 39.2vw, 752px);
   height: auto;
-  z-index: 5;
+  z-index: 2;
   pointer-events: none;
-  user-select: none;
+  filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.55));
 }
 
-/* Bottom-Left Hero Tagline in Roboto */
+/* Bottom-Left Hero Tagline in Roboto ("EMPOWER YOUR CHAPTER OPERATIONS.") */
 .kamunggay-hero-tagline {
   position: absolute;
-  left: clamp(24px, 3.8vw, 72px);
-  bottom: clamp(20px, 3.8vh, 48px);
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  font-family: 'Roboto', system-ui, -apple-system, sans-serif;
+  left: 2.6%;
+  bottom: 11.2%;
+  z-index: 3;
+  font-family: 'Roboto', sans-serif;
   font-weight: 900;
-  font-size: clamp(18px, 1.82vw, 35px);
-  line-height: 1.08;
-  letter-spacing: 0.02em;
+  font-size: clamp(24px, 2.08vw, 40px);
+  line-height: 0.94;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
   color: #ffffff;
-  pointer-events: none;
-  user-select: none;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
 }
 
 .kamunggay-hero-tagline .line {
@@ -77,94 +89,95 @@
 }
 
 .kamunggay-hero-tagline .operations-orange {
-  color: #f5531e;
+  color: #fb4701;
 }
 
 .kamunggay-hero-tagline .operations-dot {
-  color: #f5531e;
+  color: #ffffff;
 }
 
-/* Right-Side Login Card */
+/* Right-Side Dark Login Card (#1D1611) */
 .kamunggay-login-card {
   position: absolute;
-  right: clamp(24px, 5.8vw, 112px);
+  right: 5.73%;
   top: 50%;
   transform: translateY(-50%);
-  width: clamp(300px, 24.5vw, 470px);
+  width: clamp(380px, 38.28vw, 735px);
+  height: clamp(560px, 75.74vh, 818px);
   background-color: #1d1611;
-  border-radius: clamp(16px, 1.45vw, 28px);
-  padding: clamp(20px, 3.5vh, 42px) clamp(16px, 1.9vw, 36px) clamp(16px, 2.2vh, 26px);
+  border-radius: clamp(24px, 1.98vw, 38px);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.72);
+  z-index: 4;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: flex-start;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-  z-index: 20;
+  padding: clamp(36px, 9.6vh, 104px) clamp(28px, 2.86vw, 55px) clamp(24px, 4.2vh, 46px);
 }
 
-/* Form Body */
 .kamunggay-card-body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
 }
 
-/* Input Artwork Container: exact photo with transparent inputs overlaid */
+/* Interactive Input Box using User-Provided Artwork */
 .kamunggay-input-artwork-container {
   position: relative;
   width: 100%;
+  margin-bottom: clamp(14px, 2.1vh, 22px);
   line-height: 0;
-  margin-bottom: clamp(14px, 2.3vh, 26px);
-  user-select: none;
 }
 
 .kamunggay-input-bg-img {
   width: 100%;
   height: auto;
   display: block;
+  user-select: none;
+  -webkit-user-drag: none;
   pointer-events: none;
 }
 
-/* Transparent overlays inside the artwork slots */
+/* Transparent HTML inputs overlaid precisely over the artwork pills */
 .kamunggay-overlay-input {
   position: absolute;
-  left: 3.5%;
-  width: 93%;
-  height: 31%;
+  left: 0;
+  width: 100%;
+  height: 36%;
   background: transparent;
   border: none;
   outline: none;
-  font-family: 'Roboto', system-ui, -apple-system, sans-serif;
-  font-weight: 500;
-  font-size: clamp(12px, 0.95vw, 17px);
-  color: #ffffff;
-  padding: 0 clamp(8px, 0.8vw, 14px);
-  letter-spacing: 0.02em;
-}
-
-.kamunggay-overlay-input::placeholder {
-  color: transparent;
+  padding: 0 clamp(16px, 1.5vw, 28px);
+  font-family: 'Roboto', sans-serif;
+  font-weight: 900;
+  font-size: clamp(16px, 1.35vw, 26px);
+  color: #2b1d14;
+  letter-spacing: 0.01em;
+  z-index: 2;
 }
 
 .kamunggay-overlay-email {
-  top: 31%;
+  top: 22.2%;
 }
 
 .kamunggay-overlay-password {
-  top: 67%;
+  top: 64%;
 }
 
-/* Button Stack */
+/*
+ * Tactile 3D Photo Button — Fixed-Height Slot + Bottom-Anchored Depressed State
+ * - Unclicked image (1200x94) stays in flow so total button height NEVER collapses.
+ * - Clicked image (1200x80) is anchored to bottom: 0 of the same slot so pressing
+ *   the button physically pushes the top face DOWN into the 3D bottom lip while
+ *   keeping the bottom edge and surrounding layout 100% stationary.
+ * - Strictly NO hover color/filter.
+ */
 .kamunggay-btn-stack {
-  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: clamp(10px, 1.6vh, 18px);
+  gap: clamp(9px, 1.15vh, 13px);
+  width: 100%;
 }
 
-/* Fixed-Height Tactile 3D Depress Button */
 .kamunggay-photo-btn {
   position: relative;
   background: transparent !important;
@@ -225,6 +238,25 @@
   visibility: visible;
 }
 
+/* Busy (request in flight): identical artwork, no tint — only the cursor changes */
+.kamunggay-photo-btn:disabled {
+  cursor: progress;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* Server feedback line (sign-in / verification errors) */
+.kamunggay-auth-error {
+  width: 100%;
+  margin: clamp(6px, 1vh, 12px) 0 clamp(8px, 1.3vh, 14px);
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-weight: 500;
+  font-size: clamp(11px, 0.78vw, 14px);
+  line-height: 1.35;
+  color: #ff8c7a;
+  text-align: center;
+}
+
 /* Gap before CREATE ACCOUNT button */
 .kamunggay-photo-btn.btn-create-gap {
   margin-top: clamp(26px, 4.2vh, 46px) !important;
@@ -236,95 +268,81 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: clamp(14px, 2.3vh, 26px);
+  margin-top: clamp(18px, 2.6vh, 28px);
+  padding-top: 0;
 }
 
 .kamunggay-clubs-logo {
   width: clamp(32px, 2.64vw, 51px);
   height: auto;
-  user-select: none;
-  pointer-events: none;
+  object-fit: contain;
+  opacity: 0.98;
 }
 
-/* -------------------------------------------------------------------------- */
-/* CENTERED CARDS (Two-Factor Auth, Recovery, Revoked, Verified)              */
-/* -------------------------------------------------------------------------- */
-
+/* Centered Card for Two-Factor Auth & Emergency Recovery Screens (Matches 3OfClubs Night Auth Page) */
 .kamunggay-center-card {
-  position: relative;
-  width: 100%;
-  max-width: clamp(340px, 32.8vw, 630px);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(360px, 37.6vw, 722px);
+  height: clamp(540px, 74.07vh, 800px);
   background-color: #1d1611;
-  border-radius: clamp(16px, 1.45vw, 28px);
-  padding: clamp(24px, 4.5vh, 48px) clamp(20px, 2.5vw, 44px) clamp(16px, 2.6vh, 28px);
+  border-radius: clamp(28px, 2.3vw, 44px);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.78);
+  z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
+  padding: clamp(46px, 9.2vh, 100px) clamp(24px, 2.45vw, 47px) clamp(24px, 4vh, 44px);
   text-align: center;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
-  z-index: 20;
 }
 
-/* Badges & Icons */
 .kamunggay-auth-lock-img {
-  width: clamp(24px, 1.9vw, 36px);
+  width: clamp(24px, 1.98vw, 38px);
   height: auto;
-  margin-bottom: clamp(8px, 1.5vh, 16px);
-  user-select: none;
+  margin-bottom: clamp(10px, 1.6vh, 18px);
   pointer-events: none;
 }
 
 .kamunggay-auth-bell-img {
-  width: clamp(26px, 2.1vw, 40px);
+  width: clamp(28px, 2.3vw, 44px);
   height: auto;
-  margin-bottom: clamp(8px, 1.5vh, 16px);
-  user-select: none;
+  margin-bottom: clamp(10px, 1.6vh, 18px);
   pointer-events: none;
 }
 
 .kamunggay-revoked-icon-img {
-  width: clamp(36px, 3vw, 58px);
+  width: clamp(32px, 2.55vw, 49px);
   height: auto;
-  margin-bottom: clamp(10px, 1.8vh, 18px);
-  user-select: none;
+  margin-bottom: clamp(8px, 1.3vh, 14px);
   pointer-events: none;
-}
-
-.kamunggay-verified-icon-img {
-  width: clamp(36px, 3vw, 58px);
-  height: auto;
-  margin-bottom: clamp(10px, 1.8vh, 18px);
-  user-select: none;
-  pointer-events: none;
-}
-
-/* Headings */
-.kamunggay-auth-heading {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  font-size: clamp(18px, 1.45vw, 28px);
-  line-height: 1.2;
-  color: #ffffff;
-  margin: 0 0 clamp(6px, 1vh, 12px) 0;
 }
 
 .kamunggay-revoked-heading {
   font-family: 'Roboto', sans-serif;
   font-weight: 700;
-  font-size: clamp(20px, 1.6vw, 30px);
-  line-height: 1.2;
+  font-size: clamp(18px, 1.46vw, 28px);
+  line-height: 1.15;
   color: #ffffff;
-  margin: 0 0 clamp(6px, 1vh, 12px) 0;
+  margin: 0 0 clamp(6px, 0.85vh, 9px) 0;
 }
 
-/* Subtitles */
-.kamunggay-auth-sub {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 400;
-  font-size: clamp(11px, 0.85vw, 16px);
-  line-height: 1.35;
-  color: #ffffff;
-  margin: 0 0 clamp(16px, 2.8vh, 28px) 0;
+.kamunggay-revoked-details-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto clamp(8px, 1.2vh, 13px) auto;
+  pointer-events: none;
+}
+
+/* Authentication Verified Page */
+.kamunggay-verified-icon-img {
+  width: clamp(32px, 2.55vw, 49px);
+  height: auto;
+  margin-bottom: clamp(8px, 1.3vh, 14px);
+  pointer-events: none;
 }
 
 .kamunggay-verified-welcome {
@@ -348,17 +366,6 @@
   color: #ffffff;
   text-align: center;
   padding: 0 4px;
-}
-
-/* Message Banners */
-.kamunggay-message-banner-img {
-  width: 90.8%;
-  max-width: 572px;
-  height: auto;
-  display: block;
-  margin: 0 auto clamp(16px, 2.8vh, 30px) auto;
-  user-select: none;
-  pointer-events: none;
 }
 
 .kamunggay-verified-banner-wrap {
@@ -416,159 +423,154 @@
 
 .kamunggay-details-slot {
   position: absolute;
-  left: 4.8%;
   font-family: 'Roboto', sans-serif;
   font-weight: 700;
-  font-size: clamp(8px, 0.65vw, 12.5px);
+  font-size: clamp(9.5px, 0.76vw, 14.5px);
   line-height: 1;
-  color: #ffffff;
+  color: #d6c8c0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  right: 4%;
+  text-align: left;
 }
 
 .kamunggay-details-slot.slot-chapter {
-  top: 15%;
+  left: 24%;
+  top: 20.5%;
 }
 
 .kamunggay-details-slot.slot-duties {
-  top: 48%;
+  left: 25.5%;
+  top: 46.5%;
 }
 
 .kamunggay-details-slot.slot-constraints {
-  top: 81%;
+  left: 36.5%;
+  top: 72%;
 }
 
-.kamunggay-revoked-details-img {
-  width: 100%;
+.kamunggay-auth-heading {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(20px, 1.88vw, 36px);
+  line-height: 1.15;
+  color: #ffffff;
+  margin: 0 0 clamp(6px, 0.85vh, 10px) 0;
+  letter-spacing: -0.01em;
+}
+
+.kamunggay-auth-sub {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: clamp(10px, 0.78vw, 15px);
+  line-height: 1.22;
+  color: #e9e6e4;
+  margin: 0 0 clamp(16px, 2.7vh, 30px) 0;
+}
+
+.kamunggay-message-banner-img {
+  width: 90.8%;
+  max-width: 572px;
   height: auto;
   display: block;
-  margin: 0 auto clamp(16px, 2.8vh, 30px) auto;
-  user-select: none;
+  margin: 0 auto clamp(16px, 2.7vh, 30px) auto;
   pointer-events: none;
 }
 
-/* OTP 6-Digit Row */
+/* 6 Brown OTP Boxes matching 3OfClubs Night Auth Page */
 .kamunggay-otp-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: clamp(6px, 0.73vw, 14px);
-  margin-bottom: clamp(16px, 2.8vh, 32px);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: clamp(6px, 0.52vw, 10px);
   width: 100%;
+  margin-bottom: clamp(16px, 2.5vh, 27px);
 }
 
 .kamunggay-otp-box {
-  width: clamp(38px, 3.2vw, 62px);
-  height: clamp(44px, 3.8vw, 72px);
+  width: 100%;
+  aspect-ratio: 1 / 1;
   background-color: #705343;
-  border: 1px solid #705343;
-  border-radius: clamp(6px, 0.6vw, 12px);
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  font-size: clamp(18px, 1.6vw, 30px);
-  color: #ffffff;
+  border: none;
+  border-radius: clamp(11px, 0.95vw, 18px);
   text-align: center;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 900;
+  font-size: clamp(20px, 1.85vw, 35px);
+  color: #2b1d14;
   outline: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  padding: 0;
 }
 
 .kamunggay-otp-box:focus {
-  border-color: #f5531e;
-  background-color: #5c4335;
-}
-
-/* Single-Use Backup Code Input */
-.kamunggay-recovery-field-wrap {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-bottom: clamp(16px, 2.8vh, 30px);
-}
-
-.kamunggay-recovery-label {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 500;
-  font-size: clamp(11px, 0.85vw, 15px);
-  color: #ffffff;
-  margin-bottom: clamp(6px, 1vh, 10px);
-}
-
-.kamunggay-recovery-input {
-  width: 100%;
-  height: clamp(40px, 3.4vw, 56px);
-  background-color: #705343;
-  border: 1px solid #705343;
-  border-radius: clamp(6px, 0.6vw, 10px);
-  font-family: 'Roboto', sans-serif;
-  font-weight: 500;
-  font-size: clamp(13px, 1vw, 18px);
-  color: #ffffff;
-  padding: 0 clamp(12px, 1.2vw, 20px);
-  letter-spacing: 0.12em;
   outline: none;
 }
 
-.kamunggay-recovery-input::placeholder {
-  color: #a89486;
-  letter-spacing: 0.08em;
-}
-
-.kamunggay-recovery-input:focus {
-  border-color: #f5531e;
-  background-color: #5c4335;
-}
-
-/* Center Card Button Stack */
 .kamunggay-auth-btn-stack {
-  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: clamp(10px, 1.5vh, 16px);
+  gap: clamp(6px, 0.85vh, 9px);
+  width: 100%;
 }
 
-/* Center Card Clubs Logo */
 .kamunggay-auth-clubs-footer {
-  width: 100%;
+  margin-top: clamp(16px, 2.6vh, 28px);
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: clamp(14px, 2.5vh, 26px);
 }
 
 .kamunggay-auth-clubs-logo {
   width: clamp(28px, 2.3vw, 44px);
   height: auto;
-  user-select: none;
-  pointer-events: none;
+  object-fit: contain;
+  opacity: 0.95;
 }
 
-/* Responsive adjustments for smaller laptop/tablet viewports */
-@media (max-width: 900px) {
-  .kamunggay-viewport {
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 24px 16px 40px;
-    height: auto;
-    min-height: 100vh;
-  }
+/* Recovery Code Input Field */
+.kamunggay-recovery-field-wrap {
+  width: 100%;
+  text-align: left;
+  margin-bottom: clamp(16px, 2.4vh, 26px);
+}
 
-  .kamunggay-ysp-logo {
-    position: static;
-    margin-bottom: 20px;
-    width: 90px;
-  }
+.kamunggay-recovery-label {
+  display: block;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 0.82vw, 15px);
+  color: #ffffff;
+  margin-bottom: 8px;
+}
 
+.kamunggay-recovery-input {
+  width: 100%;
+  height: clamp(48px, 6.8vh, 74px);
+  background-color: #705343;
+  border: none;
+  border-radius: clamp(11px, 0.95vw, 18px);
+  text-align: center;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 900;
+  font-size: clamp(16px, 1.35vw, 26px);
+  letter-spacing: 0.06em;
+  color: #2b1d14;
+  outline: none;
+}
+
+.kamunggay-recovery-input::placeholder {
+  color: #2b1d14;
+  opacity: 0.75;
+}
+
+@media (max-width: 1024px) {
   .kamunggay-characters-collage,
   .kamunggay-hero-tagline {
     display: none;
   }
-
   .kamunggay-login-card {
-    position: static;
-    transform: none;
-    width: 100%;
-    max-width: 420px;
+    right: 50%;
+    transform: translate(50%, -50%);
+    width: min(92vw, 520px);
   }
 }
