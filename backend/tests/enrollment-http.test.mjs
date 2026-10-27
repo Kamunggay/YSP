@@ -153,6 +153,12 @@ function storageProbe(action, id, input = {}) {
   for (const [name, passed] of Object.entries(assertions)) assert.equal(passed, true, name);
 }
 
+function mysqlFault(sql) {
+  const result = spawnSync('docker', ['exec', '-i', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+    'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot ysp_local'], { encoding: 'utf8', input: sql });
+  assert.equal(result.status, 0, result.stderr);
+}
+
 test('overlapping MySQL confirmations issue exactly one encrypted factor and one recovery set', async t => {
   const { browser, id, prepared: { enrollment } } = await preparedOfficer('race');
   storageProbe('prepared', id, { secret: enrollment.manual_key });
@@ -256,12 +262,7 @@ test('a recovery-code persistence failure rolls back factor confirmation and enr
   const { browser, id, prepared: { enrollment } } = await preparedOfficer('rollback');
   const proof = { enrollment_id: enrollment.id, authenticator_code: authenticatorCode(enrollment.manual_key) };
   assert.match(id, /^[1-9][0-9]*$/);
-  function fault(sql) {
-    const result = spawnSync('docker', ['exec', '-i', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
-      'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot ysp_local'], { encoding: 'utf8', input: sql });
-    assert.equal(result.status, 0, result.stderr);
-  }
-  fault(`DELIMITER //
+  mysqlFault(`DELIMITER //
 CREATE TRIGGER enrollment_test_reject_issuance BEFORE INSERT ON user_recovery_codes FOR EACH ROW
 BEGIN IF NEW.user_id = ${id} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Synthetic persistence fault'; END IF; END//
 DELIMITER ;\n`);
@@ -272,9 +273,63 @@ DELIMITER ;\n`);
     storageProbe('prepared', id, { secret: enrollment.manual_key });
     assert.deepEqual(await (await browser.request('/api/v1/session')).json(), { state: 'mfa_enrollment_required' });
   } finally {
-    fault('DROP TRIGGER IF EXISTS enrollment_test_reject_issuance;');
+    mysqlFault('DROP TRIGGER IF EXISTS enrollment_test_reject_issuance;');
   }
   assert.equal((await post(browser, enrollmentPath + '/confirm', {
     ...proof, authenticator_code: authenticatorCode(enrollment.manual_key),
   })).status, 200);
+});
+
+test('authenticator skew is bounded to the current 30-second step', async () => {
+  const { browser, prepared: { enrollment } } = await preparedOfficer('skew');
+  const remaining = 30000 - Date.now() % 30000;
+  if (remaining < 5000) await new Promise(resolve => setTimeout(resolve, remaining + 100));
+  const now = Date.now();
+  const current = authenticatorCode(enrollment.manual_key, now);
+  for (const offset of [-30000, 30000]) {
+    const outside = authenticatorCode(enrollment.manual_key, now + offset);
+    // Adjacent steps can rarely produce the same six-digit string.
+    if (outside === current) continue;
+    assert.equal((await post(browser, enrollmentPath + '/confirm', {
+      enrollment_id: enrollment.id, authenticator_code: outside,
+    })).status, 400);
+  }
+  assert.equal((await post(browser, enrollmentPath + '/confirm', {
+    enrollment_id: enrollment.id, authenticator_code: authenticatorCode(enrollment.manual_key),
+  })).status, 200);
+});
+
+test('enrollment IP throttling bounds malformed attempts while origin and CSRF guards still win', async () => {
+  const { browser, id } = await signedInBrowser('ip-cap');
+  arrangeState('clear-throttles', id);
+  for (let i = 0; i < 60; i++) assert.equal((await post(browser, enrollmentPath, {})).status, 422);
+  const limited = await post(browser, enrollmentPath, {});
+  assert.equal(limited.status, 429);
+  assert.match(limited.headers.get('retry-after'), /^[1-9][0-9]*$/);
+  assert.equal((await browser.request(enrollmentPath, { method: 'POST', body: {} })).status, 419);
+  assert.equal((await browser.request(enrollmentPath, { method: 'POST', body: {}, headers: { Origin: 'https://invalid.test' } })).status, 403);
+  arrangeState('expire-throttles', id);
+  assert.equal((await post(browser, enrollmentPath, {})).status, 422);
+});
+
+test('a failed rotated-session write cannot persist uncommitted verified MFA during middleware unwinding', async () => {
+  const { browser, id, prepared: { enrollment } } = await preparedOfficer('session-rollback');
+  assert.match(id, /^[1-9][0-9]*$/);
+  mysqlFault(`DELIMITER //
+CREATE TRIGGER enrollment_test_reject_session BEFORE INSERT ON sessions FOR EACH ROW
+BEGIN IF JSON_UNQUOTE(JSON_EXTRACT(CONVERT(FROM_BASE64(NEW.payload) USING utf8mb4), '$.identity_id')) = '${id}'
+AND JSON_EXTRACT(CONVERT(FROM_BASE64(NEW.payload) USING utf8mb4), '$.mfa_verified_at') IS NOT NULL
+AND COALESCE(@enrollment_fault_fired, 0) = 0 THEN
+SET @enrollment_fault_fired = 1;
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Synthetic session persistence fault'; END IF; END//
+DELIMITER ;\n`);
+  try {
+    assert.equal((await post(browser, enrollmentPath + '/confirm', {
+      enrollment_id: enrollment.id, authenticator_code: authenticatorCode(enrollment.manual_key),
+    })).status, 503);
+    storageProbe('prepared', id, { secret: enrollment.manual_key });
+    assert.notEqual((await (await browser.request('/api/v1/session')).json()).state, 'authenticated');
+  } finally {
+    mysqlFault('DROP TRIGGER IF EXISTS enrollment_test_reject_session;');
+  }
 });
