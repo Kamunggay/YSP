@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { checkHealth } from './health';
 import type { HealthResult } from './health';
 import { LoginPage } from './LoginPage';
-import type { AuthScreenMode } from './LoginPage';
+import type { AuthScreenMode, VerifiedSessionData } from './LoginPage';
 import { CreateChapterPage } from './CreateChapterPage';
 import type { SignupStepMode } from './CreateChapterPage';
 
@@ -76,6 +76,7 @@ export function App() {
   const [routeMode, setRouteMode] = useState<AppRouteMode>(initial.mode);
   const [authScreen, setAuthScreen] = useState<AuthScreenMode>(initial.screen);
   const [signupStep, setSignupStep] = useState<SignupStepMode>(initial.signupStep);
+  const [verifiedSession, setVerifiedSession] = useState<VerifiedSessionData | undefined>();
   const [status, setStatus] = useState<HealthResult['status'] | 'checking'>('checking');
   const [attempt, setAttempt] = useState(0);
 
@@ -97,7 +98,8 @@ export function App() {
           setRouteMode('login-flow');
           setAuthScreen('login');
         }}
-        onCompleteSignup={() => {
+        onCompleteSignup={(sessionData) => {
+          setVerifiedSession(sessionData);
           setRouteMode('login-flow');
           setAuthScreen('verified');
         }}
@@ -109,6 +111,7 @@ export function App() {
     return (
       <LoginPage
         initialScreen={authScreen}
+        verifiedSessionData={verifiedSession}
         onNavigateToCreateChapter={() => {
           setSignupStep('create-chapter');
           setRouteMode('create-chapter');

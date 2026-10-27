@@ -326,6 +326,27 @@ export async function prepareAuthenticatorEnrollment(
 }
 
 /**
+ * Generates dynamic, unique, non-repetitive emergency recovery codes.
+ */
+export function generateUniqueRecoveryCodes(count = 6): string[] {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const codes: string[] = [];
+  while (codes.length < count) {
+    let part1 = '';
+    let part2 = '';
+    for (let i = 0; i < 4; i++) {
+      part1 += chars[Math.floor(Math.random() * chars.length)];
+      part2 += chars[Math.floor(Math.random() * chars.length)];
+    }
+    const code = `${part1}-${part2}`;
+    if (!codes.includes(code)) {
+      codes.push(code);
+    }
+  }
+  return codes;
+}
+
+/**
  * Confirms Google Authenticator pairing with a 6-digit verification code.
  */
 export async function confirmAuthenticatorEnrollment(
@@ -369,14 +390,7 @@ export async function confirmAuthenticatorEnrollment(
       duties: ['Chapter Head', 'Executive Authority'],
       governance_constraints: 'Full operational & chapter administration authority',
     },
-    recoveryCodes: [
-      'KMG9-4821',
-      'YSP3-7740',
-      'CLB8-1925',
-      'MNG5-6309',
-      'VLT2-8416',
-      'H2O7-5093',
-    ],
+    recoveryCodes: generateUniqueRecoveryCodes(6),
   };
 }
 

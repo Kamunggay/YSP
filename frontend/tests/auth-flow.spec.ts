@@ -241,5 +241,8 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
 
     // 8. Completed -> Authentication Verified
     await expect(page.getByRole('heading', { name: 'Authentication Verified' })).toBeVisible();
+    await expect(page.locator('.kamunggay-verified-name-slot')).toHaveText('Pedro Penduko');
+    await expect(page.locator('.slot-chapter')).toContainText('YSP Mandaue City');
+    await expect(page.locator('.slot-duties')).toContainText('Inventory Custodian');
   });
 });

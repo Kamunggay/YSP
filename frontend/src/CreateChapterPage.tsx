@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import './login.css';
 import './create-chapter.css';
 import {
   confirmAuthenticatorEnrollment,
   createOfficerAccount,
+  generateUniqueRecoveryCodes,
   inviteChapterOfficer,
   prepareAuthenticatorEnrollment,
   provisionChapter,
 } from './authApi';
+import type { VerifiedSessionData } from './LoginPage';
 
 export type SignupStepMode =
   | 'create-chapter'
@@ -49,7 +52,7 @@ interface CreateChapterPageProps {
   initialStep?: SignupStepMode;
   initialData?: Partial<CreateChapterFormData>;
   onNavigateToLogin?: () => void;
-  onCompleteSignup?: () => void;
+  onCompleteSignup?: (sessionData?: VerifiedSessionData) => void;
   onSaveAndInvite?: (data: CreateChapterFormData) => void;
 }
 
@@ -99,15 +102,6 @@ function PhotoButton({
   );
 }
 
-const DEFAULT_RECOVERY_CODES = [
-  'KMG9-4821',
-  'YSP3-7740',
-  'CLB8-1925',
-  'MNG5-6309',
-  'VLT2-8416',
-  'H2O7-5093',
-];
-
 const DUTY_ITEMS: { duty: ChapterDuty; slotClass: string }[] = [
   { duty: 'Inventory Custodian', slotClass: 'duty-slot-top-left' },
   { duty: 'Committee Requester', slotClass: 'duty-slot-top-right' },
@@ -137,7 +131,7 @@ export function CreateChapterPage({
   const [headEnrollmentId, setHeadEnrollmentId] = useState<string>('enr_head_demo');
   const [headSetupKey, setHeadSetupKey] = useState<string>('KMGY 4821 YSP3 7740');
   const [headOtp, setHeadOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [headRecoveryCodes, setHeadRecoveryCodes] = useState<string[]>(DEFAULT_RECOVERY_CODES);
+  const [headRecoveryCodes, setHeadRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
 
   // Frame 4: Invite New Chapter Officer state
   const [officerName, setOfficerName] = useState('');
@@ -154,7 +148,34 @@ export function CreateChapterPage({
   const [officerEnrollmentId, setOfficerEnrollmentId] = useState<string>('enr_officer_demo');
   const [officerSetupKey, setOfficerSetupKey] = useState<string>('OFC9 3158 KMG7 6241');
   const [officerOtp, setOfficerOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [officerRecoveryCodes, setOfficerRecoveryCodes] = useState<string[]>(DEFAULT_RECOVERY_CODES);
+  const [officerRecoveryCodes, setOfficerRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('/assets/kamunggay/authenticator-qr.png');
+
+  // Generate dynamic scannable QR code based on active setup key
+  useEffect(() => {
+    const isOfficer = step === 'officer-connect-auth';
+    const activeKey = isOfficer ? officerSetupKey : headSetupKey;
+    const activeEmail = isOfficer ? officerAccountEmail || 'officer@ysp.org' : headEmail || 'head@ysp.org';
+    const cleanKey = activeKey.replace(/\s+/g, '');
+    const otpUri = `otpauth://totp/Kamunggay%20YSP:${encodeURIComponent(activeEmail)}?secret=${cleanKey}&issuer=Kamunggay%20YSP`;
+
+    let isMounted = true;
+    void QRCode.toDataURL(otpUri, {
+      margin: 1,
+      width: 500,
+      color: { dark: '#1e1611', light: '#ffffff' },
+    })
+      .then((url) => {
+        if (isMounted) setQrCodeUrl(url);
+      })
+      .catch(() => {
+        if (isMounted) setQrCodeUrl('/assets/kamunggay/authenticator-qr.png');
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [step, headSetupKey, officerSetupKey, headEmail, officerAccountEmail]);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -452,6 +473,12 @@ export function CreateChapterPage({
               className="connect-auth-qr-box"
               draggable={false}
             />
+            <img
+              src={qrCodeUrl}
+              alt="Scan QR code using Google Authenticator"
+              className="connect-auth-qr-code"
+              draggable={false}
+            />
             {activeSetupKey && (
               <span className="connect-auth-setup-key-slot" aria-label={`Manual setup key: ${activeSetupKey}`}>
                 {activeSetupKey}
@@ -583,8 +610,20 @@ export function CreateChapterPage({
               onClick={() => {
                 setErrorMessage(null);
                 if (isOfficer) {
+                  const verifiedData: VerifiedSessionData = {
+                    userName: officerFullName.trim() || officerName.trim() || headName.trim() || 'Chapter Officer',
+                    authenticatedUnder: officerAccountEmail.trim() || officerEmail.trim() || headEmail.trim() || 'officer@ysp.org',
+                    tierSummary: selectedDuties.length > 0 ? selectedDuties.join(', ') : 'Inventory Custodian',
+                    activeChapter: chapterName.trim()
+                      ? `${chapterName.trim()} (${chapterCode.trim() || 'CEBU-01'})`
+                      : 'Cebu Chapter (CEBU-01)',
+                    grantedDuties: selectedDuties.length > 0
+                      ? selectedDuties.join(', ')
+                      : 'Inventory Custodian, Committee Requester',
+                    governanceConstraints: 'Requires dual-custody verification for transactions over PHP 50,000.00',
+                  };
                   if (onCompleteSignup) {
-                    onCompleteSignup();
+                    onCompleteSignup(verifiedData);
                   } else {
                     onNavigateToLogin?.();
                   }

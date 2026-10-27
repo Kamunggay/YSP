@@ -7,20 +7,38 @@ import type { AuthenticatedSession } from './authApi';
 export type AuthScreenMode = 'login' | 'mfa' | 'recovery' | 'revoked' | 'verified';
 
 export interface VerifiedSessionData {
-  userName?: string;
-  authenticatedUnder?: string;
-  tierSummary?: string;
-  activeChapter?: string;
-  grantedDuties?: string;
-  governanceConstraints?: string;
+  userName?: string | undefined;
+  authenticatedUnder?: string | undefined;
+  tierSummary?: string | undefined;
+  activeChapter?: string | undefined;
+  grantedDuties?: string | undefined;
+  governanceConstraints?: string | undefined;
 }
 
+export interface ResolvedVerifiedSession {
+  userName: string;
+  authenticatedUnder: string;
+  tierSummary: string;
+  activeChapter: string;
+  grantedDuties: string;
+  governanceConstraints: string;
+}
+
+const DEFAULT_VERIFIED_SESSION: ResolvedVerifiedSession = {
+  userName: 'Kamunggay Officer',
+  authenticatedUnder: 'Kamunggay Officer',
+  tierSummary: 'Inventory Custodian, Committee Requester',
+  activeChapter: 'Cebu Chapter (CEBU-01)',
+  grantedDuties: 'Inventory Custodian, Committee Requester, Chapter Operations',
+  governanceConstraints: 'Requires dual-custody verification for transactions over PHP 50,000.00',
+};
+
 interface LoginPageProps {
-  initialScreen?: AuthScreenMode;
-  verifiedSessionData?: VerifiedSessionData;
-  onNavigateToCreateChapter?: () => void;
-  onSignInSuccess?: (session: AuthenticatedSession) => void;
-  onEnterDashboard?: () => void;
+  initialScreen?: AuthScreenMode | undefined;
+  verifiedSessionData?: VerifiedSessionData | undefined;
+  onNavigateToCreateChapter?: (() => void) | undefined;
+  onSignInSuccess?: ((session: AuthenticatedSession) => void) | undefined;
+  onEnterDashboard?: (() => void) | undefined;
 }
 
 interface PhotoButtonProps {
@@ -89,6 +107,15 @@ export function LoginPage({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<VerifiedSessionData | undefined>(initialSessionData);
+
+  const effectiveSessionData: ResolvedVerifiedSession = {
+    userName: sessionData?.userName || initialSessionData?.userName || DEFAULT_VERIFIED_SESSION.userName,
+    authenticatedUnder: sessionData?.authenticatedUnder || initialSessionData?.authenticatedUnder || DEFAULT_VERIFIED_SESSION.authenticatedUnder,
+    tierSummary: sessionData?.tierSummary || initialSessionData?.tierSummary || DEFAULT_VERIFIED_SESSION.tierSummary,
+    activeChapter: sessionData?.activeChapter || initialSessionData?.activeChapter || DEFAULT_VERIFIED_SESSION.activeChapter,
+    grantedDuties: sessionData?.grantedDuties || initialSessionData?.grantedDuties || DEFAULT_VERIFIED_SESSION.grantedDuties,
+    governanceConstraints: sessionData?.governanceConstraints || initialSessionData?.governanceConstraints || DEFAULT_VERIFIED_SESSION.governanceConstraints,
+  };
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -610,7 +637,7 @@ export function LoginPage({
           <p className="kamunggay-verified-welcome">
             <span>Welcome back,</span>
             <span className="kamunggay-verified-name-slot">
-              {sessionData?.userName ?? ''}
+              {effectiveSessionData.userName ?? ''}
             </span>
             <span>Your Chapter duties have been loaded.</span>
           </p>
@@ -622,14 +649,14 @@ export function LoginPage({
               className="kamunggay-verified-banner-img"
               draggable={false}
             />
-            {sessionData?.authenticatedUnder && (
+            {effectiveSessionData.authenticatedUnder && (
               <span className="kamunggay-verified-banner-slot-user">
-                {sessionData.authenticatedUnder}
+                {effectiveSessionData.authenticatedUnder}
               </span>
             )}
-            {sessionData?.tierSummary && (
+            {effectiveSessionData.tierSummary && (
               <span className="kamunggay-verified-banner-slot-tier">
-                {sessionData.tierSummary}
+                {effectiveSessionData.tierSummary}
               </span>
             )}
           </div>
@@ -641,19 +668,19 @@ export function LoginPage({
               className="kamunggay-details-box-img"
               draggable={false}
             />
-            {sessionData?.activeChapter && (
+            {effectiveSessionData.activeChapter && (
               <span className="kamunggay-details-slot slot-chapter">
-                {sessionData.activeChapter}
+                {effectiveSessionData.activeChapter}
               </span>
             )}
-            {sessionData?.grantedDuties && (
+            {effectiveSessionData.grantedDuties && (
               <span className="kamunggay-details-slot slot-duties">
-                {sessionData.grantedDuties}
+                {effectiveSessionData.grantedDuties}
               </span>
             )}
-            {sessionData?.governanceConstraints && (
+            {effectiveSessionData.governanceConstraints && (
               <span className="kamunggay-details-slot slot-constraints">
-                {sessionData.governanceConstraints}
+                {effectiveSessionData.governanceConstraints}
               </span>
             )}
           </div>
