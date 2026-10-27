@@ -1221,6 +1221,9 @@ async function verifiedProvisioner(label) {
   assert.equal(installed.code, 0, installed.output);
   assert.equal((await (await officer.browser.request('/api/v1/session')).json()).state, 'mfa_enrollment_required');
   const prepared = await (await post(officer.browser, enrollmentPath, {intent:'begin'})).json();
+  // Keep setup away from the exact 30-second boundary; production accepts only
+  // the current TOTP step, including when request delivery crosses that boundary.
+  if (Date.now() % 30000 > 25000) await nextTotpStep();
   const confirmed = await post(officer.browser, enrollmentPath + '/confirm', {
     enrollment_id:prepared.enrollment.id, authenticator_code:authenticatorCode(prepared.enrollment.manual_key),
   });
@@ -1229,6 +1232,206 @@ async function verifiedProvisioner(label) {
 }
 const createChapterBody = code => ({idempotency_key:`key-${code}`, expected_provider_authority_version:1,
   chapter:{code, name:'Synthetic chapter / \u00e9 \ud83c\udf31'}});
+
+const headLookupPath = '/api/v1/provider/provisioning-identities/lookup';
+function assertHeadResponse(status, body) {
+  const operation = api.paths['/provider/provisionings/{provisioning_id}/initial-head'].post;
+  const validate = ajv.compile(operation.responses[status].content['application/json'].schema);
+  assert.ok(validate(body), JSON.stringify(validate.errors));
+}
+async function headApprovalCli(command, user, executor, document, verified = 'yes') {
+  const approval = provisioningFixture('approval-document', user, document);
+  return runIdentityCli([
+    ['Approval document path', approval.path], ['Technical executor identity ID', executor],
+    ['Operator audit reference', 'Synthetic executor'], ['Approval independently verified (yes/no)', verified],
+  ], command);
+}
+async function initialHeadScenario(label) {
+  const provider = await verifiedProvisioner(label);
+  const head = await createIdentity(`${label}-head-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const approved = await headApprovalCli('candidate:authorize-initial-head', head, head, {
+    organization_id:provider.organization, purpose:'initial_head_appointment', approved_by_user_id:provider.id,
+  });
+  assert.equal(approved.code, 0, approved.output);
+  const created = await post(provider.browser, provisioningPath, createChapterBody(`H${Date.now()}`));
+  assert.equal(created.status, 200);
+  const provisioning = (await created.json()).provisioning;
+  const path = `${provisioningPath}/${provisioning.id}/initial-head`;
+  const body = {idempotency_key:`head-${Date.now()}`, expected_provider_authority_version:1,
+    expected_provisioning_version:1, identity:{user_id:head}, reason:'Synthetic approved initial Head designation'};
+  return {...provider, head, provisioning, path, body};
+}
+test('ticket06 designation commits a durable P03 appointment without operational membership', async () => {
+  const scenario = await initialHeadScenario('p06-appoint');
+  const response = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(response.status, 200);
+  const original = await response.json();
+  assertHeadResponse(200, original);
+  assert.equal(original.provisioning.status, 'initial_head_designated');
+  assert.equal(original.provisioning.initial_head.identity.user_id, scenario.head);
+  assert.equal(original.provisioning.initial_head_membership_authorization, 'not_authorized');
+  assert.equal(original.provisioning.version, 2);
+  assert.equal(provisioningFixture('head-authority', scenario.head).memberships, 0);
+  const replay = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(replay.status, 200);
+  assert.deepEqual(await replay.json(), {...original, operation:{...original.operation, replayed:true}});
+  const changed = await post(scenario.browser, scenario.path, {...scenario.body, reason:'Changed appointment reason'});
+  assert.equal(changed.status, 409);
+  assert.equal((await changed.json()).code, 'idempotency_conflict');
+  const lookup = await scenario.browser.request('/api/v1/provider/provisioning-operations/by-key?action_code=provider.initial_head.appoint&idempotency_key=' + scenario.body.idempotency_key);
+  assert.deepEqual(await lookup.json(), {...original, operation:{...original.operation, replayed:true}});
+  const read = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
+  assert.deepEqual(await read.json(), original.provisioning);
+});
+test('ticket06 restricted bootstrap atomically grants the initial Head once and retains exact approved repeats', async () => {
+  const scenario = await initialHeadScenario('p06-bootstrap');
+  const appointment = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(appointment.status, 200);
+  const designated = await appointment.json();
+  const document = {purpose:'initial_head_membership', organization_id:scenario.organization,
+    chapter_id:scenario.provisioning.chapter.id, provisioning_id:scenario.provisioning.id,
+    designation_operation_id:designated.operation.identity.operation_id, approved_by_user_id:scenario.id};
+  const invoke = (data = document, target = scenario.head) => headApprovalCli('chapter:bootstrap-initial-head', target, scenario.head, data);
+  const installed = await invoke();
+  assert.equal(installed.code, 0, installed.output);
+  const result = JSON.parse(installed.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]);
+  assert.equal(result.user_id, scenario.head);
+  assert.equal(result.chapter_id, scenario.provisioning.chapter.id);
+  assert.equal(result.duty, 'CHAPTER_HEAD');
+  const repeated = await invoke();
+  assert.equal(repeated.code, 0, repeated.output);
+  assert.deepEqual(JSON.parse(repeated.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]), result);
+  const changed = await invoke({...document, approval_reference:'Different independent approval'});
+  assert.equal(changed.code, 1, changed.output);
+  const competing = await invoke(document, scenario.id);
+  assert.equal(competing.code, 1, competing.output);
+  const state = provisioningFixture('head-authority', scenario.head);
+  assert.equal(state.memberships, 1);
+  assert.equal(state.grants, 1);
+  assert.equal(state.initial_head_roots_valid, true);
+  const read = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
+  assert.equal((await read.json()).initial_head_membership_authorization, 'authorized');
+  const originalReplay = await (await post(scenario.browser, scenario.path, scenario.body)).json();
+  assert.equal(originalReplay.provisioning.initial_head_membership_authorization, 'not_authorized', 'P03 replay preserves its original snapshot');
+  provisioningFixture('end-head-authority', scenario.head);
+  const retained = await invoke();
+  assert.equal(retained.code, 0, retained.output);
+  assert.deepEqual(JSON.parse(retained.output.match(/Bootstrap result: (\{[^\r\n]+\})/)[1]), result);
+  const ended = await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`);
+  assert.equal((await ended.json()).initial_head_membership_authorization, 'ended', 'Bootstrap repeat never repairs ended authority');
+});
+test('ticket06 exact candidate lookup hides unapproved identities and returns only approved reference', async () => {
+  const provider = await verifiedProvisioner('p06-lookup');
+  const target = await createIdentity(`p06-candidate-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const lookup = async user_id => {
+    const response = await post(provider.browser, headLookupPath, {user_id});
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  assert.deepEqual(await lookup(target), {identity:null});
+  assert.deepEqual(await lookup('18446744073709551615'), {identity:null});
+  const approval = provisioningFixture('approval-document', target, {organization_id:provider.organization,
+    purpose:'initial_head_appointment', approved_by_user_id:provider.id});
+  const authorized = await runIdentityCli([
+    ['Approval document path', approval.path], ['Technical executor identity ID', target],
+    ['Operator audit reference', 'Synthetic executor'], ['Approval independently verified (yes/no)', 'yes'],
+  ], 'candidate:authorize-initial-head');
+  assert.equal(authorized.code, 0, authorized.output);
+  assert.deepEqual(await lookup(target), {identity:{user_id:target, display_name:'Synthetic officer'}});
+  const otherProvider = await verifiedProvisioner('p06-nonvisible');
+  const hidden = await post(otherProvider.browser, headLookupPath, {user_id:target});
+  assert.equal(hidden.status, 200);
+  assert.deepEqual(await hidden.json(), {identity:null});
+  provisioningFixture('revoke-candidate', target);
+  assert.deepEqual(await lookup(target), {identity:null});
+  const reapproved = await headApprovalCli('candidate:authorize-initial-head', target, target, {
+    organization_id:provider.organization, purpose:'initial_head_appointment', approved_by_user_id:provider.id,
+  });
+  assert.equal(reapproved.code, 0, reapproved.output);
+  arrangeState('disable', target);
+  assert.deepEqual(await lookup(target), {identity:null});
+});
+
+test('ticket06 appointment rechecks candidate revocation under a real MySQL lock', async t => {
+  const scenario = await initialHeadScenario('p06-recheck');
+  const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/provisioning-state.php', 'hold-candidate-revocation', scenario.head]);
+  t.after(() => holder.stdin.end('\n'));
+  await new Promise((resolve, reject) => {
+    holder.once('error', reject);
+    holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+    holder.once('exit', () => reject(new Error('Candidate lock holder exited')));
+  });
+  const pending = post(scenario.browser, scenario.path, scenario.body);
+  let waiting = 0;
+  try {
+    for (let i = 0; i < 40; i++) {
+      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(*) FROM performance_schema.data_lock_waits w JOIN performance_schema.data_locks l ON w.REQUESTING_ENGINE_LOCK_ID=l.ENGINE_LOCK_ID WHERE l.OBJECT_NAME=\'initial_head_candidates\'"'], {encoding:'utf8'});
+      assert.equal(probe.status, 0, probe.stderr);
+      waiting = Number(probe.stdout.trim());
+      if (waiting >= 1) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  } finally { holder.stdin.end('\n'); }
+  const response = await pending;
+  assert.ok(waiting >= 1, 'Appointment must reach the locked candidate row');
+  assert.equal(response.status, 409);
+  const rejected = await response.json();
+  assertHeadResponse(409, rejected);
+  assert.equal(rejected.code, 'identity_not_eligible');
+  assert.equal(rejected.operation.outcome, 'rejected');
+  assert.equal((await (await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`)).json()).status, 'awaiting_initial_head');
+  const replay = await (await post(scenario.browser, scenario.path, scenario.body)).json();
+  assert.deepEqual(replay, {...rejected, operation:{...rejected.operation, replayed:true}});
+  assert.equal(provisioningFixture('head-authority', scenario.head).memberships, 0);
+});
+
+test('ticket06 restricted bootstrap rejects unverified mismatched approval and lost eligibility without grants', async () => {
+  const scenario = await initialHeadScenario('p06-guards');
+  const noninteractive = spawnSync('docker', ['exec', container, 'php', 'artisan', 'chapter:bootstrap-initial-head', '--no-interaction'], {encoding:'utf8'});
+  assert.equal(noninteractive.status, 1);
+  assert.match(noninteractive.stdout, /interactive terminal/);
+  const document = {purpose:'initial_head_membership', organization_id:scenario.organization,
+    chapter_id:scenario.provisioning.chapter.id, provisioning_id:scenario.provisioning.id,
+    designation_operation_id:'01K8A6J0A00000000000000002', approved_by_user_id:scenario.id};
+  const invoke = (data = document, executor = scenario.head, verified = 'yes') => headApprovalCli('chapter:bootstrap-initial-head', scenario.head, executor, data, verified);
+  assert.equal((await invoke()).code, 1, 'No designation');
+  const response = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(response.status, 200);
+  document.designation_operation_id = (await response.json()).operation.identity.operation_id;
+  assert.equal((await invoke(document, scenario.head, 'no')).code, 1, 'Unverified evidence');
+  assert.equal((await invoke(document, scenario.id)).code, 1, 'Approver is also executor');
+  assert.equal((await invoke({...document, chapter_id:'18446744073709551615'})).code, 1, 'Wrong chapter');
+  assert.equal((await invoke({...document, designation_operation_id:'01K8A6J0A00000000000000002'})).code, 1, 'Wrong designation');
+  assert.equal((await invoke({...document, approval_reference:''})).code, 1, 'Absent approval');
+  provisioningFixture('revoke-candidate', scenario.head);
+  assert.equal((await invoke()).code, 1, 'Lost live eligibility');
+  assert.equal(provisioningFixture('head-authority', scenario.head).memberships, 0);
+});
+
+test('ticket06 bootstrap rolls back all authority on history failure and rejects an existing competing Head', async () => {
+  const scenario = await initialHeadScenario('p06-atomic');
+  const response = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(response.status, 200);
+  const designated = await response.json();
+  const document = {purpose:'initial_head_membership', organization_id:scenario.organization,
+    chapter_id:scenario.provisioning.chapter.id, provisioning_id:scenario.provisioning.id,
+    designation_operation_id:designated.operation.identity.operation_id, approved_by_user_id:scenario.id};
+  const invoke = () => headApprovalCli('chapter:bootstrap-initial-head', scenario.head, scenario.head, document);
+  mysqlFault("CREATE TRIGGER ticket06_abort BEFORE INSERT ON initial_head_bootstraps FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Synthetic bootstrap history failure'");
+  try {
+    assert.equal((await invoke()).code, 1);
+    assert.equal(provisioningFixture('head-authority', scenario.head).memberships, 0);
+    assert.equal((await (await scenario.browser.request(`${provisioningPath}/${scenario.provisioning.id}`)).json()).initial_head_membership_authorization, 'not_authorized');
+  } finally { mysqlFault('DROP TRIGGER IF EXISTS ticket06_abort'); }
+  // A separately seeded historical Head must also close the initial bootstrap path,
+  // even when its grant has ended and there is no bootstrap result to replay.
+  provisioningFixture('competing-head', scenario.id, {chapter:scenario.provisioning.chapter.id});
+  assert.equal((await invoke()).code, 1);
+  assert.equal(provisioningFixture('head-authority', scenario.head).memberships, 0);
+  for (const [name, passed] of Object.entries(provisioningFixture('head-history-privileges', scenario.head))) assert.equal(passed, true, name);
+});
 
 test('ticket05 core write creates an awaiting initial Head chapter with no operational authority', async () => {
   const {browser, id, organization} = await verifiedProvisioner('p05-write');

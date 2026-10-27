@@ -42,7 +42,7 @@ final class ProviderOutcomes
             'public_id' => $operationId, 'organization_id' => $scope['organization_id'],
             'provider_user_id' => $scope['provider_user_id'], 'action_code' => $action,
             'idempotency_key' => $key, 'payload_hash' => $fingerprint,
-            'input_schema' => 'CreateProvisionedChapterRequest@p02.09-review.1', 'created_at' => $time,
+            'input_schema' => ($action === 'provider.initial_head.appoint' ? 'AppointInitialHeadRequest' : 'CreateProvisionedChapterRequest').'@p02.09-review.1', 'created_at' => $time,
         ]);
         $attempt = DB::connection()->getPdo()->lastInsertId();
         DB::table('provider_actor_attributions')->insert([

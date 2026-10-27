@@ -37,13 +37,13 @@ final class CanonicalRequest
         return $value;
     }
 
-    public function fingerprint(stdClass $scope, stdClass $body): string
+    public function fingerprint(stdClass $scope, stdClass $body, string $action = 'provider.chapters.create', ?string $provisioning = null): string
     {
         // The owning schema allows only objects, strings and bounded integers:
         // this is the JCS subset with no floating-point or array normalization.
         return hash('sha256', $this->encode((object) [
-            'scope' => $scope, 'action_code' => 'provider.chapters.create', 'provisioning_id' => null,
-            'input_schema' => 'CreateProvisionedChapterRequest@p02.09-review.1', 'body' => $body,
+            'scope' => $scope, 'action_code' => $action, 'provisioning_id' => $provisioning,
+            'input_schema' => ($action === 'provider.initial_head.appoint' ? 'AppointInitialHeadRequest' : 'CreateProvisionedChapterRequest').'@p02.09-review.1', 'body' => $body,
         ]));
     }
 

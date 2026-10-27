@@ -32,7 +32,7 @@ final class ChapterProvisioning
             [$user, $grant, $scope] = $authority;
 
             return response()->json(['scope' => $scope, 'authority_version' => $grant->authority_version,
-                'available_actions' => ['provider.chapters.prepare', 'provider.chapters.create']]);
+                'available_actions' => ['provider.identities.reference.read', 'provider.chapters.prepare', 'provider.chapters.create', 'provider.initial_head.appoint']]);
         }, 3);
     }
 
@@ -125,7 +125,7 @@ final class ChapterProvisioning
                 $items = $rows;
             }
 
-            $formatted = $items->map(fn ($row) => [
+            $formatted = $items->map(fn ($row) => $this->withInitialHead([
                 'id' => (string) $row->provisioning_id,
                 'scope' => $scope,
                 'chapter' => [
@@ -142,7 +142,7 @@ final class ChapterProvisioning
                 'status' => 'awaiting_initial_head',
                 'initial_head' => null,
                 'initial_head_membership_authorization' => 'not_applicable',
-            ])->values()->all();
+            ]))->values()->all();
 
             return response()->json([
                 'items' => $formatted,
@@ -275,7 +275,7 @@ final class ChapterProvisioning
                 return response()->json(['code' => 'provisioning_not_visible', 'message' => 'Provisioning is not available.'], 404);
             }
 
-            return response()->json([
+            return response()->json($this->withInitialHead([
                 'id' => (string) $row->provisioning_id,
                 'scope' => $scope,
                 'chapter' => [
@@ -292,7 +292,7 @@ final class ChapterProvisioning
                 'status' => 'awaiting_initial_head',
                 'initial_head' => null,
                 'initial_head_membership_authorization' => 'not_applicable',
-            ]);
+            ]));
         }, 3);
     }
 
@@ -434,6 +434,7 @@ final class ChapterProvisioning
                 'name' => $body->chapter->name, 'provisioned_by_user_id' => $user->id,
             ]);
             $chapter = DB::connection()->getPdo()->lastInsertId();
+            DB::table('chapter_control_guards')->insert(['chapter_id' => $chapter]);
             DB::table('chapter_provisionings')->insert([
                 'organization_id' => $scope['organization_id'], 'provider_user_id' => $user->id,
                 'chapter_id' => $chapter, 'created_at' => $time->format('Y-m-d H:i:s.u'),
@@ -453,6 +454,173 @@ final class ChapterProvisioning
 
             return response()->json($result);
         }, 3);
+    }
+
+    public function lookupProvisioningIdentity(Request $request, InitialHeadApproval $candidates): JsonResponse
+    {
+        if ($request->getQueryString() !== null || strlen($request->getContent()) > 8192) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+        try {
+            $body = $this->canonical->decode($request->getContent());
+        } catch (JsonException) {
+            $body = null;
+        }
+        if (! $request->isJson() || ! $body instanceof stdClass || array_keys(get_object_vars($body)) !== ['user_id']
+            || ! InitialHeadApproval::validId($body->user_id)) {
+            return response()->json(['code' => 'validation_failed', 'message' => 'Check the submitted fields.',
+                'field_feedback' => [['path' => '/user_id', 'code' => 'INVALID', 'message' => 'Check this field.']],
+                'next_action' => 'correct_fields'], 422);
+        }
+
+        return DB::transaction(function () use ($request, $body, $candidates): JsonResponse {
+            $authority = $this->authorize($request);
+            if ($authority instanceof JsonResponse) {
+                return $authority;
+            }
+            [$user, $grant, $scope] = $authority;
+            $key = hash('sha256', 'initial-head-lookup:'.$user->id);
+            DB::table('session_throttles')->insertOrIgnore(['key' => $key, 'attempts' => 0, 'expires_at' => time() + 900]);
+            $counter = DB::table('session_throttles')->where('key', $key)->lockForUpdate()->first();
+            if ($counter->expires_at <= time()) {
+                DB::table('session_throttles')->where('key', $key)->update(['attempts' => 0, 'expires_at' => time() + 900]);
+            } elseif ($counter->attempts >= 60) {
+                return response()->json(['code' => 'throttled', 'message' => 'Try again after the indicated delay.'], 429)
+                    ->header('Retry-After', (string) max(1, $counter->expires_at - time()));
+            }
+            DB::table('session_throttles')->where('key', $key)->increment('attempts');
+            $identity = $candidates->eligible($scope['organization_id'], $body->user_id);
+
+            return response()->json(['identity' => $identity === null ? null : ['user_id' => (string) $identity->id, 'display_name' => $identity->name]]);
+        }, 3);
+    }
+
+    /** @param array<string, mixed> $projection
+     * @return array<string, mixed>
+     */
+    private function withInitialHead(array $projection): array
+    {
+        $designation = DB::table('initial_head_designations')->where('provisioning_id', $projection['id'])->first();
+        if ($designation !== null) {
+            $projection['status'] = 'initial_head_designated';
+            $projection['initial_head'] = json_decode($designation->appointment_snapshot, true, flags: JSON_THROW_ON_ERROR);
+            $bootstrap = DB::table('initial_head_bootstraps')->where('designation_id', $designation->id)->first();
+            $projection['initial_head_membership_authorization'] = 'not_authorized';
+            if ($bootstrap !== null) {
+                $active = DB::table('memberships')->join('duty_grants', function ($join): void {
+                    $join->on('duty_grants.membership_id', '=', 'memberships.id')->on('duty_grants.chapter_id', '=', 'memberships.chapter_id');
+                })->where('memberships.id', $bootstrap->membership_id)->where('memberships.status', 'active')->whereNull('memberships.disabled_at')
+                    ->where('duty_grants.id', $bootstrap->duty_grant_id)->whereNull('duty_grants.revoked_at')->where('duty_grants.starts_at', '<=', now())
+                    ->where(fn ($query) => $query->whereNull('duty_grants.ends_at')->orWhere('duty_grants.ends_at', '>', now()))->exists();
+                $projection['initial_head_membership_authorization'] = $active ? 'authorized' : 'ended';
+            }
+        }
+
+        return $projection;
+    }
+
+    public function appointInitialHead(Request $request, string $provisioning_id, InitialHeadApproval $candidates): JsonResponse
+    {
+        if ($request->getQueryString() !== null || ! InitialHeadApproval::validId($provisioning_id) || strlen($request->getContent()) > 8192) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+        try {
+            $body = $this->canonical->decode($request->getContent());
+        } catch (JsonException) {
+            $body = null;
+        }
+        $errors = $this->invalidAppointment($body);
+        if (! $request->isJson() || $errors !== []) {
+            return response()->json(['code' => 'validation_failed', 'message' => 'Check the submitted fields.',
+                'field_feedback' => array_map(fn (string $path): array => ['path' => $path, 'code' => 'INVALID', 'message' => 'Check this field.'], $errors ?: ['']),
+                'next_action' => 'correct_fields'], 422);
+        }
+        $operationId = (string) Str::ulid();
+
+        return DB::transaction(function () use ($request, $body, $provisioning_id, $candidates, $operationId): JsonResponse {
+            $authority = $this->authorize($request);
+            if ($authority instanceof JsonResponse) {
+                return $authority;
+            }
+            [$user, $grant, $scope] = $authority;
+            $action = 'provider.initial_head.appoint';
+            $hash = $this->canonical->fingerprint((object) $scope, $body, $action, $provisioning_id);
+            $replay = $this->outcomes->replay($scope, $action, $body->idempotency_key, $hash);
+            if ($replay !== null) {
+                return $replay;
+            }
+            $row = DB::table('chapter_provisionings')->where('id', $provisioning_id)
+                ->where('organization_id', $scope['organization_id'])->where('provider_user_id', $user->id)->lockForUpdate()->first();
+            if ($row === null) {
+                return response()->json(['code' => 'provisioning_not_visible', 'message' => 'Provisioning is not available.'], 404);
+            }
+            $stale = $grant->authority_version !== $body->expected_provider_authority_version ? 'provider_authority_stale'
+                : ($row->row_version !== $body->expected_provisioning_version ? 'provisioning_stale' : null);
+            if ($stale !== null) {
+                return response()->json(['code' => $stale, 'message' => 'Review the original immutable attempt.', 'next_action' => 'review_original_attempt'], 409);
+            }
+            $identity = $candidates->eligible($scope['organization_id'], $body->identity->user_id);
+            $now = now();
+            $time = $now->format('Y-m-d H:i:s.u');
+            $instant = $now->utc()->format('Y-m-d\TH:i:s.u\Z');
+            $actor = ['user_id' => (string) $user->id, 'display_name' => $user->name];
+            $operation = ['identity' => ['operation_id' => $operationId, 'action_code' => $action, 'idempotency_key' => $body->idempotency_key],
+                'outcome' => 'committed', 'committed_at' => $instant, 'replayed' => false];
+            if ($identity === null || $row->status !== 'awaiting_initial_head') {
+                $operation['outcome'] = 'rejected';
+                $result = ['resource_type' => 'provisioning', 'action_result' => 'blocked', 'scope' => $scope,
+                    'provisioning_id' => $provisioning_id, 'operation' => $operation,
+                    'code' => $identity === null ? 'identity_not_eligible' : 'initial_head_already_designated',
+                    'message' => 'Provisioning cannot accept this action.', 'next_action' => 'review_original_attempt'];
+                $this->outcomes->record($scope, $action, $body->idempotency_key, $hash, $operationId, $grant, $actor, $result, $time, 409);
+
+                return response()->json($result, 409);
+            }
+            $chapter = DB::table('chapters')->where('id', $row->chapter_id)->first();
+            $appointment = ['identity' => ['user_id' => (string) $identity->id, 'display_name' => $identity->name],
+                'appointed_by' => $actor, 'appointed_at' => $instant];
+            $result = ['resource_type' => 'provisioning', 'action_result' => 'success', 'scope' => $scope,
+                'provisioning' => ['id' => $provisioning_id, 'scope' => $scope,
+                    'chapter' => ['id' => (string) $row->chapter_id, 'code' => $chapter->code, 'name' => $chapter->name],
+                    'version' => $row->row_version + 1, 'created_by' => $actor,
+                    'created_at' => Carbon::parse($row->created_at)->utc()->format('Y-m-d\TH:i:s.u\Z'),
+                    'status' => 'initial_head_designated', 'initial_head' => $appointment, 'initial_head_membership_authorization' => 'not_authorized'],
+                'operation' => $operation];
+            $this->outcomes->record($scope, $action, $body->idempotency_key, $hash, $operationId, $grant, $actor, $result, $time, 200);
+            DB::table('initial_head_designations')->insert(['provisioning_id' => $provisioning_id, 'chapter_id' => $row->chapter_id,
+                'user_id' => $identity->id, 'operation_public_id' => $operationId,
+                'appointment_snapshot' => json_encode($appointment, JSON_THROW_ON_ERROR), 'reason' => $body->reason, 'appointed_at' => $time]);
+            DB::table('chapter_provisionings')->where('id', $row->id)->update(['status' => 'initial_head_designated', 'row_version' => $row->row_version + 1]);
+
+            return response()->json($result);
+        }, 3);
+    }
+
+    /** @return list<string> */
+    private function invalidAppointment(mixed $body): array
+    {
+        if (! $body instanceof stdClass || array_diff(array_keys(get_object_vars($body)),
+            ['idempotency_key', 'expected_provider_authority_version', 'expected_provisioning_version', 'identity', 'reason']) !== []) {
+            return [''];
+        }
+        $errors = [];
+        if (! isset($body->idempotency_key) || ! is_string($body->idempotency_key) || ! preg_match('/^[A-Za-z0-9._:-]{1,128}$/D', $body->idempotency_key)) {
+            $errors[] = '/idempotency_key';
+        }
+        foreach (['expected_provider_authority_version', 'expected_provisioning_version'] as $field) {
+            if (! isset($body->{$field}) || ! is_int($body->{$field}) || $body->{$field} < 1 || $body->{$field} >= 2147483647) {
+                $errors[] = '/'.$field;
+            }
+        }
+        if (! isset($body->identity) || ! $body->identity instanceof stdClass || array_keys(get_object_vars($body->identity)) !== ['user_id']
+            || ! InitialHeadApproval::validId($body->identity->user_id)) {
+            $errors[] = '/identity/user_id';
+        }
+        if (! isset($body->reason) || ! is_string($body->reason) || mb_strlen($body->reason) > 1000 || ! preg_match('/(*UCP)\S/u', $body->reason)) {
+            $errors[] = '/reason';
+        }
+
+        return $errors;
     }
 
     /** @return array{object, object, array<string, string>}|JsonResponse */

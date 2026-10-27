@@ -36,7 +36,8 @@ final class VerifyBaseline extends Command
             $expectedTables = ['migrations', 'sessions', 'users', 'global_security_events', 'session_throttles',
                 'organizations', 'chapters', 'provider_role_grants', 'memberships', 'roles', 'requesting_units', 'duty_grants',
                 'authenticator_enrollments', 'user_recovery_codes', 'initial_provider_installations', 'chapter_provisionings',
-                'provider_operation_attempts', 'provider_actor_attributions', 'provider_operations', 'provider_audit_events', 'provider_follow_up_intents'];
+                'provider_operation_attempts', 'provider_actor_attributions', 'provider_operations', 'provider_audit_events', 'provider_follow_up_intents',
+                'initial_head_candidates', 'initial_head_designations', 'initial_head_bootstraps', 'chapter_control_guards'];
             sort($expectedTables);
             $actualTables = array_map(fn (object $table): string => $table->name, $tables);
             sort($actualTables);

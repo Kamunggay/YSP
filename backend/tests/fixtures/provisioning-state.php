@@ -23,8 +23,61 @@ if ($action === 'hold-organization') {
     DB::rollBack();
     exit(0);
 }
+if ($action === 'hold-candidate-revocation') {
+    DB::beginTransaction();
+    DB::table('initial_head_candidates')->where('user_id', $id)->update(['revoked_at' => now()]);
+    echo "held\n";
+    fflush(STDOUT);
+    fgets(STDIN);
+    DB::commit();
+    exit(0);
+}
 $input = json_decode(stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
-if ($action === 'organization') {
+if ($action === 'head-history-privileges') {
+    $checks = [];
+    foreach (['initial_head_designations', 'initial_head_bootstraps'] as $table) {
+        foreach (['UPDATE', 'DELETE'] as $mutation) {
+            try {
+                DB::statement($mutation === 'UPDATE' ? "UPDATE {$table} SET id = id WHERE 1 = 0" : "DELETE FROM {$table} WHERE 1 = 0");
+                $checks[$table.'_'.$mutation.'_denied'] = false;
+            } catch (QueryException $error) {
+                $checks[$table.'_'.$mutation.'_denied'] = ($error->errorInfo[1] ?? 0) === 1142;
+            }
+        }
+    }
+    echo json_encode($checks, JSON_THROW_ON_ERROR);
+} elseif ($action === 'competing-head') {
+    DB::table('memberships')->insert(['chapter_id' => $input['chapter'], 'user_id' => $id,
+        'authorized_by_user_id' => $id, 'authorized_at' => now()]);
+    $membership = DB::connection()->getPdo()->lastInsertId();
+    DB::table('duty_grants')->insert(['chapter_id' => $input['chapter'], 'membership_id' => $membership,
+        'role_id' => DB::table('roles')->where('code', 'CHAPTER_HEAD')->value('id'), 'scope_kind' => 'chapter',
+        'starts_at' => now()->subHour(), 'revoked_at' => now()]);
+    echo '{}';
+} elseif ($action === 'revoke-candidate') {
+    DB::table('initial_head_candidates')->where('user_id', $id)->whereNull('revoked_at')->update(['revoked_at' => now()]);
+    echo '{}';
+} elseif ($action === 'end-head-authority') {
+    $membership = DB::table('memberships')->where('user_id', $id)->first();
+    DB::table('duty_grants')->where('membership_id', $membership->id)->update(['revoked_at' => now()]);
+    echo '{}';
+} elseif ($action === 'head-authority') {
+    $membership = DB::table('memberships')->where('user_id', $id)->first();
+    $grant = $membership === null ? null : DB::table('duty_grants')->where('membership_id', $membership->id)->first();
+    echo json_encode(['memberships' => DB::table('memberships')->where('user_id', $id)->count(),
+        'initial_head_roots_valid' => $membership !== null && $grant !== null
+            && DB::table('roles')->where('id', $grant->role_id)->value('code') === 'CHAPTER_HEAD'
+            && $grant->scope_kind === 'chapter' && $grant->requesting_unit_id === null && $grant->monetary_limit === null
+            && DB::table('chapter_control_guards')->where('chapter_id', $membership->chapter_id)->value('authority_version') === 2
+            && DB::table('initial_head_bootstraps')->where('membership_id', $membership->id)->where('duty_grant_id', $grant->id)->count() === 1,
+        'grants' => DB::table('duty_grants')->join('memberships', 'memberships.id', '=', 'duty_grants.membership_id')->where('memberships.user_id', $id)->count()], JSON_THROW_ON_ERROR);
+} elseif ($action === 'approval-document') {
+    $document = array_merge(['user_id' => $id, 'approval_reference' => 'Synthetic independent leadership approval'], $input);
+    $path = tempnam(sys_get_temp_dir(), 'ysp-approval-');
+    file_put_contents($path, json_encode($document, JSON_THROW_ON_ERROR));
+    chmod($path, 0600);
+    echo json_encode(['path' => $path], JSON_THROW_ON_ERROR);
+} elseif ($action === 'organization') {
     DB::table('organizations')->insert(['name' => 'Synthetic approved organization']);
     echo json_encode(['organization' => DB::connection()->getPdo()->lastInsertId()], JSON_THROW_ON_ERROR);
 } elseif ($action === 'installed') {

@@ -18,6 +18,8 @@ Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::
         Route::get('/api/v1/provider/provisioning-context', [ChapterProvisioning::class, 'context']);
         Route::get('/api/v1/provider/provisionings', [ChapterProvisioning::class, 'list']);
         Route::post('/api/v1/provider/provisionings', [ChapterProvisioning::class, 'createProvisionedChapter']);
+        Route::post('/api/v1/provider/provisioning-identities/lookup', [ChapterProvisioning::class, 'lookupProvisioningIdentity']);
+        Route::post('/api/v1/provider/provisionings/{provisioning_id}/initial-head', [ChapterProvisioning::class, 'appointInitialHead']);
         Route::get('/api/v1/provider/provisionings/{provisioning_id}', [ChapterProvisioning::class, 'read']);
         Route::get('/api/v1/provider/provisioning-operations/by-key', [ChapterProvisioning::class, 'lookupByKey']);
         Route::get('/api/v1/provider/provisioning-operations/by-id/{operation_id}', [ChapterProvisioning::class, 'lookupById']);
