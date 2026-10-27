@@ -17,9 +17,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Dependency audit failed' }
     & "$PSScriptRoot/check-config.ps1"
     Invoke-Compose up -d --wait --wait-timeout 180 mysql backend
-    Invoke-Compose exec -T backend php artisan migrate --force
+    Invoke-Compose run --rm --no-deps migrate
     Invoke-Compose exec -T backend php artisan baseline:verify
-    Invoke-Compose exec -T backend php artisan migrate --force
+    Invoke-Compose run --rm --no-deps migrate
     Invoke-Compose exec -T backend php scripts/http-smoke.php
     $published = & docker compose --env-file backend/.env -f compose.yaml -f compose.backend.yaml --project-name $verificationProject port backend 8080
     if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve HTTP port' }

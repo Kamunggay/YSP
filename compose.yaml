@@ -56,6 +56,22 @@ services:
       timeout: 20s
       retries: 5
       start_period: 10s
+  migrate:
+    image: ysp-backend:local
+    profiles: [maintenance]
+    env_file: ./backend/.env.example
+    environment:
+      DB_USERNAME: root
+      DB_RUNTIME_USERNAME: ysp_app
+      DB_PASSWORD_FILE: /run/secrets/db_root_password
+    secrets: [app_key, db_root_password]
+    command: [php, artisan, migrate, --force]
+    networks: [private]
+    init: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    pids_limit: 128
   mysql:
     image: mysql:8.4@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69
     environment:

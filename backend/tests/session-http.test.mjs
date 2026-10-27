@@ -92,6 +92,12 @@ function arrangeState(action, id) {
   assert.equal(result.stdout, 'Fixture applied');
 }
 
+function mysqlSetup(sql) {
+  const result = spawnSync('docker', ['exec', '-i', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+    'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot ysp_local'], { encoding: 'utf8', input: sql });
+  assert.equal(result.status, 0, result.stderr);
+}
+
 function assertCookies(response, { secure }) {
   const cookies = response.headers.getSetCookie();
   for (const name of ['ysp_session', 'XSRF-TOKEN']) {
@@ -165,6 +171,44 @@ test('same-origin Fetch Metadata never bypasses the mandatory CSRF header', asyn
 
 test('restricted identity CLI accepts hidden credentials without granting authority', async () => {
   await createIdentity(`cli-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+});
+
+test('CLI identity history rejects ordinary runtime UPDATE and DELETE without changing its attribution', async () => {
+  const id = await createIdentity(`history-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const result = spawnSync('docker', ['exec', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/identity-history.php', id], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  for (const [name, passed] of Object.entries(JSON.parse(result.stdout))) assert.equal(passed, true, name);
+});
+
+test('CLI audit failure rolls back the identity and permits a later explicit creation', async () => {
+  const email = `rollback-${Date.now()}@example.test`;
+  const password = 'Synthetic-only-secret-42!';
+  const browser = new Browser();
+  await browser.request('/csrf-cookie');
+  mysqlSetup("CREATE TRIGGER test_reject_identity_audit BEFORE INSERT ON global_security_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Synthetic audit failure'");
+  try {
+    const result = await runIdentityCli([
+      ['Operator audit reference', 'Synthetic rollback probe'], ['Display name', 'Synthetic officer'],
+      ['Email', email], ['Password', password], ['Confirm password', password],
+    ]);
+    assert.equal(result.code, 1);
+    assert.ok(!result.output.includes(password));
+    assert.doesNotMatch(result.output, /Identity created:/);
+    const response = await browser.request('/api/v1/session/sign-in', {
+      method: 'POST', body: { email, password },
+      headers: { 'X-XSRF-TOKEN': decodeURIComponent(browser.cookies.get('XSRF-TOKEN')) },
+    });
+    assert.equal(response.status, 401);
+  } finally {
+    mysqlSetup('DROP TRIGGER test_reject_identity_audit');
+  }
+  await createIdentity(email, password);
+  const response = await browser.request('/api/v1/session/sign-in', {
+    method: 'POST', body: { email, password },
+    headers: { 'X-XSRF-TOKEN': decodeURIComponent(browser.cookies.get('XSRF-TOKEN')) },
+  });
+  assert.equal(response.status, 200);
 });
 
 test('CLI-created identity signs in with no MFA or provider authority fabricated', async () => {
@@ -471,11 +515,11 @@ test('origin fallback and competing token sources obey the exact-origin AND toke
   await browser.request('/csrf-cookie');
   const token = decodeURIComponent(browser.cookies.get('XSRF-TOKEN'));
   const cases = [
-    [{ Origin: origin + '/' }, undefined, 403],
+    [{ Origin: browserOrigin + '/' }, undefined, 403],
     [{ 'Sec-Fetch-Site': 'same-site' }, undefined, 403],
-    [{ Origin: '', Referer: origin + '/page' }, undefined, 403],
+    [{ Origin: '', Referer: browserOrigin + '/page' }, undefined, 403],
     [{ Origin: null }, undefined, 403],
-    [{ Origin: null, Referer: origin + '/page', 'X-XSRF-TOKEN': token }, undefined, 422],
+    [{ Origin: null, Referer: browserOrigin + '/page', 'X-XSRF-TOKEN': token }, undefined, 422],
     [{ Origin: null, 'Sec-Fetch-Site': 'same-origin', 'X-XSRF-TOKEN': token }, undefined, 422],
     [{ 'X-XSRF-TOKEN': token, 'X-CSRF-TOKEN': token }, undefined, 419],
     [{ 'X-XSRF-TOKEN': token }, { _token: null }, 419],
@@ -549,12 +593,49 @@ test('storage outage gives a typed no-store 503 after the origin guard',
   assert.deepEqual(await response.json(), { code: 'unavailable', message: 'The session service is unavailable.' });
 });
 
+test('stopped backend returns session-contract failures for all four foundation operations and preserves health semantics',
+  { skip: process.env.YSP_TEST_PROFILE !== 'backend-unavailable' }, async () => {
+  for (const [path, method] of [
+    ['/csrf-cookie', 'GET'], ['/api/v1/session', 'GET'],
+    ['/api/v1/session/sign-in', 'POST'], ['/api/v1/session/sign-out', 'POST'],
+  ]) {
+    const response = await new Browser().request(path, { method });
+    assert.equal(response.status, 503, path);
+    assert.deepEqual(await response.json(), { code: 'unavailable', message: 'The session service is unavailable.' });
+    assert.match(response.headers.get('cache-control'), /no-store/);
+    assert.deepEqual(response.headers.getSetCookie(), [], 'An unavailable backend cannot issue session cookies');
+  }
+  const health = await fetch(origin + '/api/v1/health');
+  assert.equal(health.status, 503);
+  assert.deepEqual(await health.json(), { status: 'unavailable', database: 'unavailable' });
+  assert.deepEqual(health.headers.getSetCookie(), []);
+});
+
 test('identity CLI and session JSON preserve unsigned IDs above the PHP integer range', async () => {
-  arrangeState('unsigned-identity-id', '1');
+  mysqlSetup('ALTER TABLE users AUTO_INCREMENT = 9223372036854775808');
   const { browser, id } = await signedInBrowser('unsigned-id');
   assert.ok(BigInt(id) > 9223372036854775807n);
   const response = await browser.request('/api/v1/session');
   assert.equal((await response.json()).user.id, id);
+});
+
+test('MySQL-backed session survives a backend restart with the same browser cookies', async () => {
+  const { browser, id } = await signedInBrowser('restart');
+  const before = new Map(browser.cookies);
+  const restart = spawnSync('docker', ['restart', container], { encoding: 'utf8', timeout: 30000 });
+  assert.equal(restart.status, 0, restart.stderr);
+  let response;
+  for (let i = 0; i < 30; i++) {
+    response = await browser.request('/api/v1/session');
+    if (response.status === 200) break;
+    assert.equal(response.status, 503);
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).user.id, id);
+  const replay = new Browser();
+  replay.cookies = before;
+  assert.equal((await (await replay.request('/api/v1/session')).json()).user.id, id);
 });
 
 test('email normalization in sign-in throttling groups case-insensitive variants into the same throttle bucket', async () => {
@@ -642,26 +723,48 @@ test('identity-throttled requests still consume the additional IP attempt allowa
   arrangeState('clear-throttles', '1');
 });
 
-test('concurrent sign-in attempts serialize deterministically without deadlocks and enforce exact throttle limits', async () => {
+test('overlapping MySQL sign-in transactions enforce the last password attempt exactly once', async () => {
   arrangeState('clear-throttles', '1');
   const browser = new Browser();
   await browser.request('/csrf-cookie');
   const token = decodeURIComponent(browser.cookies.get('XSRF-TOKEN'));
   const email = `concurrent-throttle-${Date.now()}@example.test`;
-  const requests = Array.from({ length: 12 }, () =>
+  const attempt = () =>
     browser.request('/api/v1/session/sign-in', {
       method: 'POST',
       body: { email, password: 'incorrect-password' },
       headers: { 'X-XSRF-TOKEN': token },
-    })
-  );
-  const responses = await Promise.all(requests);
-  const statuses = responses.map(r => r.status);
-  const count401 = statuses.filter(s => s === 401).length;
-  const count429 = statuses.filter(s => s === 429).length;
-  assert.equal(statuses.length, 12);
-  assert.equal(count401, 5, `Expected exactly 5 attempts to get 401, got ${count401}`);
-  assert.equal(count429, 7, `Expected remaining 7 attempts to get 429, got ${count429}`);
+    });
+  for (let i = 0; i < 4; i++) assert.equal((await attempt()).status, 401);
+  const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/session-concurrency.php']);
+  let timer;
+  let pending;
+  let waiting = 0;
+  try {
+    await new Promise((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error('Throttle lock barrier timed out')), 5000);
+      holder.on('error', reject);
+      holder.on('exit', code => reject(new Error(`Throttle holder exited: ${code}`)));
+      holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+    });
+    clearTimeout(timer);
+    pending = Promise.all([attempt(), attempt()]);
+    for (let i = 0; i < 30; i++) {
+      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT w.REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits w JOIN performance_schema.data_locks l ON w.REQUESTING_ENGINE_LOCK_ID=l.ENGINE_LOCK_ID WHERE l.OBJECT_NAME=\'session_throttles\'"'], { encoding: 'utf8' });
+      assert.equal(probe.status, 0, probe.stderr);
+      waiting = Number(probe.stdout.trim());
+      if (waiting >= 2) break;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  } finally {
+    clearTimeout(timer);
+    holder.stdin.end('\n');
+  }
+  const responses = await pending;
+  assert.ok(waiting >= 2, `Require two overlapping server transactions; saw ${waiting} throttle waiters`);
+  assert.deepEqual(responses.map(r => r.status).sort(), [401, 429]);
   for (const res of responses.filter(r => r.status === 429)) {
     assert.match(res.headers.get('retry-after'), /^[1-9][0-9]*$/);
   }

@@ -26,12 +26,16 @@ final class SignInThrottle
         $ipKey = hash('sha256', 'ip:'.$request->ip());
         $limits = [$identityKey => self::FAILED_PASSWORD_LIMIT, $ipKey => self::IP_ATTEMPT_LIMIT];
         ksort($limits);
+        // Duplicate INSERT IGNORE takes a shared lock. Finish initialization
+        // before taking exclusive counter locks to avoid concurrent upgrades.
+        foreach ($limits as $key => $limit) {
+            DB::table('session_throttles')->insertOrIgnore(['key' => $key, 'attempts' => 0, 'expires_at' => time() + self::WINDOW_SECONDS]);
+        }
 
         return DB::transaction(function () use ($limits, $identityKey, $ipKey, $contract, $attempt): JsonResponse {
             $now = time();
             $counters = [];
             foreach ($limits as $key => $limit) {
-                DB::table('session_throttles')->insertOrIgnore(['key' => $key, 'attempts' => 0, 'expires_at' => $now + self::WINDOW_SECONDS]);
                 $row = DB::table('session_throttles')->where('key', $key)->lockForUpdate()->first();
                 if ($row->expires_at <= $now) {
                     $row->attempts = 0;

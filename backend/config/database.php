@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 return [
     'default' => env('DB_CONNECTION', 'mysql'),
+    'runtime_username' => env('DB_RUNTIME_USERNAME', env('DB_USERNAME', 'ysp_app')),
+    'runtime_host' => env('DB_RUNTIME_HOST', '%'),
     'connections' => [
         'mysql' => [
             'driver' => 'mysql',

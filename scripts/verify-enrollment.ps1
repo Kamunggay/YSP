@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 & "$PSScriptRoot/init-local.ps1"
-# Uses the same host Node + contract-validator dependencies as verify-sessions.ps1.
+# Focused enrollment checks require host Node and contract-validator dependencies.
 if (-not (Get-Command node -ErrorAction SilentlyContinue) -or -not (Test-Path contracts/transport/node_modules/ajv)) {
     throw 'Install Node 24 and run npm ci --prefix contracts/transport before this HTTP/CLI verifier.'
 }
@@ -17,6 +17,9 @@ function Invoke-EnrollmentCompose {
 function Write-EnrollmentOverride([string] $testOrigin) {
     @"
 services:
+  migrate:
+    volumes:
+      - ./backend/database:/app/database:ro
   backend:
     environment:
       APP_URL: $testOrigin
@@ -45,8 +48,8 @@ try {
     Invoke-EnrollmentCompose up -d --no-deps --wait backend backend-race
     $env:YSP_TEST_CONTAINER = (& docker compose --env-file backend/.env -f compose.yaml -f $enrollmentOverride -p $enrollmentProject ps -q backend).Trim()
     $env:YSP_TEST_MYSQL_CONTAINER = (& docker compose --env-file backend/.env -f compose.yaml -f $enrollmentOverride -p $enrollmentProject ps -q mysql).Trim()
-    Invoke-EnrollmentCompose exec -T backend php artisan migrate --force
-    Invoke-EnrollmentCompose exec -T backend php artisan migrate --force
+    Invoke-EnrollmentCompose run --rm --no-deps migrate
+    Invoke-EnrollmentCompose run --rm --no-deps migrate
     Invoke-EnrollmentCompose exec -T backend php artisan baseline:verify
     & node --test --test-timeout=60000 backend/tests/enrollment-http.test.mjs
     if ($LASTEXITCODE -ne 0) { throw 'Enrollment HTTP/CLI/MySQL checks failed' }
