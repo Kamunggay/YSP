@@ -1503,3 +1503,274 @@ test('ticket05 unsigned twenty-digit scope and persistence IDs remain exact thro
   assert.equal(replay.status, 200);
   assert.deepEqual(await replay.json(), {...original, operation:{...original.operation, replayed:true}});
 });
+
+test('ticket05 readProvisioning returns visible provisioning and uniform 404 for absent or cross-tenant IDs', async () => {
+  const {browser, id, organization} = await verifiedProvisioner('p05-read-owner');
+  const body = createChapterBody('READ_' + Date.now());
+  const created = await (await post(browser, provisioningPath, body)).json();
+  const provisioningId = created.provisioning.id;
+
+  // Visible read succeeds
+  const read = await browser.request(`${provisioningPath}/${provisioningId}`);
+  assert.equal(read.status, 200);
+  const readBody = await read.json();
+  assert.deepEqual(readBody, created.provisioning);
+
+  // Absent ID gives uniform 404
+  const absent = await browser.request(`${provisioningPath}/999999999999999999`);
+  assert.equal(absent.status, 404);
+  assert.deepEqual(await absent.json(), {code:'provisioning_not_visible', message:'Provisioning is not available.'});
+
+  // Cross-tenant ID gives uniform 404
+  const other = await verifiedProvisioner('p05-read-other');
+  const otherRead = await other.browser.request(`${provisioningPath}/${provisioningId}`);
+  assert.equal(otherRead.status, 404);
+  assert.deepEqual(await otherRead.json(), {code:'provisioning_not_visible', message:'Provisioning is not available.'});
+
+  // Query string on read returns 400 invalid_selector
+  const badQuery = await browser.request(`${provisioningPath}/${provisioningId}?organization_id=2`);
+  assert.equal(badQuery.status, 400);
+  assert.deepEqual(await badQuery.json(), {code:'invalid_selector', message:'Use only the documented single-valued selectors.'});
+
+  // Chapter context header on read returns 403
+  const badContext = await browser.request(`${provisioningPath}/${provisioningId}`, {headers:{'X-Chapter-Context':'forbidden'}});
+  assert.equal(badContext.status, 403);
+});
+
+const lookupKeyPath = '/api/v1/provider/provisioning-operations/by-key';
+const lookupIdPath = '/api/v1/provider/provisioning-operations/by-id';
+
+test('ticket05 outcome recovery via key and ID lookup returns committed/rejected outcomes and uniform uncertainty for absent or cross-tenant attempts', async () => {
+  const {browser, id, organization} = await verifiedProvisioner('p05-lookup-owner');
+  const code = 'LOOKUP_' + Date.now();
+  const body = createChapterBody(code);
+  const created = await (await post(browser, provisioningPath, body)).json();
+  const operationId = created.operation.identity.operation_id;
+
+  // 1. Committed creation recovery via by-key and by-id
+  const keyLookup = await browser.request(`${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=${body.idempotency_key}`);
+  assert.equal(keyLookup.status, 200);
+  assert.deepEqual(await keyLookup.json(), {...created, operation:{...created.operation, replayed:true}});
+
+  const idLookup = await browser.request(`${lookupIdPath}/${operationId}`);
+  assert.equal(idLookup.status, 200);
+  assert.deepEqual(await idLookup.json(), {...created, operation:{...created.operation, replayed:true}});
+
+  // 2. Rejected collision recovery via by-key and by-id
+  const rejectedBody = {...body, idempotency_key:`rejected-${code}`, chapter:{...body.chapter, name:'Rejected name'}};
+  const rejectedResponse = await post(browser, provisioningPath, rejectedBody);
+  assert.equal(rejectedResponse.status, 409);
+  const rejectedOutcome = await rejectedResponse.json();
+  const rejectedOpId = rejectedOutcome.operation.identity.operation_id;
+
+  const rejectedKeyLookup = await browser.request(`${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=${rejectedBody.idempotency_key}`);
+  assert.equal(rejectedKeyLookup.status, 200);
+  assert.deepEqual(await rejectedKeyLookup.json(), {...rejectedOutcome, operation:{...rejectedOutcome.operation, replayed:true}});
+
+  const rejectedIdLookup = await browser.request(`${lookupIdPath}/${rejectedOpId}`);
+  assert.equal(rejectedIdLookup.status, 200);
+  assert.deepEqual(await rejectedIdLookup.json(), {...rejectedOutcome, operation:{...rejectedOutcome.operation, replayed:true}});
+
+  // 3. Absent key and unknown ID return uniform pending_or_not_visible uncertainty
+  const absentKey = await browser.request(`${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=never-used-key`);
+  assert.equal(absentKey.status, 200);
+  assert.deepEqual(await absentKey.json(), {
+    resource_type: 'provisioning', action_result: 'uncertain',
+    scope: {kind:'provisioner', organization_id:organization, provider_user_id:id},
+    lookup_state: 'pending_or_not_visible', operation: null,
+    message: 'Original outcome is not currently available.', next_action: 'lookup_original_attempt',
+  });
+
+  const unknownOpId = '01K8A6J0A00000000000000002';
+  const absentId = await browser.request(`${lookupIdPath}/${unknownOpId}`);
+  assert.equal(absentId.status, 200);
+  assert.deepEqual(await absentId.json(), {
+    resource_type: 'provisioning', action_result: 'uncertain',
+    scope: {kind:'provisioner', organization_id:organization, provider_user_id:id},
+    lookup_state: 'pending_or_not_visible', operation: null,
+    message: 'Original outcome is not currently available.', next_action: 'lookup_original_attempt',
+  });
+
+  // 4. Cross-tenant attempt lookup returns uniform pending_or_not_visible uncertainty
+  const other = await verifiedProvisioner('p05-lookup-other');
+  const otherKeyLookup = await other.browser.request(`${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=${body.idempotency_key}`);
+  assert.equal(otherKeyLookup.status, 200);
+  assert.deepEqual(await otherKeyLookup.json(), {
+    resource_type: 'provisioning', action_result: 'uncertain',
+    scope: {kind:'provisioner', organization_id:other.organization, provider_user_id:other.id},
+    lookup_state: 'pending_or_not_visible', operation: null,
+    message: 'Original outcome is not currently available.', next_action: 'lookup_original_attempt',
+  });
+
+  const otherIdLookup = await other.browser.request(`${lookupIdPath}/${operationId}`);
+  assert.equal(otherIdLookup.status, 200);
+  assert.deepEqual(await otherIdLookup.json(), {
+    resource_type: 'provisioning', action_result: 'uncertain',
+    scope: {kind:'provisioner', organization_id:other.organization, provider_user_id:other.id},
+    lookup_state: 'pending_or_not_visible', operation: null,
+    message: 'Original outcome is not currently available.', next_action: 'lookup_original_attempt',
+  });
+
+  // 5. Invalid selectors return 400 invalid_selector
+  for (const bad of [
+    `${lookupKeyPath}?idempotency_key=k`,
+    `${lookupKeyPath}?action_code=invalid&idempotency_key=k`,
+    `${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=k&organization_id=2`,
+    `${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=k&operation_id=${operationId}`,
+    `${lookupKeyPath}?action_code[]=provider.chapters.create&idempotency_key=k`,
+    `${lookupIdPath}/${operationId}?organization_id=2`,
+    `${lookupIdPath}/bad_ulid`,
+  ]) {
+    const res = await browser.request(bad);
+    assert.equal(res.status, 400, `Bad selector: ${bad}`);
+    assert.deepEqual(await res.json(), {code:'invalid_selector', message:'Use only the documented single-valued selectors.'});
+  }
+
+  // 6. X-Chapter-Context returns 403
+  assert.equal((await browser.request(`${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=${body.idempotency_key}`, {headers:{'X-Chapter-Context':'forbidden'}})).status, 403);
+  assert.equal((await browser.request(`${lookupIdPath}/${operationId}`, {headers:{'X-Chapter-Context':'forbidden'}})).status, 403);
+});
+
+test('ticket05 listProvisionings pages with bounded deterministic cursors and rejects stale snapshots', async () => {
+  const {browser, id, organization} = await verifiedProvisioner('p05-list-owner');
+
+  // Create 3 chapters
+  const c1 = await (await post(browser, provisioningPath, createChapterBody('LIST_A_' + Date.now()))).json();
+  const c2 = await (await post(browser, provisioningPath, createChapterBody('LIST_B_' + Date.now()))).json();
+  const c3 = await (await post(browser, provisioningPath, createChapterBody('LIST_C_' + Date.now()))).json();
+
+  // Page 1 with limit=2
+  const p1 = await browser.request(`${provisioningPath}?limit=2`);
+  assert.equal(p1.status, 200);
+  const p1Body = await p1.json();
+  assert.equal(p1Body.limit, 2);
+  assert.equal(p1Body.items.length, 2);
+  assert.ok(p1Body.next_cursor);
+  assert.match(p1Body.next_cursor, /^cur_[A-Za-z0-9_-]{32,96}$/);
+  assert.ok(BigInt(p1Body.items[0].id) < BigInt(p1Body.items[1].id), 'IDs must be ordered ascending');
+  assert.equal(p1Body.items[0].id, c1.provisioning.id);
+  assert.equal(p1Body.items[1].id, c2.provisioning.id);
+
+  // Page 2 with cursor
+  const p2 = await browser.request(`${provisioningPath}?limit=2&cursor=${p1Body.next_cursor}`);
+  assert.equal(p2.status, 200);
+  const p2Body = await p2.json();
+  assert.equal(p2Body.limit, 2);
+  assert.equal(p2Body.items.length, 1);
+  assert.equal(p2Body.items[0].id, c3.provisioning.id);
+  assert.equal(p2Body.next_cursor, null);
+
+  // Empty status filter
+  const emptyFilter = await browser.request(`${provisioningPath}?status=initial_head_designated`);
+  assert.equal(emptyFilter.status, 200);
+  assert.deepEqual(await emptyFilter.json(), {items:[], limit:50, next_cursor:null});
+
+  // Actor-private namespace: another provider does not see owner's provisionings
+  const other = await verifiedProvisioner('p05-list-other');
+  const otherList = await other.browser.request(provisioningPath);
+  assert.equal(otherList.status, 200);
+  const otherItems = (await otherList.json()).items;
+  assert.ok(!otherItems.some(item => [c1.provisioning.id, c2.provisioning.id, c3.provisioning.id].includes(item.id)));
+
+  // Invalid selectors return 400 invalid_selector
+  for (const bad of [
+    `${provisioningPath}?limit=0`,
+    `${provisioningPath}?limit=101`,
+    `${provisioningPath}?limit=abc`,
+    `${provisioningPath}?status=invalid_status`,
+    `${provisioningPath}?organization_id=2`,
+    `${provisioningPath}?limit[]=2`,
+    `${provisioningPath}?limit=2&cursor=cur_invalid_short`,
+    `${provisioningPath}?limit=1&cursor=${p1Body.next_cursor}`, // Changed limit
+    `${provisioningPath}?limit=2&status=awaiting_initial_head&cursor=${p1Body.next_cursor}`, // Changed status filter
+  ]) {
+    const res = await browser.request(bad);
+    assert.equal(res.status, 400, `Bad list selector: ${bad}`);
+    assert.deepEqual(await res.json(), {code:'invalid_selector', message:'Use only the documented single-valued selectors.'});
+  }
+
+  // Cross-tenant cursor use returns 400 invalid_selector
+  const stolenCursor = await other.browser.request(`${provisioningPath}?limit=2&cursor=${p1Body.next_cursor}`);
+  assert.equal(stolenCursor.status, 400);
+  assert.deepEqual(await stolenCursor.json(), {code:'invalid_selector', message:'Use only the documented single-valued selectors.'});
+
+  // Stale snapshot: new chapter created invalidates existing cursor
+  await new Promise(r => setTimeout(r, 10)); // Ensure distinct created_at timestamp
+  await post(browser, provisioningPath, createChapterBody('LIST_D_' + Date.now()));
+  const stale = await browser.request(`${provisioningPath}?limit=2&cursor=${p1Body.next_cursor}`);
+  assert.equal(stale.status, 409);
+  assert.deepEqual(await stale.json(), {
+    code: 'provisioning_snapshot_stale',
+    message: 'Review the original attempt with current authority.',
+    next_action: 'review_original_attempt',
+  });
+
+  // X-Chapter-Context returns 403
+  assert.equal((await browser.request(provisioningPath, {headers:{'X-Chapter-Context':'forbidden'}})).status, 403);
+});
+
+test('ticket05 current provider revocation denies context, writes, reads, listings, and outcome lookups', async () => {
+  const {browser, id, organization} = await verifiedProvisioner('p05-revocation');
+  const body = createChapterBody('REVOKE_' + Date.now());
+  const created = await (await post(browser, provisioningPath, body)).json();
+  const provisioningId = created.provisioning.id;
+  const operationId = created.operation.identity.operation_id;
+
+  // Active provider can read and list
+  assert.equal((await browser.request(`${provisioningPath}/${provisioningId}`)).status, 200);
+  assert.equal((await browser.request(provisioningPath)).status, 200);
+  assert.equal((await browser.request(`${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=${body.idempotency_key}`)).status, 200);
+  assert.equal((await browser.request(`${lookupIdPath}/${operationId}`)).status, 200);
+
+  // Revoke the provider authority
+  provisioningFixture('revoke', id);
+
+  // All provider endpoints now return 403 forbidden
+  assert.equal((await browser.request('/api/v1/provider/provisioning-context')).status, 403);
+  assert.equal((await post(browser, provisioningPath, createChapterBody('REVOKED_' + Date.now()))).status, 403);
+  assert.equal((await post(browser, provisioningPath, body)).status, 403); // Replay also forbidden
+  assert.equal((await browser.request(provisioningPath)).status, 403);
+  assert.equal((await browser.request(`${provisioningPath}/${provisioningId}`)).status, 403);
+  assert.equal((await browser.request(`${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=${body.idempotency_key}`)).status, 403);
+  assert.equal((await browser.request(`${lookupIdPath}/${operationId}`)).status, 403);
+
+  // Database retains the original chapter and attempt unchanged
+  assert.equal(provisioningFixture('attempt-count', id).count, 1);
+  assert.equal(provisioningFixture('chapter-count', id).count, 1);
+});
+
+test('ticket05 after-commit failure recovery via key or ID lookup preserves durable chapter and original outcome', async () => {
+  const {browser, id, organization} = await verifiedProvisioner('p05-lost-response');
+  const body = createChapterBody('LOST_RESP_' + Date.now());
+
+  // Successful commit
+  const response = await post(browser, provisioningPath, body);
+  assert.equal(response.status, 200);
+  const original = await response.json();
+  const operationId = original.operation.identity.operation_id;
+  const provisioningId = original.provisioning.id;
+
+  // Simulate lost response: client did not receive response, recovers by looking up via idempotency key
+  const recoveredByKey = await browser.request(`${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=${body.idempotency_key}`);
+  assert.equal(recoveredByKey.status, 200);
+  const keyBody = await recoveredByKey.json();
+  assert.equal(keyBody.action_result, 'success');
+  assert.equal(keyBody.provisioning.id, provisioningId);
+  assert.equal(keyBody.operation.identity.operation_id, operationId);
+  assert.equal(keyBody.operation.replayed, true);
+
+  // Client recovers by looking up via known operation ID
+  const recoveredById = await browser.request(`${lookupIdPath}/${operationId}`);
+  assert.equal(recoveredById.status, 200);
+  const idBody = await recoveredById.json();
+  assert.deepEqual(idBody, keyBody);
+
+  // Client retries POST with the same key
+  const replayed = await post(browser, provisioningPath, body);
+  assert.equal(replayed.status, 200);
+  assert.deepEqual(await replayed.json(), {...original, operation:{...original.operation, replayed:true}});
+
+  // Exactly one chapter and one attempt exist
+  assert.equal(provisioningFixture('attempt-count', id).count, 1);
+  assert.equal(provisioningFixture('chapter-count', id).count, 1);
+});

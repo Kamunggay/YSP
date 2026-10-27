@@ -6,6 +6,7 @@ namespace App\Modules\AccessChapterAdministration;
 
 use App\Modules\DocumentsReporting\CanonicalRequest;
 use App\Modules\DocumentsReporting\ProviderOutcomes;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,10 @@ final class ChapterProvisioning
 
     public function context(Request $request): JsonResponse
     {
+        if ($request->getQueryString() !== null) {
+            return $this->contract->failure('SessionForbidden', 403, 'forbidden');
+        }
+
         return DB::transaction(function () use ($request): JsonResponse {
             $authority = $this->authorize($request);
             if ($authority instanceof JsonResponse) {
@@ -31,8 +36,357 @@ final class ChapterProvisioning
         }, 3);
     }
 
+    public function list(Request $request): JsonResponse
+    {
+        $query = $request->query();
+        if (array_diff(array_keys($query), ['limit', 'status', 'cursor']) !== []) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        $limit = 50;
+        if (isset($query['limit'])) {
+            if (! is_string($query['limit']) || ! preg_match('/^[1-9][0-9]*$/D', $query['limit'])) {
+                return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+            }
+            $limit = (int) $query['limit'];
+            if ($limit < 1 || $limit > 100) {
+                return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+            }
+        }
+
+        $status = null;
+        if (isset($query['status'])) {
+            if (! is_string($query['status']) || ! in_array($query['status'], ['awaiting_initial_head', 'initial_head_designated'], true)) {
+                return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+            }
+            $status = $query['status'];
+        }
+
+        $cursor = $query['cursor'] ?? null;
+        if ($cursor !== null && (! is_string($cursor) || ! preg_match('/^cur_[A-Za-z0-9_-]{32,96}$/D', $cursor))) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        return DB::transaction(function () use ($request, $limit, $status, $cursor): JsonResponse {
+            $authority = $this->authorize($request);
+            if ($authority instanceof JsonResponse) {
+                return $authority;
+            }
+            [$user, $grant, $scope] = $authority;
+
+            $lastId = null;
+            $snapshotTime = now()->format('YmdHisu');
+            if ($cursor !== null) {
+                $decoded = $this->decodeCursor($scope, $cursor, $status, $limit);
+                if ($decoded instanceof JsonResponse) {
+                    return $decoded;
+                }
+                [$lastId, $snapshotTime] = $decoded;
+            }
+
+            $queryBuilder = DB::table('chapter_provisionings')
+                ->join('chapters', 'chapter_provisionings.chapter_id', '=', 'chapters.id')
+                ->join('users', 'chapter_provisionings.provider_user_id', '=', 'users.id')
+                ->where('chapter_provisionings.organization_id', $scope['organization_id'])
+                ->where('chapter_provisionings.provider_user_id', $scope['provider_user_id']);
+
+            if ($status !== null) {
+                $queryBuilder->where('chapter_provisionings.status', $status);
+            }
+
+            if ($lastId !== null) {
+                $queryBuilder->where('chapter_provisionings.id', '>', $lastId);
+            }
+
+            $rows = $queryBuilder
+                ->select([
+                    'chapter_provisionings.id as provisioning_id',
+                    'chapter_provisionings.organization_id',
+                    'chapter_provisionings.provider_user_id',
+                    'chapter_provisionings.chapter_id',
+                    'chapter_provisionings.status',
+                    'chapter_provisionings.row_version',
+                    'chapter_provisionings.created_at as provisioning_created_at',
+                    'chapters.code as chapter_code',
+                    'chapters.name as chapter_name',
+                    'users.name as user_name',
+                ])
+                ->orderBy('chapter_provisionings.id', 'asc')
+                ->limit($limit + 1)
+                ->lockForUpdate()
+                ->get();
+
+            $nextCursor = null;
+            if ($rows->count() > $limit) {
+                $items = $rows->slice(0, $limit);
+                $lastItem = $items->last();
+                $nextCursor = $this->encodeCursor($scope, (string) $lastItem->provisioning_id, $status, $limit, $snapshotTime);
+            } else {
+                $items = $rows;
+            }
+
+            $formatted = $items->map(fn ($row) => [
+                'id' => (string) $row->provisioning_id,
+                'scope' => $scope,
+                'chapter' => [
+                    'id' => (string) $row->chapter_id,
+                    'code' => $row->chapter_code,
+                    'name' => $row->chapter_name,
+                ],
+                'version' => (int) $row->row_version,
+                'created_by' => [
+                    'user_id' => (string) $row->provider_user_id,
+                    'display_name' => $row->user_name,
+                ],
+                'created_at' => Carbon::parse($row->provisioning_created_at)->utc()->format('Y-m-d\TH:i:s.u\Z'),
+                'status' => 'awaiting_initial_head',
+                'initial_head' => null,
+                'initial_head_membership_authorization' => 'not_applicable',
+            ])->values()->all();
+
+            return response()->json([
+                'items' => $formatted,
+                'limit' => $limit,
+                'next_cursor' => $nextCursor,
+            ]);
+        }, 3);
+    }
+
+    /** @param array<string, string> $scope */
+    private function encodeCursor(array $scope, string $lastId, ?string $status, int $limit, string $snapshotTime): string
+    {
+        $statusFlag = match ($status) {
+            'awaiting_initial_head' => '1', 'initial_head_designated' => '2', default => '0'
+        };
+        $payload = "{$lastId}.{$snapshotTime}.{$statusFlag}.{$limit}";
+        $b64Payload = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+        $sigData = "{$scope['provider_user_id']}|{$scope['organization_id']}|{$payload}";
+        $rawHmac = substr(hash_hmac('sha256', $sigData, (string) config('app.key'), true), 0, 16);
+        $b64Sig = rtrim(strtr(base64_encode($rawHmac), '+/', '-_'), '=');
+
+        return "cur_{$b64Payload}{$b64Sig}";
+    }
+
+    /**
+     * @param  array<string, string>  $scope
+     * @return array{string, string}|JsonResponse
+     */
+    private function decodeCursor(array $scope, string $cursor, ?string $status, int $limit): array|JsonResponse
+    {
+        if (strlen($cursor) < 36 || strlen($cursor) > 100 || ! str_starts_with($cursor, 'cur_')) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        $b64Sig = substr($cursor, -22);
+        $b64Payload = substr($cursor, 4, -22);
+
+        $remainder = strlen($b64Payload) % 4;
+        $padded = $remainder ? $b64Payload.str_repeat('=', 4 - $remainder) : $b64Payload;
+        $payload = base64_decode(strtr($padded, '-_', '+/'), true);
+        if ($payload === false) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        $sigData = "{$scope['provider_user_id']}|{$scope['organization_id']}|{$payload}";
+        $expectedHmac = substr(hash_hmac('sha256', $sigData, (string) config('app.key'), true), 0, 16);
+        $expectedB64Sig = rtrim(strtr(base64_encode($expectedHmac), '+/', '-_'), '=');
+        if (! hash_equals($expectedB64Sig, $b64Sig)) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        $parts = explode('.', $payload);
+        if (count($parts) !== 4) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+        [$lastId, $snapshotTimeStr, $cursorStatusFlag, $cursorLimitStr] = $parts;
+
+        if (! preg_match('/^[1-9][0-9]{0,19}$/D', $lastId) || ! preg_match('/^[0-9]{20}$/D', $snapshotTimeStr) || ! ctype_digit($cursorLimitStr)) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        try {
+            $snapshotDt = Carbon::createFromFormat('YmdHisu', $snapshotTimeStr);
+        } catch (\Throwable) {
+            $snapshotDt = null;
+        }
+        if ($snapshotDt === null || abs(now()->diffInSeconds($snapshotDt)) > 3600) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        $expectedStatusFlag = match ($status) {
+            'awaiting_initial_head' => '1', 'initial_head_designated' => '2', default => '0'
+        };
+        if ($cursorStatusFlag !== $expectedStatusFlag || (int) $cursorLimitStr !== $limit) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        $stale = DB::table('chapter_provisionings')
+            ->where('organization_id', $scope['organization_id'])
+            ->where('provider_user_id', $scope['provider_user_id'])
+            ->where('created_at', '>', $snapshotDt->format('Y-m-d H:i:s.u'))
+            ->exists();
+
+        if ($stale) {
+            return response()->json([
+                'code' => 'provisioning_snapshot_stale',
+                'message' => 'Review the original attempt with current authority.',
+                'next_action' => 'review_original_attempt',
+            ], 409);
+        }
+
+        return [$lastId, $snapshotTimeStr];
+    }
+
+    public function read(Request $request, string $provisioning_id): JsonResponse
+    {
+        if ($request->getQueryString() !== null || ! preg_match('/^[1-9][0-9]{0,19}$/D', $provisioning_id)) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        return DB::transaction(function () use ($request, $provisioning_id): JsonResponse {
+            $authority = $this->authorize($request);
+            if ($authority instanceof JsonResponse) {
+                return $authority;
+            }
+            [$user, $grant, $scope] = $authority;
+
+            $row = DB::table('chapter_provisionings')
+                ->join('chapters', 'chapter_provisionings.chapter_id', '=', 'chapters.id')
+                ->join('users', 'chapter_provisionings.provider_user_id', '=', 'users.id')
+                ->where('chapter_provisionings.id', $provisioning_id)
+                ->where('chapter_provisionings.organization_id', $scope['organization_id'])
+                ->where('chapter_provisionings.provider_user_id', $scope['provider_user_id'])
+                ->select([
+                    'chapter_provisionings.id as provisioning_id',
+                    'chapter_provisionings.organization_id',
+                    'chapter_provisionings.provider_user_id',
+                    'chapter_provisionings.chapter_id',
+                    'chapter_provisionings.status',
+                    'chapter_provisionings.row_version',
+                    'chapter_provisionings.created_at as provisioning_created_at',
+                    'chapters.code as chapter_code',
+                    'chapters.name as chapter_name',
+                    'users.name as user_name',
+                ])
+                ->lockForUpdate()
+                ->first();
+
+            if ($row === null) {
+                return response()->json(['code' => 'provisioning_not_visible', 'message' => 'Provisioning is not available.'], 404);
+            }
+
+            return response()->json([
+                'id' => (string) $row->provisioning_id,
+                'scope' => $scope,
+                'chapter' => [
+                    'id' => (string) $row->chapter_id,
+                    'code' => $row->chapter_code,
+                    'name' => $row->chapter_name,
+                ],
+                'version' => (int) $row->row_version,
+                'created_by' => [
+                    'user_id' => (string) $row->provider_user_id,
+                    'display_name' => $row->user_name,
+                ],
+                'created_at' => Carbon::parse($row->provisioning_created_at)->utc()->format('Y-m-d\TH:i:s.u\Z'),
+                'status' => 'awaiting_initial_head',
+                'initial_head' => null,
+                'initial_head_membership_authorization' => 'not_applicable',
+            ]);
+        }, 3);
+    }
+
+    public function lookupByKey(Request $request): JsonResponse
+    {
+        $query = $request->query();
+        if (array_diff(array_keys($query), ['action_code', 'idempotency_key']) !== []
+            || ! isset($query['action_code'], $query['idempotency_key'])
+            || ! is_string($query['action_code']) || ! is_string($query['idempotency_key'])
+            || ! in_array($query['action_code'], ['provider.chapters.create', 'provider.initial_head.appoint'], true)
+            || ! preg_match('/^[A-Za-z0-9._:-]{1,128}$/D', $query['idempotency_key'])) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        return DB::transaction(function () use ($request, $query): JsonResponse {
+            $authority = $this->authorize($request);
+            if ($authority instanceof JsonResponse) {
+                return $authority;
+            }
+            [$user, $grant, $scope] = $authority;
+
+            $attempt = DB::table('provider_operation_attempts')
+                ->where('organization_id', $scope['organization_id'])
+                ->where('provider_user_id', $scope['provider_user_id'])
+                ->where('action_code', $query['action_code'])
+                ->where('idempotency_key', $query['idempotency_key'])
+                ->first();
+
+            return $this->formatLookupResult($scope, $attempt);
+        }, 3);
+    }
+
+    public function lookupById(Request $request, string $operation_id): JsonResponse
+    {
+        if ($request->getQueryString() !== null || ! preg_match('/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/D', $operation_id)) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        return DB::transaction(function () use ($request, $operation_id): JsonResponse {
+            $authority = $this->authorize($request);
+            if ($authority instanceof JsonResponse) {
+                return $authority;
+            }
+            [$user, $grant, $scope] = $authority;
+
+            $attempt = DB::table('provider_operation_attempts')
+                ->where('public_id', $operation_id)
+                ->where('organization_id', $scope['organization_id'])
+                ->where('provider_user_id', $scope['provider_user_id'])
+                ->first();
+
+            return $this->formatLookupResult($scope, $attempt);
+        }, 3);
+    }
+
+    /** @param array<string, string> $scope */
+    private function formatLookupResult(array $scope, ?object $attempt): JsonResponse
+    {
+        if ($attempt === null) {
+            return response()->json([
+                'resource_type' => 'provisioning',
+                'action_result' => 'uncertain',
+                'scope' => $scope,
+                'lookup_state' => 'pending_or_not_visible',
+                'operation' => null,
+                'message' => 'Original outcome is not currently available.',
+                'next_action' => 'lookup_original_attempt',
+            ]);
+        }
+
+        $operation = DB::table('provider_operations')->where('attempt_id', $attempt->id)->first();
+        if ($operation === null) {
+            return response()->json([
+                'resource_type' => 'provisioning',
+                'action_result' => 'uncertain',
+                'scope' => $scope,
+                'lookup_state' => 'pending_or_not_visible',
+                'operation' => null,
+                'message' => 'Original outcome is not currently available.',
+                'next_action' => 'lookup_original_attempt',
+            ]);
+        }
+
+        $result = json_decode($operation->result_snapshot, true, flags: JSON_THROW_ON_ERROR);
+        $result['operation']['replayed'] = true;
+
+        return response()->json($result);
+    }
+
     public function createProvisionedChapter(Request $request): JsonResponse
     {
+        if ($request->getQueryString() !== null) {
+            return $this->contract->failure('SessionForbidden', 403, 'forbidden');
+        }
         try {
             $body = $this->canonical->decode($request->getContent());
         } catch (JsonException) {
@@ -82,7 +436,7 @@ final class ChapterProvisioning
             $chapter = DB::connection()->getPdo()->lastInsertId();
             DB::table('chapter_provisionings')->insert([
                 'organization_id' => $scope['organization_id'], 'provider_user_id' => $user->id,
-                'chapter_id' => $chapter, 'created_at' => $time,
+                'chapter_id' => $chapter, 'created_at' => $time->format('Y-m-d H:i:s.u'),
             ]);
             $provisioning = DB::connection()->getPdo()->lastInsertId();
             $actor = ['user_id' => (string) $user->id, 'display_name' => $user->name];
@@ -109,7 +463,7 @@ final class ChapterProvisioning
         if ($user === null || $snapshot['state'] === 'signed_out') {
             return $this->contract->failure('EnrollmentUnauthorized', 401);
         }
-        if ($request->hasHeader('X-Chapter-Context') || $request->getQueryString() !== null
+        if ($request->hasHeader('X-Chapter-Context')
             || $snapshot['state'] !== 'authenticated' || ($snapshot['mfa']['status'] ?? '') !== 'verified') {
             return $this->contract->failure('SessionForbidden', 403, 'forbidden');
         }

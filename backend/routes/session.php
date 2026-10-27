@@ -16,7 +16,11 @@ use Illuminate\Support\Facades\Route;
 Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::class, SessionForgeryGuard::class])
     ->group(function (): void {
         Route::get('/api/v1/provider/provisioning-context', [ChapterProvisioning::class, 'context']);
+        Route::get('/api/v1/provider/provisionings', [ChapterProvisioning::class, 'list']);
         Route::post('/api/v1/provider/provisionings', [ChapterProvisioning::class, 'createProvisionedChapter']);
+        Route::get('/api/v1/provider/provisionings/{provisioning_id}', [ChapterProvisioning::class, 'read']);
+        Route::get('/api/v1/provider/provisioning-operations/by-key', [ChapterProvisioning::class, 'lookupByKey']);
+        Route::get('/api/v1/provider/provisioning-operations/by-id/{operation_id}', [ChapterProvisioning::class, 'lookupById']);
         $operations = app(SessionContract::class)->metadata()['operations'];
         Route::match([$operations['initializeCsrf']['method']], $operations['initializeCsrf']['path'], fn () => response()->noContent());
         Route::match([$operations['signIn']['method']], $operations['signIn']['path'], [SessionController::class, 'signIn']);
