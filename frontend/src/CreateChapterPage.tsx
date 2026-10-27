@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import QRCode from 'qrcode';
 import './login.css';
 import './create-chapter.css';
 import {
@@ -149,33 +148,6 @@ export function CreateChapterPage({
   const [officerSetupKey, setOfficerSetupKey] = useState<string>('OFC9 3158 KMG7 6241');
   const [officerOtp, setOfficerOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [officerRecoveryCodes, setOfficerRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('/assets/kamunggay/authenticator-qr.png');
-
-  // Generate dynamic scannable QR code based on active setup key
-  useEffect(() => {
-    const isOfficer = step === 'officer-connect-auth';
-    const activeKey = isOfficer ? officerSetupKey : headSetupKey;
-    const activeEmail = isOfficer ? officerAccountEmail || 'officer@ysp.org' : headEmail || 'head@ysp.org';
-    const cleanKey = activeKey.replace(/\s+/g, '');
-    const otpUri = `otpauth://totp/Kamunggay%20YSP:${encodeURIComponent(activeEmail)}?secret=${cleanKey}&issuer=Kamunggay%20YSP`;
-
-    let isMounted = true;
-    void QRCode.toDataURL(otpUri, {
-      margin: 1,
-      width: 500,
-      color: { dark: '#1e1611', light: '#ffffff' },
-    })
-      .then((url) => {
-        if (isMounted) setQrCodeUrl(url);
-      })
-      .catch(() => {
-        if (isMounted) setQrCodeUrl('/assets/kamunggay/authenticator-qr.png');
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [step, headSetupKey, officerSetupKey, headEmail, officerAccountEmail]);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -471,12 +443,6 @@ export function CreateChapterPage({
               src="/assets/kamunggay/qr-box.png"
               alt="Scan QR code or enter setup key manually"
               className="connect-auth-qr-box"
-              draggable={false}
-            />
-            <img
-              src={qrCodeUrl}
-              alt="Scan QR code using Google Authenticator"
-              className="connect-auth-qr-code"
               draggable={false}
             />
             {activeSetupKey && (

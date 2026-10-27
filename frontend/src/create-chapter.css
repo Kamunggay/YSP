@@ -183,19 +183,6 @@
   margin: 0 auto clamp(8px, 1.3vh, 14px) auto;
 }
 
-.connect-auth-qr-code {
-  position: absolute;
-  top: 7.5%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 58%;
-  aspect-ratio: 1 / 1;
-  object-fit: contain;
-  pointer-events: none;
-  user-select: none;
-  border-radius: 4px;
-}
-
 .connect-auth-setup-key-slot {
   position: absolute;
   top: 82.3%;
