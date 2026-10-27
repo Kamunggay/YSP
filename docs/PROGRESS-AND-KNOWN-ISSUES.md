@@ -36,9 +36,11 @@ The frontend screens, layout components, and visual assets for the Kamunggay **S
 
 ## 2. Active Known Issues & Bugs (Not Yet Fixed)
 
-The following bugs and integration gaps were observed during live testing and remain **unresolved**, requiring coordination with Sam and Efren:
+The following bugs and integration gaps were observed during live testing and code audit. They are documented here for team alignment:
 
-### Issue 1: Google Authenticator QR Code & Base32 Incompatibility
+### Category A: Core Backend Alignment & Security Issues
+
+#### Issue 1: Google Authenticator QR Code & Base32 Incompatibility
 - **Status:** **NOT FIXED / PENDING BACKEND IMPLEMENTATION**
 - **Symptom:**
   - Scanning the QR code with the real mobile Google Authenticator app fails / is rejected with an *"Invalid barcode / cannot interpret QR code"* error.
@@ -53,9 +55,7 @@ The following bugs and integration gaps were observed during live testing and re
   - Sam's backend already generates a valid Base32 secret using `Base32::encodeUpper(random_bytes(20))` and provides the standard `setup_uri` (`otpauth://totp/Kamunggay%20YSP:user@domain?secret=BASE32&issuer=Kamunggay%20YSP`).
   - Once the backend service is running, the frontend will consume `setup_uri` to render the genuine scannable QR code.
 
----
-
-### Issue 2: Authentication Verified Page Output Details Are Null
+#### Issue 2: Authentication Verified Page Output Details Are Null
 - **Status:** **NOT FIXED / PENDING LIVE SESSION HYDRATION**
 - **Symptom:**
   - Upon reaching the `Authentication Verified` page (either after completing onboarding or via direct navigation), the user details are blank or output as null:
@@ -72,9 +72,7 @@ The following bugs and integration gaps were observed during live testing and re
     - Granted duties $\rightarrow$ `session.duties.join(', ')`
     - Governance constraints $\rightarrow$ `session.governance_constraints`
 
----
-
-### Issue 3: Repetitive / Static Recovery Keys
+#### Issue 3: Repetitive / Static Recovery Keys
 - **Status:** **NOT FIXED / PENDING BACKEND ISSUANCE**
 - **Symptom:**
   - The recovery keys shown on the `Save Recovery Codes` screen for the Chapter Head and the invited Officer are currently repetitive static placeholders.
@@ -83,6 +81,31 @@ The following bugs and integration gaps were observed during live testing and re
 - **Action Required for Backend Alignment:**
   - In production, single-use recovery codes must be generated and issued exclusively by the backend (`AuthenticatorProofs::issueCodes`) upon successful confirmation of 2FA enrollment (`POST /api/v1/session/mfa/enrollment/confirm`).
   - The backend will return a unique array of cryptographic single-use codes (e.g. `['KMG9-4821', ...]`) per user identity.
+
+---
+
+### Category B: Frontend & Integration Edge Cases
+
+#### Issue 4: Officer Name & Email State Desynchronization on Return
+- **Symptom:** In `CreateChapterPage.tsx`, on the *Invite Officer* screen, if the Chapter Head inputs *"John Doe"* (`john@ysp.org`) and proceeds to the *Create Officer Account* screen, but then clicks **Return** to change the invite to *"Jane Smith"* (`jane@ysp.org`), the *Create Officer Account* screen still retains *"John Doe"*.
+- **Root Cause:** The state assignment checks `if (!officerFullName) setOfficerFullName(officerName)`, which prevents overwriting once set on the first pass.
+
+#### Issue 5: Chapter Code Case Sensitivity Rejection
+- **Symptom:** If a user enters lowercase chapter codes like `cebu-01` or `ysp-south`, the backend rejects the request with `422 validation_failed` because `ChapterProvisioning.php` enforces the regex `^[A-Z][A-Z0-9_-]{0,31}$`.
+- **Recommendation:** Auto-convert chapter codes to uppercase on the frontend during input and blur.
+
+#### Issue 6: Letters Allowed in 6-Digit Verification Code Inputs
+- **Symptom:** In `CreateChapterPage.tsx` (Frames 2 & 6: Connect Authenticator), the OTP input regex allows letters `A–Z` to be typed into the 6-digit verification code boxes, whereas TOTP codes are strictly numeric digits `0–9`.
+
+#### Issue 7: Recovery Code Spacing & Format Mismatch on Login
+- **Symptom:** The placeholder on `LoginPage.tsx` displays `"XXXX - XXXX - XXXX"` (with spaces around dashes), whereas backend regex in `MfaChallenges.php` requires exact uppercase letters and dashes with no spaces (`^[A-Z0-9]{4}(?:-[A-Z0-9]{4}){3}$`). Pasting codes with spaces causes validation failures.
+
+#### Issue 8: Recovery Codes File Download Overwrite Risk
+- **Symptom:** Both the Chapter Head and the Officer download a file named `kamunggay-recovery-codes.txt`. If downloaded on the same machine, the browser can overwrite the Chapter Head's file with the Officer's file.
+- **Recommendation:** Differentiate filenames by role/name, e.g. `kamunggay-recovery-codes-head.txt` and `kamunggay-recovery-codes-officer.txt`.
+
+#### Issue 9: Error Alerts Don't Clear on Typing
+- **Symptom:** When a validation error alert is displayed (e.g. *"Passwords do not match"*), modifying the text inputs does not clear the error message until the user clicks submit again.
 
 ---
 
