@@ -1,0 +1,576 @@
+/* 3OfClubs Night Login, Auth & Recovery Styles — Pure Photo Elements & Roboto Font */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+.kamunggay-viewport {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  min-height: 640px;
+  overflow: hidden;
+  font-family: 'Roboto', sans-serif;
+  background-color: #120e0b;
+  background-image: url('/assets/kamunggay/bg-night-forest.png');
+  background-size: cover;
+  background-position: center left;
+  background-repeat: no-repeat;
+  user-select: none;
+  color: #ffffff;
+}
+
+/* Atmospheric bottom & right-edge vignette matching Login Page */
+.kamunggay-viewport::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(20, 15, 12, 0) 68%, rgba(20, 15, 12, 0.86) 94%, #140f0c 100%),
+    linear-gradient(90deg, rgba(18, 18, 17, 0) 62%, rgba(18, 18, 17, 0.84) 86%, #121211 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Edge vignette matching Auth & Recovery Page */
+.kamunggay-viewport.centered-mode {
+  background-position: center center;
+}
+
+.kamunggay-viewport.centered-mode::before {
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(18, 14, 11, 0.02) 38%, rgba(10, 9, 12, 0.72) 86%, rgba(8, 7, 9, 0.94) 100%),
+    linear-gradient(180deg, rgba(12, 10, 14, 0.35) 0%, rgba(12, 10, 14, 0) 18%, rgba(12, 10, 14, 0) 76%, rgba(10, 8, 10, 0.88) 100%);
+}
+
+/* Top-Left YSP Cebu Logo (Login Page only) */
+.kamunggay-ysp-logo {
+  position: absolute;
+  top: 2.6%;
+  left: 2.5%;
+  width: clamp(96px, 6.7vw, 130px);
+  height: auto;
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+}
+
+/* Left-Center Characters Collage */
+.kamunggay-characters-collage {
+  position: absolute;
+  left: 11.2%;
+  top: 19.5%;
+  width: clamp(340px, 39.2vw, 752px);
+  height: auto;
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.55));
+}
+
+/* Bottom-Left Hero Tagline in Roboto ("EMPOWER YOUR CHAPTER OPERATIONS.") */
+.kamunggay-hero-tagline {
+  position: absolute;
+  left: 2.6%;
+  bottom: 11.2%;
+  z-index: 3;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 900;
+  font-size: clamp(24px, 2.08vw, 40px);
+  line-height: 0.94;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
+}
+
+.kamunggay-hero-tagline .line {
+  display: block;
+}
+
+.kamunggay-hero-tagline .operations-orange {
+  color: #fb4701;
+}
+
+.kamunggay-hero-tagline .operations-dot {
+  color: #ffffff;
+}
+
+/* Right-Side Dark Login Card (#1D1611) */
+.kamunggay-login-card {
+  position: absolute;
+  right: 5.73%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(380px, 38.28vw, 735px);
+  height: clamp(560px, 75.74vh, 818px);
+  background-color: #1d1611;
+  border-radius: clamp(24px, 1.98vw, 38px);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.72);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: clamp(36px, 9.6vh, 104px) clamp(28px, 2.86vw, 55px) clamp(24px, 4.2vh, 46px);
+}
+
+.kamunggay-card-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Interactive Input Box using User-Provided Artwork */
+.kamunggay-input-artwork-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: clamp(14px, 2.1vh, 22px);
+  line-height: 0;
+}
+
+.kamunggay-input-bg-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* Transparent HTML inputs overlaid precisely over the artwork pills */
+.kamunggay-overlay-input {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 36%;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0 clamp(16px, 1.5vw, 28px);
+  font-family: 'Roboto', sans-serif;
+  font-weight: 900;
+  font-size: clamp(16px, 1.35vw, 26px);
+  color: #2b1d14;
+  letter-spacing: 0.01em;
+  z-index: 2;
+}
+
+.kamunggay-overlay-email {
+  top: 22.2%;
+}
+
+.kamunggay-overlay-password {
+  top: 64%;
+}
+
+/*
+ * Tactile 3D Photo Button — Fixed-Height Slot + Bottom-Anchored Depressed State
+ * - Unclicked image (1200x94) stays in flow so total button height NEVER collapses.
+ * - Clicked image (1200x80) is anchored to bottom: 0 of the same slot so pressing
+ *   the button physically pushes the top face DOWN into the 3D bottom lip while
+ *   keeping the bottom edge and surrounding layout 100% stationary.
+ * - Strictly NO hover color/filter.
+ */
+.kamunggay-btn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(9px, 1.15vh, 13px);
+  width: 100%;
+}
+
+.kamunggay-photo-btn {
+  position: relative;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer;
+  outline: none !important;
+  display: block;
+  width: 100%;
+  line-height: 0;
+  box-shadow: none !important;
+  transition: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kamunggay-photo-btn:hover,
+.kamunggay-photo-btn:hover img,
+.kamunggay-photo-btn:focus,
+.kamunggay-photo-btn:focus img,
+.kamunggay-photo-btn:focus-visible {
+  filter: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.kamunggay-photo-btn .btn-unclicked {
+  width: 100%;
+  height: auto;
+  display: block;
+  visibility: visible;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.kamunggay-photo-btn .btn-clicked {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  display: block;
+  visibility: hidden;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.kamunggay-photo-btn:active .btn-unclicked,
+.kamunggay-photo-btn.is-active .btn-unclicked {
+  visibility: hidden;
+}
+
+.kamunggay-photo-btn:active .btn-clicked,
+.kamunggay-photo-btn.is-active .btn-clicked {
+  visibility: visible;
+}
+
+/* Busy (request in flight): identical artwork, no tint — only the cursor changes */
+.kamunggay-photo-btn:disabled {
+  cursor: progress;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* Server feedback line (sign-in / verification errors) */
+.kamunggay-auth-error {
+  width: 100%;
+  margin: clamp(6px, 1vh, 12px) 0 clamp(8px, 1.3vh, 14px);
+  font-family: 'Roboto', system-ui, sans-serif;
+  font-weight: 500;
+  font-size: clamp(11px, 0.78vw, 14px);
+  line-height: 1.35;
+  color: #ff8c7a;
+  text-align: center;
+}
+
+/* Gap before CREATE ACCOUNT button */
+.kamunggay-photo-btn.btn-create-gap {
+  margin-top: clamp(26px, 4.2vh, 46px) !important;
+}
+
+/* Card Footer Logo */
+.kamunggay-card-footer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: clamp(18px, 2.6vh, 28px);
+  padding-top: 0;
+}
+
+.kamunggay-clubs-logo {
+  width: clamp(32px, 2.64vw, 51px);
+  height: auto;
+  object-fit: contain;
+  opacity: 0.98;
+}
+
+/* Centered Card for Two-Factor Auth & Emergency Recovery Screens (Matches 3OfClubs Night Auth Page) */
+.kamunggay-center-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(360px, 37.6vw, 722px);
+  height: clamp(540px, 74.07vh, 800px);
+  background-color: #1d1611;
+  border-radius: clamp(28px, 2.3vw, 44px);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.78);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: clamp(46px, 9.2vh, 100px) clamp(24px, 2.45vw, 47px) clamp(24px, 4vh, 44px);
+  text-align: center;
+}
+
+.kamunggay-auth-lock-img {
+  width: clamp(24px, 1.98vw, 38px);
+  height: auto;
+  margin-bottom: clamp(10px, 1.6vh, 18px);
+  pointer-events: none;
+}
+
+.kamunggay-auth-bell-img {
+  width: clamp(28px, 2.3vw, 44px);
+  height: auto;
+  margin-bottom: clamp(10px, 1.6vh, 18px);
+  pointer-events: none;
+}
+
+.kamunggay-revoked-icon-img {
+  width: clamp(32px, 2.55vw, 49px);
+  height: auto;
+  margin-bottom: clamp(8px, 1.3vh, 14px);
+  pointer-events: none;
+}
+
+.kamunggay-revoked-heading {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(18px, 1.46vw, 28px);
+  line-height: 1.15;
+  color: #ffffff;
+  margin: 0 0 clamp(6px, 0.85vh, 9px) 0;
+}
+
+.kamunggay-revoked-details-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto clamp(8px, 1.2vh, 13px) auto;
+  pointer-events: none;
+}
+
+/* Authentication Verified Page */
+.kamunggay-verified-icon-img {
+  width: clamp(32px, 2.55vw, 49px);
+  height: auto;
+  margin-bottom: clamp(8px, 1.3vh, 14px);
+  pointer-events: none;
+}
+
+.kamunggay-verified-welcome {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: clamp(10px, 0.78vw, 15px);
+  line-height: 1.22;
+  color: #ffffff;
+  margin: 0 0 clamp(14px, 2.3vh, 25px) 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  column-gap: 0.32em;
+}
+
+.kamunggay-verified-name-slot {
+  display: inline-block;
+  min-width: clamp(64px, 6.4vw, 122px);
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+  padding: 0 4px;
+}
+
+.kamunggay-verified-banner-wrap {
+  position: relative;
+  width: 90.8%;
+  max-width: 572px;
+  margin: 0 auto clamp(10px, 1.65vh, 18px) auto;
+  line-height: 0;
+}
+
+.kamunggay-verified-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+}
+
+.kamunggay-verified-banner-slot-user {
+  position: absolute;
+  left: 66.8%;
+  top: 24%;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(8.5px, 0.68vw, 13px);
+  line-height: 1;
+  color: #1c5b46;
+  white-space: nowrap;
+}
+
+.kamunggay-verified-banner-slot-tier {
+  position: absolute;
+  left: 21.8%;
+  top: 54%;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(8.5px, 0.68vw, 13px);
+  line-height: 1;
+  color: #1c5b46;
+  white-space: nowrap;
+}
+
+.kamunggay-details-box-wrap {
+  position: relative;
+  width: 100%;
+  margin: 0 auto clamp(8px, 1.3vh, 14px) auto;
+  line-height: 0;
+}
+
+.kamunggay-details-box-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+}
+
+.kamunggay-details-slot {
+  position: absolute;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(9.5px, 0.76vw, 14.5px);
+  line-height: 1;
+  color: #d6c8c0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  right: 4%;
+  text-align: left;
+}
+
+.kamunggay-details-slot.slot-chapter {
+  left: 24%;
+  top: 20.5%;
+}
+
+.kamunggay-details-slot.slot-duties {
+  left: 25.5%;
+  top: 46.5%;
+}
+
+.kamunggay-details-slot.slot-constraints {
+  left: 36.5%;
+  top: 72%;
+}
+
+.kamunggay-auth-heading {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(20px, 1.88vw, 36px);
+  line-height: 1.15;
+  color: #ffffff;
+  margin: 0 0 clamp(6px, 0.85vh, 10px) 0;
+  letter-spacing: -0.01em;
+}
+
+.kamunggay-auth-sub {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: clamp(10px, 0.78vw, 15px);
+  line-height: 1.22;
+  color: #e9e6e4;
+  margin: 0 0 clamp(16px, 2.7vh, 30px) 0;
+}
+
+.kamunggay-message-banner-img {
+  width: 90.8%;
+  max-width: 572px;
+  height: auto;
+  display: block;
+  margin: 0 auto clamp(16px, 2.7vh, 30px) auto;
+  pointer-events: none;
+}
+
+/* 6 Brown OTP Boxes matching 3OfClubs Night Auth Page */
+.kamunggay-otp-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: clamp(6px, 0.52vw, 10px);
+  width: 100%;
+  margin-bottom: clamp(16px, 2.5vh, 27px);
+}
+
+.kamunggay-otp-box {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background-color: #705343;
+  border: none;
+  border-radius: clamp(11px, 0.95vw, 18px);
+  text-align: center;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 900;
+  font-size: clamp(20px, 1.85vw, 35px);
+  color: #2b1d14;
+  outline: none;
+  padding: 0;
+}
+
+.kamunggay-otp-box:focus {
+  outline: none;
+}
+
+.kamunggay-auth-btn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 0.85vh, 9px);
+  width: 100%;
+}
+
+.kamunggay-auth-clubs-footer {
+  margin-top: clamp(16px, 2.6vh, 28px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.kamunggay-auth-clubs-logo {
+  width: clamp(28px, 2.3vw, 44px);
+  height: auto;
+  object-fit: contain;
+  opacity: 0.95;
+}
+
+/* Recovery Code Input Field */
+.kamunggay-recovery-field-wrap {
+  width: 100%;
+  text-align: left;
+  margin-bottom: clamp(16px, 2.4vh, 26px);
+}
+
+.kamunggay-recovery-label {
+  display: block;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 0.82vw, 15px);
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.kamunggay-recovery-input {
+  width: 100%;
+  height: clamp(48px, 6.8vh, 74px);
+  background-color: #705343;
+  border: none;
+  border-radius: clamp(11px, 0.95vw, 18px);
+  text-align: center;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 900;
+  font-size: clamp(16px, 1.35vw, 26px);
+  letter-spacing: 0.06em;
+  color: #2b1d14;
+  outline: none;
+}
+
+.kamunggay-recovery-input::placeholder {
+  color: #2b1d14;
+  opacity: 0.75;
+}
+
+@media (max-width: 1024px) {
+  .kamunggay-characters-collage,
+  .kamunggay-hero-tagline {
+    display: none;
+  }
+  .kamunggay-login-card {
+    right: 50%;
+    transform: translate(50%, -50%);
+    width: min(92vw, 520px);
+  }
+}
