@@ -119,8 +119,22 @@ async function preparedOfficer(label) {
   return { ...officer, prepared: await response.json() };
 }
 
+function storageProbe(action, id, input = {}) {
+  const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/enrollment-state.php', action, id], { encoding: 'utf8', input: JSON.stringify(input) });
+  assert.equal(result.status, 0, result.stderr);
+  const assertions = JSON.parse(result.stdout);
+  for (const [name, passed] of Object.entries(assertions)) assert.equal(passed, true, name);
+}
+
+function mysqlFault(sql) {
+  const result = spawnSync('docker', ['exec', '-i', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+    'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot ysp_local'], { encoding: 'utf8', input: sql });
+  assert.equal(result.status, 0, result.stderr);
+}
+
 test('officer confirms authenticator once, rotates credentials and bootstraps without secret readback', async () => {
-  const { browser, prepared } = await preparedOfficer('enroll');
+  const { browser, id, prepared } = await preparedOfficer('enroll');
   const oldCookies = new Map(browser.cookies);
   const { enrollment } = prepared;
   assert.ok(Date.parse(enrollment.expires_at) - Date.now() <= 600000);
@@ -143,23 +157,227 @@ test('officer confirms authenticator once, rotates credentials and bootstraps wi
   assert.deepEqual(await (await browser.request('/api/v1/session')).json(), result.session);
   assert.equal((await post(browser, enrollmentPath + '/confirm', proof)).status, 409);
   assert.equal((await post(browser, enrollmentPath, { intent: 'begin' })).status, 409);
+  storageProbe('confirmed', id, { secret: enrollment.manual_key, codes: result.recovery_codes.codes });
 });
 
-function storageProbe(action, id, input = {}) {
-  const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
-    'php', 'tests/fixtures/enrollment-state.php', action, id], { encoding: 'utf8', input: JSON.stringify(input) });
-  assert.equal(result.status, 0, result.stderr);
-  const assertions = JSON.parse(result.stdout);
-  for (const [name, passed] of Object.entries(assertions)) assert.equal(passed, true, name);
-}
+test('explicit replacement invalidates the prior unconfirmed enrollment', async () => {
+  const { browser, id, prepared: { enrollment: prior } } = await preparedOfficer('replace');
+  storageProbe('prepared', id, { secret: prior.manual_key });
 
-function mysqlFault(sql) {
-  const result = spawnSync('docker', ['exec', '-i', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
-    'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot ysp_local'], { encoding: 'utf8', input: sql });
-  assert.equal(result.status, 0, result.stderr);
-}
+  // Cannot begin again when an unconfirmed enrollment is already active.
+  assert.equal((await post(browser, enrollmentPath, { intent: 'begin' })).status, 409);
 
-test('overlapping MySQL confirmations issue exactly one encrypted factor and one recovery set', async t => {
+  // Invalid payload shapes for replacement are rejected.
+  assert.equal((await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: 'invalid' })).status, 422);
+
+  // Mismatched enrollment ID cannot replace.
+  const mismatchedId = 'enr_' + '0'.repeat(64);
+  assert.equal((await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: mismatchedId })).status, 409);
+
+  // Explicit replacement with the active enrollment ID succeeds.
+  const replacementRes = await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: prior.id });
+  assert.equal(replacementRes.status, 200);
+  const { enrollment: current } = await replacementRes.json();
+  assert.notEqual(current.id, prior.id);
+  assert.notEqual(current.manual_key, prior.manual_key);
+  assert.notEqual(current.setup_uri, prior.setup_uri);
+
+  // Confirming prior unconfirmed enrollment with its valid code is rejected.
+  const priorProof = { enrollment_id: prior.id, authenticator_code: authenticatorCode(prior.manual_key) };
+  assert.equal((await post(browser, enrollmentPath + '/confirm', priorProof)).status, 409);
+
+  // Replacing again with the prior enrollment ID is rejected.
+  assert.equal((await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: prior.id })).status, 409);
+
+  // Storage probe verifies replacement in real MySQL: current secret is encrypted, prior is invalidated.
+  storageProbe('prepared', id, { secret: current.manual_key });
+
+  // The replaced enrollment can be confirmed successfully.
+  const currentProof = { enrollment_id: current.id, authenticator_code: authenticatorCode(current.manual_key) };
+  const confirmRes = await post(browser, enrollmentPath + '/confirm', currentProof);
+  assert.equal(confirmRes.status, 200);
+  const confirmed = await confirmRes.json();
+  assert.equal(confirmed.session.state, 'authenticated');
+  assert.equal(confirmed.session.mfa.status, 'verified');
+  assert.equal(confirmed.recovery_codes.codes.length, 10);
+  storageProbe('confirmed', id, { secret: current.manual_key, codes: confirmed.recovery_codes.codes });
+});
+
+test('refusing to replace a confirmed factor via unconfirmed enrollment operations', async () => {
+  const { browser, id, prepared: { enrollment } } = await preparedOfficer('refuse-replace');
+  const proof = { enrollment_id: enrollment.id, authenticator_code: authenticatorCode(enrollment.manual_key) };
+  const confirmRes = await post(browser, enrollmentPath + '/confirm', proof);
+  assert.equal(confirmRes.status, 200);
+  const confirmed = await confirmRes.json();
+  assert.equal(confirmed.session.state, 'authenticated');
+  assert.equal(confirmed.session.mfa.status, 'verified');
+
+  // Verify confirmed factor state in MySQL.
+  storageProbe('confirmed-state', id, { secret: enrollment.manual_key });
+
+  // Attempting begin on a confirmed factor must be refused.
+  const beginRes = await post(browser, enrollmentPath, { intent: 'begin' });
+  assert.equal(beginRes.status, 409);
+  assert.equal((await beginRes.json()).code, 'enrollment_unavailable');
+
+  // Attempting replace_unconfirmed on a confirmed factor must be refused.
+  const replaceRes = await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: enrollment.id });
+  assert.equal(replaceRes.status, 409);
+  assert.equal((await replaceRes.json()).code, 'enrollment_unavailable');
+
+  // Attempting confirmation on a confirmed factor must be refused.
+  const reConfirmRes = await post(browser, enrollmentPath + '/confirm', proof);
+  assert.equal(reConfirmRes.status, 409);
+  assert.equal((await reConfirmRes.json()).code, 'enrollment_unavailable');
+
+  // Attempting confirmation with arbitrary enrollment ID and code is refused.
+  const arbitraryProof = { enrollment_id: 'enr_' + 'a'.repeat(64), authenticator_code: '123456' };
+  const arbitraryConfirmRes = await post(browser, enrollmentPath + '/confirm', arbitraryProof);
+  assert.equal(arbitraryConfirmRes.status, 409);
+
+  // Storage probe verifies confirmed factor and recovery verifiers remain untouched in MySQL.
+  storageProbe('confirmed-state', id, { secret: enrollment.manual_key });
+
+  // Verified session remains active and is never downgraded or disrupted.
+  const sessionRes = await browser.request('/api/v1/session');
+  assert.equal(sessionRes.status, 200);
+  const session = await sessionRes.json();
+  assert.equal(session.state, 'authenticated');
+  assert.equal(session.mfa.status, 'verified');
+});
+
+test('10-minute enrollment expiry rejects confirmation and replacement until reviewed begin', async () => {
+  const { browser, id, prepared: { enrollment } } = await preparedOfficer('expiry');
+  const now = Date.now();
+  const expiresAt = Date.parse(enrollment.expires_at);
+  assert.ok(expiresAt - now <= 600000, 'Expiry must not exceed 10 minutes');
+  assert.ok(expiresAt - now > 590000, 'Expiry must be approximately 10 minutes');
+
+  // Advance MySQL row past the 10-minute expiry boundary.
+  storageProbe('expire', id);
+
+  const proof = { enrollment_id: enrollment.id, authenticator_code: authenticatorCode(enrollment.manual_key) };
+
+  // Confirmation of an expired enrollment is rejected.
+  const confirmExpired = await post(browser, enrollmentPath + '/confirm', proof);
+  assert.equal(confirmExpired.status, 409);
+  assert.equal((await confirmExpired.json()).code, 'enrollment_unavailable');
+
+  // Explicit replacement of an expired enrollment is rejected (requires reviewed begin).
+  const replaceExpired = await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: enrollment.id });
+  assert.equal(replaceExpired.status, 409);
+  assert.equal((await replaceExpired.json()).code, 'enrollment_unavailable');
+
+  // A reviewed begin succeeds after expiry, establishing a fresh 10-minute window.
+  const freshBegin = await post(browser, enrollmentPath, { intent: 'begin' });
+  assert.equal(freshBegin.status, 200);
+  const { enrollment: fresh } = await freshBegin.json();
+  assert.notEqual(fresh.id, enrollment.id);
+  assert.notEqual(fresh.manual_key, enrollment.manual_key);
+  assert.ok(Date.parse(fresh.expires_at) - Date.now() <= 600000);
+
+  // Confirming the fresh enrollment within its active window succeeds.
+  const freshProof = { enrollment_id: fresh.id, authenticator_code: authenticatorCode(fresh.manual_key) };
+  const confirmFresh = await post(browser, enrollmentPath + '/confirm', freshProof);
+  assert.equal(confirmFresh.status, 200);
+  const confirmed = await confirmFresh.json();
+  assert.equal(confirmed.session.state, 'authenticated');
+  assert.equal(confirmed.session.mfa.status, 'verified');
+  storageProbe('confirmed', id, { secret: fresh.manual_key, codes: confirmed.recovery_codes.codes });
+});
+
+test('five-proof attempt lockout enforces retry-after and survives replacement', async () => {
+  const { browser, id, prepared: { enrollment } } = await preparedOfficer('lockout');
+  const valid = authenticatorCode(enrollment.manual_key);
+  const wrong = valid === '000000' ? '000001' : '000000';
+
+  // 5 failed proofs exhaust the attempt budget.
+  for (let i = 1; i <= 5; i++) {
+    const res = await post(browser, enrollmentPath + '/confirm', { enrollment_id: enrollment.id, authenticator_code: wrong });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).code, 'invalid_authenticator_proof');
+    storageProbe('failed-attempts', id, { expected_attempts: i });
+  }
+
+  // 6th attempt (even with valid TOTP code) is locked out with 429.
+  const lockedOut = await post(browser, enrollmentPath + '/confirm', { enrollment_id: enrollment.id, authenticator_code: valid });
+  assert.equal(lockedOut.status, 429);
+  assert.match(lockedOut.headers.get('retry-after'), /^[1-9][0-9]*$/);
+  assert.equal((await lockedOut.json()).code, 'throttled');
+
+  // Replacement within attempt window cannot reset the budget and is rejected with 429.
+  const replaceRes = await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: enrollment.id });
+  assert.equal(replaceRes.status, 429);
+  assert.match(replaceRes.headers.get('retry-after'), /^[1-9][0-9]*$/);
+
+  // Session remains mfa_enrollment_required; factor was not confirmed.
+  assert.deepEqual(await (await browser.request('/api/v1/session')).json(), { state: 'mfa_enrollment_required' });
+  storageProbe('prepared', id, { secret: enrollment.manual_key });
+
+  // Expire the attempt window in MySQL; officer can now replace and confirm with fresh budget.
+  storageProbe('expire-lockout', id);
+  const freshReplacement = await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: enrollment.id });
+  assert.equal(freshReplacement.status, 200);
+  const { enrollment: next } = await freshReplacement.json();
+  const nextProof = { enrollment_id: next.id, authenticator_code: authenticatorCode(next.manual_key) };
+  const successConfirm = await post(browser, enrollmentPath + '/confirm', nextProof);
+  assert.equal(successConfirm.status, 200);
+});
+
+test('wrong-session and duplicate confirmation rejection preserve single issuance', async () => {
+  const { browser: session1, id, email, password, prepared: { enrollment } } = await preparedOfficer('wrong-dup');
+  const validProof = { enrollment_id: enrollment.id, authenticator_code: authenticatorCode(enrollment.manual_key) };
+
+  // Establish Session 2 for the same identity via distinct browser.
+  const session2 = new Browser();
+  await session2.request('/csrf-cookie');
+  const signIn2 = await post(session2, '/api/v1/session/sign-in', { email, password });
+  assert.equal(signIn2.status, 200);
+
+  // Session 2 confirmation of Session 1's enrollment is rejected with 409.
+  const wrongSessionConfirm = await post(session2, enrollmentPath + '/confirm', validProof);
+  assert.equal(wrongSessionConfirm.status, 409);
+  assert.equal((await wrongSessionConfirm.json()).code, 'enrollment_unavailable');
+
+  // Session 2 replacement of Session 1's enrollment is rejected with 409.
+  const wrongSessionReplace = await post(session2, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: enrollment.id });
+  assert.equal(wrongSessionReplace.status, 409);
+
+  // In MySQL: enrollment remains unconfirmed and bound to Session 1.
+  storageProbe('prepared', id, { secret: enrollment.manual_key });
+
+  // Session 1 confirms successfully.
+  const oldCookies = new Map(session1.cookies);
+  const confirmRes = await post(session1, enrollmentPath + '/confirm', validProof);
+  assert.equal(confirmRes.status, 200);
+  const confirmed = await confirmRes.json();
+  assert.equal(confirmed.session.state, 'authenticated');
+  assert.equal(confirmed.session.mfa.status, 'verified');
+  assert.equal(confirmed.recovery_codes.codes.length, 10);
+
+  // Duplicate confirmation from the rotated session is rejected with 409.
+  const dupRotatedConfirm = await post(session1, enrollmentPath + '/confirm', validProof);
+  assert.equal(dupRotatedConfirm.status, 409);
+  assert.equal((await dupRotatedConfirm.json()).code, 'enrollment_unavailable');
+
+  // Duplicate confirmation replaying the pre-rotation session cookie is rejected:
+  const replayed = new Browser();
+  replayed.cookies = oldCookies;
+  // With stale CSRF token, CSRF guard precedence rejects with 419:
+  const staleCsrfConfirm = await post(replayed, enrollmentPath + '/confirm', validProof);
+  assert.equal(staleCsrfConfirm.status, 419);
+  // Reading session confirms the old session was invalidated to signed_out:
+  assert.deepEqual(await (await replayed.request('/api/v1/session')).json(), { state: 'signed_out' });
+  // With fresh CSRF cookie but stale session, authentication guard rejects with 401:
+  await replayed.request('/csrf-cookie');
+  const dupReplayConfirm = await post(replayed, enrollmentPath + '/confirm', validProof);
+  assert.equal(dupReplayConfirm.status, 401);
+
+  // In MySQL: exactly ONE issuance event, exactly 10 recovery verifiers, enrollment marked consumed.
+  storageProbe('confirmed', id, { secret: enrollment.manual_key, codes: confirmed.recovery_codes.codes });
+});
+
+test('concurrent confirmation race across independent workers issues at most one 200 and one recovery set', async t => {
   const { browser, id, prepared: { enrollment } } = await preparedOfficer('race');
   storageProbe('prepared', id, { secret: enrollment.manual_key });
   const contender = new Browser();
@@ -201,43 +419,52 @@ test('overlapping MySQL confirmations issue exactly one encrypted factor and one
   storageProbe('confirmed', id, { secret: enrollment.manual_key, codes: success.recovery_codes.codes });
 });
 
-test('five rejected proofs exhaust the enrollment and replacement cannot reset the budget', async () => {
-  const { browser, prepared: { enrollment } } = await preparedOfficer('attempts');
-  const valid = authenticatorCode(enrollment.manual_key);
-  const wrong = valid === '000000' ? '000001' : '000000';
-  for (let i = 0; i < 5; i++) {
-    const response = await post(browser, enrollmentPath + '/confirm', { enrollment_id: enrollment.id, authenticator_code: wrong });
-    assert.equal(response.status, 400);
-    assert.equal((await response.json()).code, 'invalid_authenticator_proof');
-  }
-  const exhausted = await post(browser, enrollmentPath + '/confirm', { enrollment_id: enrollment.id, authenticator_code: valid });
-  assert.equal(exhausted.status, 429);
-  assert.match(exhausted.headers.get('retry-after'), /^[1-9][0-9]*$/);
-  const replace = await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: enrollment.id });
-  assert.equal(replace.status, 429);
-  assert.deepEqual(await (await browser.request('/api/v1/session')).json(), { state: 'mfa_enrollment_required' });
-});
+test('lost confirmation response recovering via bootstrap without secret readback', async () => {
+  const { browser, id, email, password, prepared: { enrollment } } = await preparedOfficer('lost-response');
+  const validProof = { enrollment_id: enrollment.id, authenticator_code: authenticatorCode(enrollment.manual_key) };
 
-test('only a live session-bound enrollment can be replaced or confirmed, and expiry needs a reviewed begin', async () => {
-  const { browser, id, email, password, prepared: { enrollment } } = await preparedOfficer('binding');
-  const otherSession = new Browser();
-  await otherSession.request('/csrf-cookie');
-  assert.equal((await post(otherSession, '/api/v1/session/sign-in', { email, password })).status, 200);
-  const proof = { enrollment_id: enrollment.id, authenticator_code: authenticatorCode(enrollment.manual_key) };
-  assert.equal((await post(otherSession, enrollmentPath + '/confirm', proof)).status, 409);
-  assert.equal((await post(otherSession, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: enrollment.id })).status, 409);
-  assert.equal((await post(browser, enrollmentPath, { intent: 'begin' })).status, 409);
-  const replacement = await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: enrollment.id });
-  assert.equal(replacement.status, 200);
-  const next = (await replacement.json()).enrollment;
-  assert.notEqual(next.id, enrollment.id);
-  assert.notEqual(next.manual_key, enrollment.manual_key);
-  assert.equal((await post(browser, enrollmentPath + '/confirm', proof)).status, 409);
-  storageProbe('expire', id);
-  assert.equal((await post(browser, enrollmentPath + '/confirm', { enrollment_id: next.id,
-    authenticator_code: authenticatorCode(next.manual_key) })).status, 409);
-  assert.equal((await post(browser, enrollmentPath, { intent: 'replace_unconfirmed', enrollment_id: next.id })).status, 409);
-  assert.equal((await post(browser, enrollmentPath, { intent: 'begin' })).status, 200);
+  // Send confirmation request.
+  // The server atomically commits factor, rotates session, and persists 10 recovery code verifiers.
+  const confirmRes = await post(browser, enrollmentPath + '/confirm', validProof);
+  assert.equal(confirmRes.status, 200);
+
+  // Simulate lost confirmation response payload:
+  // Client discards/never reads the recovery codes from the confirmation response body.
+  // The client only has the updated session cookie and must discover state via GET bootstrap.
+  const bootstrapRes = await browser.request('/api/v1/session');
+  assert.equal(bootstrapRes.status, 200);
+  const session = await bootstrapRes.json();
+  assert.equal(session.state, 'authenticated');
+  assert.equal(session.mfa.status, 'verified');
+
+  // Critical requirement: bootstrap NEVER delivers recovery codes or secret readback.
+  assert.equal(Object.hasOwn(session, 'recovery_codes'), false, 'Bootstrap must not include recovery codes');
+  assert.equal(Object.hasOwn(session, 'setup_uri'), false, 'Bootstrap must not include setup URI');
+  assert.equal(Object.hasOwn(session, 'manual_key'), false, 'Bootstrap must not include manual key');
+  assert.equal(Object.hasOwn(session, 'secret'), false, 'Bootstrap must not include secret');
+
+  // No retry or readback operation can disclose the plaintext recovery codes.
+  // Repeating confirm is rejected with 409 (already confirmed).
+  const repeatConfirm = await post(browser, enrollmentPath + '/confirm', validProof);
+  assert.equal(repeatConfirm.status, 409);
+  assert.equal(Object.hasOwn(await repeatConfirm.json(), 'recovery_codes'), false);
+
+  // Beginning new enrollment is rejected with 409 (confirmed factor cannot be replaced).
+  const repeatBegin = await post(browser, enrollmentPath, { intent: 'begin' });
+  assert.equal(repeatBegin.status, 409);
+
+  // If the client lost the session cookie entirely (e.g. abrupt disconnect before receiving response):
+  const freshClient = new Browser();
+  await freshClient.request('/csrf-cookie');
+  // Re-authenticating via sign-in lands in challenge-required, NOT enrollment-required.
+  const reSignIn = await post(freshClient, '/api/v1/session/sign-in', { email, password });
+  assert.equal(reSignIn.status, 200);
+  const reSession = await (await freshClient.request('/api/v1/session')).json();
+  assert.equal(reSession.state, 'mfa_challenge_required', 'Must require challenge proof, not enrollment');
+  assert.equal(Object.hasOwn(reSession, 'recovery_codes'), false);
+
+  // Real MySQL verification: factor is confirmed, exactly 10 hashed verifiers exist, and secrets are never read back.
+  storageProbe('confirmed-state', id, { secret: enrollment.manual_key });
 });
 
 test('enrollment applies origin, CSRF, shape and current identity state guards without granting MFA', async () => {
