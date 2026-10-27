@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, createHmac } from 'node:crypto';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync as nativeSpawnSync } from 'node:child_process';
+import { measure, measureSync } from './helpers/verification-profile.mjs';
+
+function spawnSync(command, args, options) {
+  const category = args.some(arg => String(arg).includes('data_lock_waits')) ? 'concurrency-probes' : 'fixture-processes';
+  return measureSync(category, () => nativeSpawnSync(command, args, options));
+}
 import { loadContract } from '../../contracts/transport/validation/operation-examples.mjs';
 
 const { api, ajv } = await loadContract();
@@ -13,7 +19,10 @@ assert.ok(origin, 'Set YSP_TEST_ORIGIN to the disposable gateway origin');
 
 class Browser {
   cookies = new Map();
-  async request(path, { method = 'GET', body, rawBody, headers = {} } = {}) {
+  async request(...args) {
+    return measure('http-requests', () => this.requestMeasured(...args));
+  }
+  async requestMeasured(path, { method = 'GET', body, rawBody, headers = {} } = {}) {
     const requestHeaders = { Accept: 'application/json', Origin: browserOrigin,
       Cookie: [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; '),
       ...(body === undefined && rawBody === undefined ? {} : { 'Content-Type': 'application/json' }),
@@ -42,7 +51,7 @@ class Browser {
   }
 }
 
-async function runIdentityCli(answers, command = 'identity:create') {
+async function runIdentityCliMeasured(answers, command = 'identity:create') {
   assert.ok(container, 'Set YSP_TEST_CONTAINER to the disposable backend container');
   const child = spawn('docker', ['exec', '-i', container, 'script', '-qec',
     `php artisan ${command} --no-ansi`, '/dev/null']);
@@ -53,7 +62,7 @@ async function runIdentityCli(answers, command = 'identity:create') {
     output += data.toString();
     if (next < answers.length && output.includes(answers[next][0])) {
       const answer = answers[next++][1];
-      setTimeout(() => child.stdin.write(answer + '\n'), 150);
+      setTimeout(() => child.stdin.write(answer + '\n'), 20);
     }
   });
   child.stderr.on('data', data => { output += data.toString(); });
@@ -80,11 +89,27 @@ function arrangeState(action, id) {
   assert.equal(result.stdout, 'Fixture applied');
 }
 
-async function signedInBrowser(label) {
+// Labeled synthetic arrangements; real CLI tests continue to call createIdentity/installProvisioner.
+function syntheticOfficer(label, provider = false, options = {}) {
+  const email = `${label}-${Date.now()}@example.test`;
+  const password = 'Synthetic-only-secret-42!';
+  const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/officer-setup.php', provider ? 'provider' : 'identity'],
+  { encoding: 'utf8', input: JSON.stringify({ email, password, ...options }) });
+  assert.equal(result.status, 0, result.stderr);
+  return { ...JSON.parse(result.stdout), email, password };
+}
+
+async function cliOfficer(label) {
   const email = `${label}-${Date.now()}@example.test`;
   const password = 'Synthetic-only-secret-42!';
   const id = await createIdentity(email, password);
   arrangeState('clear-throttles', id);
+  return { id, email, password };
+}
+
+async function signedInBrowserMeasured(label, officer = syntheticOfficer(label)) {
+  const { id, email, password } = officer;
   const browser = new Browser();
   await browser.request('/csrf-cookie');
   const response = await browser.request('/api/v1/session/sign-in', {
@@ -92,7 +117,7 @@ async function signedInBrowser(label) {
     headers: { 'X-XSRF-TOKEN': decodeURIComponent(browser.cookies.get('XSRF-TOKEN')) },
   });
   assert.equal(response.status, 200);
-  return { browser, id, email, password };
+  return { ...officer, browser };
 }
 
 const enrollmentPath = '/api/v1/session/mfa/enrollment';
@@ -111,7 +136,7 @@ function authenticatorCode(secret, timestamp = Date.now()) {
   return ((digest.readUInt32BE(offset) & 0x7fffffff) % 1000000).toString().padStart(6, '0');
 }
 
-async function preparedOfficer(label) {
+async function preparedOfficerMeasured(label) {
   const officer = await signedInBrowser(label);
   arrangeState('head', officer.id);
   assert.deepEqual(await (await officer.browser.request('/api/v1/session')).json(), { state: 'mfa_enrollment_required' });
@@ -395,7 +420,7 @@ test('concurrent confirmation race across independent workers issues at most one
   await Promise.race([held, new Promise((_, reject) => setTimeout(() => reject(new Error('Lock timeout')), 5000))]);
   // Leave time for the deliberate lock barrier within the current TOTP step.
   const remaining = 30000 - Date.now() % 30000;
-  if (remaining < 5000) await new Promise(resolve => setTimeout(resolve, remaining + 100));
+  if (remaining < 5000) await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, remaining + 100)));
   const proof = { enrollment_id: enrollment.id, authenticator_code: authenticatorCode(enrollment.manual_key) };
   const responses = Promise.all([post(browser, enrollmentPath + '/confirm', proof), post(contender, enrollmentPath + '/confirm', proof)]);
   let waiting = 0;
@@ -407,7 +432,7 @@ test('concurrent confirmation race across independent workers issues at most one
     assert.equal(probe.status, 0, probe.stderr);
     waiting = Number(probe.stdout.trim());
     if (waiting >= 2) break;
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 50)));
   }
   holder.stdin.end('\n');
   const result = await responses;
@@ -511,7 +536,7 @@ DELIMITER ;\n`);
 test('authenticator skew is bounded to the current 30-second step', async () => {
   const { browser, prepared: { enrollment } } = await preparedOfficer('skew');
   const remaining = 30000 - Date.now() % 30000;
-  if (remaining < 5000) await new Promise(resolve => setTimeout(resolve, remaining + 100));
+  if (remaining < 5000) await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, remaining + 100)));
   const now = Date.now();
   const current = authenticatorCode(enrollment.manual_key, now);
   for (const offset of [-30000, 30000]) {
@@ -575,12 +600,12 @@ async function returningBrowser(officer, worker) {
   assert.equal(snapshot.state, 'mfa_challenge_required');
   return { browser, challenge: snapshot.challenge };
 }
-async function enrolledOfficer(label) {
+async function enrolledOfficerMeasured(label) {
   const officer = await preparedOfficer(label);
   arrangeState('clear-throttles', officer.id);
   const { enrollment } = officer.prepared;
   const remaining = 30000 - Date.now() % 30000;
-  if (remaining < 3000) await new Promise(resolve => setTimeout(resolve, remaining + 100));
+  if (remaining < 3000) await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, remaining + 100)));
   const enrollmentCode = authenticatorCode(enrollment.manual_key);
   const response = await post(officer.browser, enrollmentPath + '/confirm', {
     enrollment_id: enrollment.id, authenticator_code: enrollmentCode,
@@ -588,8 +613,13 @@ async function enrolledOfficer(label) {
   assert.equal(response.status, 200);
   return { ...officer, enrollmentCode, secret: enrollment.manual_key, codes: (await response.json()).recovery_codes.codes };
 }
-async function nextTotpStep() {
-  await new Promise(resolve => setTimeout(resolve, 30100 - Date.now() % 30000));
+async function nextTotpStep(officer) {
+  const id = typeof officer === 'string' ? officer : (officer?.id ?? officer?.browser?.id);
+  if (id) {
+    storageProbe('advance-step', id);
+    return;
+  }
+  await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 30100 - Date.now() % 30000)));
 }
 
 test('ticket03 authenticator challenge accepts a fresh step once across sessions and rotates credentials', async () => {
@@ -599,7 +629,7 @@ test('ticket03 authenticator challenge accepts a fresh step once across sessions
   // The enrollment proof already consumed this step.
   const proof = { method: 'authenticator', authenticator_code: officer.enrollmentCode };
   assert.equal((await post(first.browser, challengePath, { ...proof, challenge_id: first.challenge.id })).status, 400);
-  await nextTotpStep();
+  await nextTotpStep(officer);
   proof.authenticator_code = authenticatorCode(officer.secret);
   const oldCookies = new Map(first.browser.cookies);
   const accepted = await post(first.browser, challengePath, { ...proof, challenge_id: first.challenge.id });
@@ -664,7 +694,7 @@ for (const method of ['recovery_code', 'authenticator', 'same_challenge']) {
       second.browser.cookies = new Map(first.browser.cookies);
       second.browser.worker = 'contender';
     }
-    if (method === 'authenticator') await nextTotpStep();
+    if (method === 'authenticator') await nextTotpStep(officer);
     const factor = method === 'authenticator' ? { method, authenticator_code: authenticatorCode(officer.secret) }
       : { method: 'recovery_code', recovery_code: officer.codes[0] };
     const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
@@ -698,7 +728,7 @@ for (const method of ['recovery_code', 'authenticator', 'same_challenge']) {
             'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT l.OBJECT_NAME,l.INDEX_NAME,l.LOCK_MODE FROM performance_schema.data_lock_waits w JOIN performance_schema.data_locks l ON w.REQUESTING_ENGINE_LOCK_ID=l.ENGINE_LOCK_ID"'], { encoding: 'utf8' });
           lockDetails = details.stdout;
         }
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 50)));
       }
     } finally {
       holder.stdin.end('\n');
@@ -759,7 +789,7 @@ test('ticket03 regeneration replaces the whole set only with both fresh request 
   assert.equal((await post(before.browser, challengePath, {
     challenge_id: before.challenge.id, method: 'recovery_code', recovery_code: officer.codes[2],
   })).status, 200, 'Failed regeneration preserves the old set');
-  await nextTotpStep();
+  await nextTotpStep(officer);
   proof.authenticator_code = authenticatorCode(officer.secret);
   const oldCookies = new Map(officer.browser.cookies);
   mysqlFault(`CREATE TRIGGER mfa_test_reject_codes BEFORE INSERT ON user_recovery_codes FOR EACH ROW
@@ -975,7 +1005,7 @@ test('ticket03 regeneration rejects requests with only a recovery code, missing 
   assert.equal(Object.hasOwn(await unverifiedAttempt.json(), 'recovery_codes'), false);
 
   // Verify MFA to reach authenticated state with mfa.status === 'verified'
-  await nextTotpStep();
+  await nextTotpStep(officer);
   const verifyRes = await post(returning.browser, challengePath, {
     challenge_id: returning.challenge.id, method: 'authenticator', authenticator_code: authenticatorCode(officer.secret),
   });
@@ -1025,7 +1055,7 @@ test('ticket03 whole-set regeneration invalidates every single predecessor recov
   assert.equal(initialCodes.length, 10);
 
   // Regenerate recovery codes with fresh credentials
-  await nextTotpStep();
+  await nextTotpStep(officer);
   const regenRes = await post(officer.browser, regeneratePath, {
     password: officer.password,
     authenticator_code: authenticatorCode(officer.secret),
@@ -1118,7 +1148,7 @@ test('ticket03 lost-response recovery via bootstrap recovers verified session wi
   assert.equal(replayErr.recovery_codes, undefined);
 
   // PART B: Lost response during regenerateRecoveryCodes
-  await nextTotpStep();
+  await nextTotpStep(officer);
   const regenProof = {
     password: officer.password,
     authenticator_code: authenticatorCode(officer.secret),
@@ -1167,7 +1197,7 @@ test('ticket03 lost-response recovery via bootstrap recovers verified session wi
   assert.equal(oldCodeAttempt.status, 400);
 
   // Live authenticator proof succeeds
-  await nextTotpStep();
+  await nextTotpStep(officer);
   const freshVerify = await post(freshClient, challengePath, {
     challenge_id: reSignInBody.challenge.id,
     method: 'authenticator',
@@ -1396,7 +1426,7 @@ test('ticket07 concurrent tabs overlap real MySQL transactions and accept only o
       assert.equal(probe.status, 0, probe.stderr);
       waiting = Number(probe.stdout.trim());
       if (waiting >= 2) break;
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 50)));
     }
   } finally { holder.stdin.end('\n'); }
   const responses = await pending;
@@ -1927,7 +1957,7 @@ test('ticket07 concurrent chapter selection updates under database contention ac
       assert.equal(probe.status, 0, probe.stderr);
       waiting = Number(probe.stdout.trim());
       if (waiting >= 2) break;
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 50)));
     }
   } finally {
     holder.stdin.end('\n');
@@ -1979,17 +2009,21 @@ test('ticket05 restricted CLI installs separately approved initial provider once
 });
 
 const provisioningPath = '/api/v1/provider/provisionings';
-async function verifiedProvisioner(label) {
-  const officer = await signedInBrowser(label);
-  const approver = await createIdentity(`${label}-approver-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
-  const {organization} = provisioningFixture('organization', officer.id);
-  const installed = await installProvisioner(officer.id, organization, approver);
-  assert.equal(installed.code, 0, installed.output);
+async function verifiedProvisionerMeasured(label, realCli = false) {
+  const officer = await signedInBrowser(label, realCli ? await cliOfficer(label) : syntheticOfficer(label, true));
+  let { organization } = officer;
+  if (realCli) {
+    const approver = await createIdentity(`${label}-approver-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+    ({ organization } = provisioningFixture('organization', officer.id));
+    const installed = await installProvisioner(officer.id, organization, approver);
+    assert.equal(installed.code, 0, installed.output);
+  }
   assert.equal((await (await officer.browser.request('/api/v1/session')).json()).state, 'mfa_enrollment_required');
   const prepared = await (await post(officer.browser, enrollmentPath, {intent:'begin'})).json();
-  // Keep setup away from the exact 30-second boundary; production accepts only
-  // the current TOTP step, including when request delivery crosses that boundary.
-  if (Date.now() % 30000 > 25000) await nextTotpStep();
+  // Keep setup away from the exact 30-second boundary; pause briefly if within 150ms of rollover.
+  if (Date.now() % 30000 > 29850) {
+    await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 30050 - (Date.now() % 30000))));
+  }
   const confirmed = await post(officer.browser, enrollmentPath + '/confirm', {
     enrollment_id:prepared.enrollment.id, authenticator_code:authenticatorCode(prepared.enrollment.manual_key),
   });
@@ -2027,8 +2061,8 @@ async function headApprovalCli(command, user, executor, document, verified = 'ye
     ['Operator audit reference', operator], ['Approval independently verified (yes/no)', verified],
   ], command);
 }
-async function initialHeadScenario(label) {
-  const provider = await verifiedProvisioner(label);
+async function initialHeadScenarioMeasured(label, realCli = false) {
+  const provider = await verifiedProvisioner(label, realCli);
   const headEmail = `${label}-head-${Date.now()}@example.test`;
   const head = await createIdentity(headEmail, 'Synthetic-only-secret-42!');
   const approved = await headApprovalCli('candidate:authorize-initial-head', head, head, {
@@ -2045,7 +2079,7 @@ async function initialHeadScenario(label) {
 }
 
 async function bootstrappedHead(label) {
-  const scenario = await initialHeadScenario(label);
+  const scenario = await initialHeadScenario(label, true);
   const appointment = await post(scenario.browser, scenario.path, scenario.body);
   assert.equal(appointment.status, 200);
   const appointed = await appointment.json();
@@ -2072,7 +2106,7 @@ test('ticket07 real initial Head bootstrap requires MFA before sole selection an
   }
   const prepared = await (await post(head.browser, enrollmentPath, {intent:'begin'})).json();
   const remaining = 30000 - Date.now() % 30000;
-  if (remaining < 3000) await new Promise(resolve => setTimeout(resolve, remaining + 100));
+  if (remaining < 3000) await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, remaining + 100)));
   assert.equal((await post(head.browser, enrollmentPath + '/confirm', {
     enrollment_id:prepared.enrollment.id, authenticator_code:authenticatorCode(prepared.enrollment.manual_key),
   })).status, 200);
@@ -2315,7 +2349,7 @@ test('ticket06 candidate becoming ineligible between lookup and appointInitialHe
       assert.equal(probe.status, 0, probe.stderr);
       waiting = Number(probe.stdout.trim());
       if (waiting >= 1) break;
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 100)));
     }
   } finally { holder.stdin.end('\n'); }
 
@@ -2554,7 +2588,7 @@ test('ticket06 concurrent CLI bootstrap attempts serialize under MySQL lock with
       assert.equal(probe.status, 0, probe.stderr);
       waitingA = Number(probe.stdout.trim());
       if (waitingA >= 2) break;
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 100)));
     }
   } finally { holderA.stdin.end('\n'); }
 
@@ -2616,7 +2650,7 @@ test('ticket06 concurrent CLI bootstrap attempts serialize under MySQL lock with
       assert.equal(probe.status, 0, probe.stderr);
       waitingB = Number(probe.stdout.trim());
       if (waitingB >= 2) break;
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 100)));
     }
   } finally { holderB.stdin.end('\n'); }
 
@@ -2866,7 +2900,7 @@ for (const mode of ['identical key', 'changed payload', 'competing code']) {
         assert.equal(probe.status, 0, probe.stderr);
         waiting = Number(probe.stdout.trim());
         if (waiting >= 2) break;
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 100)));
       }
     } finally { holder.stdin.end('\n'); }
     const responses = await requests;
@@ -2916,7 +2950,7 @@ test('ticket05 independent providers competing for one code retain one chapter a
       assert.equal(probe.status, 0, probe.stderr);
       waiting = Number(probe.stdout.trim());
       if (waiting >= 2) break;
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 100)));
     }
   } finally { holder.stdin.end('\n'); }
   const responses = await requests;
@@ -3227,4 +3261,80 @@ test('ticket05 after-commit failure recovery via key or ID lookup preserves dura
   // Exactly one chapter and one attempt exist
   assert.equal(provisioningFixture('attempt-count', id).count, 1);
   assert.equal(provisioningFixture('chapter-count', id).count, 1);
+});
+
+async function runIdentityCli(...args) {
+  return measure('identity-cli', () => runIdentityCliMeasured(...args));
+}
+
+async function signedInBrowser(...args) {
+  return measure('identity-signin-setup', () => signedInBrowserMeasured(...args));
+}
+
+async function preparedOfficer(...args) {
+  return measure('mfa-prepare-setup', () => preparedOfficerMeasured(...args));
+}
+
+async function enrolledOfficer(...args) {
+  return measure('mfa-enrolled-setup', () => enrolledOfficerMeasured(...args));
+}
+
+async function verifiedProvisioner(...args) { return measure('provider-authorization-setup', () => verifiedProvisionerMeasured(...args)); }
+
+async function initialHeadScenario(...args) { return measure('initial-head-setup', () => initialHeadScenarioMeasured(...args)); }
+
+test('verification tooling fixture failures exit nonzero without echoing input or SQL', () => {
+  const sentinel = 'Synthetic-secret-that-must-not-appear';
+  const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/chapter-context-state.php', 'membership', '1'],
+  { encoding: 'utf8', input: `{"secret":"${sentinel}"` });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Fixture failed: JsonException at chapter-context-state.php:[0-9]+/);
+  assert.equal(result.stdout, '');
+  assert.ok(!result.stderr.includes(sentinel));
+  assert.ok(!result.stderr.includes('SQL:'));
+});
+
+test('verification tooling timestamps retain a supported future instant and fail safely outside MySQL range', async () => {
+  const { id } = await signedInBrowser('tooling-timestamp');
+  const member = chapterFixture('membership', id, { duties: [] });
+  const grant = chapterFixture('grant', id, { ...member, ends_at: '2037-01-01 00:00:00.000000' });
+  assert.equal(grant.ends_at, '2037-01-01T00:00:00.000000Z');
+  const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/chapter-context-state.php', 'grant', id], { encoding: 'utf8',
+    input: JSON.stringify({ ...member, ends_at: '2099-01-01 00:00:00.000000' }) });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Fixture failed: Illuminate\\Database\\QueryException/);
+  assert.equal(result.stdout, '');
+  assert.ok(!result.stderr.includes('SQL:'));
+  assert.ok(!result.stderr.includes('2099'));
+});
+
+test('verification tooling synthetic identity setup returns exact independent IDs usable by HTTP sign-in', async () => {
+  const huge = (10000000000000000000n + BigInt(Date.now()) * 1000000n).toString();
+  const first = syntheticOfficer('tooling-identity-a', false, { id: huge });
+  const second = syntheticOfficer('tooling-identity-b');
+  assert.match(first.id, /^[1-9][0-9]{19}$/);
+  assert.equal(typeof first.id, 'string');
+  assert.equal(first.id, huge);
+  assert.notEqual(first.id, second.id);
+  const browser = new Browser();
+  await browser.request('/csrf-cookie');
+  const response = await post(browser, '/api/v1/session/sign-in', { email: first.email, password: first.password });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).state, 'authenticated');
+  assert.equal((await (await browser.request(contextPath)).json()).chapter_state, 'no_authorized_memberships');
+});
+
+test('verification tooling batched provider arrangements are independent and require real MFA', async () => {
+  const first = syntheticOfficer('tooling-provider-a', true);
+  const second = syntheticOfficer('tooling-provider-b', true);
+  assert.notEqual(first.id, second.id);
+  assert.notEqual(first.organization, second.organization);
+  assert.notEqual(first.id, first.approver);
+  assert.equal(provisioningFixture('installed', first.id).one_approved_installation, true);
+  assert.equal(provisioningFixture('installed', first.id).no_chapter_authority, true);
+  const { browser } = await signedInBrowser('tooling-provider', first);
+  assert.equal((await (await browser.request('/api/v1/session')).json()).state, 'mfa_enrollment_required');
+  assert.equal((await browser.request('/api/v1/provider/provisioning-context')).status, 403);
 });

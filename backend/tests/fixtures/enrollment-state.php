@@ -38,6 +38,13 @@ if ($action === 'expire-lockout') {
     echo '{}';
     exit(0);
 }
+if ($action === 'advance-step') {
+    DB::table('users')->where('id', $id)->update([
+        'mfa_last_used_step' => DB::raw('COALESCE(mfa_last_used_step, FLOOR(UNIX_TIMESTAMP() / 30)) - 1'),
+    ]);
+    echo '{}';
+    exit(0);
+}
 $input = json_decode(stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
 $enrollment = DB::table('authenticator_enrollments')->where('user_id', $id)->first();
 $user = DB::table('users')->where('id', $id)->first();

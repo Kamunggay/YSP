@@ -11,6 +11,8 @@ if (getenv('YSP_SESSION_FIXTURES') !== '1') {
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
+require __DIR__.'/fixture-support.php';
+installFixtureFailureHandler();
 $id = $argv[2] ?? '';
 if (! preg_match('/^[1-9][0-9]*$/', $id)) {
     exit(1);
@@ -31,7 +33,7 @@ $expire = static function (string $kind) use ($id): void {
     }
 };
 $provider = static function (array $overrides = []) use ($id): void {
-    $organization = DB::table('organizations')->insertGetId(['name' => 'Synthetic organization']);
+    $organization = insertFixtureId('organizations', ['name' => 'Synthetic organization']);
     DB::table('provider_role_grants')->insert(array_merge([
         'organization_id' => $organization, 'user_id' => $id, 'role_code' => 'provisioner',
         'granted_by_user_id' => $id, 'starts_at' => now()->subMinute(), 'reason' => 'Synthetic test approval',
@@ -39,12 +41,12 @@ $provider = static function (array $overrides = []) use ($id): void {
 };
 $duty = static function (string $role, array $grantOverrides = [], array $membershipOverrides = []) use ($id): void {
     $db = DB::class;
-    $organization = $db::table('organizations')->insertGetId(['name' => 'Synthetic organization']);
-    $chapter = $db::table('chapters')->insertGetId([
+    $organization = insertFixtureId('organizations', ['name' => 'Synthetic organization']);
+    $chapter = insertFixtureId('chapters', [
         'organization_id' => $organization, 'code' => 'TEST-'.bin2hex(random_bytes(8)),
         'name' => 'Synthetic chapter', 'provisioned_by_user_id' => $id,
     ]);
-    $membership = $db::table('memberships')->insertGetId(array_merge([
+    $membership = insertFixtureId('memberships', array_merge([
         'chapter_id' => $chapter, 'user_id' => $id, 'authorized_by_user_id' => $id, 'authorized_at' => now(),
     ], $membershipOverrides));
     $db::table('duty_grants')->insert(array_merge([
