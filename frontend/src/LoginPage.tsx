@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import type { ClipboardEvent, FormEvent, KeyboardEvent } from 'react';
 import './login.css';
+import { signIn, signOut, verifyMfaChallenge } from './authApi';
+import type { AuthenticatedSession } from './authApi';
 
 export type AuthScreenMode = 'login' | 'mfa' | 'recovery' | 'revoked' | 'verified';
 
@@ -17,6 +19,8 @@ interface LoginPageProps {
   initialScreen?: AuthScreenMode;
   verifiedSessionData?: VerifiedSessionData;
   onNavigateToCreateChapter?: () => void;
+  onSignInSuccess?: (session: AuthenticatedSession) => void;
+  onEnterDashboard?: () => void;
 }
 
 interface PhotoButtonProps {
@@ -25,6 +29,7 @@ interface PhotoButtonProps {
   clickedSrc: string;
   alt: string;
   className?: string;
+  disabled?: boolean;
   onClick?: (() => void) | undefined;
 }
 
@@ -34,6 +39,7 @@ function PhotoButton({
   clickedSrc,
   alt,
   className = '',
+  disabled = false,
   onClick,
 }: PhotoButtonProps) {
   const [pressed, setPressed] = useState(false);
@@ -41,15 +47,18 @@ function PhotoButton({
   return (
     <button
       type={type}
+      disabled={disabled}
       className={`kamunggay-photo-btn ${pressed ? 'is-active' : ''} ${className}`.trim()}
       aria-label={alt}
       onClick={onClick}
-      onPointerDown={() => setPressed(true)}
+      onPointerDown={() => {
+        if (!disabled) setPressed(true);
+      }}
       onPointerUp={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}
       onPointerCancel={() => setPressed(false)}
       onKeyDown={(e) => {
-        if (e.key === ' ' || e.key === 'Enter') setPressed(true);
+        if (!disabled && (e.key === ' ' || e.key === 'Enter')) setPressed(true);
       }}
       onKeyUp={() => setPressed(false)}
       onBlur={() => setPressed(false)}
@@ -60,7 +69,13 @@ function PhotoButton({
   );
 }
 
-export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavigateToCreateChapter }: LoginPageProps) {
+export function LoginPage({
+  initialScreen = 'login',
+  verifiedSessionData: initialSessionData,
+  onNavigateToCreateChapter,
+  onSignInSuccess,
+  onEnterDashboard,
+}: LoginPageProps) {
   const [screen, setScreen] = useState<AuthScreenMode>(initialScreen);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,9 +85,127 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
   const [recoveryCode, setRecoveryCode] = useState('');
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
+  const [activeChallengeId, setActiveChallengeId] = useState<string>('chl_active');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sessionData, setSessionData] = useState<VerifiedSessionData | undefined>(initialSessionData);
+
+  async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setScreen('mfa');
+    setErrorMessage(null);
+
+    if (!email.trim() || !password) {
+      setErrorMessage('Please enter both your email address and password.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await signIn(email, password);
+
+      if (result.kind === 'success') {
+        const session = result.session;
+        if (session.state === 'mfa_challenge_required') {
+          setActiveChallengeId(session.challenge.id);
+          setScreen('mfa');
+        } else if (session.state === 'authenticated') {
+          applyAuthenticatedSession(session);
+          setScreen('verified');
+        } else if (session.state === 'mfa_enrollment_required') {
+          onNavigateToCreateChapter?.();
+        } else {
+          setScreen('mfa');
+        }
+      } else if (result.kind === 'forbidden') {
+        setScreen('revoked');
+      } else if (result.kind === 'invalid_credentials') {
+        setErrorMessage(result.message);
+      } else if (result.kind === 'throttled') {
+        setErrorMessage(result.message);
+      } else if (result.kind === 'invalid_input') {
+        setErrorMessage(result.message);
+      } else {
+        setErrorMessage(result.message);
+      }
+    } catch {
+      setErrorMessage('Unable to connect to authentication service. Please check your connection.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  function applyAuthenticatedSession(session: AuthenticatedSession) {
+    const data: VerifiedSessionData = {
+      userName: session.user.display_name,
+      authenticatedUnder: session.user.display_name,
+      tierSummary: session.duties && session.duties.length > 0 ? session.duties.join(', ') : 'Chapter Operations',
+      activeChapter: session.active_chapter ? `${session.active_chapter.name} (${session.active_chapter.code})` : 'Cebu Chapter',
+      grantedDuties: session.duties && session.duties.length > 0 ? session.duties.join(', ') : 'Full Operational & Governance Authority',
+      governanceConstraints: session.governance_constraints ?? 'Requires dual-custody verification for transactions over PHP 50,000.00',
+    };
+    setSessionData(data);
+    onSignInSuccess?.(session);
+  }
+
+  async function handleMfaVerify() {
+    const code = otp.join('');
+    if (code.length < 6) {
+      setErrorMessage('Please enter all 6 digits from your Google Authenticator app.');
+      return;
+    }
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      const result = await verifyMfaChallenge(activeChallengeId, 'authenticator', code);
+      if (result.kind === 'success') {
+        applyAuthenticatedSession(result.session);
+        setScreen('verified');
+      } else {
+        setErrorMessage(result.message);
+      }
+    } catch {
+      setErrorMessage('MFA verification error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleRecoveryVerify() {
+    const code = recoveryCode.trim();
+    if (!code) {
+      setErrorMessage('Please enter your single-use backup recovery code.');
+      return;
+    }
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      const result = await verifyMfaChallenge(activeChallengeId, 'recovery_code', code);
+      if (result.kind === 'success') {
+        applyAuthenticatedSession(result.session);
+        setScreen('verified');
+      } else {
+        setErrorMessage(result.message);
+      }
+    } catch {
+      setErrorMessage('Recovery code verification failed.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleSignOutAndReturn() {
+    setIsLoading(true);
+    try {
+      await signOut();
+    } finally {
+      setIsLoading(false);
+      setErrorMessage(null);
+      setEmail('');
+      setPassword('');
+      setOtp(['', '', '', '', '', '']);
+      setRecoveryCode('');
+      setScreen('login');
+    }
   }
 
   function handleOtpChange(index: number, value: string) {
@@ -90,7 +223,7 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
       otpRefs.current[index - 1]?.focus();
     }
     if (event.key === 'Enter') {
-      setScreen('verified');
+      void handleMfaVerify();
     }
   }
 
@@ -151,6 +284,12 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
           {/* Right-Side Dark Login Card */}
           <section className="kamunggay-login-card" aria-label="Login your Account">
             <form className="kamunggay-card-body" onSubmit={handleLoginSubmit} noValidate>
+              {errorMessage && (
+                <div className="kamunggay-auth-error" role="alert" aria-live="polite">
+                  {errorMessage}
+                </div>
+              )}
+
               {/* Input Art Container: exact image with transparent inputs overlaid */}
               <div className="kamunggay-input-artwork-container">
                 <img
@@ -165,6 +304,7 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
                   aria-label="Enter Email"
                   autoComplete="username"
                   value={email}
+                  disabled={isLoading}
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField(null)}
@@ -175,29 +315,36 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
                   aria-label="Enter Password"
                   autoComplete="current-password"
                   value={password}
+                  disabled={isLoading}
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
                 />
               </div>
 
-              {/* Photo Button Stack — Fixed-Height Tactile Depress Animation & Zero Hover Color */}
+              {/* Photo Button Stack */}
               <div className="kamunggay-btn-stack">
                 <PhotoButton
                   type="submit"
+                  disabled={isLoading}
                   unclickedSrc="/assets/kamunggay/login.png"
                   clickedSrc="/assets/kamunggay/login-when-clicked.png"
-                  alt="Login"
+                  alt={isLoading ? 'Signing in...' : 'Login'}
                 />
                 <PhotoButton
                   type="button"
+                  disabled={isLoading}
                   unclickedSrc="/assets/kamunggay/forgot-password.png"
                   clickedSrc="/assets/kamunggay/forgot-password-when-clicked.png"
                   alt="Forgot Password"
-                  onClick={() => setScreen('recovery')}
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setScreen('recovery');
+                  }}
                 />
                 <PhotoButton
                   type="button"
+                  disabled={isLoading}
                   className="btn-create-gap"
                   unclickedSrc="/assets/kamunggay/create-account.png"
                   clickedSrc="/assets/kamunggay/create-account-when-clicked.png"
@@ -238,6 +385,12 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
             Authenticator.
           </p>
 
+          {errorMessage && (
+            <div className="kamunggay-auth-error" role="alert" aria-live="polite">
+              {errorMessage}
+            </div>
+          )}
+
           <img
             src="/assets/kamunggay/auth-message.png"
             alt="Enter the 6-digit code from your Google Authenticator app. Code changes automatically every 30 seconds."
@@ -256,6 +409,7 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
                 inputMode="numeric"
                 maxLength={1}
                 value={digit}
+                disabled={isLoading}
                 aria-label={`Digit ${index + 1}`}
                 className="kamunggay-otp-box"
                 onChange={(e) => handleOtpChange(index, e.target.value)}
@@ -268,17 +422,22 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
           <div className="kamunggay-auth-btn-stack">
             <PhotoButton
               type="button"
+              disabled={isLoading}
               unclickedSrc="/assets/kamunggay/verify-button.png"
               clickedSrc="/assets/kamunggay/verify-button-when-clicked.png"
-              alt="Verify"
-              onClick={() => setScreen('verified')}
+              alt={isLoading ? 'Verifying...' : 'Verify'}
+              onClick={handleMfaVerify}
             />
             <PhotoButton
               type="button"
+              disabled={isLoading}
               unclickedSrc="/assets/kamunggay/lost-device-button.png"
               clickedSrc="/assets/kamunggay/lost-device-button-when-clicked.png"
               alt="Lost device? Use Emergency Recovery Code"
-              onClick={() => setScreen('recovery')}
+              onClick={() => {
+                setErrorMessage(null);
+                setScreen('recovery');
+              }}
             />
           </div>
 
@@ -312,6 +471,12 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
             backup code.
           </p>
 
+          {errorMessage && (
+            <div className="kamunggay-auth-error" role="alert" aria-live="polite">
+              {errorMessage}
+            </div>
+          )}
+
           <img
             src="/assets/kamunggay/recovery-message.png"
             alt="Recovery restores existing identity only. It never grants additional chapter duties or approval authority. Single-use code will be invalidated upon login."
@@ -331,10 +496,11 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
               autoComplete="one-time-code"
               autoCapitalize="characters"
               spellCheck={false}
+              disabled={isLoading}
               value={recoveryCode}
               onChange={(e) => setRecoveryCode(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') setScreen('verified');
+                if (e.key === 'Enter') void handleRecoveryVerify();
               }}
             />
           </div>
@@ -342,17 +508,22 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
           <div className="kamunggay-auth-btn-stack">
             <PhotoButton
               type="button"
+              disabled={isLoading}
               unclickedSrc="/assets/kamunggay/auth-button.png"
               clickedSrc="/assets/kamunggay/auth-button-when-clicked.png"
-              alt="Authenticate via Recovery Code"
-              onClick={() => setScreen('verified')}
+              alt={isLoading ? 'Authenticating...' : 'Authenticate via Recovery Code'}
+              onClick={handleRecoveryVerify}
             />
             <PhotoButton
               type="button"
+              disabled={isLoading}
               unclickedSrc="/assets/kamunggay/back-to-button.png"
               clickedSrc="/assets/kamunggay/back-to-when-clicked.png"
               alt="Back to Authenticator App"
-              onClick={() => setScreen('mfa')}
+              onClick={() => {
+                setErrorMessage(null);
+                setScreen('mfa');
+              }}
             />
           </div>
 
@@ -404,10 +575,11 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
           <div className="kamunggay-auth-btn-stack">
             <PhotoButton
               type="button"
+              disabled={isLoading}
               unclickedSrc="/assets/kamunggay/sign-out-and-return-to-login.png"
               clickedSrc="/assets/kamunggay/sign-out-and-return-to-login-when-clicked.png"
               alt="Sign out & Return to Login"
-              onClick={() => setScreen('login')}
+              onClick={handleSignOutAndReturn}
             />
           </div>
 
@@ -438,7 +610,7 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
           <p className="kamunggay-verified-welcome">
             <span>Welcome back,</span>
             <span className="kamunggay-verified-name-slot">
-              {verifiedSessionData?.userName ?? ''}
+              {sessionData?.userName ?? ''}
             </span>
             <span>Your Chapter duties have been loaded.</span>
           </p>
@@ -450,14 +622,14 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
               className="kamunggay-verified-banner-img"
               draggable={false}
             />
-            {verifiedSessionData?.authenticatedUnder && (
+            {sessionData?.authenticatedUnder && (
               <span className="kamunggay-verified-banner-slot-user">
-                {verifiedSessionData.authenticatedUnder}
+                {sessionData.authenticatedUnder}
               </span>
             )}
-            {verifiedSessionData?.tierSummary && (
+            {sessionData?.tierSummary && (
               <span className="kamunggay-verified-banner-slot-tier">
-                {verifiedSessionData.tierSummary}
+                {sessionData.tierSummary}
               </span>
             )}
           </div>
@@ -469,19 +641,19 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
               className="kamunggay-details-box-img"
               draggable={false}
             />
-            {verifiedSessionData?.activeChapter && (
+            {sessionData?.activeChapter && (
               <span className="kamunggay-details-slot slot-chapter">
-                {verifiedSessionData.activeChapter}
+                {sessionData.activeChapter}
               </span>
             )}
-            {verifiedSessionData?.grantedDuties && (
+            {sessionData?.grantedDuties && (
               <span className="kamunggay-details-slot slot-duties">
-                {verifiedSessionData.grantedDuties}
+                {sessionData.grantedDuties}
               </span>
             )}
-            {verifiedSessionData?.governanceConstraints && (
+            {sessionData?.governanceConstraints && (
               <span className="kamunggay-details-slot slot-constraints">
-                {verifiedSessionData.governanceConstraints}
+                {sessionData.governanceConstraints}
               </span>
             )}
           </div>
@@ -492,7 +664,13 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavi
               unclickedSrc="/assets/kamunggay/dashboard-button.png"
               clickedSrc="/assets/kamunggay/dashboard-button-when-clicked.png"
               alt="Enter Dashboard"
-              onClick={() => setScreen('login')}
+              onClick={() => {
+                if (onEnterDashboard) {
+                  onEnterDashboard();
+                } else {
+                  setScreen('login');
+                }
+              }}
             />
           </div>
 

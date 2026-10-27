@@ -8,3 +8,5 @@ AGENTS.md
 local-docs
 prototypes
 /contracts/p00-review/stage-0/
+test-results/
+playwright-report/

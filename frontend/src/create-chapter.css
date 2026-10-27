@@ -1,4 +1,4 @@
-/* 3OfClubs Night Create Chapter & Appoint Chapter Head Styles — Pure Photo Elements & Roboto Font */
+/* 3OfClubs Night Account Creation Flow Styles — Pure Photo Elements & Roboto Font */
 
 .kamunggay-viewport.centered-mode {
   background-size: cover;
@@ -23,6 +23,10 @@
   padding: clamp(34px, 6.02vh, 65px) clamp(18px, 1.77vw, 34px) clamp(24px, 4vh, 44px);
   text-align: center;
 }
+
+/* ==========================================================================
+   Frame 1: Create Chapter & Appoint Chapter Head
+   ========================================================================== */
 
 .create-chapter-title {
   font-family: 'Roboto', sans-serif;
@@ -134,4 +138,548 @@
   display: flex;
   flex-direction: column;
   gap: clamp(6px, 0.83vh, 9px);
+}
+
+/* ==========================================================================
+   Frame 2 & 6: Connect Google Authenticator
+   ========================================================================== */
+
+.kamunggay-create-chapter-card.card-connect-auth {
+  padding: clamp(28px, 4.44vh, 48px) clamp(18px, 1.77vw, 34px) clamp(20px, 3vh, 32px);
+}
+
+.connect-auth-icon {
+  width: clamp(24px, 1.88vw, 36px);
+  height: clamp(32px, 4.44vh, 48px);
+  object-fit: contain;
+  display: block;
+  margin: 0 auto clamp(8px, 1.39vh, 15px) auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+.connect-auth-title {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(18px, 1.38vw, 26.5px);
+  line-height: 1.12;
+  color: #ffffff;
+  margin: 0 0 clamp(6px, 0.83vh, 9px) 0;
+  letter-spacing: -0.01em;
+}
+
+.connect-auth-subtitle {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: clamp(10px, 0.73vw, 14px);
+  line-height: 1.18;
+  color: #ffffff;
+  margin: 0 0 clamp(8px, 1.3vh, 14px) 0;
+}
+
+.connect-auth-qr-wrap {
+  position: relative;
+  width: clamp(300px, 27.29vw, 524px);
+  margin: 0 auto clamp(8px, 1.3vh, 14px) auto;
+}
+
+.connect-auth-setup-key-slot {
+  position: absolute;
+  bottom: 2.2%;
+  left: 7%;
+  right: 7%;
+  height: 9%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Roboto', monospace;
+  font-weight: 700;
+  font-size: clamp(10px, 0.88vw, 16px);
+  letter-spacing: 0.12em;
+  color: #49362c;
+  pointer-events: none;
+  user-select: all;
+}
+
+.connect-auth-qr-box {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.connect-auth-otp-label {
+  display: block;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 0.78vw, 15px);
+  line-height: 1.15;
+  color: #f9d3c5;
+  margin: 0 auto clamp(6px, 0.93vh, 10px) auto;
+}
+
+.connect-auth-otp-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(4px, 0.36vw, 7px);
+  margin: 0 auto clamp(14px, 2.41vh, 26px) auto;
+}
+
+.connect-auth-otp-input {
+  width: clamp(46px, 3.96vw, 76px);
+  height: clamp(46px, 7.04vh, 76px);
+  background-color: #705343;
+  border: none;
+  border-radius: clamp(10px, 0.89vw, 17px);
+  outline: none;
+  text-align: center;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(18px, 1.46vw, 28px);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.connect-auth-otp-input:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
+.connect-auth-btn-row {
+  width: clamp(340px, 30.99vw, 595px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: clamp(6px, 0.52vw, 10px);
+  margin: 0 auto;
+}
+
+.connect-auth-half-btn {
+  flex: 1;
+}
+
+/* ==========================================================================
+   Frame 3 & 7: Save Recovery Codes
+   ========================================================================== */
+
+.kamunggay-create-chapter-card.card-save-recovery {
+  padding: clamp(38px, 6.48vh, 70px) clamp(18px, 1.77vw, 34px) clamp(20px, 3vh, 32px);
+}
+
+.save-recovery-icon {
+  width: clamp(28px, 2.29vw, 44px);
+  height: clamp(28px, 4.07vh, 44px);
+  object-fit: contain;
+  display: block;
+  margin: 0 auto clamp(11px, 1.85vh, 20px) auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+.save-recovery-title {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(18px, 1.38vw, 26.5px);
+  line-height: 1.12;
+  color: #ffffff;
+  margin: 0 0 clamp(5px, 0.83vh, 9px) 0;
+  letter-spacing: -0.01em;
+}
+
+.save-recovery-subtitle {
+  width: clamp(240px, 18.96vw, 364px);
+  text-align: left;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: clamp(10px, 0.76vw, 14.5px);
+  line-height: 1.18;
+  color: #ffffff;
+  margin: 0 auto clamp(16px, 2.69vh, 29px) auto;
+  white-space: nowrap;
+}
+
+.save-recovery-banner {
+  width: clamp(310px, 28.13vw, 540px);
+  height: auto;
+  display: block;
+  margin: 0 auto clamp(18px, 3.24vh, 35px) auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+.save-recovery-grid {
+  width: clamp(350px, 31.67vw, 608px);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(5px, 0.83vh, 9px) clamp(5px, 0.47vw, 9px);
+  margin: 0 auto clamp(16px, 2.87vh, 31px) auto;
+}
+
+.save-recovery-code-box {
+  width: 100%;
+  height: clamp(54px, 8.52vh, 92px);
+  background-color: #705343;
+  border-radius: clamp(12px, 1.15vw, 22px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-recovery-code-text {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(14px, 1.25vw, 24px);
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  user-select: text;
+}
+
+.save-recovery-utility-row {
+  width: clamp(340px, 30.99vw, 595px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: clamp(6px, 0.52vw, 10px);
+  margin: 0 auto clamp(16px, 2.96vh, 32px) auto;
+}
+
+.save-recovery-half-btn {
+  flex: 1;
+}
+
+.save-recovery-btn-stack {
+  width: clamp(360px, 32.66vw, 627px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.02vh, 11px);
+}
+
+/* ==========================================================================
+   Frame 4: Invite New Chapter Officer
+   ========================================================================== */
+
+.kamunggay-create-chapter-card.card-invite-officer {
+  padding: clamp(42px, 7.31vh, 79px) clamp(18px, 1.77vw, 34px) clamp(20px, 3vh, 32px);
+}
+
+.invite-officer-title {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(18px, 1.38vw, 26.5px);
+  line-height: 1.12;
+  color: #ffffff;
+  margin: 0 0 clamp(6px, 1.11vh, 12px) 0;
+  letter-spacing: -0.01em;
+}
+
+.invite-officer-subtitle {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: clamp(10px, 0.73vw, 14px);
+  line-height: 1.18;
+  color: #ffffff;
+  margin: 0 0 clamp(12px, 2.13vh, 23px) 0;
+}
+
+.invite-officer-banner-wrap {
+  position: relative;
+  width: clamp(330px, 30.26vw, 581px);
+  margin: 0 auto clamp(20px, 3.61vh, 39px) auto;
+}
+
+.invite-officer-banner {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.invite-officer-banner-slot {
+  position: absolute;
+  left: 38.5%;
+  top: 21%;
+  max-width: 24%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(10px, 0.78vw, 15px);
+  color: #d6e4f0;
+  pointer-events: none;
+}
+
+.invite-officer-form {
+  width: clamp(360px, 34.06vw, 654px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.invite-officer-group {
+  width: 100%;
+  text-align: left;
+}
+
+.invite-officer-group.group-officer-name {
+  margin-bottom: clamp(14px, 2.31vh, 25px);
+}
+
+.invite-officer-group.group-officer-email {
+  margin-bottom: clamp(14px, 2.22vh, 24px);
+}
+
+.invite-officer-label {
+  display: block;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 0.81vw, 15.5px);
+  line-height: 1.15;
+  color: #f9d3c5;
+  padding-left: clamp(12px, 1.15vw, 22px);
+  margin-bottom: clamp(5px, 0.83vh, 9px);
+}
+
+.invite-officer-input {
+  width: 100%;
+  height: clamp(50px, 7.59vh, 82px);
+  background-color: #49362c;
+  border: none;
+  border-radius: clamp(12px, 1.04vw, 20px);
+  outline: none;
+  padding: 0 clamp(14px, 1.15vw, 22px);
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(14px, 1.15vw, 22px);
+  color: #f9d3c5;
+  box-shadow: none;
+}
+
+.invite-officer-input:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
+.invite-officer-duties-section {
+  width: 100%;
+  text-align: left;
+  margin-bottom: clamp(12px, 1.94vh, 21px);
+}
+
+.invite-officer-duties-label {
+  display: block;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(12px, 0.91vw, 17.5px);
+  line-height: 1.15;
+  color: #f9d3c5;
+  padding-left: clamp(12px, 1.15vw, 22px);
+  margin-bottom: clamp(4px, 0.65vh, 7px);
+}
+
+.invite-officer-duties-box {
+  position: relative;
+  width: 100%;
+}
+
+.invite-officer-duties-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.invite-duty-hitbox {
+  position: absolute;
+  width: 49.3%;
+  height: 46.8%;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  outline: none;
+}
+
+.invite-duty-hitbox:hover,
+.invite-duty-hitbox:focus,
+.invite-duty-hitbox:focus-visible,
+.invite-duty-hitbox:active {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  outline: none !important;
+}
+
+.invite-duty-hitbox.duty-slot-top-left {
+  left: 0;
+  top: 0;
+}
+
+.invite-duty-hitbox.duty-slot-top-right {
+  right: 0;
+  top: 0;
+}
+
+.invite-duty-hitbox.duty-slot-bottom-left {
+  left: 0;
+  bottom: 0;
+}
+
+.invite-duty-hitbox.duty-slot-bottom-right {
+  right: 0;
+  bottom: 0;
+}
+
+.invite-duty-check-icon {
+  position: absolute;
+  width: 5.2%;
+  height: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  user-select: none;
+}
+
+.duty-slot-top-left .invite-duty-check-icon,
+.duty-slot-bottom-left .invite-duty-check-icon {
+  left: 9.1%;
+}
+
+.duty-slot-top-right .invite-duty-check-icon,
+.duty-slot-bottom-right .invite-duty-check-icon {
+  left: 9.5%;
+}
+
+.invite-officer-btn-stack {
+  width: clamp(360px, 32.66vw, 627px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.02vh, 11px);
+}
+
+/* ==========================================================================
+   Frame 5: Create Officer Account
+   ========================================================================== */
+
+.kamunggay-create-chapter-card.card-create-officer {
+  padding: clamp(28px, 4.35vh, 47px) clamp(18px, 1.77vw, 34px) clamp(20px, 3vh, 32px);
+}
+
+.create-officer-icon {
+  width: clamp(22px, 1.77vw, 34px);
+  height: clamp(24px, 3.33vh, 36px);
+  object-fit: contain;
+  display: block;
+  margin: 0 auto clamp(15px, 2.78vh, 30px) auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+.create-officer-title {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(18px, 1.38vw, 26.5px);
+  line-height: 1.12;
+  color: #ffffff;
+  margin: 0 0 clamp(15px, 2.69vh, 29px) 0;
+  letter-spacing: -0.01em;
+}
+
+.create-officer-banner-wrap {
+  position: relative;
+  width: clamp(320px, 29.69vw, 570px);
+  margin: 0 auto clamp(14px, 2.5vh, 27px) auto;
+}
+
+.create-officer-banner {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.create-officer-banner-text {
+  position: absolute;
+  left: 11%;
+  right: 5%;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: left;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(10px, 0.73vw, 14px);
+  color: #214d3d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.create-officer-form {
+  width: clamp(360px, 34.06vw, 654px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.create-officer-group {
+  width: 100%;
+  text-align: left;
+}
+
+.create-officer-group.group-co-name {
+  margin-bottom: clamp(11px, 1.94vh, 21px);
+}
+
+.create-officer-group.group-co-email {
+  margin-bottom: clamp(10px, 1.76vh, 19px);
+}
+
+.create-officer-group.group-co-password {
+  margin-bottom: clamp(9px, 1.57vh, 17px);
+}
+
+.create-officer-group.group-co-confirm {
+  margin-bottom: clamp(10px, 1.76vh, 19px);
+}
+
+.create-officer-label {
+  display: block;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 0.81vw, 15.5px);
+  line-height: 1.15;
+  color: #f9d3c5;
+  padding-left: clamp(12px, 1.15vw, 22px);
+  margin-bottom: clamp(6px, 1.02vh, 11px);
+}
+
+.create-officer-label.label-co-password {
+  font-size: clamp(11px, 0.83vw, 16px);
+  margin-bottom: clamp(5px, 0.83vh, 9px);
+}
+
+.create-officer-label.label-co-confirm {
+  margin-bottom: clamp(5px, 0.93vh, 10px);
+}
+
+.create-officer-btn-stack {
+  width: clamp(360px, 32.66vw, 627px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 0.74vh, 8px);
 }

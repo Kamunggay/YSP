@@ -5,8 +5,16 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   use: {
-    baseURL: process.env['YSP_BROWSER_URL'] ?? 'http://127.0.0.1:8080',
-    browserName: 'chromium',
+    baseURL: process.env['YSP_BROWSER_URL'] ?? 'http://127.0.0.1:5173',
+    channel: 'msedge',
     trace: 'retain-on-failure',
   },
+  projects: [
+    {
+      name: 'edge',
+      use: {
+        channel: 'msedge',
+      },
+    },
+  ],
 });
