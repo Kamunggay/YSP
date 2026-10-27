@@ -1470,6 +1470,486 @@ test('ticket07 asserted sole scope selects only its exact membership and rejects
   assert.equal(selected.context.chapter_id, member.chapter_id);
 });
 
+test('ticket07 test-only database fixtures exercise remaining authorized duty interval and unit-limit combinations across fixed 14-duty vocabulary', async () => {
+  const {browser, id} = await enrolledOfficer('p07-matrix');
+  const member = chapterFixture('membership', id, {duties:[]});
+  const setup = chapterFixture('duties-matrix', id, {membership_id:member.membership_id});
+  assert.ok(setup.active_unit_id);
+  assert.ok(setup.inactive_unit_id);
+  const vocabulary = [
+    'COMMITTEE_REQUESTER','RF_APPROVER','SALES_OFFICER','SALES_REVIEWER','FINANCE',
+    'INVENTORY','PURCHASING','BUDGET_APPROVER','RECEIVING','DISPATCH','BOOTH_CUSTODIAN',
+    'BOOTH_CASHIER','INDEPENDENT_REVIEWER','CHAPTER_HEAD',
+  ];
+  assert.deepEqual(Object.keys(setup.matrix).sort(), [...vocabulary].sort());
+
+  const initial = await (await browser.request(contextPath)).json();
+  assert.equal(initial.chapter_state, 'selection_required');
+  const selected = await selectChapter(browser, initial.selection_revision, member);
+  assert.equal(selected.status, 200);
+  const current = await selected.json();
+  assert.equal(current.chapter_state, 'selected');
+  assert.equal(current.selection_source, 'explicit');
+
+  const grantIds = new Set(current.context.duty_grants.map(g => g.id));
+  for (const duty of vocabulary) {
+    const row = setup.matrix[duty];
+    assert.ok(grantIds.has(row.chapter_active), `Active chapter grant for ${duty} should be included`);
+    assert.ok(grantIds.has(row.unit_finite), `Active finite unit grant for ${duty} should be included`);
+    assert.ok(grantIds.has(row.unit_zero), `Active zero unit grant for ${duty} should be included`);
+    assert.ok(!grantIds.has(row.future), `Future grant for ${duty} must be excluded`);
+    assert.ok(!grantIds.has(row.expired), `Expired grant for ${duty} must be excluded`);
+    assert.ok(!grantIds.has(row.revoked), `Revoked grant for ${duty} must be excluded`);
+    assert.ok(!grantIds.has(row.inactive_unit), `Inactive unit grant for ${duty} must be excluded`);
+  }
+
+  // Chapter-level actions include Head, Finance, and universal status reads, but exclude provider/disabled actions.
+  assert.ok(current.context.available_actions.includes('policy.status.read'));
+  assert.ok(current.context.available_actions.includes('policy.financial.approve'));
+  assert.ok(current.context.available_actions.includes('memberships.authorize'));
+  assert.ok(!current.context.available_actions.some(a => a.startsWith('provider.') || a === 'identity.disable'));
+
+  const baseScope = {
+    chapter_id: member.chapter_id,
+    membership_id: member.membership_id,
+    expected_authority_version: current.context.authority_version,
+  };
+
+  // Chapter-scoped grant has null limit: permits non-monetary action, but rejects monetary amounts (null = no monetary cap).
+  assert.equal(chapterFixture('execute', id, {
+    revision: current.selection_revision,
+    scope: {...baseScope, action: 'policy.status.read'},
+  }).status, 200);
+  assert.equal(chapterFixture('execute', id, {
+    revision: current.selection_revision,
+    scope: {...baseScope, action: 'policy.status.read', amount: '1.00'},
+  }).status, 403);
+
+  // Unit-scoped grant with finite limit (1500.00):
+  assert.equal(chapterFixture('execute', id, {
+    revision: current.selection_revision,
+    scope: {...baseScope, requesting_unit_id: setup.active_unit_id, action: 'policy.financial.approve', amount: '1500.00'},
+  }).status, 200);
+  assert.equal(chapterFixture('execute', id, {
+    revision: current.selection_revision,
+    scope: {...baseScope, requesting_unit_id: setup.active_unit_id, action: 'policy.financial.approve', amount: '1500.01'},
+  }).status, 403);
+
+  // Unit-scoped grant with zero limit (0.00):
+  assert.equal(chapterFixture('execute', id, {
+    revision: current.selection_revision,
+    scope: {...baseScope, requesting_unit_id: setup.active_unit_id, action: 'policy.status.read', amount: '0.00'},
+  }).status, 200);
+
+  // Unit-scoped grant on inactive unit is rejected:
+  assert.equal(chapterFixture('execute', id, {
+    revision: current.selection_revision,
+    scope: {...baseScope, requesting_unit_id: setup.inactive_unit_id, action: 'policy.status.read'},
+  }).status, 403);
+});
+
+test('ticket07 0 1 many membership discovery and restoration tracks dynamic changes and retains selection across context reads', async () => {
+  const {browser, id} = await signedInBrowser('p07-discovery');
+
+  // Step 1: 0 memberships discovery and state
+  const zeroCtx = await (await browser.request(contextPath)).json();
+  assert.equal(zeroCtx.chapter_state, 'no_authorized_memberships');
+  assert.equal(zeroCtx.selection_source, undefined);
+  assert.match(zeroCtx.selection_revision, /^ctx_[A-Za-z0-9_-]{32,96}$/);
+
+  const zeroMemberships = await (await browser.request('/api/v1/session/chapter-memberships')).json();
+  assert.deepEqual(zeroMemberships.items, []);
+  assert.equal(zeroMemberships.next_cursor, null);
+
+  const randomChapter = {chapter_id: '999999999999999999', membership_id: '1', expected_membership_version: 1};
+  assert.equal((await selectChapter(browser, zeroCtx.selection_revision, randomChapter)).status, 403);
+
+  // Step 2: 1 membership added -> discovery and sole auto-selection
+  const first = chapterFixture('membership', id);
+  const oneMemberships = await (await browser.request('/api/v1/session/chapter-memberships')).json();
+  assert.equal(oneMemberships.items.length, 1);
+  assert.equal(oneMemberships.items[0].chapter_id, first.chapter_id);
+  assert.equal(oneMemberships.items[0].membership_id, first.membership_id);
+
+  const soleCtx = await (await browser.request(contextPath)).json();
+  assert.equal(soleCtx.chapter_state, 'selected');
+  assert.equal(soleCtx.selection_source, 'sole_membership');
+  assert.equal(soleCtx.context.chapter_id, first.chapter_id);
+  assert.notEqual(soleCtx.selection_revision, zeroCtx.selection_revision);
+
+  const restoredSole = await (await browser.request(contextPath)).json();
+  assert.equal(restoredSole.chapter_state, 'selected');
+  assert.equal(restoredSole.selection_source, 'restored');
+  assert.equal(restoredSole.context.chapter_id, first.chapter_id);
+  assert.equal(restoredSole.selection_revision, soleCtx.selection_revision);
+
+  // Step 3: Expand to many memberships -> discovery, preserved restoration, explicit switch
+  const second = chapterFixture('membership', id);
+  const third = chapterFixture('membership', id);
+
+  const manyMemberships = await (await browser.request('/api/v1/session/chapter-memberships')).json();
+  assert.equal(manyMemberships.items.length, 3);
+  const discoveredChapterIds = manyMemberships.items.map(m => m.chapter_id);
+  assert.ok(discoveredChapterIds.includes(first.chapter_id));
+  assert.ok(discoveredChapterIds.includes(second.chapter_id));
+  assert.ok(discoveredChapterIds.includes(third.chapter_id));
+
+  // Context read preserves the established valid selection rather than forcing re-selection
+  const restoredMany = await (await browser.request(contextPath)).json();
+  assert.equal(restoredMany.chapter_state, 'selected');
+  assert.equal(restoredMany.selection_source, 'restored');
+  assert.equal(restoredMany.context.chapter_id, first.chapter_id);
+  assert.equal(restoredMany.selection_revision, soleCtx.selection_revision);
+
+  // Step 4: Explicit switch to second chapter
+  const switched = await selectChapter(browser, restoredMany.selection_revision, second);
+  assert.equal(switched.status, 200);
+  const switchedCtx = await switched.json();
+  assert.equal(switchedCtx.chapter_state, 'selected');
+  assert.equal(switchedCtx.selection_source, 'explicit');
+  assert.equal(switchedCtx.context.chapter_id, second.chapter_id);
+  assert.notEqual(switchedCtx.selection_revision, restoredMany.selection_revision);
+
+  const restoredSecond = await (await browser.request(contextPath)).json();
+  assert.equal(restoredSecond.chapter_state, 'selected');
+  assert.equal(restoredSecond.selection_source, 'restored');
+  assert.equal(restoredSecond.context.chapter_id, second.chapter_id);
+  assert.equal(restoredSecond.selection_revision, switchedCtx.selection_revision);
+
+  // Step 5: Assertion query parameters (?chapter_id=...)
+  assert.equal((await browser.request(contextPath + '?chapter_id=' + second.chapter_id)).status, 200);
+  assert.equal((await browser.request(contextPath + '?chapter_id=' + first.chapter_id)).status, 409);
+  assert.equal((await browser.request(contextPath + '?chapter_id=' + randomChapter.chapter_id)).status, 409);
+
+  // Selection remains Chapter 2 after rejected assertions
+  const afterRejections = await (await browser.request(contextPath)).json();
+  assert.equal(afterRejections.selection_revision, switchedCtx.selection_revision);
+  assert.equal(afterRejections.context.chapter_id, second.chapter_id);
+});
+
+test('ticket07 cross-tab stale X-Chapter-Context rejection isolates independent tabs and preserves original attempt', async () => {
+  const {browser, id} = await signedInBrowser('p07-tabs');
+  const first = chapterFixture('membership', id);
+  const second = chapterFixture('membership', id);
+
+  const tab1 = browser;
+  const tab2 = new Browser();
+  tab2.cookies = new Map(tab1.cookies);
+
+  // Both tabs share the session and observe initial selection_required with revA
+  const init = await (await tab1.request(contextPath)).json();
+  assert.equal(init.chapter_state, 'selection_required');
+  const revA = init.selection_revision;
+  assert.match(revA, /^ctx_[A-Za-z0-9_-]{32,96}$/);
+
+  // Tab 1 explicitly selects Chapter 1, rotating server revision to revB
+  const sel1 = await selectChapter(tab1, revA, first);
+  assert.equal(sel1.status, 200);
+  const sel1Body = await sel1.json();
+  const revB = sel1Body.selection_revision;
+  assert.notEqual(revB, revA);
+  assert.equal(sel1Body.context.chapter_id, first.chapter_id);
+
+  // Tab 2 still holds stale revA and attempts to select Chapter 2
+  const staleSelect = await selectChapter(tab2, revA, second);
+  assert.equal(staleSelect.status, 409);
+  const staleSelectBody = await staleSelect.json();
+  assert.deepEqual(staleSelectBody, {
+    code: 'chapter_context_stale',
+    message: 'Refresh current context and review the original scope before another attempt.',
+    next_action: 'refresh_context',
+  });
+
+  // Tab 2 attempts protected execution using stale revA
+  const staleExec = chapterFixture('execute', id, {
+    revision: revA,
+    scope: {
+      chapter_id: second.chapter_id,
+      membership_id: second.membership_id,
+      expected_authority_version: 1,
+      action: 'policy.status.read',
+    },
+  });
+  assert.equal(staleExec.status, 409);
+  assert.equal(staleExec.effect_committed, false);
+
+  // Malformed X-Chapter-Context header values return 400
+  for (const badHeader of ['', 'invalid-format', 'ctx_short', 'ctx_' + '!'.repeat(32)]) {
+    const malformed = await selectChapter(tab2, badHeader, second);
+    assert.equal(malformed.status, 400);
+  }
+
+  // Server selection is still Chapter 1 under revB
+  const checkServer = await (await tab1.request(contextPath)).json();
+  assert.equal(checkServer.context.chapter_id, first.chapter_id);
+  assert.equal(checkServer.selection_revision, revB);
+
+  // Tab 2 refreshes context, discovers restored Chapter 1 with revB
+  const tab2Refresh = await (await tab2.request(contextPath)).json();
+  assert.equal(tab2Refresh.selection_source, 'restored');
+  assert.equal(tab2Refresh.context.chapter_id, first.chapter_id);
+  assert.equal(tab2Refresh.selection_revision, revB);
+
+  // Tab 2 now switches to Chapter 2 using valid revB, advancing server revision to revC
+  const sel2 = await selectChapter(tab2, revB, second);
+  assert.equal(sel2.status, 200);
+  const revC = (await sel2.json()).selection_revision;
+  assert.notEqual(revC, revB);
+
+  // Now Tab 1 holding revB is stale
+  const tab1Stale = await selectChapter(tab1, revB, first);
+  assert.equal(tab1Stale.status, 409);
+
+  // Tab 1 refreshes and discovers Chapter 2 with revC
+  const tab1Refresh = await (await tab1.request(contextPath)).json();
+  assert.equal(tab1Refresh.selection_source, 'restored');
+  assert.equal(tab1Refresh.context.chapter_id, second.chapter_id);
+  assert.equal(tab1Refresh.selection_revision, revC);
+});
+
+test('ticket07 invalidated selection when membership or grant intervals expire or revoke mid-session enforces safe stale transitions and immediate authority downgrade', async () => {
+  const {browser, id} = await enrolledOfficer('p07-mid-session');
+  const first = chapterFixture('membership', id);
+  const second = chapterFixture('membership', id);
+
+  // Initial selection_required (user has arrangeState head from enrolledOfficer + first + second)
+  const init = await (await browser.request(contextPath)).json();
+  assert.equal(init.chapter_state, 'selection_required');
+
+  // Select first chapter
+  const sel1 = await selectChapter(browser, init.selection_revision, first);
+  assert.equal(sel1.status, 200);
+  const rev1 = (await sel1.json()).selection_revision;
+
+  // 1. Invalidate first membership mid-session
+  chapterFixture('end-membership', id, first);
+
+  // Attempting to switch using rev1 under invalidated selected membership returns 409
+  const invalidSwitch = await selectChapter(browser, rev1, second);
+  assert.equal(invalidSwitch.status, 409);
+
+  // Protected execution under invalidated membership returns 409
+  const invalidExec = chapterFixture('execute', id, {
+    revision: rev1,
+    scope: {
+      chapter_id: first.chapter_id,
+      membership_id: first.membership_id,
+      expected_authority_version: 1,
+      action: 'policy.status.read',
+    },
+  });
+  assert.equal(invalidExec.status, 409);
+  assert.equal(invalidExec.effect_committed, false);
+
+  // Context read first returns safe 409, clearing invalid selection
+  const staleCtx = await browser.request(contextPath);
+  assert.equal(staleCtx.status, 409);
+  assert.equal((await staleCtx.json()).code, 'chapter_context_stale');
+
+  // Next context read recomputes and discovers selection_required with new revision
+  const recomputed = await (await browser.request(contextPath)).json();
+  assert.equal(recomputed.chapter_state, 'selection_required');
+  const rev2 = recomputed.selection_revision;
+  assert.notEqual(rev2, rev1);
+
+  // 2. Select second chapter and add grants
+  const sel2 = await selectChapter(browser, rev2, second);
+  assert.equal(sel2.status, 200);
+  const rev3 = (await sel2.json()).selection_revision;
+
+  const gFinance = chapterFixture('grant', id, {
+    membership_id: second.membership_id,
+    duty: 'FINANCE',
+  });
+  const gUnit = chapterFixture('grant', id, {
+    membership_id: second.membership_id,
+    duty: 'COMMITTEE_REQUESTER',
+    unit: true,
+    limit: '500.00',
+  });
+
+  const activeCtx = await (await browser.request(contextPath)).json();
+  assert.ok(activeCtx.context.available_actions.includes('policy.financial.approve'));
+  assert.ok(activeCtx.context.duty_grants.some(g => g.id === gFinance.grant_id));
+  assert.ok(activeCtx.context.duty_grants.some(g => g.id === gUnit.grant_id));
+
+  const baseSecondScope = {
+    chapter_id: second.chapter_id,
+    membership_id: second.membership_id,
+    expected_authority_version: activeCtx.context.authority_version,
+  };
+
+  // Protected execution with Finance action succeeds
+  assert.equal(chapterFixture('execute', id, {
+    revision: rev3,
+    scope: {...baseSecondScope, action: 'policy.financial.approve'},
+  }).status, 200);
+
+  // Revoke Finance grant mid-session
+  chapterFixture('revoke-grant', id, {grant_id: gFinance.grant_id});
+
+  // Protected execution immediately denied (403 forbidden)
+  const revokedExec = chapterFixture('execute', id, {
+    revision: rev3,
+    scope: {...baseSecondScope, action: 'policy.financial.approve'},
+  });
+  assert.equal(revokedExec.status, 403);
+  assert.equal(revokedExec.effect_committed, false);
+
+  // Context read reflects immediate removal of Finance actions and grant
+  const afterRevocation = await (await browser.request(contextPath)).json();
+  assert.ok(!afterRevocation.context.available_actions.includes('policy.financial.approve'));
+  assert.ok(!afterRevocation.context.duty_grants.some(g => g.id === gFinance.grant_id));
+  assert.equal(afterRevocation.selection_revision, rev3);
+
+  // Unit grant execution succeeds before unit deactivation
+  assert.equal(chapterFixture('execute', id, {
+    revision: rev3,
+    scope: {...baseSecondScope, requesting_unit_id: gUnit.requesting_unit_id, action: 'policy.status.read', amount: '500.00'},
+  }).status, 200);
+
+  // Deactivate unit mid-session
+  chapterFixture('deactivate-unit', id, {requesting_unit_id: gUnit.requesting_unit_id});
+
+  // Unit execution now fails with 403 forbidden
+  assert.equal(chapterFixture('execute', id, {
+    revision: rev3,
+    scope: {...baseSecondScope, requesting_unit_id: gUnit.requesting_unit_id, action: 'policy.status.read', amount: '500.00'},
+  }).status, 403);
+
+  // Expire unit grant mid-session
+  chapterFixture('expire-grant', id, {grant_id: gUnit.grant_id});
+  const afterExpiration = await (await browser.request(contextPath)).json();
+  assert.ok(!afterExpiration.context.duty_grants.some(g => g.id === gUnit.grant_id));
+});
+
+test('ticket07 provider-only user isolation strictly prevents chapter access selection and action leakage', async () => {
+  const provider = await verifiedProvisioner('p07-isolation');
+
+  // Provider-only user with 0 chapter memberships
+  const emptyCtx = await (await provider.browser.request(contextPath)).json();
+  assert.equal(emptyCtx.chapter_state, 'no_authorized_memberships');
+  assert.equal(emptyCtx.context, undefined);
+  assert.equal(emptyCtx.selection_source, undefined);
+  assert.match(emptyCtx.selection_revision, /^ctx_[A-Za-z0-9_-]{32,96}$/);
+
+  const memberships = await (await provider.browser.request('/api/v1/session/chapter-memberships')).json();
+  assert.deepEqual(memberships.items, []);
+
+  // Provider cannot select an unowned chapter
+  const syntheticChapter = {chapter_id: '999999999999999999', membership_id: '1', expected_membership_version: 1};
+  assert.equal((await selectChapter(provider.browser, emptyCtx.selection_revision, syntheticChapter)).status, 403);
+
+  // Provider cannot execute chapter protected execution without membership
+  const unownedExec = chapterFixture('execute', provider.id, {
+    revision: emptyCtx.selection_revision,
+    scope: {
+      chapter_id: '1',
+      membership_id: '1',
+      expected_authority_version: 1,
+      action: 'provider.chapters.create',
+    },
+  });
+  assert.equal(unownedExec.status, 409);
+  assert.equal(unownedExec.effect_committed, false);
+
+  // When provider is separately granted a chapter membership:
+  const member = chapterFixture('membership', provider.id, {duties: ['COMMITTEE_REQUESTER']});
+  const current = await (await provider.browser.request(contextPath)).json();
+  assert.equal(current.chapter_state, 'selected');
+  assert.equal(current.selection_source, 'sole_membership');
+  assert.deepEqual(current.context.provider_roles, ['provisioner']);
+  assert.deepEqual(current.context.available_actions, ['policy.status.read']);
+
+  // Chapter context available_actions never exposes provider actions or disabled actions
+  assert.ok(!current.context.available_actions.some(a => a.startsWith('provider.') || a === 'identity.disable'));
+
+  // Protected chapter execution rejects provider actions
+  const providerActionExec = chapterFixture('execute', provider.id, {
+    revision: current.selection_revision,
+    scope: {
+      chapter_id: member.chapter_id,
+      membership_id: member.membership_id,
+      expected_authority_version: current.context.authority_version,
+      action: 'provider.chapters.create',
+    },
+  });
+  assert.equal(providerActionExec.status, 403);
+  assert.equal(providerActionExec.effect_committed, false);
+
+  // Chapter context revision cannot be passed to provider routes
+  const providerContextPath = '/api/v1/provider/provisioning-context';
+  assert.equal((await provider.browser.request(providerContextPath, {
+    headers: {'X-Chapter-Context': current.selection_revision},
+  })).status, 403);
+});
+
+test('ticket07 concurrent chapter selection updates under database contention accept exactly one update and reject the other as stale', async t => {
+  const {browser, id} = await signedInBrowser('p07-race-updates');
+  const first = chapterFixture('membership', id);
+  const second = chapterFixture('membership', id);
+  const third = chapterFixture('membership', id);
+
+  // Initial selection of Chapter 1
+  const initial = await (await browser.request(contextPath)).json();
+  assert.equal(initial.chapter_state, 'selection_required');
+  const selectedFirst = await selectChapter(browser, initial.selection_revision, first);
+  assert.equal(selectedFirst.status, 200);
+  const revA = (await selectedFirst.json()).selection_revision;
+
+  // Independent contender client on separate HTTP worker
+  const contender = new Browser();
+  contender.cookies = new Map(browser.cookies);
+  contender.worker = 'contender';
+
+  // Hold row lock to force both workers to wait and overlap transactions
+  const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/enrollment-state.php', 'hold', id]);
+  t.after(() => holder.stdin.end('\n'));
+
+  await Promise.race([new Promise((resolve, reject) => {
+    holder.once('error', reject);
+    holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+    holder.once('exit', () => reject(new Error('Chapter context lock holder exited')));
+  }), new Promise((_, reject) => setTimeout(() => reject(new Error('Lock timeout')), 5000))]);
+
+  // Tab 1 tries switching to Chapter 2; Tab 2 tries switching to Chapter 3
+  const pending = Promise.all([
+    selectChapter(browser, revA, second),
+    selectChapter(contender, revA, third),
+  ]);
+
+  let waiting = 0;
+  try {
+    for (let i = 0; i < 40; i++) {
+      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], {encoding: 'utf8'});
+      assert.equal(probe.status, 0, probe.stderr);
+      waiting = Number(probe.stdout.trim());
+      if (waiting >= 2) break;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  } finally {
+    holder.stdin.end('\n');
+  }
+
+  const responses = await pending;
+  assert.ok(waiting >= 2, `Both independent HTTP update transactions must overlap in lock waits; waiters=${waiting}`);
+  assert.deepEqual(responses.map(r => r.status).sort(), [200, 409]);
+
+  const accepted = await responses.find(r => r.status === 200).json();
+  const denied = await responses.find(r => r.status === 409).json();
+  assert.deepEqual(Object.keys(denied).sort(), ['code', 'message', 'next_action']);
+  assert.equal(denied.code, 'chapter_context_stale');
+
+  // Server state reflects exactly the winning selection and its rotated revision
+  const restored = await (await browser.request(contextPath)).json();
+  assert.equal(restored.selection_source, 'restored');
+  assert.equal(restored.selection_revision, accepted.selection_revision);
+  assert.equal(restored.context.chapter_id, accepted.context.chapter_id);
+  assert.ok([second.chapter_id, third.chapter_id].includes(restored.context.chapter_id));
+});
+
 async function installProvisioner(id, organization, approver) {
   return runIdentityCli([
     ['Operator audit reference', 'Synthetic restricted operator'],

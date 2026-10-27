@@ -73,22 +73,124 @@ if ($argv[1] === 'membership') {
     $result = DB::transaction(function () use ($user, $input): array {
         DB::table('users')->where('id', $user)->lockForUpdate()->first();
         $member = DB::table('memberships')->where('id', $input['membership_id'])->where('user_id', $user)->lockForUpdate()->first();
-        $unit = null;
-        if ($input['unit'] ?? false) {
+        $unit = $input['requesting_unit_id'] ?? null;
+        if ($unit === null && ($input['unit'] ?? false)) {
             DB::table('requesting_units')->insert(['chapter_id' => $member->chapter_id,
                 'code' => 'U'.bin2hex(random_bytes(6)), 'name' => 'Synthetic unit', 'active' => $input['active'] ?? true]);
             $unit = DB::connection()->getPdo()->lastInsertId();
         }
         $ends = isset($input['ttl_ms']) ? now()->addMilliseconds($input['ttl_ms']) : ($input['ends_at'] ?? null);
+        $scopeKind = $input['scope_kind'] ?? ($unit === null ? 'chapter' : 'unit');
         DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
             'role_id' => DB::table('roles')->where('code', $input['duty'] ?? 'COMMITTEE_REQUESTER')->value('id'),
-            'scope_kind' => $unit === null ? 'chapter' : 'unit', 'requesting_unit_id' => $unit,
+            'scope_kind' => $scopeKind, 'requesting_unit_id' => $unit,
             'monetary_limit' => $input['limit'] ?? null, 'starts_at' => $input['starts_at'] ?? now()->subMinute(),
             'ends_at' => $ends, 'revoked_at' => $input['revoked_at'] ?? null]);
         $grant = DB::connection()->getPdo()->lastInsertId();
 
         return ['grant_id' => (string) $grant, 'requesting_unit_id' => $unit === null ? null : (string) $unit,
             'ends_at' => $ends === null ? null : Carbon::parse($ends, 'UTC')->format('Y-m-d\TH:i:s.u\Z')];
+    });
+} elseif ($argv[1] === 'unit') {
+    $result = DB::transaction(function () use ($user, $input): array {
+        DB::table('users')->where('id', $user)->lockForUpdate()->first();
+        DB::table('requesting_units')->insert([
+            'chapter_id' => $input['chapter_id'],
+            'code' => 'U'.bin2hex(random_bytes(6)),
+            'name' => 'Synthetic test unit',
+            'active' => $input['active'] ?? true,
+        ]);
+        $unit = DB::connection()->getPdo()->lastInsertId();
+
+        return ['requesting_unit_id' => (string) $unit];
+    });
+} elseif ($argv[1] === 'revoke-grant') {
+    DB::transaction(function () use ($user, $input): void {
+        DB::table('users')->where('id', $user)->lockForUpdate()->first();
+        DB::table('duty_grants')->where('id', $input['grant_id'])
+            ->update(['revoked_at' => $input['revoked_at'] ?? now()]);
+    });
+    $result = ['applied' => true];
+} elseif ($argv[1] === 'expire-grant') {
+    DB::transaction(function () use ($user, $input): void {
+        DB::table('users')->where('id', $user)->lockForUpdate()->first();
+        DB::table('duty_grants')->where('id', $input['grant_id'])
+            ->update(['ends_at' => $input['ends_at'] ?? now()->subSecond()]);
+    });
+    $result = ['applied' => true];
+} elseif ($argv[1] === 'deactivate-unit') {
+    DB::transaction(function () use ($user, $input): void {
+        DB::table('users')->where('id', $user)->lockForUpdate()->first();
+        DB::table('requesting_units')->where('id', $input['requesting_unit_id'])
+            ->update(['active' => false]);
+    });
+    $result = ['applied' => true];
+} elseif ($argv[1] === 'duties-matrix') {
+    $result = DB::transaction(function () use ($user, $input): array {
+        DB::table('users')->where('id', $user)->lockForUpdate()->first();
+        $member = DB::table('memberships')->where('id', $input['membership_id'])->where('user_id', $user)->lockForUpdate()->first();
+        DB::table('requesting_units')->insert(['chapter_id' => $member->chapter_id,
+            'code' => 'UACT'.bin2hex(random_bytes(4)), 'name' => 'Synthetic test active unit', 'active' => true]);
+        $activeUnit = (string) DB::connection()->getPdo()->lastInsertId();
+
+        DB::table('requesting_units')->insert(['chapter_id' => $member->chapter_id,
+            'code' => 'UINACT'.bin2hex(random_bytes(4)), 'name' => 'Synthetic test inactive unit', 'active' => false]);
+        $inactiveUnit = (string) DB::connection()->getPdo()->lastInsertId();
+
+        $duties = DB::table('roles')->orderBy('id')->pluck('id', 'code')->all();
+        $matrix = [];
+        foreach ($duties as $code => $roleId) {
+            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
+                'role_id' => $roleId, 'scope_kind' => 'chapter', 'requesting_unit_id' => null,
+                'monetary_limit' => null, 'starts_at' => now()->subMinute(), 'ends_at' => null, 'revoked_at' => null]);
+            $chGrant = (string) DB::connection()->getPdo()->lastInsertId();
+
+            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
+                'role_id' => $roleId, 'scope_kind' => 'unit', 'requesting_unit_id' => $activeUnit,
+                'monetary_limit' => '1500.00', 'starts_at' => now()->subMinute(), 'ends_at' => null, 'revoked_at' => null]);
+            $unitFiniteGrant = (string) DB::connection()->getPdo()->lastInsertId();
+
+            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
+                'role_id' => $roleId, 'scope_kind' => 'unit', 'requesting_unit_id' => $activeUnit,
+                'monetary_limit' => '0.00', 'starts_at' => now()->subMinute(), 'ends_at' => null, 'revoked_at' => null]);
+            $unitZeroGrant = (string) DB::connection()->getPdo()->lastInsertId();
+
+            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
+                'role_id' => $roleId, 'scope_kind' => 'chapter', 'requesting_unit_id' => null,
+                'monetary_limit' => null, 'starts_at' => now()->addDay(), 'ends_at' => null, 'revoked_at' => null]);
+            $futureGrant = (string) DB::connection()->getPdo()->lastInsertId();
+
+            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
+                'role_id' => $roleId, 'scope_kind' => 'chapter', 'requesting_unit_id' => null,
+                'monetary_limit' => null, 'starts_at' => now()->subDays(2), 'ends_at' => now()->subDay(), 'revoked_at' => null]);
+            $expiredGrant = (string) DB::connection()->getPdo()->lastInsertId();
+
+            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
+                'role_id' => $roleId, 'scope_kind' => 'chapter', 'requesting_unit_id' => null,
+                'monetary_limit' => null, 'starts_at' => now()->subDays(2), 'ends_at' => null, 'revoked_at' => now()->subDay()]);
+            $revokedGrant = (string) DB::connection()->getPdo()->lastInsertId();
+
+            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
+                'role_id' => $roleId, 'scope_kind' => 'unit', 'requesting_unit_id' => $inactiveUnit,
+                'monetary_limit' => '500.00', 'starts_at' => now()->subMinute(), 'ends_at' => null, 'revoked_at' => null]);
+            $inactiveUnitGrant = (string) DB::connection()->getPdo()->lastInsertId();
+
+            $matrix[$code] = [
+                'chapter_active' => $chGrant,
+                'unit_finite' => $unitFiniteGrant,
+                'unit_zero' => $unitZeroGrant,
+                'future' => $futureGrant,
+                'expired' => $expiredGrant,
+                'revoked' => $revokedGrant,
+                'inactive_unit' => $inactiveUnitGrant,
+            ];
+        }
+
+        return [
+            'active_unit_id' => $activeUnit,
+            'inactive_unit_id' => $inactiveUnit,
+            'matrix' => $matrix,
+        ];
     });
 } elseif ($argv[1] === 'end-membership') {
     DB::transaction(function () use ($user, $input): void {
