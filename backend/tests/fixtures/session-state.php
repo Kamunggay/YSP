@@ -83,6 +83,20 @@ if (str_starts_with($action, 'duty:')) {
         'clear-throttles' => DB::table('session_throttles')->delete(),
         'unsigned-identity-id' => DB::statement('ALTER TABLE users AUTO_INCREMENT = 9223372036854775808'),
         'expire-throttles' => DB::table('session_throttles')->update(['expires_at' => time() - 1]),
+        'expire-challenge' => (function () use ($id): void {
+            foreach (DB::table('sessions')->get() as $row) {
+                $payload = json_decode(base64_decode($row->payload), true, flags: JSON_THROW_ON_ERROR);
+                if (($payload['identity_id'] ?? null) !== $id) {
+                    continue;
+                }
+                if (isset($payload['mfa_challenge'])) {
+                    $payload['mfa_challenge']['expires_at'] = now()->subMinutes(1)->format('Y-m-d\TH:i:s.u\Z');
+                    DB::table('sessions')->where('id', $row->id)->update([
+                        'payload' => base64_encode(json_encode($payload, JSON_THROW_ON_ERROR)),
+                    ]);
+                }
+            }
+        })(),
         default => throw new RuntimeException('Unknown fixture: '.$action),
     };
 }

@@ -73,10 +73,18 @@ async function createIdentity(email, password) {
   return output.match(/Identity created: ([1-9][0-9]*)/)[1];
 }
 
+function arrangeState(action, id) {
+  const result = spawnSync('docker', ['exec', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/session-state.php', action, id], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'Fixture applied');
+}
+
 async function signedInBrowser(label) {
   const email = `${label}-${Date.now()}@example.test`;
   const password = 'Synthetic-only-secret-42!';
   const id = await createIdentity(email, password);
+  arrangeState('clear-throttles', id);
   const browser = new Browser();
   await browser.request('/csrf-cookie');
   const response = await browser.request('/api/v1/session/sign-in', {
@@ -85,13 +93,6 @@ async function signedInBrowser(label) {
   });
   assert.equal(response.status, 200);
   return { browser, id, email, password };
-}
-
-function arrangeState(action, id) {
-  const result = spawnSync('docker', ['exec', '-e', 'YSP_SESSION_FIXTURES=1', container,
-    'php', 'tests/fixtures/session-state.php', action, id], { encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout, 'Fixture applied');
 }
 
 const enrollmentPath = '/api/v1/session/mfa/enrollment';
@@ -576,7 +577,10 @@ async function returningBrowser(officer, worker) {
 }
 async function enrolledOfficer(label) {
   const officer = await preparedOfficer(label);
+  arrangeState('clear-throttles', officer.id);
   const { enrollment } = officer.prepared;
+  const remaining = 30000 - Date.now() % 30000;
+  if (remaining < 3000) await new Promise(resolve => setTimeout(resolve, remaining + 100));
   const enrollmentCode = authenticatorCode(enrollment.manual_key);
   const response = await post(officer.browser, enrollmentPath + '/confirm', {
     enrollment_id: enrollment.id, authenticator_code: enrollmentCode,
@@ -611,6 +615,43 @@ test('ticket03 authenticator challenge accepts a fresh step once across sessions
   assert.deepEqual(await (await stale.request('/api/v1/session')).json(), { state: 'signed_out' });
   assert.deepEqual(await (await first.browser.request('/api/v1/session')).json(), snapshot);
   assert.equal((await post(second.browser, challengePath, { ...proof, challenge_id: second.challenge.id })).status, 400);
+});
+
+test('ticket03 recovery code challenge accepts a code once across sessions and rotates credentials', async () => {
+  const officer = await enrolledOfficer('challenge-recovery');
+  const first = await returningBrowser(officer);
+  const second = await returningBrowser(officer);
+  const proof = { method: 'recovery_code', recovery_code: officer.codes[0] };
+  const oldCookies = new Map(first.browser.cookies);
+  const accepted = await post(first.browser, challengePath, { ...proof, challenge_id: first.challenge.id });
+  assert.equal(accepted.status, 200);
+  const snapshot = await accepted.json();
+  assert.equal(snapshot.state, 'authenticated');
+  assert.equal(snapshot.mfa.status, 'verified');
+  assert.deepEqual(snapshot.provider_destinations, []);
+  assert.equal(snapshot.recovery_codes, undefined);
+  assert.notEqual(first.browser.cookies.get('XSRF-TOKEN'), oldCookies.get('XSRF-TOKEN'));
+  const stale = new Browser();
+  stale.cookies = oldCookies;
+  assert.deepEqual(await (await stale.request('/api/v1/session')).json(), { state: 'signed_out' });
+  assert.deepEqual(await (await first.browser.request('/api/v1/session')).json(), snapshot);
+
+  // Cross-session replay of the consumed recovery code must be rejected
+  assert.equal((await post(second.browser, challengePath, { ...proof, challenge_id: second.challenge.id })).status, 400);
+
+  // Unused recovery code on second session succeeds
+  const secondAccepted = await post(second.browser, challengePath, {
+    method: 'recovery_code', recovery_code: officer.codes[1], challenge_id: second.challenge.id,
+  });
+  assert.equal(secondAccepted.status, 200);
+  assert.equal((await secondAccepted.json()).state, 'authenticated');
+
+  // A third session cannot reuse either consumed code
+  const third = await returningBrowser(officer);
+  assert.equal((await post(third.browser, challengePath, { ...proof, challenge_id: third.challenge.id })).status, 400);
+  assert.equal((await post(third.browser, challengePath, {
+    method: 'recovery_code', recovery_code: officer.codes[1], challenge_id: third.challenge.id,
+  })).status, 400);
 });
 
 for (const method of ['recovery_code', 'authenticator', 'same_challenge']) {
@@ -778,4 +819,360 @@ test('ticket03 an exhausted challenge stays exhausted when the identity window e
   assert.equal((await post(restarted.browser, challengePath, {
     challenge_id: restarted.challenge.id, method: 'recovery_code', recovery_code: officer.codes[0],
   })).status, 200, 'Identity lockout is bounded while the exhausted challenge remains unusable');
+});
+
+test('ticket03 challenge validity is five minutes, bootstrap does not extend expiry, and expired challenge rejects', async () => {
+  const officer = await enrolledOfficer('challenge-validity');
+  const { browser, challenge } = await returningBrowser(officer);
+  const issuedAt = Date.now();
+  const expiresAt = Date.parse(challenge.expires_at);
+  const ttlSec = (expiresAt - issuedAt) / 1000;
+  assert.ok(ttlSec >= 290 && ttlSec <= 305, `Expected ~300s challenge TTL, got ${ttlSec}s`);
+
+  // Multiple getSession / bootstrap calls must return the identical challenge and not extend expires_at.
+  const bootstrapRes1 = await browser.request('/api/v1/session');
+  assert.equal(bootstrapRes1.status, 200);
+  const snapshot1 = await bootstrapRes1.json();
+  assert.equal(snapshot1.state, 'mfa_challenge_required');
+  assert.equal(snapshot1.challenge.id, challenge.id, 'Challenge ID must remain stable across bootstrap');
+  assert.equal(snapshot1.challenge.expires_at, challenge.expires_at, 'Bootstrap must not extend challenge expiry');
+
+  // Expire the challenge in storage.
+  arrangeState('expire-challenge', officer.id);
+
+  // Calling bootstrap on an expired challenge still returns the original expired timestamp without extending it.
+  const bootstrapRes2 = await browser.request('/api/v1/session');
+  assert.equal(bootstrapRes2.status, 200);
+  const snapshot2 = await bootstrapRes2.json();
+  assert.equal(snapshot2.state, 'mfa_challenge_required');
+  assert.notEqual(snapshot2.challenge.expires_at, challenge.expires_at);
+  assert.ok(Date.parse(snapshot2.challenge.expires_at) < Date.now(), 'Expired challenge must remain in the past');
+
+  // Attempting to verify the expired challenge must be rejected with 409 ChallengeUnavailable.
+  const expiredProof = { method: 'recovery_code', recovery_code: officer.codes[0] };
+  const expiredVerify = await post(browser, challengePath, {
+    challenge_id: challenge.id, ...expiredProof,
+  });
+  assert.equal(expiredVerify.status, 409);
+  const err = await expiredVerify.json();
+  assert.equal(err.code, 'challenge_unavailable');
+  assert.equal(err.message, 'Bootstrap the current session before a reviewed next action.');
+
+  // Re-signing in issues a fresh 5-minute challenge that succeeds with the unused code.
+  const reSignIn = await post(browser, '/api/v1/session/sign-in', { email: officer.email, password: officer.password });
+  assert.equal(reSignIn.status, 200);
+  const reSnapshot = await reSignIn.json();
+  assert.equal(reSnapshot.state, 'mfa_challenge_required');
+  assert.notEqual(reSnapshot.challenge.id, challenge.id, 'Fresh sign-in must issue a new challenge ID');
+  const freshTtlSec = (Date.parse(reSnapshot.challenge.expires_at) - Date.now()) / 1000;
+  assert.ok(freshTtlSec >= 290 && freshTtlSec <= 305, `Expected fresh ~300s TTL, got ${freshTtlSec}s`);
+
+  const freshVerify = await post(browser, challengePath, {
+    challenge_id: reSnapshot.challenge.id, ...expiredProof,
+  });
+  assert.equal(freshVerify.status, 200);
+  assert.equal((await freshVerify.json()).state, 'authenticated');
+});
+
+test('ticket03 challenge verification rejects requests that supply both or neither factor method', async () => {
+  const officer = await enrolledOfficer('both-or-neither');
+  const { browser, challenge } = await returningBrowser(officer);
+  const code = authenticatorCode(officer.secret);
+  const recoveryCode = officer.codes[0];
+
+  // 1. Supplying BOTH factor methods
+  // Case A: method is authenticator, but recovery_code is also provided
+  const bothWithAuth = await post(browser, challengePath, {
+    challenge_id: challenge.id, method: 'authenticator', authenticator_code: code, recovery_code: recoveryCode,
+  });
+  assert.equal(bothWithAuth.status, 422);
+  const bothWithAuthErr = await bothWithAuth.json();
+  assert.equal(bothWithAuthErr.code, 'invalid_input');
+  assert.ok(bothWithAuthErr.field_errors.some(e => ['/recovery_code', '/challenge_id'].includes(e.pointer)));
+
+  // Case B: method is recovery_code, but authenticator_code is also provided
+  const bothWithRecovery = await post(browser, challengePath, {
+    challenge_id: challenge.id, method: 'recovery_code', recovery_code: recoveryCode, authenticator_code: code,
+  });
+  assert.equal(bothWithRecovery.status, 422);
+  const bothWithRecoveryErr = await bothWithRecovery.json();
+  assert.equal(bothWithRecoveryErr.code, 'invalid_input');
+  assert.ok(bothWithRecoveryErr.field_errors.some(e => ['/authenticator_code', '/challenge_id'].includes(e.pointer)));
+
+  // Case C: neither method field specified, but both codes provided
+  const bothNoMethod = await post(browser, challengePath, {
+    challenge_id: challenge.id, authenticator_code: code, recovery_code: recoveryCode,
+  });
+  assert.equal(bothNoMethod.status, 422);
+
+  // 2. Supplying NEITHER factor method
+  // Case D: only challenge_id provided
+  const neither = await post(browser, challengePath, {
+    challenge_id: challenge.id,
+  });
+  assert.equal(neither.status, 422);
+  const neitherErr = await neither.json();
+  assert.equal(neitherErr.code, 'invalid_input');
+  assert.ok(neitherErr.field_errors.some(e => e.pointer === '/method'));
+
+  // Case E: method is authenticator but missing authenticator_code
+  const missingAuthCode = await post(browser, challengePath, {
+    challenge_id: challenge.id, method: 'authenticator',
+  });
+  assert.equal(missingAuthCode.status, 422);
+  const missingAuthCodeErr = await missingAuthCode.json();
+  assert.ok(missingAuthCodeErr.field_errors.some(e => e.pointer === '/authenticator_code'));
+
+  // Case F: method is recovery_code but missing recovery_code
+  const missingRecoveryCode = await post(browser, challengePath, {
+    challenge_id: challenge.id, method: 'recovery_code',
+  });
+  assert.equal(missingRecoveryCode.status, 422);
+  const missingRecoveryCodeErr = await missingRecoveryCode.json();
+  assert.ok(missingRecoveryCodeErr.field_errors.some(e => e.pointer === '/recovery_code'));
+
+  // Case G: missing method with authenticator_code
+  const missingMethodWithAuth = await post(browser, challengePath, {
+    challenge_id: challenge.id, authenticator_code: code,
+  });
+  assert.equal(missingMethodWithAuth.status, 422);
+
+  // Case H: missing method with recovery_code
+  const missingMethodWithRecovery = await post(browser, challengePath, {
+    challenge_id: challenge.id, recovery_code: recoveryCode,
+  });
+  assert.equal(missingMethodWithRecovery.status, 422);
+
+  // Case I: invalid method name
+  const invalidMethod = await post(browser, challengePath, {
+    challenge_id: challenge.id, method: 'sms', authenticator_code: code,
+  });
+  assert.equal(invalidMethod.status, 422);
+
+  // Case J: empty body
+  const emptyBody = await post(browser, challengePath, {});
+  assert.equal(emptyBody.status, 422);
+
+  // 3. Confirm that 422 rejects did not consume the challenge or count as failed MFA proof attempts.
+  // The challenge can still be verified successfully with exactly one valid method:
+  const validResponse = await post(browser, challengePath, {
+    challenge_id: challenge.id, method: 'recovery_code', recovery_code: recoveryCode,
+  });
+  assert.equal(validResponse.status, 200);
+  assert.equal((await validResponse.json()).state, 'authenticated');
+});
+
+test('ticket03 regeneration rejects requests with only a recovery code, missing proofs, or cached session flag', async () => {
+  const officer = await enrolledOfficer('regen-guards');
+  const code = authenticatorCode(officer.secret);
+
+  // 1. Unverified session (state is mfa_challenge_required) cannot regenerate codes
+  const returning = await returningBrowser(officer);
+  const unverifiedAttempt = await post(returning.browser, regeneratePath, {
+    password: officer.password, authenticator_code: code,
+  });
+  assert.equal(unverifiedAttempt.status, 403);
+  assert.equal(Object.hasOwn(await unverifiedAttempt.json(), 'recovery_codes'), false);
+
+  // Verify MFA to reach authenticated state with mfa.status === 'verified'
+  await nextTotpStep();
+  const verifyRes = await post(returning.browser, challengePath, {
+    challenge_id: returning.challenge.id, method: 'authenticator', authenticator_code: authenticatorCode(officer.secret),
+  });
+  assert.equal(verifyRes.status, 200);
+  assert.equal((await verifyRes.json()).state, 'authenticated');
+
+  // Now in verified session:
+  // 2. Reject regeneration with ONLY a recovery code
+  const onlyRecovery = await post(returning.browser, regeneratePath, {
+    recovery_code: officer.codes[0],
+  });
+  assert.equal(onlyRecovery.status, 422);
+  const onlyRecoveryErr = await onlyRecovery.json();
+  assert.equal(onlyRecoveryErr.code, 'invalid_input');
+  assert.ok(onlyRecoveryErr.field_errors.some(e => ['/password', '/authenticator_code'].includes(e.pointer)));
+
+  // 3. Reject regeneration with password and recovery code (cannot substitute recovery for authenticator)
+  const recoverySubstitute = await post(returning.browser, regeneratePath, {
+    password: officer.password, recovery_code: officer.codes[0],
+  });
+  assert.equal(recoverySubstitute.status, 422);
+
+  // 4. Reject regeneration relying on cached session flags or caller flags
+  for (const flagPayload of [
+    {},
+    { cached: true },
+    { mfa_verified: true },
+    { verified: true, password: officer.password },
+    { mfa_verified_at: new Date().toISOString(), authenticator_code: code },
+  ]) {
+    const flagAttempt = await post(returning.browser, regeneratePath, flagPayload);
+    assert.equal(flagAttempt.status, 422);
+    assert.equal(Object.hasOwn(await flagAttempt.json(), 'recovery_codes'), false);
+  }
+
+  // 5. Old recovery codes remain valid after all rejected attempts
+  const checkOldCode = await returningBrowser(officer);
+  const verifyOldRes = await post(checkOldCode.browser, challengePath, {
+    challenge_id: checkOldCode.challenge.id, method: 'recovery_code', recovery_code: officer.codes[0],
+  });
+  assert.equal(verifyOldRes.status, 200, 'Original recovery codes remain intact');
+});
+
+test('ticket03 whole-set regeneration invalidates every single predecessor recovery code in storage and verification', async () => {
+  const officer = await enrolledOfficer('regen-all-codes');
+  const initialCodes = [...officer.codes];
+  assert.equal(initialCodes.length, 10);
+
+  // Regenerate recovery codes with fresh credentials
+  await nextTotpStep();
+  const regenRes = await post(officer.browser, regeneratePath, {
+    password: officer.password,
+    authenticator_code: authenticatorCode(officer.secret),
+  });
+  assert.equal(regenRes.status, 200);
+  const { recovery_codes: { codes: newCodes } } = await regenRes.json();
+  assert.equal(newCodes.length, 10);
+  assert.equal(new Set(newCodes).size, 10);
+
+  // Assert every new code is distinct from all old codes
+  for (const oldCode of initialCodes) {
+    assert.ok(!newCodes.includes(oldCode), `New codes must not include predecessor code ${oldCode}`);
+  }
+
+  // Storage verification: exactly the 10 new codes exist in MySQL, 0 old codes remain
+  storageProbe('confirmed', officer.id, { secret: officer.secret, codes: newCodes });
+
+  // HTTP verification: every single predecessor code is rejected
+  // Batch 1 (predecessor codes 0..4)
+  const returning1 = await returningBrowser(officer);
+  for (let i = 0; i < 5; i++) {
+    const res = await post(returning1.browser, challengePath, {
+      challenge_id: returning1.challenge.id, method: 'recovery_code', recovery_code: initialCodes[i],
+    });
+    assert.equal(res.status, 400, `Predecessor code ${initialCodes[i]} must be rejected`);
+  }
+
+  // Clear identity throttles between batches so each code receives an independent 400 rejection
+  arrangeState('expire-throttles', officer.id);
+
+  // Batch 2 (predecessor codes 5..9)
+  const returning2 = await returningBrowser(officer);
+  for (let i = 5; i < 10; i++) {
+    const res = await post(returning2.browser, challengePath, {
+      challenge_id: returning2.challenge.id, method: 'recovery_code', recovery_code: initialCodes[i],
+    });
+    assert.equal(res.status, 400, `Predecessor code ${initialCodes[i]} must be rejected`);
+  }
+
+  arrangeState('expire-throttles', officer.id);
+
+  // Verification: new codes work and are single-use
+  const returning3 = await returningBrowser(officer);
+  const newSuccess = await post(returning3.browser, challengePath, {
+    challenge_id: returning3.challenge.id, method: 'recovery_code', recovery_code: newCodes[0],
+  });
+  assert.equal(newSuccess.status, 200);
+  assert.equal((await newSuccess.json()).state, 'authenticated');
+
+  // Reusing the consumed new code must fail
+  const returning4 = await returningBrowser(officer);
+  const reuseRes = await post(returning4.browser, challengePath, {
+    challenge_id: returning4.challenge.id, method: 'recovery_code', recovery_code: newCodes[0],
+  });
+  assert.equal(reuseRes.status, 400);
+});
+
+test('ticket03 lost-response recovery via bootstrap recovers verified session without disclosing secrets or recovery codes', async () => {
+  const officer = await enrolledOfficer('lost-response-mfa');
+
+  // PART A: Lost response during verifyMfaChallenge
+  const returning = await returningBrowser(officer);
+  const verifyProof = {
+    challenge_id: returning.challenge.id,
+    method: 'recovery_code',
+    recovery_code: officer.codes[0],
+  };
+  const verifyRes = await post(returning.browser, challengePath, verifyProof);
+  assert.equal(verifyRes.status, 200);
+
+  // Client discards/never processed response body; discovers session state via GET bootstrap:
+  const bootstrapRes1 = await returning.browser.request('/api/v1/session');
+  assert.equal(bootstrapRes1.status, 200);
+  const session1 = await bootstrapRes1.json();
+  assert.equal(session1.state, 'authenticated');
+  assert.equal(session1.mfa.status, 'verified');
+  assert.match(session1.mfa.verified_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+
+  // Bootstrap must never include secrets or recovery codes
+  assert.equal(session1.recovery_codes, undefined, 'Bootstrap must not include recovery codes');
+  assert.equal(session1.secret, undefined);
+  assert.equal(session1.manual_key, undefined);
+  assert.equal(session1.setup_uri, undefined);
+
+  // Replaying the consumed challenge is rejected with 409 ChallengeUnavailable
+  const replayChallenge = await post(returning.browser, challengePath, verifyProof);
+  assert.equal(replayChallenge.status, 409);
+  const replayErr = await replayChallenge.json();
+  assert.equal(replayErr.code, 'challenge_unavailable');
+  assert.equal(replayErr.recovery_codes, undefined);
+
+  // PART B: Lost response during regenerateRecoveryCodes
+  await nextTotpStep();
+  const regenProof = {
+    password: officer.password,
+    authenticator_code: authenticatorCode(officer.secret),
+  };
+  const regenRes = await post(returning.browser, regeneratePath, regenProof);
+  assert.equal(regenRes.status, 200);
+  const regenBody = await regenRes.json();
+  const newCodes = regenBody.recovery_codes.codes;
+  assert.equal(newCodes.length, 10);
+
+  // Client lost the regeneration response body; discovers state via GET bootstrap:
+  const bootstrapRes2 = await returning.browser.request('/api/v1/session');
+  assert.equal(bootstrapRes2.status, 200);
+  const session2 = await bootstrapRes2.json();
+  assert.equal(session2.state, 'authenticated');
+  assert.equal(session2.mfa.status, 'verified');
+
+  // Critical requirement: bootstrap NEVER delivers plaintext recovery codes or secrets!
+  assert.equal(session2.recovery_codes, undefined, 'Bootstrap must never expose regenerated recovery codes');
+  assert.equal(session2.codes, undefined);
+  assert.equal(session2.secret, undefined);
+
+  // Retrying the lost regeneration request with the same TOTP proof is rejected with 400 MfaProofRejected
+  const replayRegen = await post(returning.browser, regeneratePath, regenProof);
+  assert.equal(replayRegen.status, 400);
+  const replayRegenErr = await replayRegen.json();
+  assert.equal(replayRegenErr.code, 'invalid_factor_proof');
+  assert.equal(replayRegenErr.message, 'The factor proof was not accepted.');
+  assert.equal(replayRegenErr.recovery_codes, undefined, 'Replay failure must not disclose recovery codes');
+
+  // PART C: If cookies were lost entirely (client crash before session cookie was saved)
+  const freshClient = new Browser();
+  await freshClient.request('/csrf-cookie');
+  const reSignIn = await post(freshClient, '/api/v1/session/sign-in', {
+    email: officer.email, password: officer.password,
+  });
+  assert.equal(reSignIn.status, 200);
+  const reSignInBody = await reSignIn.json();
+  assert.equal(reSignInBody.state, 'mfa_challenge_required');
+  assert.equal(reSignInBody.recovery_codes, undefined);
+
+  // All predecessor codes fail
+  const oldCodeAttempt = await post(freshClient, challengePath, {
+    challenge_id: reSignInBody.challenge.id, method: 'recovery_code', recovery_code: officer.codes[1],
+  });
+  assert.equal(oldCodeAttempt.status, 400);
+
+  // Live authenticator proof succeeds
+  await nextTotpStep();
+  const freshVerify = await post(freshClient, challengePath, {
+    challenge_id: reSignInBody.challenge.id,
+    method: 'authenticator',
+    authenticator_code: authenticatorCode(officer.secret),
+  });
+  assert.equal(freshVerify.status, 200);
+  assert.equal((await freshVerify.json()).state, 'authenticated');
 });
