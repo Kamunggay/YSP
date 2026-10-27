@@ -16,6 +16,7 @@ export interface VerifiedSessionData {
 interface LoginPageProps {
   initialScreen?: AuthScreenMode;
   verifiedSessionData?: VerifiedSessionData;
+  onNavigateToCreateChapter?: () => void;
 }
 
 interface PhotoButtonProps {
@@ -24,7 +25,7 @@ interface PhotoButtonProps {
   clickedSrc: string;
   alt: string;
   className?: string;
-  onClick?: () => void;
+  onClick?: (() => void) | undefined;
 }
 
 function PhotoButton({
@@ -59,7 +60,7 @@ function PhotoButton({
   );
 }
 
-export function LoginPage({ initialScreen = 'login', verifiedSessionData }: LoginPageProps) {
+export function LoginPage({ initialScreen = 'login', verifiedSessionData, onNavigateToCreateChapter }: LoginPageProps) {
   const [screen, setScreen] = useState<AuthScreenMode>(initialScreen);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -201,6 +202,7 @@ export function LoginPage({ initialScreen = 'login', verifiedSessionData }: Logi
                   unclickedSrc="/assets/kamunggay/create-account.png"
                   clickedSrc="/assets/kamunggay/create-account-when-clicked.png"
                   alt="Create Account"
+                  onClick={onNavigateToCreateChapter}
                 />
               </div>
             </form>
