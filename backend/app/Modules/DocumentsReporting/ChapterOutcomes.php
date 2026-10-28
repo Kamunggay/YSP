@@ -27,7 +27,7 @@ final class ChapterOutcomes
 
     public function replay(string $chapter, string $action, string $key, string $fingerprint, string $actor): ?JsonResponse
     {
-        $stored = DB::table('chapter_operations')->where('chapter_id', $chapter)->where('action_code', $action)->where('idempotency_key', $key)->first();
+        $stored = DB::table('chapter_operations')->where('chapter_id', $chapter)->where('action_code', $action)->where('idempotency_key', $key)->sharedLock()->first();
         if ($stored === null) {
             return null;
         }
@@ -77,15 +77,20 @@ final class ChapterOutcomes
      * @param  array<string, mixed>  $actor
      * @param  array<string, mixed>  $result
      */
-    public function record(string $chapter, string $fingerprint, array $actor, ?object $before, array $result, int $status): void
+    public function record(string $chapter, string $fingerprint, array $actor, ?object $before, array $result, int $status, ?\stdClass $input = null): void
     {
         DB::table('chapter_operations')->insert([
             'public_id' => $result['operation']['identity']['operation_id'], 'chapter_id' => $chapter,
             'actor_user_id' => $actor['user_id'], 'actor_membership_id' => $actor['membership_id'],
             'action_code' => $result['operation']['identity']['action_code'],
             'idempotency_key' => $result['operation']['identity']['idempotency_key'], 'payload_hash' => $fingerprint,
-            'input_schema' => ($result['operation']['identity']['action_code'] === 'memberships.authorize' ? 'AuthorizeMembershipRequest' : 'EndMembershipRequest').'@p02.09-review.1',
+            'input_schema' => match ($result['operation']['identity']['action_code']) {
+                'duty_grants.authorize' => 'AuthorizeDutyGrantRequest',
+                'memberships.authorize' => 'AuthorizeMembershipRequest',
+                default => 'EndMembershipRequest',
+            }.'@p02.09-review.1',
             'actor_snapshot' => json_encode($actor, JSON_THROW_ON_ERROR),
+            'input_snapshot' => $input === null ? null : json_encode($input, JSON_THROW_ON_ERROR),
             'before_snapshot' => $before === null ? null : json_encode($before, JSON_THROW_ON_ERROR),
             'result_snapshot' => json_encode($result, JSON_THROW_ON_ERROR), 'http_status' => $status,
             'committed_at' => Carbon::parse($result['operation']['committed_at'])->format('Y-m-d H:i:s.u'),

@@ -439,7 +439,7 @@ final class MembershipAdministration
 
     private function lookupAction(?string $action): string
     {
-        return $action !== null && in_array($action, ['memberships.authorize', 'memberships.disable', 'memberships.revoke'], true) ? $action : 'memberships.read';
+        return $action !== null && in_array($action, ['memberships.authorize', 'memberships.disable', 'memberships.revoke', 'duty_grants.authorize'], true) ? $action : 'memberships.read';
     }
 
     private function invalidSelector(): JsonResponse

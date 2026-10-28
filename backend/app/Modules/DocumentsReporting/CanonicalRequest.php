@@ -53,6 +53,12 @@ final class CanonicalRequest
             'membership_id' => $membership, 'context_revision' => $revision, 'body' => $body]));
     }
 
+    public function grantFingerprint(string $chapter, string $action, ?string $grant, string $revision, stdClass $body): string
+    {
+        return hash('sha256', $this->encode((object) ['chapter_id' => $chapter, 'action_code' => $action,
+            'grant_id' => $grant, 'context_revision' => $revision, 'body' => $body]));
+    }
+
     private function encode(mixed $value): string
     {
         if ($value instanceof stdClass) {

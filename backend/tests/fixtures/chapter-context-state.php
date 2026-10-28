@@ -21,7 +21,32 @@ require __DIR__.'/fixture-support.php';
 installFixtureFailureHandler();
 $user = $argv[2];
 $input = json_decode(stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
-if ($argv[1] === 'membership-versions') {
+if ($argv[1] === 'grant-approval-security') {
+    $approval = DB::table('duty_grant_limit_approvals')->where('chapter_id', $input['chapter_id'])->first();
+    if ($approval === null) {
+        throw new RuntimeException('Missing synthetic approval.');
+    }
+    $result = [];
+    foreach (['insert', 'update', 'delete'] as $mutation) {
+        DB::beginTransaction();
+        try {
+            if ($mutation === 'insert') {
+                $copy = (array) $approval;
+                unset($copy['id']);
+                DB::table('duty_grant_limit_approvals')->insert($copy);
+            } elseif ($mutation === 'update') {
+                DB::table('duty_grant_limit_approvals')->where('id', $approval->id)->update(['monetary_limit' => '9999.00']);
+            } else {
+                DB::table('duty_grant_limit_approvals')->where('id', $approval->id)->delete();
+            }
+            $result[$mutation.'_denied'] = false;
+        } catch (QueryException $error) {
+            $result[$mutation.'_denied'] = in_array($error->errorInfo[1] ?? null, [1142, 1644], true);
+        } finally {
+            DB::rollBack();
+        }
+    }
+} elseif ($argv[1] === 'membership-versions') {
     DB::table('memberships')->where('id', $input['membership_id'])->where('user_id', $user)->update([
         'row_version' => $input['row_version'], 'authority_version' => $input['authority_version']]);
     $result = ['applied' => true];

@@ -1239,6 +1239,380 @@ function chapterFixture(action, user, input = {}) {
 }
 const contextPath = '/api/v1/session/chapter-context';
 const membershipPath = chapter => `/api/v1/chapters/${chapter}/memberships`;
+const dutyGrantPath = chapter => `/api/v1/chapters/${chapter}/duty-grants/authorize`;
+function grantLimitApproval(head, {duty = 'RF_APPROVER', amount = '1000.00', unit = null, revoke = false,
+  starts = '2026-01-01 00:00:00.000000', ends = null} = {}) {
+  const sqlValue = value => value === null ? 'NULL' : `CONVERT(0x${Buffer.from(String(value)).toString('hex')} USING utf8mb4)`;
+  const chapter = sqlValue(head.member.chapter_id);
+  const actor = sqlValue(head.member.membership_id);
+  const sql = revoke ? `UPDATE duty_grant_limit_approvals SET revoked_at=UTC_TIMESTAMP(6)
+    WHERE chapter_id=${chapter} AND assigning_membership_id=${actor} AND revoked_at IS NULL;`
+    : `INSERT INTO duty_grant_limit_approvals (chapter_id,assigning_membership_id,role_id,scope_kind,requesting_unit_id,
+      monetary_limit,starts_at,ends_at,approved_by_user_id,approval_reference,approved_at)
+      SELECT ${chapter},${actor},id,${sqlValue(unit === null ? 'chapter' : 'unit')},${sqlValue(unit)},${sqlValue(amount)},
+        ${sqlValue(starts)},${sqlValue(ends)},${sqlValue(head.approverId)},'Synthetic independent assigning-limit approval',UTC_TIMESTAMP(6)
+      FROM roles WHERE code=${sqlValue(duty)};`;
+  const applied = spawnSync('docker',['exec','-i',process.env.YSP_TEST_MYSQL_CONTAINER,'sh','-c',
+    'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot ysp_local'],{input:sql,encoding:'utf8'});
+  assert.equal(applied.status,0,applied.stderr);
+}
+function grantAttempt(head, membership, overrides = {}) {
+  return {idempotency_key:'grant-attempt', expected_authority_version:head.selected.context.authority_version,
+    expected_membership_version:membership.version, expected_grant_version:null,
+    membership_id:membership.membership_id, reason:'Explicit synthetic duty authorization',
+    grant:{duty_code:'RF_APPROVER', scope_kind:'chapter', requesting_unit_id:null,
+      starts_at:'2030-01-01T00:00:00.000000Z', ends_at:null, monetary_limit:null}, ...overrides};
+}
+test('ticket09 overlap rejects duplicates but permits adjacency distinct duties and scopes', async () => {
+  const {head, result} = await authorizedMember('p09-overlap');
+  const path = dutyGrantPath(head.member.chapter_id);
+  let membership = result.membership;
+  const send = async (key, terms) => {
+    head.selected = await (await head.browser.request(contextPath)).json();
+    return membershipPost(head, path, grantAttempt(head, membership, {idempotency_key:key, grant:terms}));
+  };
+  const terms = {...grantAttempt(head,membership).grant, ends_at:'2031-01-01T00:00:00.000000Z'};
+  let response = await send('initial',terms);
+  assert.equal(response.status,200);
+  membership = {...membership,version:(await response.json()).grant.membership_version};
+  response = await send('duplicate',terms);
+  assert.equal(response.status,409);
+  const rejected = await response.json();
+  assert.equal(rejected.code,'duty_grant_state_conflict');
+  assert.equal(rejected.operation.outcome,'rejected');
+  assert.equal(rejected.resource_type,'duty_grant');
+  for (const [key,grant] of [
+    ['contained',{...terms,starts_at:'2030-06-01T00:00:00.000000Z',ends_at:'2030-07-01T00:00:00.000000Z'}],
+    ['enclosing',{...terms,starts_at:'2029-01-01T00:00:00.000000Z',ends_at:'2032-01-01T00:00:00.000000Z'}],
+    ['open',{...terms,ends_at:null}],
+  ]) assert.equal((await send(key,grant)).status,409);
+  response = await send('adjacent',{...terms,starts_at:terms.ends_at,ends_at:null});
+  assert.equal(response.status,200);
+  membership = {...membership,version:(await response.json()).grant.membership_version};
+  response = await send('distinct-duty',{...terms,duty_code:'FINANCE'});
+  assert.equal(response.status,200);
+  membership = {...membership,version:(await response.json()).grant.membership_version};
+  const unit = chapterFixture('grant',head.id,{membership_id:head.member.membership_id,unit:true});
+  response = await send('distinct-scope',{...terms,scope_kind:'unit',requesting_unit_id:unit.requesting_unit_id});
+  assert.equal(response.status,200);
+});
+test('ticket09 core grant retains exact terms identity attribution and resulting versions', async () => {
+  const {head, target, result} = await authorizedMember('p09-core');
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const body = grantAttempt(head, result.membership);
+  const response = await membershipPost(head, dutyGrantPath(head.member.chapter_id), body);
+  assert.equal(response.status, 200);
+  const outcome = await response.json();
+  assert.equal(outcome.resource_type, 'duty_grant');
+  assert.equal(outcome.grant.identity.user_id, target.id);
+  assert.equal(outcome.grant.membership_id, result.membership.membership_id);
+  assert.equal(outcome.grant.version, 1);
+  assert.equal(outcome.grant.membership_version, 2);
+  assert.equal(outcome.grant.authority_version, 2);
+  assert.equal(outcome.grant.authorized.user_id, head.id);
+  assert.deepEqual(outcome.grant.last_changed, outcome.grant.authorized);
+  for (const [key,value] of Object.entries(body.grant)) assert.deepEqual(outcome.grant[key], value);
+  assert.equal(outcome.replaced_grant, null);
+  assert.equal(outcome.operation.outcome, 'committed');
+  const current = await (await head.browser.request(contextPath)).json();
+  assert.equal(current.context.authority_version, body.expected_authority_version + 1);
+  const member = await (await head.browser.request(membershipPath(head.member.chapter_id)+'/'+result.membership.membership_id,
+    {headers:{'X-Chapter-Context':head.selected.selection_revision}})).json();
+  assert.equal(member.version, 2);
+});
+test('ticket09 replay and lookup retain approved grant outcomes after approval loss and chapter switching', async () => {
+  const {head, result} = await authorizedMember('p09-replay');
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const terms = {...grantAttempt(head,result.membership).grant,monetary_limit:{currency:'PHP',amount:'1000.00'}};
+  head.approverId = syntheticOfficer('p09-limit-approver').id;
+  grantLimitApproval(head);
+  const body = grantAttempt(head,result.membership,{grant:terms});
+  const path = dutyGrantPath(head.member.chapter_id);
+  let response = await membershipPost(head,path,body);
+  assert.equal(response.status,200);
+  const committed = await response.json();
+  const replayed = structuredClone(committed);
+  replayed.operation.replayed = true;
+  grantLimitApproval(head,{revoke:true});
+  response = await membershipPost(head,path,body);
+  assert.equal(response.status,200,'replay precedes changed approval and stale version checks');
+  assert.deepEqual(await response.json(),replayed);
+  const reordered = Object.fromEntries(Object.entries(body).reverse());
+  response = await membershipPost(head,path,reordered);
+  assert.equal(response.status,200);
+  assert.deepEqual(await response.json(),replayed);
+  for (const changed of [{reason:'Changed reason'}, {expected_grant_version:undefined,grant:{...terms,ends_at:'2032-01-01T00:00:00.000000Z'}}]) {
+    const changedBody = {...body,...changed,expected_grant_version:null};
+    response = await membershipPost(head,path,changedBody);
+    assert.equal(response.status,409);
+    assert.equal((await response.json()).code,'idempotency_conflict');
+  }
+  const root = `/api/v1/chapters/${head.member.chapter_id}/operations`;
+  const selectors = [root+'/by-key?action_code=duty_grants.authorize&idempotency_key='+body.idempotency_key,
+    root+'/by-id/'+committed.operation.identity.operation_id];
+  const other = chapterFixture('membership',head.id,{duties:['CHAPTER_HEAD']});
+  let current = await (await head.browser.request(contextPath)).json();
+  assert.equal((await selectChapter(head.browser,current.selection_revision,other)).status,200);
+  response = await membershipPost(head,path,body);
+  assert.equal(response.status,200);
+  assert.deepEqual(await response.json(),replayed);
+  for (const selector of selectors) {
+    response = await head.browser.request(selector);
+    assert.equal(response.status,200);
+    assert.deepEqual(await response.json(),replayed);
+  }
+  current = await (await head.browser.request(contextPath)).json();
+  response = await membershipPost(head,path,body,current.selection_revision);
+  assert.equal(response.status,409);
+  assert.equal((await response.json()).code,'idempotency_conflict');
+  chapterFixture('end-membership',head.id,head.member);
+  assert.equal((await membershipPost(head,path,body)).status,403);
+  for (const selector of selectors) {
+    response = await head.browser.request(selector);
+    assert.equal(response.status,403);
+    assert.equal((await response.json()).operation,null);
+  }
+});
+test('ticket09 inactive target produces a durable rejection recoverable by both selectors', async () => {
+  const {head,result} = await authorizedMember('p09-inactive');
+  head.selected = await (await head.browser.request(contextPath)).json();
+  let response = await membershipPost(head,membershipPath(head.member.chapter_id)+`/${result.membership.membership_id}/disable`,{
+    idempotency_key:'disable-target',expected_authority_version:head.selected.context.authority_version,expected_membership_version:1});
+  assert.equal(response.status,200);
+  const disabled = (await response.json()).membership;
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const body = grantAttempt(head,disabled);
+  response = await membershipPost(head,dutyGrantPath(head.member.chapter_id),body);
+  assert.equal(response.status,409);
+  const rejected = await response.json();
+  assert.equal(rejected.code,'duty_grant_state_conflict');
+  assert.equal(rejected.operation.outcome,'rejected');
+  const replayed = {...rejected,operation:{...rejected.operation,replayed:true}};
+  response = await membershipPost(head,dutyGrantPath(head.member.chapter_id),body);
+  assert.deepEqual(await response.json(),replayed);
+  const root = `/api/v1/chapters/${head.member.chapter_id}/operations`;
+  for (const selector of ['/by-key?action_code=duty_grants.authorize&idempotency_key='+body.idempotency_key,
+    '/by-id/'+rejected.operation.identity.operation_id]) {
+    response = await head.browser.request(root+selector);
+    assert.equal(response.status,200);
+    assert.deepEqual(await response.json(),replayed);
+  }
+});
+test('ticket09 fixed catalogue exact versions closed terms intervals and parent ownership', async () => {
+  const {head,target,result} = await authorizedMember('p09-validation');
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const path = dutyGrantPath(head.member.chapter_id);
+  const body = grantAttempt(head,result.membership);
+  for (const edit of [
+    {expected_membership_version:null},{expected_membership_version:'1'}, {expected_grant_version:1},
+    {expected_grant_version:undefined},{expected_authority_version:undefined},{actor_user_id:head.id},
+    {reason:''},{grant:{...body.grant,duty_code:'provisioner'}},{grant:{...body.grant,duty_code:'CUSTOM_ADMIN'}},
+    {grant:{...body.grant,permissions:['all']}},{grant:{...body.grant,approved:true}},
+    {grant:{...body.grant,monetary_limit:undefined}},{grant:{...body.grant,monetary_limit:{currency:'PHP',amount:1}}},
+    {grant:{...body.grant,monetary_limit:{currency:'USD',amount:'1.00'}}},
+    {grant:{...body.grant,monetary_limit:{currency:'PHP',amount:'-1.00'}}},
+    {grant:{...body.grant,monetary_limit:{currency:'PHP',amount:'01.00'}}},
+    {grant:{...body.grant,scope_kind:'unit'}},{grant:{...body.grant,scope_kind:'chapter',requesting_unit_id:'1'}},
+    {grant:{...body.grant,starts_at:'2030-02-30T00:00:00.000000Z'}},
+    {grant:{...body.grant,starts_at:'2030-01-01T00:00:00.000Z'}},
+    {grant:{...body.grant,starts_at:'2020-01-01T00:00:00.000000Z'}},
+    {grant:{...body.grant,ends_at:body.grant.starts_at}},
+    {grant:{...body.grant,ends_at:'2029-01-01T00:00:00.000000Z'}},
+  ]) assert.equal((await membershipPost(head,path,{...body,...edit})).status,422,JSON.stringify(edit));
+  let response = await membershipPost(head,path,{...body,expected_membership_version:2});
+  assert.equal(response.status,409);
+  assert.equal((await response.json()).code,'membership_stale');
+  response = await membershipPost(head,path,{...body,expected_authority_version:1});
+  assert.equal(response.status,409);
+  assert.equal((await response.json()).code,'authority_stale');
+  response = await membershipPost(head,path,body,'ctx_'+'x'.repeat(64));
+  assert.equal(response.status,409);
+  assert.equal((await response.json()).code,'chapter_context_stale');
+  const foreign = chapterFixture('membership',target.id,{duties:[]});
+  const unit = chapterFixture('grant',target.id,{membership_id:foreign.membership_id,unit:true});
+  const hidden = [];
+  for (const edit of [{membership_id:foreign.membership_id},
+    {membership_id:'18446744073709551615'},
+    {grant:{...body.grant,scope_kind:'unit',requesting_unit_id:unit.requesting_unit_id}},
+    {grant:{...body.grant,scope_kind:'unit',requesting_unit_id:'18446744073709551615'}}]) {
+    response = await membershipPost(head,path,{...body,...edit});
+    assert.equal(response.status,404);
+    hidden.push(await response.json());
+  }
+  for (const value of hidden) assert.deepEqual(value,hidden[0]);
+  const duties = ['COMMITTEE_REQUESTER','RF_APPROVER','SALES_OFFICER','SALES_REVIEWER','FINANCE','INVENTORY','PURCHASING',
+    'BUDGET_APPROVER','RECEIVING','DISPATCH','BOOTH_CUSTODIAN','BOOTH_CASHIER','INDEPENDENT_REVIEWER','CHAPTER_HEAD'];
+  let membership = result.membership;
+  for (const duty of duties) {
+    head.selected = await (await head.browser.request(contextPath)).json();
+    response = await membershipPost(head,path,grantAttempt(head,membership,{idempotency_key:'duty-'+duty,grant:{...body.grant,duty_code:duty}}));
+    assert.equal(response.status,200,duty);
+    const outcome = await response.json();
+    assert.equal(outcome.grant.duty_code,duty);
+    assert.equal(outcome.grant.identity.user_id,target.id);
+    membership = {...membership,version:outcome.grant.membership_version};
+  }
+  assert.equal(membership.version,15);
+});
+test('ticket09 approved limits remain scope bound and preserve null zero and exact maximum monetary authority', async () => {
+  const head = await membershipHead('p09-limits');
+  head.approverId = syntheticOfficer('p09-cap-approver').id;
+  let membership = {membership_id:head.member.membership_id,version:1};
+  const path = dutyGrantPath(head.member.chapter_id);
+  // Synchronize activation at a whole UTC second: the reused chapter guard
+  // currently binds Carbon query instants with second precision.
+  const starts = new Date(Math.ceil((Date.now()+12000)/1000)*1000).toISOString().replace(/\.([0-9]{3})Z$/,'.$1000Z');
+  const base = {...grantAttempt(head,membership).grant,starts_at:starts};
+  const send = async (key,grant) => {
+    head.selected = await (await head.browser.request(contextPath)).json();
+    return membershipPost(head,path,grantAttempt(head,membership,{idempotency_key:key,grant}));
+  };
+  const invoke = (changes = {}) => chapterFixture('execute',head.id,{revision:head.selected.selection_revision,scope:{
+    chapter_id:head.member.chapter_id,membership_id:head.member.membership_id,
+    expected_authority_version:head.selected.context.authority_version,action:'policy.status.read',...changes}});
+  let response = await send('null',base);
+  assert.equal(response.status,200);
+  membership.version = (await response.json()).grant.membership_version;
+  head.selected = await (await head.browser.request(contextPath)).json();
+  assert.equal(invoke({amount:'0.00'}).status,403,'null grants no monetary authority, including zero');
+  const zeroUnit = chapterFixture('grant',head.id,{membership_id:head.member.membership_id,unit:true,duty:'RF_APPROVER',
+    starts_at:'2020-01-01 00:00:00.000000',ends_at:'2020-01-02 00:00:00.000000'}).requesting_unit_id;
+  const zero = {...base,scope_kind:'unit',requesting_unit_id:zeroUnit,monetary_limit:{currency:'PHP',amount:'0.00'}};
+  assert.equal((await send('zero-unapproved',zero)).status,403,'Head authority does not approve even a zero cap');
+  grantLimitApproval(head,{unit:zeroUnit,amount:'0.00'});
+  response = await send('zero-approved',zero);
+  assert.equal(response.status,200);
+  membership.version = (await response.json()).grant.membership_version;
+  const maxUnit = chapterFixture('grant',head.id,{membership_id:head.member.membership_id,unit:true,duty:'RF_APPROVER',
+    starts_at:'2020-01-01 00:00:00.000000',ends_at:'2020-01-02 00:00:00.000000'}).requesting_unit_id;
+  const max = {...base,requesting_unit_id:maxUnit,scope_kind:'unit',monetary_limit:{currency:'PHP',amount:'999999999999999999.99'}};
+  assert.equal((await send('wrong-scope',max)).status,403);
+  grantLimitApproval(head,{unit:maxUnit,amount:'999999999999999999.98'});
+  assert.equal((await send('over-cap',max)).status,403);
+  grantLimitApproval(head,{unit:maxUnit,amount:'999999999999999999.99'});
+  response = await send('max-approved',max);
+  assert.equal(response.status,200);
+  assert.deepEqual((await response.json()).grant.monetary_limit,max.monetary_limit);
+  await new Promise(resolve=>setTimeout(resolve,Math.max(0,Date.parse(starts)-Date.now()+100)));
+  head.selected = await (await head.browser.request(contextPath)).json();
+  assert.equal(invoke({requesting_unit_id:zeroUnit,amount:'0.00'}).status,200);
+  assert.equal(invoke({requesting_unit_id:zeroUnit,amount:'0.01'}).status,403);
+  assert.equal(invoke({requesting_unit_id:maxUnit,amount:'999999999999999999.99'}).status,200);
+});
+test('ticket09 authorization preserves Head MFA context and forgery barriers', async () => {
+  const {head,target,result} = await authorizedMember('p09-guards');
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const body = grantAttempt(head,result.membership);
+  const path = dutyGrantPath(head.member.chapter_id);
+  assert.equal((await new Browser().request(path,{method:'POST',body})).status,419);
+  assert.equal((await head.browser.request(path,{method:'POST',body,headers:{'X-Chapter-Context':head.selected.selection_revision}})).status,419);
+  assert.equal((await membershipPost(head,path,body,null)).status,400);
+  assert.equal((await membershipPost(head,path+'?membership_id='+result.membership.membership_id,body)).status,400);
+  assert.equal((await head.browser.request(path,{method:'POST',body,headers:{Origin:'https://untrusted.example',
+    'X-Chapter-Context':head.selected.selection_revision,'X-XSRF-TOKEN':decodeURIComponent(head.browser.cookies.get('XSRF-TOKEN'))}})).status,403);
+  const memberContext = await (await target.browser.request(contextPath)).json();
+  assert.equal((await membershipPost({...target,selected:memberContext},path,body)).status,403,'ordinary membership cannot grant duties');
+  const pending = await signedInBrowser('p09-pending-mfa');
+  const pendingMember = chapterFixture('membership',pending.id,{duties:['CHAPTER_HEAD']});
+  assert.equal((await membershipPost({...pending,selected:{selection_revision:'ctx_'+'x'.repeat(64)}},
+    dutyGrantPath(pendingMember.chapter_id),{...body,membership_id:pendingMember.membership_id})).status,403,'Head possession without MFA cannot authorize');
+  const provider = await signedInBrowser('p09-provider',syntheticOfficer('p09-provider',true));
+  assert.equal((await membershipPost({...provider,selected:{selection_revision:'ctx_'+'x'.repeat(64)}},path,body)).status,403);
+  arrangeState('disable',head.id);
+  assert.equal((await membershipPost(head,path,body)).status,401);
+});
+test('ticket09 restricted approval records enforce assigning duty interval and immutable history', async () => {
+  const {head,result} = await authorizedMember('p09-approval-integrity');
+  head.approverId = syntheticOfficer('p09-independent-approver').id;
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const path = dutyGrantPath(head.member.chapter_id);
+  const body = grantAttempt(head,result.membership,{grant:{...grantAttempt(head,result.membership).grant,
+    monetary_limit:{currency:'PHP',amount:'1000.00'}}});
+  const denied = async key => assert.equal((await membershipPost(head,path,{...body,idempotency_key:key})).status,403);
+  grantLimitApproval(head,{duty:'FINANCE'});
+  await denied('wrong-duty');
+  const other = chapterFixture('membership',head.id,{duties:['CHAPTER_HEAD']});
+  grantLimitApproval({...head,member:other});
+  await denied('wrong-assigning-membership');
+  grantLimitApproval(head,{ends:'2031-01-01 00:00:00.000000'});
+  await denied('open-beyond-approval');
+  let response = await membershipPost(head,path,{...body,idempotency_key:'finite-beyond-approval',
+    grant:{...body.grant,ends_at:'2032-01-01T00:00:00.000000Z'}});
+  assert.equal(response.status,403);
+  response = await membershipPost(head,path,{...body,idempotency_key:'within-approved-interval',
+    grant:{...body.grant,ends_at:'2031-01-01T00:00:00.000000Z'}});
+  assert.equal(response.status,200);
+  const committed = await response.json();
+  assert.deepEqual(chapterFixture('grant-approval-security',head.id,{chapter_id:head.member.chapter_id}),
+    {insert_denied:true,update_denied:true,delete_denied:true});
+  for (const sql of [
+    `UPDATE duty_grants SET authorized_by_user_id=${head.approverId} WHERE id=${committed.grant.id}`,
+    `UPDATE duty_grants SET membership_id=${head.member.membership_id} WHERE id=${committed.grant.id}`,
+    `DELETE FROM duty_grants WHERE id=${committed.grant.id}`,
+    `UPDATE duty_grant_limit_approvals SET monetary_limit=9999 WHERE chapter_id=${head.member.chapter_id}`,
+    `DELETE FROM duty_grant_limit_approvals WHERE chapter_id=${head.member.chapter_id}`,
+    `UPDATE chapter_operations SET input_snapshot=JSON_OBJECT() WHERE public_id='${committed.operation.identity.operation_id}'`,
+  ]) {
+    const mutation = spawnSync('docker',['exec','-i',process.env.YSP_TEST_MYSQL_CONTAINER,'sh','-c',
+      'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot ysp_local'],{encoding:'utf8',input:sql});
+    assert.notEqual(mutation.status,0);
+    assert.match(mutation.stderr,/1644/);
+  }
+  const lookup = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/operations/by-id/${committed.operation.identity.operation_id}`);
+  assert.deepEqual(await lookup.json(),{...committed,operation:{...committed.operation,replayed:true}});
+});
+for (const injectOverlap of [false,true]) {
+  test(`ticket09 intended MySQL overlapping attempts ${injectOverlap ? 'reject a newly committed duplicate' : 'commit once and replay'}`, async t => {
+    const {head,target,result} = await authorizedMember('p09-race-'+injectOverlap);
+    head.selected = await (await head.browser.request(contextPath)).json();
+    const body = grantAttempt(head,result.membership);
+    const contender = {...head,browser:new Browser()};
+    contender.browser.cookies = new Map(head.browser.cookies);
+    contender.browser.worker = 'contender';
+    const holder = spawn('docker',['exec','-i','-e','YSP_SESSION_FIXTURES=1',container,
+      'php','tests/fixtures/enrollment-state.php','hold',head.id]);
+    const release = () => { if (!holder.stdin.writableEnded) holder.stdin.end('\n'); };
+    t.after(release);
+    await new Promise((resolve,reject)=>{
+      holder.once('error',reject);
+      holder.stdout.on('data',data=>{if(data.toString().includes('held'))resolve();});
+      holder.once('exit',()=>reject(new Error('Lock holder exited')));
+    });
+    const path = dutyGrantPath(head.member.chapter_id);
+    const requests = [membershipPost(head,path,body)];
+    let waiting = 0;
+    let secondStarted = false;
+    try {
+      for (let i=0;i<40;i++) {
+        const probe = spawnSync('docker',['exec',process.env.YSP_TEST_MYSQL_CONTAINER,'sh','-c',
+          'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'],{encoding:'utf8'});
+        assert.equal(probe.status,0,probe.stderr);
+        waiting = Number(probe.stdout.trim());
+        if (waiting>=1 && !secondStarted) {
+          requests.push(membershipPost(contender,path,body));
+          secondStarted = true;
+        }
+        if (waiting>=2) break;
+        await new Promise(resolve=>setTimeout(resolve,50));
+      }
+      assert.ok(waiting>=2,`Expected overlapping MySQL transactions, observed ${waiting} waiters`);
+      if (injectOverlap) chapterFixture('grant',target.id,{membership_id:result.membership.membership_id,
+        duty:'RF_APPROVER',starts_at:body.grant.starts_at.replace('T',' ').replace('Z',''),ends_at:null});
+    } finally { release(); }
+    const responses = await Promise.all(requests);
+    assert.deepEqual(responses.map(response=>response.status),injectOverlap ? [409,409] : [200,200]);
+    const first = await responses[0].json();
+    const second = await responses[1].json();
+    assert.equal(first.operation.replayed,false);
+    assert.deepEqual(second,{...first,operation:{...first.operation,replayed:true}});
+    if (injectOverlap) assert.equal(first.code,'duty_grant_state_conflict');
+    const recovered = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/operations/by-id/${first.operation.identity.operation_id}`);
+    assert.deepEqual(await recovered.json(),second);
+    const member = await (await head.browser.request(membershipPath(head.member.chapter_id)+'/'+result.membership.membership_id,
+      {headers:{'X-Chapter-Context':head.selected.selection_revision}})).json();
+    assert.equal(member.version,injectOverlap ? 1 : 2);
+  });
+}
 async function membershipHead(label) {
   const officer = await enrolledOfficer(label);
   const member = chapterFixture('membership', officer.id, {duties:['CHAPTER_HEAD']});

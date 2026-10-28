@@ -26,7 +26,17 @@ final class ProtectedChapterExecution
         }
         try {
             return DB::transaction(function () use ($request, $operation, $scope, $replay): JsonResponse {
-                $user = DB::table('users')->where('id', $request->session()->get('identity_id'))->lockForUpdate()->first();
+                $actorId = $request->session()->get('identity_id');
+                $targetUser = isset($scope['target_membership_id']) ? DB::table('memberships')
+                    ->where('chapter_id', $scope['chapter_id'])->where('id', $scope['target_membership_id'])->value('user_id') : null;
+                if ($targetUser !== null) {
+                    // Discover the complete actor/target authority set before
+                    // chapter control locks; sort each category consistently.
+                    DB::table('users')->whereIn('id', [$actorId, $targetUser])->orderBy('id')->lockForUpdate()->get();
+                    $authority = DB::table('memberships')->whereIn('user_id', [$actorId, $targetUser])->orderBy('id')->lockForUpdate()->get();
+                    DB::table('duty_grants')->whereIn('membership_id', $authority->pluck('id'))->orderBy('id')->lockForUpdate()->get();
+                }
+                $user = DB::table('users')->where('id', $actorId)->lockForUpdate()->first();
                 if ($user !== null) {
                     DB::table('provider_role_grants')->where('user_id', $user->id)->orderBy('id')->lockForUpdate()->get();
                     $memberships = DB::table('memberships')->where('user_id', $user->id)->orderBy('id')->lockForUpdate()->get();
@@ -169,7 +179,7 @@ final class ProtectedChapterExecution
 
     private function withinLimit(mixed $amount, ?string $limit): bool
     {
-        if ($limit === null || ! is_string($amount) || ! preg_match('/^(0|[1-9][0-9]{0,16})\.[0-9]{2}$/D', $amount)) {
+        if ($limit === null || ! is_string($amount) || ! preg_match('/^(0|[1-9][0-9]{0,17})\.[0-9]{2}$/D', $amount)) {
             return false;
         }
         $value = ltrim(str_replace('.', '', $amount), '0');
