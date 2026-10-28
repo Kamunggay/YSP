@@ -45,6 +45,12 @@ function resolveInitialRoute(): ResolvedRoute {
   if (view === 'create-officer' || path === '/create-officer') {
     return { mode: 'create-chapter', screen: 'login', signupStep: 'create-officer' };
   }
+  if (view === 'officer-connect-auth' || path === '/officer-connect-auth') {
+    return { mode: 'create-chapter', screen: 'login', signupStep: 'officer-connect-auth' };
+  }
+  if (view === 'officer-save-recovery' || path === '/officer-save-recovery') {
+    return { mode: 'create-chapter', screen: 'login', signupStep: 'officer-save-recovery' };
+  }
 
   if (
     view === 'create-chapter' ||
@@ -98,6 +104,7 @@ export function App() {
   if (routeMode === 'create-chapter') {
     return (
       <CreateChapterPage
+        key={signupStep}
         initialStep={signupStep}
         onNavigateToLogin={() => {
           setRouteMode('login-flow');
@@ -115,6 +122,7 @@ export function App() {
   if (routeMode === 'login-flow') {
     return (
       <LoginPage
+        key={authScreen}
         initialScreen={authScreen}
         verifiedSessionData={verifiedSession}
         onNavigateToCreateChapter={() => {
