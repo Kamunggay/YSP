@@ -5,6 +5,7 @@ import { LoginPage } from './LoginPage';
 import type { AuthScreenMode, VerifiedSessionData } from './LoginPage';
 import { CreateChapterPage } from './CreateChapterPage';
 import type { SignupStepMode } from './CreateChapterPage';
+import { initializeCsrf } from './authApi';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -79,6 +80,10 @@ export function App() {
   const [verifiedSession, setVerifiedSession] = useState<VerifiedSessionData | undefined>();
   const [status, setStatus] = useState<HealthResult['status'] | 'checking'>('checking');
   const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    void initializeCsrf();
+  }, []);
 
   useEffect(() => {
     if (routeMode !== 'health') return;

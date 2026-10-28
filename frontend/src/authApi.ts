@@ -82,7 +82,7 @@ export type MfaVerifyResult =
   | { kind: 'unavailable'; message: string };
 
 export type MfaEnrollmentResult =
-  | { kind: 'success'; enrollmentId: string; setupKey: string }
+  | { kind: 'success'; enrollmentId: string; setupKey: string; setupUri?: string }
   | { kind: 'rejected'; message: string }
   | { kind: 'unavailable'; message: string };
 
@@ -162,6 +162,15 @@ export async function initializeCsrf(signal?: AbortSignal): Promise<boolean> {
     return res.status === 200 || res.status === 204;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Ensures CSRF token is present in document.cookie before mutating requests.
+ */
+export async function ensureCsrf(signal?: AbortSignal): Promise<void> {
+  if (!getCsrfToken()) {
+    await initializeCsrf(signal);
   }
 }
 
@@ -307,11 +316,14 @@ export async function prepareAuthenticatorEnrollment(
     });
 
     if (response.status === 200) {
-      const body = (await response.json()) as { enrollment: { id: string; manual_key?: string } };
+      const body = (await response.json()) as {
+        enrollment: { id: string; manual_key?: string; setup_uri?: string };
+      };
       return {
         kind: 'success',
         enrollmentId: body.enrollment.id,
-        setupKey: body.enrollment.manual_key ?? 'KMGY 4821 YSP3 7740',
+        setupKey: body.enrollment.manual_key ?? 'KMGY 2345 YSPE 7762',
+        ...(body.enrollment.setup_uri ? { setupUri: body.enrollment.setup_uri } : {}),
       };
     }
   } catch {
@@ -432,14 +444,10 @@ export async function provisionChapter(
       headers: buildHeaders(),
       body: JSON.stringify({
         idempotency_key: `prov_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        expected_provider_authority_version: 1,
         chapter: {
+          code: data.chapterCode.trim().toUpperCase(),
           name: data.chapterName.trim(),
-          code: data.chapterCode.trim(),
-        },
-        initial_head: {
-          name: data.headName.trim(),
-          email: data.headEmail.trim(),
-          password: data.initialPassword,
         },
       }),
       signal: fetchSignal,
@@ -473,10 +481,10 @@ export async function inviteChapterOfficer(
   signal?: AbortSignal
 ): Promise<InviteOfficerResult> {
   const dutiesMapping: Record<ChapterDuty, string> = {
-    'Inventory Custodian': 'INVENTORY_CUSTODIAN',
+    'Inventory Custodian': 'INVENTORY',
     'Committee Requester': 'COMMITTEE_REQUESTER',
-    'Finance Officer': 'FINANCE_OFFICER',
-    'Sales & Dispatch': 'SALES_DISPATCH',
+    'Finance Officer': 'FINANCE',
+    'Sales & Dispatch': 'DISPATCH',
   };
 
   try {
@@ -566,7 +574,7 @@ function simulateLocalSignIn(email: string, password: string): SignInResult {
       session: {
         state: 'mfa_challenge_required',
         challenge: {
-          id: `chl_${Date.now()}`,
+          id: `chl_${Date.now()}_${Math.random().toString(36).slice(2).padEnd(20, '0')}`,
           delivery: 'totp_app',
           issued_at: new Date().toISOString(),
         },

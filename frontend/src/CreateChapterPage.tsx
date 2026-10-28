@@ -130,6 +130,7 @@ export function CreateChapterPage({
   // Frame 2: Connect Google Authenticator state (Chapter Head)
   const [headEnrollmentId, setHeadEnrollmentId] = useState<string>('enr_head_demo');
   const [headSetupKey, setHeadSetupKey] = useState<string>('KMGY 2345 YSPE 7762');
+  const [headSetupUri, setHeadSetupUri] = useState<string | undefined>();
   const [headOtp, setHeadOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [headRecoveryCodes, setHeadRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
 
@@ -147,6 +148,7 @@ export function CreateChapterPage({
   // Frame 6: Officer MFA state
   const [officerEnrollmentId, setOfficerEnrollmentId] = useState<string>('enr_officer_demo');
   const [officerSetupKey, setOfficerSetupKey] = useState<string>('OFCB 3456 KMGC 7624');
+  const [officerSetupUri, setOfficerSetupUri] = useState<string | undefined>();
   const [officerOtp, setOfficerOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [officerRecoveryCodes, setOfficerRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('/assets/kamunggay/authenticator-qr.png');
@@ -156,8 +158,11 @@ export function CreateChapterPage({
     const isOfficer = step === 'officer-connect-auth';
     const activeKey = isOfficer ? officerSetupKey : headSetupKey;
     const activeEmail = isOfficer ? officerAccountEmail || 'officer@ysp.org' : headEmail || 'head@ysp.org';
+    const serverUri = isOfficer ? officerSetupUri : headSetupUri;
     const cleanKey = activeKey.replace(/\s+/g, '').toUpperCase();
-    const otpUri = `otpauth://totp/Kamunggay%20YSP:${encodeURIComponent(activeEmail)}?secret=${cleanKey}&issuer=Kamunggay%20YSP`;
+    const otpUri =
+      serverUri ||
+      encodeURI(`otpauth://totp/Kamunggay YSP:${activeEmail}?secret=${cleanKey}&issuer=Kamunggay YSP`);
 
     let isMounted = true;
     void QRCode.toDataURL(otpUri, {
@@ -177,7 +182,7 @@ export function CreateChapterPage({
     return () => {
       isMounted = false;
     };
-  }, [step, headSetupKey, officerSetupKey, headEmail, officerAccountEmail]);
+  }, [step, headSetupKey, officerSetupKey, headEmail, officerAccountEmail, headSetupUri, officerSetupUri]);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -188,6 +193,7 @@ export function CreateChapterPage({
         if (res.kind === 'success') {
           setHeadEnrollmentId(res.enrollmentId);
           setHeadSetupKey(res.setupKey);
+          if (res.setupUri) setHeadSetupUri(res.setupUri);
         }
       });
     } else if (step === 'officer-connect-auth' && officerSetupKey === 'OFCB 3456 KMGC 7624') {
@@ -195,6 +201,7 @@ export function CreateChapterPage({
         if (res.kind === 'success') {
           setOfficerEnrollmentId(res.enrollmentId);
           setOfficerSetupKey(res.setupKey);
+          if (res.setupUri) setOfficerSetupUri(res.setupUri);
         }
       });
     }
@@ -202,21 +209,43 @@ export function CreateChapterPage({
 
   async function handleChapterSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isLoading) return;
     setErrorMessage(null);
 
-    if (!chapterName.trim() || !chapterCode.trim() || !headName.trim() || !headEmail.trim() || !initialPassword) {
+    const trimmedName = chapterName.trim();
+    const normalizedCode = chapterCode.trim().toUpperCase();
+    const trimmedHeadName = headName.trim();
+    const trimmedHeadEmail = headEmail.trim();
+
+    if (!trimmedName || !normalizedCode || !trimmedHeadName || !trimmedHeadEmail || !initialPassword) {
       setErrorMessage('Please complete all required fields to establish the Chapter entity.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedHeadEmail)) {
+      setErrorMessage('Please enter a valid email address for the Chapter Head.');
+      return;
+    }
+
+    const codeRegex = /^[A-Z][A-Z0-9_-]{0,31}$/;
+    if (!codeRegex.test(normalizedCode)) {
+      setErrorMessage('Chapter Code must start with an uppercase letter and contain only uppercase letters, numbers, hyphens, or underscores (up to 32 characters).');
+      return;
+    }
+
+    if (initialPassword.length < 10) {
+      setErrorMessage('Master Password must be at least 10 characters long.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const normalizedCode = chapterCode.trim().toUpperCase();
       const data: CreateChapterFormData = {
-        chapterName: chapterName.trim(),
+        chapterName: trimmedName,
         chapterCode: normalizedCode,
-        headName: headName.trim(),
-        headEmail: headEmail.trim(),
+        headName: trimmedHeadName,
+        headEmail: trimmedHeadEmail,
         initialPassword,
       };
       onSaveAndInvite?.(data);
@@ -227,6 +256,7 @@ export function CreateChapterPage({
         if (enrollResult.kind === 'success') {
           setHeadEnrollmentId(enrollResult.enrollmentId);
           setHeadSetupKey(enrollResult.setupKey);
+          if (enrollResult.setupUri) setHeadSetupUri(enrollResult.setupUri);
         }
         setStep('connect-auth');
       } else {
@@ -240,6 +270,7 @@ export function CreateChapterPage({
   }
 
   async function handleConfirmPairing(isOfficer: boolean) {
+    if (isLoading) return;
     const activeOtp = isOfficer ? officerOtp : headOtp;
     const enrollmentId = isOfficer ? officerEnrollmentId : headEnrollmentId;
     const code = activeOtp.join('');
@@ -295,6 +326,10 @@ export function CreateChapterPage({
   ) {
     if (e.key === 'Backspace' && !currentOtp[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    } else if (e.key === 'ArrowRight' && index < 5) {
+      otpRefs.current[index + 1]?.focus();
     }
     if (e.key === 'Enter') {
       void handleConfirmPairing(isOfficer);
@@ -349,22 +384,56 @@ export function CreateChapterPage({
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
     }
   }
 
+  function fallbackCopyText(text: string) {
+    if (typeof document === 'undefined') return;
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+    } catch {
+      // ignore
+    }
+    document.body.removeChild(textArea);
+  }
+
   function handleCopyRecoveryCodes(codes: string[]) {
+    const text = codes.join('\n');
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(codes.join('\n'));
+      navigator.clipboard.writeText(text).catch(() => {
+        fallbackCopyText(text);
+      });
+    } else {
+      fallbackCopyText(text);
     }
   }
 
   async function handleInviteProceed(e: React.FormEvent) {
     e.preventDefault();
+    if (isLoading) return;
     setErrorMessage(null);
 
-    if (!officerName.trim() || !officerEmail.trim()) {
+    const trimmedOfficerName = officerName.trim();
+    const trimmedOfficerEmail = officerEmail.trim();
+
+    if (!trimmedOfficerName || !trimmedOfficerEmail) {
       setErrorMessage('Please enter both the Officer Full Name and Email Address.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedOfficerEmail)) {
+      setErrorMessage('Please enter a valid email address for the Officer.');
       return;
     }
 
@@ -376,13 +445,13 @@ export function CreateChapterPage({
     setIsLoading(true);
     try {
       await inviteChapterOfficer({
-        officerName,
-        officerEmail,
+        officerName: trimmedOfficerName,
+        officerEmail: trimmedOfficerEmail,
         duties: selectedDuties,
       });
 
-      setOfficerFullName(officerName);
-      setOfficerAccountEmail(officerEmail);
+      setOfficerFullName(trimmedOfficerName);
+      setOfficerAccountEmail(trimmedOfficerEmail);
       setStep('create-officer');
     } catch {
       setErrorMessage('Unable to register officer invitation. Please try again.');
@@ -393,10 +462,20 @@ export function CreateChapterPage({
 
   async function handleCreateOfficerSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isLoading) return;
     setErrorMessage(null);
 
-    if (!officerFullName.trim() || !officerAccountEmail.trim() || !officerPassword || !officerConfirmPassword) {
+    const trimmedFullName = officerFullName.trim();
+    const trimmedEmail = officerAccountEmail.trim();
+
+    if (!trimmedFullName || !trimmedEmail || !officerPassword || !officerConfirmPassword) {
       setErrorMessage('Please fill in all officer account fields.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMessage('Please enter a valid email address.');
       return;
     }
 
@@ -418,8 +497,8 @@ export function CreateChapterPage({
     setIsLoading(true);
     try {
       const result = await createOfficerAccount({
-        fullName: officerFullName,
-        email: officerAccountEmail,
+        fullName: trimmedFullName,
+        email: trimmedEmail,
         password: officerPassword,
         confirmPassword: officerConfirmPassword,
       });
@@ -429,6 +508,7 @@ export function CreateChapterPage({
         if (enrollResult.kind === 'success') {
           setOfficerEnrollmentId(enrollResult.enrollmentId);
           setOfficerSetupKey(enrollResult.setupKey);
+          if (enrollResult.setupUri) setOfficerSetupUri(enrollResult.setupUri);
         }
         setStep('officer-connect-auth');
       } else {
@@ -873,6 +953,7 @@ export function CreateChapterPage({
               <input
                 id="co-password-input"
                 type="password"
+                maxLength={72}
                 disabled={isLoading}
                 className="create-chapter-input"
                 value={officerPassword}
@@ -890,6 +971,7 @@ export function CreateChapterPage({
               <input
                 id="co-confirm-input"
                 type="password"
+                maxLength={72}
                 disabled={isLoading}
                 className="create-chapter-input"
                 value={officerConfirmPassword}
@@ -977,6 +1059,7 @@ export function CreateChapterPage({
               <input
                 id="chapter-code-input"
                 type="text"
+                maxLength={32}
                 disabled={isLoading}
                 className="create-chapter-input"
                 value={chapterCode}
@@ -1029,6 +1112,7 @@ export function CreateChapterPage({
             <input
               id="initial-password-input"
               type="password"
+              maxLength={72}
               disabled={isLoading}
               className="create-chapter-input"
               value={initialPassword}

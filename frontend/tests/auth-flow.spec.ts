@@ -154,7 +154,7 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     await page.getByRole('button', { name: 'Login' }).click();
 
     // Should transition to Access Revoked
-    await expect(page.getByRole('heading', { name: 'Acces Revoked' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Access? Revoked/i })).toBeVisible();
 
     // Click Sign out & Return to Login
     await page.getByRole('button', { name: 'Sign out & Return to Login' }).click();

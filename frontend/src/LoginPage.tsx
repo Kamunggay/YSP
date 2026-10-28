@@ -120,16 +120,24 @@ export function LoginPage({
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isLoading) return;
     setErrorMessage(null);
 
-    if (!email.trim() || !password) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
       setErrorMessage('Please enter both your email address and password.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMessage('Please enter a valid email address.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const result = await signIn(email, password);
+      const result = await signIn(trimmedEmail, password);
 
       if (result.kind === 'success') {
         const session = result.session;
@@ -176,6 +184,7 @@ export function LoginPage({
   }
 
   async function handleMfaVerify() {
+    if (isLoading) return;
     const code = otp.join('');
     if (code.length < 6) {
       setErrorMessage('Please enter all 6 digits from your Google Authenticator app.');
@@ -199,6 +208,7 @@ export function LoginPage({
   }
 
   async function handleRecoveryVerify() {
+    if (isLoading) return;
     const code = recoveryCode.replace(/\s+/g, '').toUpperCase();
     if (!code) {
       setErrorMessage('Please enter your single-use backup recovery code.');
@@ -222,6 +232,7 @@ export function LoginPage({
   }
 
   async function handleSignOutAndReturn() {
+    if (isLoading) return;
     setIsLoading(true);
     try {
       await signOut();
@@ -250,6 +261,10 @@ export function LoginPage({
   function handleOtpKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Backspace' && !otp[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
+    } else if (event.key === 'ArrowLeft' && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    } else if (event.key === 'ArrowRight' && index < 5) {
+      otpRefs.current[index + 1]?.focus();
     }
     if (event.key === 'Enter') {
       void handleMfaVerify();
@@ -587,7 +602,7 @@ export function LoginPage({
           />
 
           <h1 id="revoked-heading" className="kamunggay-revoked-heading">
-            Acces Revoked
+            Access Revoked
           </h1>
           <p className="kamunggay-auth-sub" style={{ marginBottom: 'clamp(14px, 2.2vh, 24px)' }}>
             Your membership in Cebu Chapter has been disabled
