@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\AccessChapterAdministration\ProtectedChapterExecution;
 use Carbon\Carbon;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,27 @@ require __DIR__.'/fixture-support.php';
 installFixtureFailureHandler();
 $user = $argv[2];
 $input = json_decode(stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
-if ($argv[1] === 'membership') {
+if ($argv[1] === 'membership-versions') {
+    DB::table('memberships')->where('id', $input['membership_id'])->where('user_id', $user)->update([
+        'row_version' => $input['row_version'], 'authority_version' => $input['authority_version']]);
+    $result = ['applied' => true];
+} elseif ($argv[1] === 'chapter-history-security') {
+    $result = [];
+    foreach (['UPDATE', 'DELETE'] as $mutation) {
+        try {
+            DB::statement($mutation === 'UPDATE' ? 'UPDATE chapter_operations SET id = id WHERE 1 = 0' : 'DELETE FROM chapter_operations WHERE 1 = 0');
+            $result[$mutation.'_denied'] = false;
+        } catch (QueryException $error) {
+            $result[$mutation.'_denied'] = ($error->errorInfo[1] ?? 0) === 1142;
+        }
+    }
+} elseif ($argv[1] === 'membership-candidate') {
+    DB::table('membership_candidates')->insert(['chapter_id' => $input['chapter_id'], 'user_id' => $user,
+        'purpose' => 'membership_authorization', 'approved_by_user_id' => $input['approved_by_user_id'],
+        'executed_by_user_id' => $user, 'operator_reference' => 'Synthetic operator',
+        'approval_reference' => 'Synthetic independent approval', 'authorized_at' => now()]);
+    $result = ['authorized' => true];
+} elseif ($argv[1] === 'membership') {
     $result = DB::transaction(function () use ($user, $input): array {
         DB::table('users')->where('id', $user)->lockForUpdate()->first();
         DB::table('organizations')->insert(['name' => 'Synthetic context organization']);
@@ -45,7 +66,7 @@ if ($argv[1] === 'membership') {
 
         return ['chapter_id' => (string) $chapter, 'membership_id' => (string) $member, 'expected_membership_version' => 1];
     });
-} elseif ($argv[1] === 'execute') {
+} elseif (in_array($argv[1], ['execute', 'follow-up'], true)) {
     $session = app('session')->driver();
     foreach (DB::table('sessions')->get() as $row) {
         $payload = json_decode(base64_decode($row->payload), true, flags: JSON_THROW_ON_ERROR);
@@ -59,7 +80,7 @@ if ($argv[1] === 'membership') {
     $request->setLaravelSession($session);
     $request->headers->set('X-Chapter-Context', $input['revision']);
     $marker = hash('sha256', random_bytes(32));
-    $response = app(ProtectedChapterExecution::class)->execute($request, function () use ($marker, $input): JsonResponse {
+    $effect = function () use ($marker, $input): JsonResponse {
         DB::table('session_throttles')->insert(['key' => $marker, 'attempts' => 1, 'expires_at' => time() + 60]);
         if (isset($input['wait_until'])) {
             while (now()->lt(Carbon::parse($input['wait_until'], 'UTC'))) {
@@ -68,7 +89,11 @@ if ($argv[1] === 'membership') {
         }
 
         return response()->json(['executed' => true]);
-    }, $input['scope']);
+    };
+    $execution = app(ProtectedChapterExecution::class);
+    $response = $argv[1] === 'follow-up'
+        ? $execution->withCurrentAccess($request, $input['scope']['chapter_id'], $input['scope']['action'], $effect)
+        : $execution->execute($request, $effect, $input['scope']);
     $result = ['status' => $response->getStatusCode(), 'body' => $response->getData(true),
         'effect_committed' => DB::table('session_throttles')->where('key', $marker)->exists()];
 } elseif ($argv[1] === 'grant') {

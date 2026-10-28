@@ -38,7 +38,7 @@ final class VerifyBaseline extends Command
                 'authenticator_enrollments', 'user_recovery_codes', 'initial_provider_installations', 'chapter_provisionings',
                 'provider_operation_attempts', 'provider_actor_attributions', 'provider_operations', 'provider_audit_events', 'provider_follow_up_intents',
                 'initial_head_candidates', 'initial_head_designations', 'initial_head_bootstraps', 'chapter_control_guards',
-                'chapter_selections', 'membership_cursors'];
+                'chapter_selections', 'membership_cursors', 'membership_candidates', 'chapter_operations'];
             sort($expectedTables);
             $actualTables = array_map(fn (object $table): string => $table->name, $tables);
             sort($actualTables);

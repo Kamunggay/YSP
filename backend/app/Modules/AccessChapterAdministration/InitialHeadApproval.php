@@ -19,6 +19,9 @@ final class InitialHeadApproval
         }
         $document = app(CanonicalApprovalDecoder::class)->decode((string) file_get_contents($path));
         $keys = ['purpose', 'organization_id', 'user_id', 'approved_by_user_id', 'approval_reference'];
+        if ($purpose === 'membership_authorization') {
+            $keys = ['purpose', 'chapter_id', 'user_id', 'approved_by_user_id', 'approval_reference'];
+        }
         if ($purpose === 'initial_head_membership') {
             $keys = array_merge($keys, ['chapter_id', 'provisioning_id', 'designation_operation_id']);
         }

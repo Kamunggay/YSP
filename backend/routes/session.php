@@ -8,6 +8,7 @@ use App\Http\Middleware\SessionForgeryGuard;
 use App\Modules\AccessChapterAdministration\AuthenticatorEnrollments;
 use App\Modules\AccessChapterAdministration\ChapterContext;
 use App\Modules\AccessChapterAdministration\ChapterProvisioning;
+use App\Modules\AccessChapterAdministration\MembershipAdministration;
 use App\Modules\AccessChapterAdministration\MfaChallenges;
 use App\Modules\AccessChapterAdministration\SessionContract;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -16,6 +17,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::class, SessionForgeryGuard::class])
     ->group(function (): void {
+        Route::post('/api/v1/chapters/{chapter_id}/memberships/authorize', [MembershipAdministration::class, 'authorizeMembership']);
+        Route::post('/api/v1/chapters/{chapter_id}/memberships/{membership_id}/disable', [MembershipAdministration::class, 'disableMembership']);
+        Route::post('/api/v1/chapters/{chapter_id}/memberships/{membership_id}/revoke', [MembershipAdministration::class, 'revokeMembership']);
+        Route::get('/api/v1/chapters/{chapter_id}/operations/by-key', [MembershipAdministration::class, 'lookupByKey']);
+        Route::get('/api/v1/chapters/{chapter_id}/operations/by-id/{operation_id}', [MembershipAdministration::class, 'lookupById']);
         Route::get('/api/v1/session/chapter-context', [ChapterContext::class, 'context']);
         Route::get('/api/v1/session/chapter-memberships', [ChapterContext::class, 'memberships']);
         Route::post('/api/v1/session/chapter-selection', [ChapterContext::class, 'select']);

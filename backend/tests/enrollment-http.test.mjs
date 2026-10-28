@@ -38,7 +38,12 @@ class Browser {
       this.cookies.set(name, value.join('='));
     }
     const contractPath = path === '/csrf-cookie' ? path : path.replace('/api/v1', '');
-    const operation = api.paths[contractPath]?.[method.toLowerCase()];
+    const membershipContractPath = contractPath.split('?')[0]
+      .replace(/^\/chapters\/[^/]+\//, '/chapters/{chapter_id}/')
+      .replace(/\/memberships\/[^/]+\/(disable|revoke)$/, '/memberships/{membership_id}/$1')
+      .replace(/\/operations\/by-id\/[^/]+$/, '/operations/by-id/{operation_id}');
+    const operation = api.paths[contractPath]?.[method.toLowerCase()]
+      ?? (contractPath.startsWith('/chapters/') ? api.paths[membershipContractPath]?.[method.toLowerCase()] : undefined);
     if (operation && operation.responses[response.status]) {
       const schema = operation.responses[response.status].content?.['application/json']?.schema;
       if (schema) {
@@ -1233,6 +1238,300 @@ function chapterFixture(action, user, input = {}) {
   return JSON.parse(result.stdout);
 }
 const contextPath = '/api/v1/session/chapter-context';
+const membershipPath = chapter => `/api/v1/chapters/${chapter}/memberships`;
+async function membershipHead(label) {
+  const officer = await enrolledOfficer(label);
+  const member = chapterFixture('membership', officer.id, {duties:['CHAPTER_HEAD']});
+  const context = await (await officer.browser.request(contextPath)).json();
+  const selected = await selectChapter(officer.browser, context.selection_revision, member);
+  assert.equal(selected.status, 200);
+  return {...officer, member, selected:await selected.json()};
+}
+const membershipPost = (head, path, body, revision = head.selected.selection_revision) => head.browser.request(path, {
+  method:'POST', body, headers:{'X-Chapter-Context':revision,
+    'X-XSRF-TOKEN':decodeURIComponent(head.browser.cookies.get('XSRF-TOKEN'))},
+});
+test('ticket08 core write requires independently eligible existing identity', async () => {
+  const head = await membershipHead('p08-core');
+  const target = syntheticOfficer('p08-target');
+  const body = {idempotency_key:'core-attempt', expected_authority_version:head.selected.context.authority_version,
+    identity:{user_id:target.id}, expected_membership_version:null};
+  const response = await membershipPost(head, membershipPath(head.member.chapter_id)+'/authorize', body);
+  assert.equal(response.status, 422);
+});
+test('ticket08 core write authorizes an audited candidate with no automatic duties', async () => {
+  const head = await membershipHead('p08-authorize');
+  const target = await signedInBrowser('p08-authorize-target');
+  chapterFixture('membership-candidate', target.id, {chapter_id:head.member.chapter_id, approved_by_user_id:head.id});
+  const body = {idempotency_key:'authorize-attempt', expected_authority_version:head.selected.context.authority_version,
+    identity:{user_id:target.id}, expected_membership_version:null};
+  const response = await membershipPost(head, membershipPath(head.member.chapter_id)+'/authorize', body);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.membership.identity.user_id, target.id);
+  assert.equal(result.membership.status, 'authorized');
+  assert.equal(result.membership.version, 1);
+  assert.equal(result.membership.authorized.user_id, head.id);
+  const access = await (await target.browser.request(contextPath)).json();
+  assert.equal(access.membership.membership_id, result.membership.membership_id);
+  assert.deepEqual(access.context.available_actions, []);
+});
+async function authorizedMember(label) {
+  const head = await membershipHead(label);
+  const target = await signedInBrowser(label+'-target');
+  chapterFixture('membership-candidate', target.id, {chapter_id:head.member.chapter_id, approved_by_user_id:head.id});
+  const body = {idempotency_key:'authorize-attempt', expected_authority_version:head.selected.context.authority_version,
+    identity:{user_id:target.id}, expected_membership_version:null};
+  const path = membershipPath(head.member.chapter_id)+'/authorize';
+  const response = await membershipPost(head, path, body);
+  assert.equal(response.status, 200);
+  return {head, target, body, path, result:await response.json()};
+}
+test('ticket08 reauthorization retains identity and exact versions while removal preserves other chapters', async () => {
+  const {head, target, path, result} = await authorizedMember('p08-retained');
+  chapterFixture('grant',target.id,{membership_id:result.membership.membership_id,duty:'COMMITTEE_REQUESTER'});
+  const other = chapterFixture('membership', target.id, {duties:[]});
+  head.selected = await (await head.browser.request(contextPath)).json();
+  let response = await membershipPost(head, membershipPath(head.member.chapter_id)+`/${result.membership.membership_id}/disable`, {
+    idempotency_key:'disable-attempt', expected_authority_version:head.selected.context.authority_version, expected_membership_version:1});
+  assert.equal(response.status, 200);
+  const disabled = await response.json();
+  assert.equal(disabled.membership.status, 'disabled');
+  assert.equal(disabled.membership.disabled.user_id, head.id);
+  assert.equal(disabled.membership.version, 2);
+  const remaining = await (await target.browser.request('/api/v1/session/chapter-memberships')).json();
+  assert.deepEqual(remaining.items.map(m=>m.chapter_id), [other.chapter_id]);
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const body = {idempotency_key:'reauthorize-attempt', expected_authority_version:head.selected.context.authority_version,
+    identity:{user_id:target.id}, expected_membership_version:null};
+  response = await membershipPost(head, path, body);
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'membership_stale');
+  body.expected_membership_version = 2;
+  response = await membershipPost(head, path, body);
+  assert.equal(response.status, 200);
+  const restored = await response.json();
+  assert.equal(restored.membership.membership_id, result.membership.membership_id);
+  assert.equal(restored.membership.history_reference, result.membership.history_reference);
+  assert.equal(restored.membership.version, 3);
+  assert.equal(restored.membership.status, 'authorized');
+  const targetCurrent = await (await target.browser.request(contextPath)).json();
+  const selectedTarget = await selectChapter(target.browser,targetCurrent.selection_revision,{
+    chapter_id:head.member.chapter_id,membership_id:restored.membership.membership_id,expected_membership_version:restored.membership.authority_version});
+  assert.equal(selectedTarget.status,200);
+  assert.deepEqual((await selectedTarget.json()).context.available_actions,[],'reauthorization must not revive ended duties');
+  head.selected = await (await head.browser.request(contextPath)).json();
+  response = await membershipPost(head, membershipPath(head.member.chapter_id)+`/${restored.membership.membership_id}/revoke`, {
+    idempotency_key:'revoke-attempt', expected_authority_version:head.selected.context.authority_version, expected_membership_version:3});
+  assert.equal(response.status, 200);
+  const revoked = await response.json();
+  assert.equal(revoked.membership.status, 'revoked');
+  assert.equal(revoked.membership.revoked.user_id, head.id);
+  assert.equal(revoked.membership.version, 4);
+});
+test('ticket08 replay and both lookup selectors require live original chapter access', async () => {
+  const {head, body, path, result} = await authorizedMember('p08-replay');
+  let response = await membershipPost(head, path, body);
+  assert.equal(response.status, 200, 'identical replay precedes stale authority checks');
+  const replayed = structuredClone(result);
+  replayed.operation.replayed = true;
+  assert.deepEqual(await response.json(), replayed);
+  response = await membershipPost(head, path, {...body, expected_membership_version:1});
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'idempotency_conflict');
+  const root = `/api/v1/chapters/${head.member.chapter_id}/operations`;
+  const keyPath = root+'/by-key?action_code=memberships.authorize&idempotency_key='+body.idempotency_key;
+  const idPath = root+'/by-id/'+result.operation.identity.operation_id;
+  for (const lookup of [keyPath,idPath]) {
+    response = await head.browser.request(lookup);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), replayed);
+  }
+  const missing = await (await head.browser.request(root+'/by-key?action_code=memberships.authorize&idempotency_key=missing')).json();
+  assert.equal(missing.action_result, 'uncertain');
+  assert.equal(missing.lookup_state, 'pending_or_not_visible');
+  assert.equal(missing.operation.outcome, 'unknown');
+  const other = chapterFixture('membership',head.id,{duties:['CHAPTER_HEAD']});
+  const current = await (await head.browser.request(contextPath)).json();
+  assert.equal((await selectChapter(head.browser,current.selection_revision,other)).status,200);
+  response = await membershipPost(head,path,body);
+  assert.equal(response.status,200,'switching selection never retargets original replay');
+  assert.deepEqual(await response.json(),replayed);
+  chapterFixture('end-membership', head.id, head.member);
+  for (const lookup of [keyPath,idPath]) {
+    response = await head.browser.request(lookup);
+    assert.equal(response.status, 403);
+    const denied = await response.json();
+    assert.equal(denied.action_result, 'forbidden');
+    assert.equal(denied.operation, null);
+    assert.equal(denied.chapter_id, null);
+  }
+  response = await membershipPost(head, path, body);
+  assert.equal(response.status, 403);
+  assert.deepEqual(Object.keys(await response.json()).sort(), ['code','message']);
+});
+test('ticket08 restricted candidate approval is chapter and purpose bound', async () => {
+  const commands = spawnSync('docker', ['exec',container,'php','artisan','list','--raw'], {encoding:'utf8'});
+  assert.equal(commands.status, 0, commands.stderr);
+  assert.match(commands.stdout, /^candidate:authorize-membership\s/m);
+  const head = await membershipHead('p08-cli');
+  const target = syntheticOfficer('p08-cli-target');
+  const document = {purpose:'membership_authorization', chapter_id:head.member.chapter_id,
+    user_id:target.id, approved_by_user_id:head.id, approval_reference:'Synthetic independent chapter approval'};
+  const approved = await headApprovalCli('candidate:authorize-membership', target.id, target.id, document);
+  assert.equal(approved.code, 0, approved.output);
+  const body = {idempotency_key:'cli-approved', expected_authority_version:head.selected.context.authority_version,
+    identity:{user_id:target.id}, expected_membership_version:null};
+  const response = await membershipPost(head, membershipPath(head.member.chapter_id)+'/authorize', body);
+  assert.equal(response.status, 200);
+  const wrongPurpose = await headApprovalCli('candidate:authorize-membership', target.id, target.id,
+    {...document,purpose:'initial_head_appointment'});
+  assert.notEqual(wrongPurpose.code, 0);
+});
+test('ticket08 protected follow-up is suppressed after revocation while committed access survives', async () => {
+  const {head, target, result} = await authorizedMember('p08-follow-up');
+  const input = {revision:head.selected.selection_revision, scope:{chapter_id:head.member.chapter_id, action:'memberships.authorize'}};
+  assert.deepEqual(chapterFixture('follow-up', head.id, input), {status:200, body:{executed:true}, effect_committed:true});
+  chapterFixture('end-membership', head.id, head.member);
+  const denied = chapterFixture('follow-up', head.id, input);
+  assert.equal(denied.status, 403);
+  assert.equal(denied.effect_committed, false);
+  const targetContext = await (await target.browser.request(contextPath)).json();
+  assert.equal(targetContext.membership.membership_id, result.membership.membership_id);
+});
+test('ticket08 new writes distinguish stale context authority and resource guards', async () => {
+  const {head, body, path, result} = await authorizedMember('p08-guards');
+  let response = await membershipPost(head, path, {...body,idempotency_key:'new-stale-authority'});
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'authority_stale');
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const current = {...body,idempotency_key:'new-stale-context',expected_authority_version:head.selected.context.authority_version};
+  response = await membershipPost(head, path, current, 'ctx_'+'x'.repeat(64));
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'chapter_context_stale');
+  response = await membershipPost(head, path, current);
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'membership_stale');
+  for (const edit of [{...current,actor_user_id:head.id},{...current,identity:{user_id:body.identity.user_id,email:'forbidden'}},
+    {...current,expected_membership_version:undefined}]) {
+    assert.equal((await membershipPost(head,path,edit)).status, 422);
+  }
+  const root = `/api/v1/chapters/${head.member.chapter_id}/operations`;
+  for (const suffix of ['&action_code=memberships.revoke','&%61ction_code=memberships.authorize','&idempotency_key=other','&record_id=1']) {
+    assert.equal((await head.browser.request(root+'/by-key?action_code=memberships.authorize&idempotency_key='+body.idempotency_key+suffix)).status, 400);
+  }
+  assert.equal((await head.browser.request(root+'/by-id/'+result.operation.identity.operation_id+'?action_code=memberships.authorize')).status, 400);
+});
+test('ticket08 lookup preserves original forbidden envelopes for boundary and authentication failures', async () => {
+  const {head,result} = await authorizedMember('p08-boundary');
+  const path = `/api/v1/chapters/${head.member.chapter_id}/operations/by-id/${result.operation.identity.operation_id}`;
+  const response = await head.browser.request(path,{headers:{Origin:'https://untrusted.example'}});
+  assert.equal(response.status,403);
+  assert.equal((await response.json()).action_result,'forbidden');
+  const signedOut = await new Browser().request(path);
+  assert.equal(signedOut.status,401);
+  assert.equal((await signedOut.json()).operation,null);
+});
+test('ticket08 Chapter Head can revoke own membership without erasing the committed outcome', async () => {
+  const head = await membershipHead('p08-self');
+  const response = await membershipPost(head,membershipPath(head.member.chapter_id)+`/${head.member.membership_id}/revoke`,{
+    idempotency_key:'self-revoke',expected_authority_version:head.selected.context.authority_version,expected_membership_version:1});
+  assert.equal(response.status,200);
+  const result = await response.json();
+  assert.equal(result.membership.status,'revoked');
+  assert.equal(result.operation.outcome,'committed');
+  const lookup = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/operations/by-id/${result.operation.identity.operation_id}`);
+  assert.equal(lookup.status,403);
+  assert.equal((await lookup.json()).operation,null);
+});
+for (const counter of ['resource','authority']) {
+  test(`ticket08 ${counter} version overflow retains a durable rejection and immutable history`, async () => {
+    const {head,target,result} = await authorizedMember('p08-overflow-'+counter);
+    const version = counter === 'resource' ? 4294967295 : 1;
+    chapterFixture('membership-versions',target.id,{membership_id:result.membership.membership_id,
+      row_version:version,authority_version:counter === 'authority' ? 2147483647 : 1});
+    head.selected = await (await head.browser.request(contextPath)).json();
+    const body = {idempotency_key:'overflow',expected_authority_version:head.selected.context.authority_version,expected_membership_version:version};
+    const path = membershipPath(head.member.chapter_id)+`/${result.membership.membership_id}/disable`;
+    const response = await membershipPost(head,path,body);
+    assert.equal(response.status,409);
+    const rejected = await response.json();
+    assert.equal(rejected.operation.outcome,'rejected');
+    const replay = await membershipPost(head,path,body);
+    assert.equal(replay.status,409);
+    assert.deepEqual(await replay.json(),{...rejected,operation:{...rejected.operation,replayed:true}});
+    const lookup = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/operations/by-id/${rejected.operation.identity.operation_id}`);
+    assert.equal(lookup.status,200);
+    assert.deepEqual(await lookup.json(),{...rejected,operation:{...rejected.operation,replayed:true}});
+    assert.deepEqual(chapterFixture('chapter-history-security',head.id),{UPDATE_denied:true,DELETE_denied:true});
+    assert.equal((await (await target.browser.request(contextPath)).json()).membership.membership_id,result.membership.membership_id);
+  });
+}
+test('ticket08 intended MySQL retains membership identity and immutable outcomes even for privileged writers', async () => {
+  const {head,target,result} = await authorizedMember('p08-integrity');
+  const other = syntheticOfficer('p08-integrity-other');
+  for (const sql of [
+    `UPDATE memberships SET user_id=${other.id} WHERE id=${result.membership.membership_id}`,
+    `DELETE FROM memberships WHERE id=${result.membership.membership_id}`,
+    `UPDATE chapter_operations SET result_snapshot=JSON_OBJECT() WHERE public_id='${result.operation.identity.operation_id}'`,
+    `DELETE FROM chapter_operations WHERE public_id='${result.operation.identity.operation_id}'`,
+  ]) {
+    const mutation = spawnSync('docker',['exec','-i',process.env.YSP_TEST_MYSQL_CONTAINER,'sh','-c',
+      'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot ysp_local'],{encoding:'utf8',input:sql});
+    assert.notEqual(mutation.status,0,'privileged SQL must not rewrite stable identity or history');
+    assert.match(mutation.stderr,/1644/,'database trigger must enforce retention');
+  }
+  const lookup = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/operations/by-id/${result.operation.identity.operation_id}`);
+  assert.deepEqual(await lookup.json(),{...result,operation:{...result.operation,replayed:true}});
+  assert.equal((await (await target.browser.request(contextPath)).json()).membership.membership_id,result.membership.membership_id);
+});
+for (const changed of [false,true]) {
+  test(`ticket08 overlapping ${changed ? 'changed' : 'identical'} key attempts retain one original result`, async t => {
+    const head = await membershipHead('p08-race-'+changed);
+    const target = syntheticOfficer('p08-race-target');
+    chapterFixture('membership-candidate',target.id,{chapter_id:head.member.chapter_id,approved_by_user_id:head.id});
+    const body = {idempotency_key:'overlapping-key',expected_authority_version:head.selected.context.authority_version,
+      identity:{user_id:target.id},expected_membership_version:null};
+    const contender = {...head,browser:new Browser()};
+    contender.browser.cookies = new Map(head.browser.cookies);
+    contender.browser.worker = 'contender';
+    const holder = spawn('docker',['exec','-i','-e','YSP_SESSION_FIXTURES=1',container,
+      'php','tests/fixtures/enrollment-state.php','hold',head.id]);
+    t.after(()=>holder.stdin.end('\n'));
+    await new Promise((resolve,reject)=>{
+      holder.once('error',reject);
+      holder.stdout.on('data',data=>{if(data.toString().includes('held'))resolve();});
+      holder.once('exit',()=>reject(new Error('Lock holder exited')));
+    });
+    const path = membershipPath(head.member.chapter_id)+'/authorize';
+    const requests = [membershipPost(head,path,body)];
+    let waiting = 0;
+    let secondStarted = false;
+    try {
+      for(let i=0;i<40;i++) {
+        const probe = spawnSync('docker',['exec',process.env.YSP_TEST_MYSQL_CONTAINER,'sh','-c',
+          'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'],{encoding:'utf8'});
+        assert.equal(probe.status,0,probe.stderr);
+        waiting = Number(probe.stdout.trim());
+        if(waiting>=1 && !secondStarted) {
+          requests.push(membershipPost(contender,path,changed ? {...body,expected_membership_version:1} : body));
+          secondStarted=true;
+        }
+        if(waiting>=2)break;
+        await new Promise(resolve=>setTimeout(resolve,50));
+      }
+    } finally { holder.stdin.end('\n'); }
+    const responses = await Promise.all(requests);
+    assert.ok(waiting>=2,`Expected overlapping MySQL transactions, observed ${waiting} waiters`);
+    assert.deepEqual(responses.map(r=>r.status),[200,changed ? 409 : 200]);
+    const first = await responses[0].json();
+    const second = await responses[1].json();
+    if(changed) assert.equal(second.code,'idempotency_conflict');
+    else assert.deepEqual(second,{...first,operation:{...first.operation,replayed:true}});
+    const recovered = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/operations/by-key?action_code=memberships.authorize&idempotency_key=overlapping-key`);
+    assert.deepEqual(await recovered.json(),{...first,operation:{...first.operation,replayed:true}});
+  });
+}
 const selectionPath = '/api/v1/session/chapter-selection';
 const selectChapter = (browser, revision, target) => browser.request(selectionPath, {
   method:'POST', body:target, headers:{'X-Chapter-Context':revision,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Modules\AccessChapterAdministration\SessionContract;
+use App\Modules\DocumentsReporting\ChapterOutcomes;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +13,7 @@ use Throwable;
 
 final class SessionBoundary
 {
-    public function __construct(private SessionContract $contract) {}
+    public function __construct(private SessionContract $contract, private ChapterOutcomes $outcomes) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -38,6 +39,10 @@ final class SessionBoundary
         // reaches this middleware's catch. Normalize that rendered failure too.
         if ($response->isServerError()) {
             $response = $this->contract->failure('SessionUnavailable', 503);
+        }
+        if (preg_match('#^api/v1/chapters/([1-9][0-9]{0,19})/operations/(?:by-key|by-id/[^/]+)$#D', $request->path(), $scope)
+            && in_array($response->getStatusCode(), [400, 401, 403, 503], true)) {
+            $response = $this->outcomes->failure($scope[1], $response->getStatusCode());
         }
         $response->headers->set('Cache-Control', 'no-store, private');
 

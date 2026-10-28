@@ -17,14 +17,15 @@ final class ProtectedChapterExecution
     /** The owning operation supplies scope/action, never browser authority flags.
      * @param  Closure(array<string, mixed>, object): JsonResponse  $operation
      * @param  array<string, mixed>|null  $scope
+     * @param  Closure(array<string, mixed>): ?JsonResponse|null  $replay
      */
-    public function execute(Request $request, Closure $operation, ?array $scope = null): JsonResponse
+    public function execute(Request $request, Closure $operation, ?array $scope = null, ?Closure $replay = null): JsonResponse
     {
         if ($scope !== null && ! preg_match('/^ctx_[A-Za-z0-9_-]{32,96}$/D', (string) $request->header('X-Chapter-Context'))) {
             return $this->contract->failure('ChapterQueryInvalid', 400);
         }
         try {
-            return DB::transaction(function () use ($request, $operation, $scope): JsonResponse {
+            return DB::transaction(function () use ($request, $operation, $scope, $replay): JsonResponse {
                 $user = DB::table('users')->where('id', $request->session()->get('identity_id'))->lockForUpdate()->first();
                 if ($user !== null) {
                     DB::table('provider_role_grants')->where('user_id', $user->id)->orderBy('id')->lockForUpdate()->get();
@@ -42,10 +43,17 @@ final class ProtectedChapterExecution
                 DB::table('chapter_selections')->insertOrIgnore(['session_key' => $key, 'user_id' => $user->id,
                     'membership_id' => null, 'revision' => 'ctx_'.bin2hex(random_bytes(32))]);
                 $selection = DB::table('chapter_selections')->where('session_key', $key)->where('user_id', $user->id)->lockForUpdate()->first();
-                if ($scope !== null && ($denied = $this->verifyScope($request, $selection, $scope)) !== null) {
+                $recovered = null;
+                if ($scope !== null && $replay !== null) {
+                    if (($denied = $this->verifyAccess((string) $user->id, $scope['chapter_id'], $scope['action'])) !== null) {
+                        return $denied;
+                    }
+                    $recovered = $replay($session);
+                }
+                if ($recovered === null && $scope !== null && ($denied = $this->verifyScope($request, $selection, $scope)) !== null) {
                     return $denied;
                 }
-                $response = $operation($session, $selection);
+                $response = $recovered ?? $operation($session, $selection);
                 // Locks prevent concurrent authority changes; time can still cross an
                 // expiry during the operation. Recheck immediately before commitment.
                 $current = $this->sessions->snapshot($request);
@@ -56,7 +64,13 @@ final class ProtectedChapterExecution
                 if ($current['state'] !== 'authenticated') {
                     throw new HttpResponseException($this->contract->failure('SessionForbidden', 403, 'forbidden'));
                 }
-                if ($scope !== null && ($denied = $this->verifyScope($request, $selection, $scope)) !== null) {
+                if ($scope !== null && isset($selection->committed_authority_version)) {
+                    $scope['expected_authority_version'] = $selection->committed_authority_version;
+                }
+                $denied = $scope === null ? null : ($recovered !== null
+                    ? $this->verifyAccess((string) $user->id, $scope['chapter_id'], $scope['action'])
+                    : $this->verifyScope($request, $selection, $scope));
+                if ($denied !== null) {
                     throw new HttpResponseException($denied);
                 }
 
@@ -68,28 +82,73 @@ final class ProtectedChapterExecution
         }
     }
 
+    /** Original-scope recovery and protected follow-up do not change chapter selection.
+     * @param  Closure(array<string, mixed>): JsonResponse  $operation
+     */
+    public function withCurrentAccess(Request $request, string $chapter, string $action, Closure $operation): JsonResponse
+    {
+        return $this->execute($request, function (array $session) use ($chapter, $action, $operation): JsonResponse {
+            if (($denied = $this->verifyAccess($session['user']['id'], $chapter, $action)) !== null) {
+                return $denied;
+            }
+            $response = $operation($session);
+            if (($denied = $this->verifyAccess($session['user']['id'], $chapter, $action)) !== null) {
+                throw new HttpResponseException($denied);
+            }
+
+            return $response;
+        });
+    }
+
+    private function verifyAccess(string $user, string $chapter, string $action): ?JsonResponse
+    {
+        $member = DB::table('memberships')->where('chapter_id', $chapter)->where('user_id', $user)
+            ->where('status', 'active')->whereNull('disabled_at')->lockForUpdate()->first();
+        DB::table('chapter_control_guards')->where('chapter_id', $chapter)->lockForUpdate()->first();
+        if ($member !== null && in_array($action, $this->actions($this->grants($member)), true)) {
+            return null;
+        }
+
+        return $this->contract->failure('SessionForbidden', 403, 'forbidden');
+    }
+
+    public function advanceAuthority(object $selection, string $chapter, int $version): void
+    {
+        DB::table('chapter_control_guards')->where('chapter_id', $chapter)->update(['authority_version' => $version + 1, 'updated_at' => now()]);
+        $selection->committed_authority_version = $version + 1;
+    }
+
     /** @param array<string, mixed> $scope */
     private function verifyScope(Request $request, object $selection, array $scope): ?JsonResponse
     {
         if (($stale = $this->verifyRevision($request, $selection)) !== null) {
-            return $stale;
+            return ($scope['membership_contract'] ?? false) ? $this->membershipConflict('chapter_context_stale') : $stale;
         }
-        $member = DB::table('memberships')->where('id', $selection->membership_id)->where('user_id', $selection->user_id)
-            ->where('status', 'active')->whereNull('disabled_at')->lockForUpdate()->first();
+        $member = DB::table('memberships')->where('id', $selection->membership_id)->where('user_id', $selection->user_id)->lockForUpdate()->first();
+        // A Head's intentional self-removal is part of this guarded write. Its
+        // locked pre-change authority must still be temporally effective at commit.
+        $selfRemoval = $member !== null && isset($selection->ended_actor_version)
+            && $member->row_version === $selection->ended_actor_version && $member->status !== 'active';
         if ($member === null || (string) $member->chapter_id !== ($scope['chapter_id'] ?? null)
-            || (string) $member->id !== ($scope['membership_id'] ?? null)) {
-            return $this->stale();
+            || (string) $member->id !== ($scope['membership_id'] ?? null)
+            || (! $selfRemoval && ($member->status !== 'active' || $member->disabled_at !== null))) {
+            return ($scope['membership_contract'] ?? false) ? $this->membershipConflict('chapter_context_stale') : $this->stale();
         }
         $guard = DB::table('chapter_control_guards')->where('chapter_id', $member->chapter_id)->lockForUpdate()->first();
         if ($guard === null || $guard->authority_version !== ($scope['expected_authority_version'] ?? null)) {
-            return $this->stale();
+            return ($scope['membership_contract'] ?? false) ? $this->membershipConflict('authority_stale') : $this->stale();
         }
         $unit = $scope['requesting_unit_id'] ?? null;
         if ($unit !== null && (! InitialHeadApproval::validId($unit) || ! DB::table('requesting_units')
             ->where('id', $unit)->where('chapter_id', $member->chapter_id)->where('active', true)->lockForUpdate()->exists())) {
             return $this->contract->failure('SessionForbidden', 403, 'forbidden');
         }
-        foreach ($this->grants($member) as $grant) {
+        $grants = $selfRemoval ? $selection->ended_actor_grants : $this->grants($member);
+        foreach ($grants as $grant) {
+            if ($selfRemoval && ($grant->starts_at > now()->format('Y-m-d H:i:s.u')
+                || ($grant->ends_at !== null && $grant->ends_at <= now()->format('Y-m-d H:i:s.u')))) {
+                continue;
+            }
             if (! in_array($scope['action'] ?? null, $this->actions([$grant], $unit), true)) {
                 continue;
             }
@@ -101,6 +160,11 @@ final class ProtectedChapterExecution
         }
 
         return $this->contract->failure('SessionForbidden', 403, 'forbidden');
+    }
+
+    private function membershipConflict(string $code): JsonResponse
+    {
+        return response()->json(['code' => $code, 'message' => 'Review current authority and the original attempt.', 'next_action' => 'review_original_attempt'], 409);
     }
 
     private function withinLimit(mixed $amount, ?string $limit): bool
