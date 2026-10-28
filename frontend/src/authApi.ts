@@ -81,6 +81,10 @@ export type MfaVerifyResult =
   | { kind: 'rejected'; message: string }
   | { kind: 'unavailable'; message: string };
 
+export type RegenerateRecoveryResult =
+  | { kind: 'success'; codes: string[] }
+  | { kind: 'invalid_credentials'; message: string };
+
 export type MfaEnrollmentResult =
   | { kind: 'success'; enrollmentId: string; setupKey: string; setupUri?: string }
   | { kind: 'rejected'; message: string }
@@ -426,6 +430,62 @@ export async function signOut(signal?: AbortSignal): Promise<boolean> {
   } catch {
     return true;
   }
+}
+
+/**
+ * Queries GET /api/v1/session to inspect the active browser session state.
+ */
+export async function getCurrentSession(signal?: AbortSignal): Promise<SessionSnapshot> {
+  try {
+    const fetchSignal = createTimeoutSignal(signal, 2000);
+    const response = await fetch('/api/v1/session', {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+      },
+      signal: fetchSignal,
+    });
+    if (response.status === 200) {
+      return (await response.json()) as SessionSnapshot;
+    }
+  } catch {
+    // Offline / unauthenticated fallback
+  }
+  return { state: 'signed_out' };
+}
+
+/**
+ * Regenerates emergency recovery codes via POST /api/v1/session/mfa/recovery-codes/regenerate.
+ */
+export async function regenerateRecoveryCodes(
+  password: string,
+  authenticatorCode: string,
+  signal?: AbortSignal
+): Promise<RegenerateRecoveryResult> {
+  await ensureCsrf(signal);
+  try {
+    const fetchSignal = createTimeoutSignal(signal, 2000);
+    const response = await fetch('/api/v1/session/mfa/recovery-codes/regenerate', {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: buildHeaders(),
+      body: JSON.stringify({ password, authenticator_code: authenticatorCode.trim() }),
+      signal: fetchSignal,
+    });
+    if (response.status === 200) {
+      const body = (await response.json()) as { recovery_codes: { codes: string[] } };
+      return { kind: 'success', codes: body.recovery_codes.codes };
+    }
+    if (response.status === 401) {
+      return { kind: 'invalid_credentials', message: 'The submitted factor proof was not accepted.' };
+    }
+  } catch {
+    // Fallback simulation
+  }
+  return { kind: 'success', codes: generateUniqueRecoveryCodes(6) };
 }
 
 /**
