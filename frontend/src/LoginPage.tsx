@@ -108,6 +108,7 @@ export function LoginPage({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<VerifiedSessionData | undefined>(initialSessionData);
 
+
   const effectiveSessionData: ResolvedVerifiedSession = {
     userName: sessionData?.userName || initialSessionData?.userName || DEFAULT_VERIFIED_SESSION.userName,
     authenticatedUnder: sessionData?.authenticatedUnder || initialSessionData?.authenticatedUnder || DEFAULT_VERIFIED_SESSION.authenticatedUnder,
@@ -198,7 +199,7 @@ export function LoginPage({
   }
 
   async function handleRecoveryVerify() {
-    const code = recoveryCode.trim();
+    const code = recoveryCode.replace(/\s+/g, '').toUpperCase();
     if (!code) {
       setErrorMessage('Please enter your single-use backup recovery code.');
       return;
@@ -236,6 +237,7 @@ export function LoginPage({
   }
 
   function handleOtpChange(index: number, value: string) {
+    setErrorMessage(null);
     const digit = value.replace(/\D/g, '').slice(-1);
     const next = [...otp];
     next[index] = digit;
@@ -332,7 +334,10 @@ export function LoginPage({
                   autoComplete="username"
                   value={email}
                   disabled={isLoading}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setErrorMessage(null);
+                    setEmail(e.target.value);
+                  }}
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField(null)}
                 />
@@ -343,7 +348,10 @@ export function LoginPage({
                   autoComplete="current-password"
                   value={password}
                   disabled={isLoading}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setErrorMessage(null);
+                    setPassword(e.target.value);
+                  }}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
                 />
@@ -519,13 +527,16 @@ export function LoginPage({
               id="recovery-code-input"
               type="text"
               className="kamunggay-recovery-input"
-              placeholder="XXXX - XXXX - XXXX"
+              placeholder="XXXX-XXXX-XXXX-XXXX"
               autoComplete="one-time-code"
               autoCapitalize="characters"
               spellCheck={false}
               disabled={isLoading}
               value={recoveryCode}
-              onChange={(e) => setRecoveryCode(e.target.value)}
+              onChange={(e) => {
+                setErrorMessage(null);
+                setRecoveryCode(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleRecoveryVerify();
               }}

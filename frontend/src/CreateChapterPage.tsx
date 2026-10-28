@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import './login.css';
 import './create-chapter.css';
 import {
@@ -128,7 +129,7 @@ export function CreateChapterPage({
 
   // Frame 2: Connect Google Authenticator state (Chapter Head)
   const [headEnrollmentId, setHeadEnrollmentId] = useState<string>('enr_head_demo');
-  const [headSetupKey, setHeadSetupKey] = useState<string>('KMGY 4821 YSP3 7740');
+  const [headSetupKey, setHeadSetupKey] = useState<string>('KMGY 2345 YSPE 7762');
   const [headOtp, setHeadOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [headRecoveryCodes, setHeadRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
 
@@ -145,22 +146,51 @@ export function CreateChapterPage({
 
   // Frame 6: Officer MFA state
   const [officerEnrollmentId, setOfficerEnrollmentId] = useState<string>('enr_officer_demo');
-  const [officerSetupKey, setOfficerSetupKey] = useState<string>('OFC9 3158 KMG7 6241');
+  const [officerSetupKey, setOfficerSetupKey] = useState<string>('OFCB 3456 KMGC 7624');
   const [officerOtp, setOfficerOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [officerRecoveryCodes, setOfficerRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('/assets/kamunggay/authenticator-qr.png');
+
+  // Generate dynamic, valid Base32 scannable QR code
+  useEffect(() => {
+    const isOfficer = step === 'officer-connect-auth';
+    const activeKey = isOfficer ? officerSetupKey : headSetupKey;
+    const activeEmail = isOfficer ? officerAccountEmail || 'officer@ysp.org' : headEmail || 'head@ysp.org';
+    const cleanKey = activeKey.replace(/\s+/g, '').toUpperCase();
+    const otpUri = `otpauth://totp/Kamunggay%20YSP:${encodeURIComponent(activeEmail)}?secret=${cleanKey}&issuer=Kamunggay%20YSP`;
+
+    let isMounted = true;
+    void QRCode.toDataURL(otpUri, {
+      margin: 1,
+      width: 500,
+      color: { dark: '#1e1611', light: '#ffffff' },
+    })
+      .then((url) => {
+        if (isMounted) setQrCodeUrl(url);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setQrCodeUrl(isOfficer ? '/assets/kamunggay/officer-authenticator-qr.png' : '/assets/kamunggay/authenticator-qr.png');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [step, headSetupKey, officerSetupKey, headEmail, officerAccountEmail]);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Load setup key when entering connect-auth or officer-connect-auth if not yet loaded
   useEffect(() => {
-    if (step === 'connect-auth' && headSetupKey === 'KMGY 4821 YSP3 7740') {
+    if (step === 'connect-auth' && headSetupKey === 'KMGY 2345 YSPE 7762') {
       void prepareAuthenticatorEnrollment('begin').then((res) => {
         if (res.kind === 'success') {
           setHeadEnrollmentId(res.enrollmentId);
           setHeadSetupKey(res.setupKey);
         }
       });
-    } else if (step === 'officer-connect-auth' && officerSetupKey === 'OFC9 3158 KMG7 6241') {
+    } else if (step === 'officer-connect-auth' && officerSetupKey === 'OFCB 3456 KMGC 7624') {
       void prepareAuthenticatorEnrollment('begin').then((res) => {
         if (res.kind === 'success') {
           setOfficerEnrollmentId(res.enrollmentId);
@@ -181,11 +211,12 @@ export function CreateChapterPage({
 
     setIsLoading(true);
     try {
+      const normalizedCode = chapterCode.trim().toUpperCase();
       const data: CreateChapterFormData = {
-        chapterName,
-        chapterCode,
-        headName,
-        headEmail,
+        chapterName: chapterName.trim(),
+        chapterCode: normalizedCode,
+        headName: headName.trim(),
+        headEmail: headEmail.trim(),
         initialPassword,
       };
       onSaveAndInvite?.(data);
@@ -246,7 +277,8 @@ export function CreateChapterPage({
     currentOtp: string[],
     setOtp: React.Dispatch<React.SetStateAction<string[]>>
   ) {
-    const cleaned = value.replace(/[^0-9a-zA-Z]/g, '').slice(-1).toUpperCase();
+    setErrorMessage(null);
+    const cleaned = value.replace(/\D/g, '').slice(-1);
     const next = [...currentOtp];
     next[index] = cleaned;
     setOtp(next);
@@ -273,11 +305,11 @@ export function CreateChapterPage({
     e: React.ClipboardEvent<HTMLInputElement>,
     setOtp: React.Dispatch<React.SetStateAction<string[]>>
   ) {
+    setErrorMessage(null);
     const pasted = e.clipboardData
       .getData('text')
-      .replace(/[^0-9a-zA-Z]/g, '')
-      .slice(0, 6)
-      .toUpperCase();
+      .replace(/\D/g, '')
+      .slice(0, 6);
     if (!pasted) return;
     e.preventDefault();
     const next = ['', '', '', '', '', ''];
@@ -290,6 +322,7 @@ export function CreateChapterPage({
   }
 
   function toggleDuty(duty: ChapterDuty) {
+    setErrorMessage(null);
     setSelectedDuties((prev) =>
       prev.includes(duty) ? prev.filter((d) => d !== duty) : [...prev, duty]
     );
@@ -307,7 +340,12 @@ export function CreateChapterPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'kamunggay-recovery-codes.txt';
+      const safeName = (targetLabel || 'account')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      a.download = `kamunggay-recovery-codes-${safeName || 'account'}.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -343,8 +381,8 @@ export function CreateChapterPage({
         duties: selectedDuties,
       });
 
-      if (!officerFullName) setOfficerFullName(officerName);
-      if (!officerAccountEmail) setOfficerAccountEmail(officerEmail);
+      setOfficerFullName(officerName);
+      setOfficerAccountEmail(officerEmail);
       setStep('create-officer');
     } catch {
       setErrorMessage('Unable to register officer invitation. Please try again.');
@@ -443,6 +481,12 @@ export function CreateChapterPage({
               src="/assets/kamunggay/qr-box.png"
               alt="Scan QR code or enter setup key manually"
               className="connect-auth-qr-box"
+              draggable={false}
+            />
+            <img
+              src={qrCodeUrl}
+              alt="Scan QR code using Google Authenticator"
+              className="connect-auth-qr-code"
               draggable={false}
             />
             {activeSetupKey && (
@@ -660,7 +704,10 @@ export function CreateChapterPage({
                 disabled={isLoading}
                 className="invite-officer-input"
                 value={officerName}
-                onChange={(e) => setOfficerName(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setOfficerName(e.target.value);
+                }}
               />
             </div>
 
@@ -674,7 +721,10 @@ export function CreateChapterPage({
                 disabled={isLoading}
                 className="invite-officer-input"
                 value={officerEmail}
-                onChange={(e) => setOfficerEmail(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setOfficerEmail(e.target.value);
+                }}
               />
             </div>
 
@@ -792,7 +842,10 @@ export function CreateChapterPage({
                 disabled={isLoading}
                 className="create-chapter-input"
                 value={officerFullName}
-                onChange={(e) => setOfficerFullName(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setOfficerFullName(e.target.value);
+                }}
               />
             </div>
 
@@ -806,7 +859,10 @@ export function CreateChapterPage({
                 disabled={isLoading}
                 className="create-chapter-input"
                 value={officerAccountEmail}
-                onChange={(e) => setOfficerAccountEmail(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setOfficerAccountEmail(e.target.value);
+                }}
               />
             </div>
 
@@ -820,7 +876,10 @@ export function CreateChapterPage({
                 disabled={isLoading}
                 className="create-chapter-input"
                 value={officerPassword}
-                onChange={(e) => setOfficerPassword(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setOfficerPassword(e.target.value);
+                }}
               />
             </div>
 
@@ -834,7 +893,10 @@ export function CreateChapterPage({
                 disabled={isLoading}
                 className="create-chapter-input"
                 value={officerConfirmPassword}
-                onChange={(e) => setOfficerConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setOfficerConfirmPassword(e.target.value);
+                }}
               />
             </div>
 
@@ -902,7 +964,10 @@ export function CreateChapterPage({
                 disabled={isLoading}
                 className="create-chapter-input"
                 value={chapterName}
-                onChange={(e) => setChapterName(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setChapterName(e.target.value);
+                }}
               />
             </div>
             <div className="create-chapter-group group-chapter-code">
@@ -915,7 +980,10 @@ export function CreateChapterPage({
                 disabled={isLoading}
                 className="create-chapter-input"
                 value={chapterCode}
-                onChange={(e) => setChapterCode(e.target.value)}
+                onChange={(e) => {
+                  setErrorMessage(null);
+                  setChapterCode(e.target.value.toUpperCase());
+                }}
               />
             </div>
           </div>
@@ -930,7 +998,10 @@ export function CreateChapterPage({
               disabled={isLoading}
               className="create-chapter-input"
               value={headName}
-              onChange={(e) => setHeadName(e.target.value)}
+              onChange={(e) => {
+                setErrorMessage(null);
+                setHeadName(e.target.value);
+              }}
             />
           </div>
 
@@ -944,7 +1015,10 @@ export function CreateChapterPage({
               disabled={isLoading}
               className="create-chapter-input"
               value={headEmail}
-              onChange={(e) => setHeadEmail(e.target.value)}
+              onChange={(e) => {
+                setErrorMessage(null);
+                setHeadEmail(e.target.value);
+              }}
             />
           </div>
 
@@ -958,7 +1032,10 @@ export function CreateChapterPage({
               disabled={isLoading}
               className="create-chapter-input"
               value={initialPassword}
-              onChange={(e) => setInitialPassword(e.target.value)}
+              onChange={(e) => {
+                setErrorMessage(null);
+                setInitialPassword(e.target.value);
+              }}
             />
           </div>
 

@@ -321,24 +321,27 @@ export async function prepareAuthenticatorEnrollment(
   return {
     kind: 'success',
     enrollmentId: 'enr_local_demo',
-    setupKey: 'KMGY 4821 YSP3 7740',
+    setupKey: 'KMGY 2345 YSPE 7762',
   };
 }
 
 /**
  * Generates dynamic, unique, non-repetitive emergency recovery codes.
+ * Conforms strictly to backend format: 4 groups of 4 alphanumeric characters (XXXX-XXXX-XXXX-XXXX).
  */
 export function generateUniqueRecoveryCodes(count = 6): string[] {
   const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
   const codes: string[] = [];
   while (codes.length < count) {
-    let part1 = '';
-    let part2 = '';
-    for (let i = 0; i < 4; i++) {
-      part1 += chars[Math.floor(Math.random() * chars.length)];
-      part2 += chars[Math.floor(Math.random() * chars.length)];
+    const parts: string[] = [];
+    for (let p = 0; p < 4; p++) {
+      let part = '';
+      for (let i = 0; i < 4; i++) {
+        part += chars[Math.floor(Math.random() * chars.length)];
+      }
+      parts.push(part);
     }
-    const code = `${part1}-${part2}`;
+    const code = parts.join('-');
     if (!codes.includes(code)) {
       codes.push(code);
     }
