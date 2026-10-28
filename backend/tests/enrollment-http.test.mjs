@@ -1328,6 +1328,28 @@ test('ticket08 reauthorization retains identity and exact versions while removal
   assert.equal(revoked.membership.status, 'revoked');
   assert.equal(revoked.membership.revoked.user_id, head.id);
   assert.equal(revoked.membership.version, 4);
+
+  // Proving revoke in this chapter preserves access in another chapter
+  const remainingAfterRevoke = await (await target.browser.request('/api/v1/session/chapter-memberships')).json();
+  assert.deepEqual(remainingAfterRevoke.items.map(m=>m.chapter_id), [other.chapter_id]);
+
+  // Reauthorizing a revoked member retains the same membership ID and exact versions
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const reauthRevokedBody = {
+    idempotency_key: 'reauthorize-revoked-attempt',
+    expected_authority_version: head.selected.context.authority_version,
+    identity: {user_id: target.id},
+    expected_membership_version: 4,
+  };
+  response = await membershipPost(head, path, reauthRevokedBody);
+  assert.equal(response.status, 200);
+  const reauthorizedRevoked = await response.json();
+  assert.equal(reauthorizedRevoked.membership.membership_id, result.membership.membership_id);
+  assert.equal(reauthorizedRevoked.membership.history_reference, result.membership.history_reference);
+  assert.equal(reauthorizedRevoked.membership.version, 5);
+  assert.equal(reauthorizedRevoked.membership.status, 'authorized');
+  assert.equal(reauthorizedRevoked.membership.revoked, null);
+  assert.equal(reauthorizedRevoked.membership.disabled, null);
 });
 test('ticket08 replay and both lookup selectors require live original chapter access', async () => {
   const {head, body, path, result} = await authorizedMember('p08-replay');
@@ -1532,6 +1554,360 @@ for (const changed of [false,true]) {
     assert.deepEqual(await recovered.json(),{...first,operation:{...first.operation,replayed:true}});
   });
 }
+
+test('ticket08 lookupMembershipIdentity enforces exact-ID uniform-null and requires memberships.prepare', async () => {
+  const head = await membershipHead('p08-lookup-identity');
+  const target = await signedInBrowser('p08-lookup-target');
+  const path = `/api/v1/chapters/${head.member.chapter_id}/memberships/identity-reference`;
+
+  // Before being an eligible candidate: returns 200 with identity: null
+  let res = await membershipPost(head, path, {user_id: target.id});
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), {identity: null});
+
+  // After candidate authorization in membership_candidates: returns 200 with identity object
+  chapterFixture('membership-candidate', target.id, {chapter_id: head.member.chapter_id, approved_by_user_id: head.id});
+  res = await membershipPost(head, path, {user_id: target.id});
+  assert.equal(res.status, 200);
+  const found = await res.json();
+  assert.equal(found.identity.user_id, target.id);
+  assert.equal(found.identity.display_name, 'Synthetic fixture officer');
+
+  // Nonexistent user ID: returns 200 with identity: null
+  res = await membershipPost(head, path, {user_id: '999999999999999999'});
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), {identity: null});
+
+  // Disabled user account: returns 200 with identity: null
+  const disabledTarget = await signedInBrowser('p08-lookup-disabled');
+  chapterFixture('membership-candidate', disabledTarget.id, {chapter_id: head.member.chapter_id, approved_by_user_id: head.id});
+  arrangeState('disable', disabledTarget.id);
+  res = await membershipPost(head, path, {user_id: disabledTarget.id});
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), {identity: null});
+
+  // Validation errors: missing user_id -> 422
+  res = await membershipPost(head, path, {});
+  assert.equal(res.status, 422);
+  const err = await res.json();
+  assert.equal(err.code, 'validation_failed');
+  assert.equal(err.field_feedback[0].path, '/user_id');
+
+  // Query parameter present -> 400 invalid_selector
+  res = await head.browser.request(path + '?unexpected=1', {
+    method: 'POST',
+    body: {user_id: target.id},
+    headers: {
+      'X-Chapter-Context': head.selected.selection_revision,
+      'X-XSRF-TOKEN': decodeURIComponent(head.browser.cookies.get('XSRF-TOKEN')),
+    },
+  });
+  assert.equal(res.status, 400);
+
+  // Authorize target as a member with no duties, select chapter, and verify 403
+  const authRes = await membershipPost(head, membershipPath(head.member.chapter_id) + '/authorize', {
+    idempotency_key: 'auth-target-attempt',
+    expected_authority_version: head.selected.context.authority_version,
+    identity: {user_id: target.id},
+    expected_membership_version: null,
+  });
+  assert.equal(authRes.status, 200);
+  const authData = await authRes.json();
+  const targetCtx = await (await target.browser.request(contextPath)).json();
+  const targetSel = await selectChapter(target.browser, targetCtx.selection_revision, {
+    chapter_id: head.member.chapter_id,
+    membership_id: authData.membership.membership_id,
+    expected_membership_version: authData.membership.authority_version,
+  });
+  assert.equal(targetSel.status, 200);
+  res = await membershipPost(target, path, {user_id: target.id}, (await targetSel.json()).selection_revision);
+  assert.equal(res.status, 403);
+});
+
+test('ticket08 readMembership returns stable membership projection and uniform 404 for absent or foreign targets', async () => {
+  const {head, target, result} = await authorizedMember('p08-read-member');
+  const path = `/api/v1/chapters/${head.member.chapter_id}/memberships/${result.membership.membership_id}`;
+
+  // Read existing membership
+  let res = await head.browser.request(path, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.membership_id, result.membership.membership_id);
+  assert.equal(data.chapter_id, head.member.chapter_id);
+  assert.equal(data.status, 'authorized');
+  assert.equal(data.version, 1);
+  assert.equal(data.identity.user_id, target.id);
+  assert.equal(data.authorized.user_id, head.id);
+  assert.equal(data.disabled, null);
+  assert.equal(data.revoked, null);
+  assert.match(data.history_reference, /^mh_[A-Za-z0-9_-]{32,96}$/);
+
+  // Absent membership ID in this chapter -> 404 membership_not_visible
+  res = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/memberships/999999999999999999`, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), {code: 'membership_not_visible', message: 'Membership unavailable.'});
+
+  // Query parameters present -> 400 invalid_selector
+  res = await head.browser.request(path + '?unexpected=1', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+
+  // Invalid membership ID in path -> 400 invalid_selector
+  res = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/memberships/bad-id`, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+});
+
+test('ticket08 listMemberships enforces status filtering, bounded deterministic cursors, and snapshot invalidation', async () => {
+  const head = await membershipHead('p08-list-members');
+  const path = `/api/v1/chapters/${head.member.chapter_id}/memberships`;
+
+  // Authorize two members so we have Head + 2 members = 3 total
+  const target1 = await signedInBrowser('p08-list-target1');
+  const target2 = await signedInBrowser('p08-list-target2');
+  chapterFixture('membership-candidate', target1.id, {chapter_id: head.member.chapter_id, approved_by_user_id: head.id});
+  chapterFixture('membership-candidate', target2.id, {chapter_id: head.member.chapter_id, approved_by_user_id: head.id});
+
+  let authRes1 = await membershipPost(head, membershipPath(head.member.chapter_id) + '/authorize', {
+    idempotency_key: 'list-auth-1',
+    expected_authority_version: head.selected.context.authority_version,
+    identity: {user_id: target1.id},
+    expected_membership_version: null,
+  });
+  assert.equal(authRes1.status, 200);
+
+  head.selected = await (await head.browser.request(contextPath)).json();
+  let authRes2 = await membershipPost(head, membershipPath(head.member.chapter_id) + '/authorize', {
+    idempotency_key: 'list-auth-2',
+    expected_authority_version: head.selected.context.authority_version,
+    identity: {user_id: target2.id},
+    expected_membership_version: null,
+  });
+  assert.equal(authRes2.status, 200);
+
+  head.selected = await (await head.browser.request(contextPath)).json();
+
+  // Page 1 with limit 2: returns 2 items and a next_cursor
+  let res = await head.browser.request(path + '?limit=2', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  let page1 = await res.json();
+  assert.equal(page1.items.length, 2);
+  assert.match(page1.next_cursor, /^cur_[A-Za-z0-9_-]{32,96}$/);
+
+  // Page 2 with limit 2 and cursor: returns remaining 1 item and next_cursor: null
+  res = await head.browser.request(path + '?limit=2&cursor=' + page1.next_cursor, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  let page2 = await res.json();
+  assert.equal(page2.items.length, 1);
+  assert.equal(page2.next_cursor, null);
+
+  // Verify numerical ordering: page1 ids + page2 ids are strictly ascending
+  const allIds = [...page1.items.map(m => BigInt(m.membership_id)), ...page2.items.map(m => BigInt(m.membership_id))];
+  assert.equal(allIds.length, 3);
+  assert.ok(allIds[0] < allIds[1]);
+  assert.ok(allIds[1] < allIds[2]);
+
+  // Mismatched cursor: limit changed -> 400 invalid_selector
+  res = await head.browser.request(path + '?limit=1&cursor=' + page1.next_cursor, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+
+  // Mismatched cursor: status changed -> 400 invalid_selector
+  res = await head.browser.request(path + '?status=disabled&limit=2&cursor=' + page1.next_cursor, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+
+  // Invalidate snapshot: disable a member
+  const memberToDisable = (await authRes1.json()).membership;
+  let disableRes = await membershipPost(head, membershipPath(head.member.chapter_id) + `/${memberToDisable.membership_id}/disable`, {
+    idempotency_key: 'list-disable-1',
+    expected_authority_version: head.selected.context.authority_version,
+    expected_membership_version: memberToDisable.version,
+  });
+  assert.equal(disableRes.status, 200);
+
+  head.selected = await (await head.browser.request(contextPath)).json();
+
+  // Using the old cursor after membership state change -> 409 membership_stale
+  res = await head.browser.request(path + '?limit=2&cursor=' + page1.next_cursor, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 409);
+  assert.deepEqual(await res.json(), {
+    code: 'membership_stale',
+    message: 'Review the original attempt with current access.',
+    next_action: 'review_original_attempt',
+  });
+
+  // Status filtering: status=disabled returns only the disabled member
+  res = await head.browser.request(path + '?status=disabled', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  const disabledPage = await res.json();
+  assert.equal(disabledPage.items.length, 1);
+  assert.equal(disabledPage.items[0].membership_id, memberToDisable.membership_id);
+  assert.equal(disabledPage.items[0].status, 'disabled');
+});
+
+test('ticket08 disabled-account rejections enforce validation and authentication barriers', async () => {
+  const head = await membershipHead('p08-disabled-acc');
+  const target = await signedInBrowser('p08-disabled-target');
+  chapterFixture('membership-candidate', target.id, {chapter_id: head.member.chapter_id, approved_by_user_id: head.id});
+
+  // Target account disabled before authorization -> 422 validation_failed (/identity/user_id)
+  arrangeState('disable', target.id);
+  const authBody = {
+    idempotency_key: 'disabled-target-auth',
+    expected_authority_version: head.selected.context.authority_version,
+    identity: {user_id: target.id},
+    expected_membership_version: null,
+  };
+  let res = await membershipPost(head, membershipPath(head.member.chapter_id) + '/authorize', authBody);
+  assert.equal(res.status, 422);
+  let body = await res.json();
+  assert.equal(body.code, 'validation_failed');
+  assert.equal(body.field_feedback[0].path, '/identity/user_id');
+
+  // Authorize another active member, then disable their account
+  const activeTarget = await signedInBrowser('p08-active-target');
+  chapterFixture('membership-candidate', activeTarget.id, {chapter_id: head.member.chapter_id, approved_by_user_id: head.id});
+  res = await membershipPost(head, membershipPath(head.member.chapter_id) + '/authorize', {
+    ...authBody,
+    idempotency_key: 'active-target-auth',
+    identity: {user_id: activeTarget.id},
+  });
+  assert.equal(res.status, 200);
+  const memberData = (await res.json()).membership;
+
+  // Now globally disable the active member's account
+  arrangeState('disable', activeTarget.id);
+  head.selected = await (await head.browser.request(contextPath)).json();
+
+  // Attempting to disable/revoke an already disabled user account -> 422 validation_failed (/identity/user_id)
+  res = await membershipPost(head, membershipPath(head.member.chapter_id) + `/${memberData.membership_id}/disable`, {
+    idempotency_key: 'disable-disabled-user',
+    expected_authority_version: head.selected.context.authority_version,
+    expected_membership_version: memberData.version,
+  });
+  assert.equal(res.status, 422);
+  body = await res.json();
+  assert.equal(body.code, 'validation_failed');
+  assert.equal(body.field_feedback[0].path, '/identity/user_id');
+
+  // Head's own account disabled -> 401
+  arrangeState('disable', head.id);
+  res = await membershipPost(head, membershipPath(head.member.chapter_id) + '/authorize', authBody);
+  assert.equal(res.status, 401);
+});
+
+test('ticket08 concurrent Head authority loss during commitment rejects overlapping attempts and preserves resource state', async t => {
+  const head = await membershipHead('p08-concurrent-loss');
+  const target1 = await signedInBrowser('p08-loss-target1');
+  const target2 = await signedInBrowser('p08-loss-target2');
+  chapterFixture('membership-candidate', target1.id, {chapter_id: head.member.chapter_id, approved_by_user_id: head.id});
+  chapterFixture('membership-candidate', target2.id, {chapter_id: head.member.chapter_id, approved_by_user_id: head.id});
+
+  // Authorize both targets first
+  let res1 = await membershipPost(head, membershipPath(head.member.chapter_id) + '/authorize', {
+    idempotency_key: 'concurrent-auth-1',
+    expected_authority_version: head.selected.context.authority_version,
+    identity: {user_id: target1.id},
+    expected_membership_version: null,
+  });
+  assert.equal(res1.status, 200);
+  const member1 = (await res1.json()).membership;
+
+  head.selected = await (await head.browser.request(contextPath)).json();
+  let res2 = await membershipPost(head, membershipPath(head.member.chapter_id) + '/authorize', {
+    idempotency_key: 'concurrent-auth-2',
+    expected_authority_version: head.selected.context.authority_version,
+    identity: {user_id: target2.id},
+    expected_membership_version: null,
+  });
+  assert.equal(res2.status, 200);
+  const member2 = (await res2.json()).membership;
+
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const authorityVersion = head.selected.context.authority_version;
+
+  // Prepare contender sharing head session on separate worker
+  const contender = {...head, browser: new Browser()};
+  contender.browser.cookies = new Map(head.browser.cookies);
+  contender.browser.worker = 'contender';
+
+  // Hold lock on head.id so both requests queue in MySQL
+  const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/enrollment-state.php', 'hold', head.id]);
+  t.after(() => holder.stdin.end('\n'));
+  await new Promise((resolve, reject) => {
+    holder.once('error', reject);
+    holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+    holder.once('exit', () => reject(new Error('Lock holder exited')));
+  });
+
+  const body1 = {
+    idempotency_key: 'concurrent-disable-1',
+    expected_authority_version: authorityVersion,
+    expected_membership_version: member1.version,
+  };
+  const body2 = {
+    idempotency_key: 'concurrent-disable-2',
+    expected_authority_version: authorityVersion,
+    expected_membership_version: member2.version,
+  };
+
+  const path1 = membershipPath(head.member.chapter_id) + `/${member1.membership_id}/disable`;
+  const path2 = membershipPath(head.member.chapter_id) + `/${member2.membership_id}/disable`;
+
+  const requests = [membershipPost(head, path1, body1)];
+  let waiting = 0;
+  let secondStarted = false;
+  try {
+    for (let i = 0; i < 40; i++) {
+      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], {encoding: 'utf8'});
+      assert.equal(probe.status, 0, probe.stderr);
+      waiting = Number(probe.stdout.trim());
+      if (waiting >= 1 && !secondStarted) {
+        requests.push(membershipPost(contender, path2, body2));
+        secondStarted = true;
+      }
+      if (waiting >= 2) break;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  } finally {
+    holder.stdin.end('\n');
+  }
+
+  const responses = await Promise.all(requests);
+  assert.ok(waiting >= 2, `Expected overlapping MySQL transactions, observed ${waiting} waiters`);
+  assert.deepEqual(responses.map(r => r.status).sort(), [200, 409]);
+
+  const accepted = responses.find(r => r.status === 200);
+  const rejected = responses.find(r => r.status === 409);
+  assert.equal((await rejected.json()).code, 'authority_stale');
+
+  // Verify that member2's state was preserved and NOT disabled
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const readMember2 = await head.browser.request(membershipPath(head.member.chapter_id) + `/${member2.membership_id}`, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(readMember2.status, 200);
+  assert.equal((await readMember2.json()).status, 'authorized');
+});
 const selectionPath = '/api/v1/session/chapter-selection';
 const selectChapter = (browser, revision, target) => browser.request(selectionPath, {
   method:'POST', body:target, headers:{'X-Chapter-Context':revision,

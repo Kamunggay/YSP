@@ -27,4 +27,14 @@ final class MembershipCandidates
             ]);
         }, 3);
     }
+
+    public function eligible(string $chapterId, string $userId): ?object
+    {
+        return DB::table('membership_candidates as candidates')->join('users', 'users.id', '=', 'candidates.user_id')
+            ->where('candidates.chapter_id', $chapterId)->where('candidates.user_id', $userId)
+            ->where('candidates.purpose', 'membership_authorization')->where('users.status', 'active')
+            ->whereNull('users.disabled_at')->whereNull('candidates.revoked_at')->where('candidates.authorized_at', '<=', now())
+            ->where(fn ($query) => $query->whereNull('candidates.ends_at')->orWhere('candidates.ends_at', '>', now()))
+            ->select('users.id', 'users.name')->orderBy('candidates.id')->lockForUpdate()->first();
+    }
 }

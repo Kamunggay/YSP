@@ -135,7 +135,7 @@ final class ProtectedChapterExecution
             return ($scope['membership_contract'] ?? false) ? $this->membershipConflict('chapter_context_stale') : $this->stale();
         }
         $guard = DB::table('chapter_control_guards')->where('chapter_id', $member->chapter_id)->lockForUpdate()->first();
-        if ($guard === null || $guard->authority_version !== ($scope['expected_authority_version'] ?? null)) {
+        if ($guard === null || (array_key_exists('expected_authority_version', $scope) && $guard->authority_version !== $scope['expected_authority_version'])) {
             return ($scope['membership_contract'] ?? false) ? $this->membershipConflict('authority_stale') : $this->stale();
         }
         $unit = $scope['requesting_unit_id'] ?? null;

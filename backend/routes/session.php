@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::class, SessionForgeryGuard::class])
     ->group(function (): void {
+        Route::post('/api/v1/chapters/{chapter_id}/memberships/identity-reference', [MembershipAdministration::class, 'lookupMembershipIdentity']);
+        Route::get('/api/v1/chapters/{chapter_id}/memberships', [MembershipAdministration::class, 'listMemberships']);
+        Route::get('/api/v1/chapters/{chapter_id}/memberships/{membership_id}', [MembershipAdministration::class, 'readMembership']);
         Route::post('/api/v1/chapters/{chapter_id}/memberships/authorize', [MembershipAdministration::class, 'authorizeMembership']);
         Route::post('/api/v1/chapters/{chapter_id}/memberships/{membership_id}/disable', [MembershipAdministration::class, 'disableMembership']);
         Route::post('/api/v1/chapters/{chapter_id}/memberships/{membership_id}/revoke', [MembershipAdministration::class, 'revokeMembership']);

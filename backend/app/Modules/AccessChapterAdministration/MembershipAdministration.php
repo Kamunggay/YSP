@@ -17,6 +17,263 @@ final class MembershipAdministration
 {
     public function __construct(private ProtectedChapterExecution $execution, private CanonicalRequest $canonical, private ChapterOutcomes $outcomes) {}
 
+    public function lookupMembershipIdentity(Request $request, string $chapter_id, MembershipCandidates $candidates): JsonResponse
+    {
+        if (! InitialHeadApproval::validId($chapter_id) || $request->getQueryString() !== null || strlen($request->getContent()) > 8192) {
+            return $this->invalidSelector();
+        }
+        try {
+            $body = $this->canonical->decode($request->getContent());
+        } catch (\JsonException) {
+            $body = null;
+        }
+        if (! $request->isJson() || ! $body instanceof stdClass) {
+            return $this->invalid('/user_id');
+        }
+        if (! property_exists($body, 'user_id')) {
+            return $this->invalid('/user_id', 'REQUIRED', 'This field is required.');
+        }
+        if (array_keys(get_object_vars($body)) !== ['user_id'] || ! InitialHeadApproval::validId($body->user_id)) {
+            return $this->invalid('/user_id');
+        }
+
+        return $this->execution->execute($request, function (array $session) use ($chapter_id, $body, $candidates): JsonResponse {
+            $user = $session['user'];
+            $key = hash('sha256', 'membership-identity-lookup:'.$user['id']);
+            DB::table('session_throttles')->insertOrIgnore(['key' => $key, 'attempts' => 0, 'expires_at' => time() + 900]);
+            $counter = DB::table('session_throttles')->where('key', $key)->lockForUpdate()->first();
+            if ($counter->expires_at <= time()) {
+                DB::table('session_throttles')->where('key', $key)->update(['attempts' => 0, 'expires_at' => time() + 900]);
+            } elseif ($counter->attempts >= 60) {
+                return response()->json(['code' => 'throttled', 'message' => 'Try again after the indicated delay.'], 429)
+                    ->header('Retry-After', (string) max(1, $counter->expires_at - time()));
+            }
+            DB::table('session_throttles')->where('key', $key)->increment('attempts');
+
+            $identity = $candidates->eligible($chapter_id, $body->user_id);
+
+            return response()->json([
+                'identity' => $identity === null ? null : [
+                    'user_id' => (string) $identity->id,
+                    'display_name' => $identity->name,
+                ],
+            ]);
+        }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
+            'action' => 'memberships.prepare', 'membership_contract' => true]);
+    }
+
+    public function listMemberships(Request $request, string $chapter_id): JsonResponse
+    {
+        $seen = [];
+        $queryString = (string) $request->server('QUERY_STRING', '');
+        foreach ($queryString === '' ? [] : explode('&', $queryString) as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+            $key = urldecode(explode('=', $pair, 2)[0]);
+            if (! in_array($key, ['limit', 'status', 'cursor'], true) || isset($seen[$key]) || ! is_string($request->query($key))) {
+                return $this->invalidSelector();
+            }
+            $seen[$key] = true;
+        }
+
+        if (! InitialHeadApproval::validId($chapter_id)) {
+            return $this->invalidSelector();
+        }
+
+        $limit = 50;
+        if ($request->query('limit') !== null) {
+            $limitStr = $request->query('limit');
+            if (! is_string($limitStr) || ! preg_match('/^[1-9][0-9]*$/D', $limitStr) || (int) $limitStr < 1 || (int) $limitStr > 100) {
+                return $this->invalidSelector();
+            }
+            $limit = (int) $limitStr;
+        }
+
+        $status = null;
+        if ($request->query('status') !== null) {
+            $status = $request->query('status');
+            if (! is_string($status) || ! in_array($status, ['authorized', 'disabled', 'revoked'], true)) {
+                return $this->invalidSelector();
+            }
+        }
+
+        $cursor = $request->query('cursor');
+        if ($cursor !== null && (! is_string($cursor) || ! preg_match('/^cur_[A-Za-z0-9_-]{32,96}$/D', $cursor))) {
+            return $this->invalidSelector();
+        }
+
+        return $this->execution->execute($request, function (array $session) use ($chapter_id, $limit, $status, $cursor): JsonResponse {
+            $actor = (string) $session['user']['id'];
+            $lastId = null;
+            $snapshotTime = (string) time();
+
+            if ($cursor !== null) {
+                $decoded = $this->decodeMembershipCursor($actor, $chapter_id, $cursor, $status, $limit);
+                if ($decoded instanceof JsonResponse) {
+                    return $decoded;
+                }
+                [$lastId, $snapshotTime] = $decoded;
+            }
+
+            $stateHash = $this->membershipStateHash($chapter_id);
+
+            $query = DB::table('memberships')
+                ->join('users', 'users.id', '=', 'memberships.user_id')
+                ->where('memberships.chapter_id', $chapter_id);
+
+            if ($status !== null) {
+                $dbStatus = $status === 'authorized' ? 'active' : $status;
+                $query->where('memberships.status', $dbStatus);
+            }
+
+            if ($lastId !== null) {
+                $query->where('memberships.id', '>', $lastId);
+            }
+
+            $rows = $query->select('memberships.*', 'users.id as user_id', 'users.name as user_name')
+                ->orderBy('memberships.id', 'asc')
+                ->limit($limit + 1)
+                ->lockForUpdate()
+                ->get();
+
+            $nextCursor = null;
+            if ($rows->count() > $limit) {
+                $items = $rows->slice(0, $limit);
+                $lastItem = $items->last();
+                $nextCursor = $this->encodeMembershipCursor($actor, $chapter_id, (string) $lastItem->id, $status, $limit, "{$snapshotTime}_{$stateHash}");
+            } else {
+                $items = $rows;
+            }
+
+            $formatted = $items->map(function ($row) {
+                $user = (object) ['id' => $row->user_id, 'name' => $row->user_name];
+
+                return $this->projection($row, $user);
+            })->values()->all();
+
+            return response()->json([
+                'items' => $formatted,
+                'next_cursor' => $nextCursor,
+            ]);
+        }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
+            'action' => 'memberships.read', 'membership_contract' => true]);
+    }
+
+    private function membershipStateHash(string $chapterId): string
+    {
+        $stats = DB::table('memberships')->where('chapter_id', $chapterId)
+            ->selectRaw('COUNT(*) as cnt, COALESCE(MAX(id), 0) as max_id, COALESCE(SUM(row_version), 0) as sum_ver, COALESCE(MAX(row_version), 0) as max_ver, COALESCE(SUM(CASE status WHEN "active" THEN 1 WHEN "disabled" THEN 2 WHEN "revoked" THEN 3 ELSE 0 END), 0) as status_sum')
+            ->lockForUpdate()
+            ->first();
+        $raw = "{$stats->cnt}:{$stats->max_id}:{$stats->sum_ver}:{$stats->max_ver}:{$stats->status_sum}";
+
+        return substr(hash('sha256', $raw), 0, 16);
+    }
+
+    private function encodeMembershipCursor(string $actor, string $chapter, string $lastId, ?string $status, int $limit, string $snapshot): string
+    {
+        $statusFlag = match ($status) {
+            'authorized' => '1', 'disabled' => '2', 'revoked' => '3', default => '0'
+        };
+        $payload = "{$lastId}.{$snapshot}.{$statusFlag}.{$limit}";
+        $b64Payload = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+        $sigData = "{$actor}|{$chapter}|{$payload}";
+        $rawHmac = substr(hash_hmac('sha256', $sigData, (string) config('app.key'), true), 0, 16);
+        $b64Sig = rtrim(strtr(base64_encode($rawHmac), '+/', '-_'), '=');
+
+        return "cur_{$b64Payload}{$b64Sig}";
+    }
+
+    /**
+     * @return array{string, string}|JsonResponse
+     */
+    private function decodeMembershipCursor(string $actor, string $chapter, string $cursor, ?string $status, int $limit): array|JsonResponse
+    {
+        if (strlen($cursor) < 36 || strlen($cursor) > 100 || ! str_starts_with($cursor, 'cur_')) {
+            return $this->invalidSelector();
+        }
+
+        $b64Sig = substr($cursor, -22);
+        $b64Payload = substr($cursor, 4, -22);
+
+        $remainder = strlen($b64Payload) % 4;
+        $padded = $remainder ? $b64Payload.str_repeat('=', 4 - $remainder) : $b64Payload;
+        $payload = base64_decode(strtr($padded, '-_', '+/'), true);
+        if ($payload === false) {
+            return $this->invalidSelector();
+        }
+
+        $sigData = "{$actor}|{$chapter}|{$payload}";
+        $expectedHmac = substr(hash_hmac('sha256', $sigData, (string) config('app.key'), true), 0, 16);
+        $expectedB64Sig = rtrim(strtr(base64_encode($expectedHmac), '+/', '-_'), '=');
+        if (! hash_equals($expectedB64Sig, $b64Sig)) {
+            return $this->invalidSelector();
+        }
+
+        $parts = explode('.', $payload);
+        if (count($parts) !== 4) {
+            return $this->invalidSelector();
+        }
+        [$lastId, $snapshot, $cursorStatusFlag, $cursorLimitStr] = $parts;
+
+        if (! InitialHeadApproval::validId($lastId) || ! ctype_digit($cursorLimitStr)) {
+            return $this->invalidSelector();
+        }
+
+        $expectedStatusFlag = match ($status) {
+            'authorized' => '1', 'disabled' => '2', 'revoked' => '3', default => '0'
+        };
+        if ($cursorStatusFlag !== $expectedStatusFlag || (int) $cursorLimitStr !== $limit) {
+            return $this->invalidSelector();
+        }
+
+        $snapshotParts = explode('_', $snapshot, 2);
+        if (count($snapshotParts) !== 2 || ! ctype_digit($snapshotParts[0])) {
+            return $this->invalidSelector();
+        }
+        [$snapshotTime, $cursorStateHash] = $snapshotParts;
+
+        if (abs(time() - (int) $snapshotTime) > 3600) {
+            return $this->invalidSelector();
+        }
+
+        $currentStateHash = $this->membershipStateHash($chapter);
+        if (! hash_equals($currentStateHash, $cursorStateHash)) {
+            return response()->json([
+                'code' => 'membership_stale',
+                'message' => 'Review the original attempt with current access.',
+                'next_action' => 'review_original_attempt',
+            ], 409);
+        }
+
+        return [$lastId, $snapshotTime];
+    }
+
+    public function readMembership(Request $request, string $chapter_id, string $membership_id): JsonResponse
+    {
+        if (! InitialHeadApproval::validId($chapter_id) || ! InitialHeadApproval::validId($membership_id) || $request->getQueryString() !== null) {
+            return $this->invalidSelector();
+        }
+
+        return $this->execution->execute($request, function () use ($chapter_id, $membership_id): JsonResponse {
+            $member = DB::table('memberships')
+                ->join('users', 'users.id', '=', 'memberships.user_id')
+                ->where('memberships.chapter_id', $chapter_id)
+                ->where('memberships.id', $membership_id)
+                ->select('memberships.*', 'users.id as user_id', 'users.name as user_name')
+                ->lockForUpdate()
+                ->first();
+            if ($member === null) {
+                return response()->json(['code' => 'membership_not_visible', 'message' => 'Membership unavailable.'], 404);
+            }
+            $user = (object) ['id' => $member->user_id, 'name' => $member->user_name];
+
+            return response()->json($this->projection($member, $user));
+        }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
+            'action' => 'memberships.read', 'membership_contract' => true]);
+    }
+
     public function authorizeMembership(Request $request, string $chapter_id): JsonResponse
     {
         return $this->mutate($request, $chapter_id, null, 'memberships.authorize');
@@ -222,9 +479,9 @@ final class MembershipAdministration
         return is_int($version) && $version >= 1 && $version <= 4294967295;
     }
 
-    private function invalid(string $path): JsonResponse
+    private function invalid(string $path, string $code = 'INVALID', string $message = 'Review this field.'): JsonResponse
     {
         return response()->json(['code' => 'validation_failed', 'message' => 'Review marked fields.',
-            'field_feedback' => [['path' => $path, 'code' => 'INVALID', 'message' => 'Review this field.']], 'next_action' => 'correct_fields'], 422);
+            'field_feedback' => [['path' => $path, 'code' => $code, 'message' => $message]], 'next_action' => 'correct_fields'], 422);
     }
 }
