@@ -22,6 +22,8 @@ return new class extends Migration
             $table->json('appointment_snapshot');
             $table->string('reason', 1000);
             $table->timestamp('appointed_at', 6);
+            $table->unique(['chapter_id', 'id']);
+            $table->foreign(['chapter_id', 'provisioning_id'])->references(['chapter_id', 'id'])->on('chapter_provisionings')->restrictOnDelete();
         });
         foreach (['UPDATE', 'DELETE'] as $event) {
             DB::unprepared("CREATE TRIGGER initial_head_designations_no_{$event} BEFORE {$event} ON initial_head_designations FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Initial Head designation is immutable'");

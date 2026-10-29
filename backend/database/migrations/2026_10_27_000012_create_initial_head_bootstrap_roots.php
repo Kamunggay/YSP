@@ -36,6 +36,9 @@ return new class extends Migration
             $table->json('approval_snapshot');
             $table->json('result_snapshot');
             $table->timestamp('installed_at', 6);
+            $table->foreign(['chapter_id', 'designation_id'])->references(['chapter_id', 'id'])->on('initial_head_designations')->restrictOnDelete();
+            $table->foreign(['chapter_id', 'membership_id'])->references(['chapter_id', 'id'])->on('memberships')->restrictOnDelete();
+            $table->foreign(['chapter_id', 'duty_grant_id'])->references(['chapter_id', 'id'])->on('duty_grants')->restrictOnDelete();
         });
         DB::statement('ALTER TABLE initial_head_bootstraps ADD CONSTRAINT bootstrap_independent_executor CHECK (approved_by_user_id <> executed_by_user_id)');
         foreach (['UPDATE', 'DELETE'] as $event) {

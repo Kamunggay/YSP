@@ -3894,6 +3894,78 @@ test('ticket06 provider read and list projections distinguish awaiting, designat
   assert.deepEqual(foundEnded, body4);
 });
 
+test('ticket06 provisioning pagination cursor is invalidated by designation bootstrap and ended membership transitions', async () => {
+  const scenario = await initialHeadScenario('p06-page-stale');
+  // Create a second chapter so pagination has at least 2 items
+  const created2 = await post(scenario.browser, provisioningPath, createChapterBody(`H2_${Date.now()}`));
+  assert.equal(created2.status, 200);
+
+  // 1. Obtain a cursor for page 1
+  const page1 = await scenario.browser.request(`${provisioningPath}?limit=1`);
+  assert.equal(page1.status, 200);
+  const p1Body = await page1.json();
+  assert.ok(p1Body.next_cursor);
+
+  // Designation transition invalidates existing cursor
+  await new Promise(r => setTimeout(r, 50));
+  const appointed = await post(scenario.browser, scenario.path, scenario.body);
+  assert.equal(appointed.status, 200);
+
+  const staleAfterDes = await scenario.browser.request(`${provisioningPath}?limit=1&cursor=${p1Body.next_cursor}`);
+  assert.equal(staleAfterDes.status, 409);
+  assert.deepEqual(await staleAfterDes.json(), {
+    code: 'provisioning_snapshot_stale',
+    message: 'Review the original attempt with current authority.',
+    next_action: 'review_original_attempt',
+  });
+
+  // 2. Obtain fresh cursor after designation
+  const page2 = await scenario.browser.request(`${provisioningPath}?limit=1`);
+  assert.equal(page2.status, 200);
+  const p2Body = await page2.json();
+  assert.ok(p2Body.next_cursor);
+
+  // Bootstrap transition invalidates existing cursor
+  await new Promise(r => setTimeout(r, 50));
+  const desData = await appointed.json();
+  const document = {
+    purpose: 'initial_head_membership',
+    organization_id: scenario.organization,
+    chapter_id: scenario.provisioning.chapter.id,
+    provisioning_id: scenario.provisioning.id,
+    designation_operation_id: desData.operation.identity.operation_id,
+    approved_by_user_id: scenario.id,
+  };
+  const boot = await headApprovalCli('chapter:bootstrap-initial-head', scenario.head, scenario.head, document);
+  assert.equal(boot.code, 0, boot.output);
+
+  const staleAfterBoot = await scenario.browser.request(`${provisioningPath}?limit=1&cursor=${p2Body.next_cursor}`);
+  assert.equal(staleAfterBoot.status, 409);
+  assert.deepEqual(await staleAfterBoot.json(), {
+    code: 'provisioning_snapshot_stale',
+    message: 'Review the original attempt with current authority.',
+    next_action: 'review_original_attempt',
+  });
+
+  // 3. Obtain fresh cursor after bootstrap
+  const page3 = await scenario.browser.request(`${provisioningPath}?limit=1`);
+  assert.equal(page3.status, 200);
+  const p3Body = await page3.json();
+  assert.ok(p3Body.next_cursor);
+
+  // Membership ending invalidates existing cursor
+  await new Promise(r => setTimeout(r, 50));
+  provisioningFixture('end-head-authority', scenario.head);
+
+  const staleAfterEnd = await scenario.browser.request(`${provisioningPath}?limit=1&cursor=${p3Body.next_cursor}`);
+  assert.equal(staleAfterEnd.status, 409);
+  assert.deepEqual(await staleAfterEnd.json(), {
+    code: 'provisioning_snapshot_stale',
+    message: 'Review the original attempt with current authority.',
+    next_action: 'review_original_attempt',
+  });
+});
+
 test('ticket06 exact candidate lookup returns uniform null across missing disabled unapproved wrong-org identities', async () => {
   const provider = await verifiedProvisioner('p06-lookup');
   const lookup = async user_id => {
@@ -4175,8 +4247,14 @@ test('ticket06 idempotent exact CLI repeat vs mutated bootstrap conflict', async
   assert.match(changedOp.output, /Initial Head bootstrap rejected; check designation, eligibility, approval and prior bootstrap\./);
 
   // 6. Mutated bootstrap conflict: competing candidate target
-  const competingTarget = await invoke(document, scenario.id);
+  const competingCandidate = await createIdentity(`p06-competing-cand-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
+  const competingApproval = provisioningFixture('approval-document', competingCandidate, document);
+  const competingTarget = await runIdentityCli([
+    ['Approval document path', competingApproval.path], ['Technical executor identity ID', scenario.head],
+    ['Operator audit reference', 'Synthetic executor'], ['Approval independently verified (yes/no)', 'yes'],
+  ], 'chapter:bootstrap-initial-head');
   assert.equal(competingTarget.code, 1, 'Must reject competing candidate target');
+  assert.match(competingTarget.output, /Initial Head bootstrap rejected; check designation, eligibility, approval and prior bootstrap\./);
 
   // In all conflict cases, database counts remain strictly unchanged
   const stats3 = provisioningFixture('bootstrap-count', scenario.provisioning.chapter.id);
@@ -4265,8 +4343,9 @@ test('ticket06 concurrent CLI bootstrap attempts serialize under MySQL lock with
     approval_reference: 'Competing approval reference under race',
   };
 
+  const competingCandidateB = await createIdentity(`p06-concurrent-cand-${Date.now()}@example.test`, 'Synthetic-only-secret-42!');
   const invokeB1 = () => headApprovalCli('chapter:bootstrap-initial-head', scenarioB.head, scenarioB.head, documentB1);
-  const invokeB2 = () => headApprovalCli('chapter:bootstrap-initial-head', scenarioB.head, scenarioB.head, documentB2);
+  const invokeB2 = () => headApprovalCli('chapter:bootstrap-initial-head', competingCandidateB, scenarioB.head, documentB1);
 
   const holderB = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
     'php', 'tests/fixtures/provisioning-state.php', 'hold-organization', scenarioB.organization]);
@@ -4352,6 +4431,24 @@ test('ticket06 bootstrap rolls back all authority on history failure and rejects
   assert.equal((await invoke()).code, 1);
   assert.equal(provisioningFixture('head-authority', scenario.head).memberships, 0);
   for (const [name, passed] of Object.entries(provisioningFixture('head-history-privileges', scenario.head))) assert.equal(passed, true, name);
+});
+
+test('ticket06 intended MySQL enforces cross-chapter foreign keys on designation and bootstrap roots', async () => {
+  const scenarioA = await initialHeadScenario('p06-cross-a');
+  const scenarioB = await initialHeadScenario('p06-cross-b');
+
+  // Both provisionings are created awaiting initial head; cross-chapter constraints tests composite FK rejections.
+  const crossChecks = provisioningFixture('cross-chapter-constraints', scenarioB.head, {
+    chapter_a: scenarioA.provisioning.chapter.id,
+    chapter_b: scenarioB.provisioning.chapter.id,
+    approved_by: scenarioB.id,
+    executed_by: scenarioB.head,
+  });
+
+  assert.equal(crossChecks.cross_chapter_designation_provisioning_rejected, true, 'Cross-chapter designation must be rejected by foreign key');
+  assert.equal(crossChecks.cross_chapter_bootstrap_designation_rejected, true, 'Cross-chapter bootstrap designation must be rejected by foreign key');
+  assert.equal(crossChecks.cross_chapter_bootstrap_membership_rejected, true, 'Cross-chapter bootstrap membership must be rejected by foreign key');
+  assert.equal(crossChecks.cross_chapter_bootstrap_duty_grant_rejected, true, 'Cross-chapter bootstrap duty grant must be rejected by foreign key');
 });
 
 test('ticket05 core write creates an awaiting initial Head chapter with no operational authority', async () => {

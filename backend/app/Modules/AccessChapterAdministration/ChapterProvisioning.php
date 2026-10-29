@@ -219,11 +219,54 @@ final class ChapterProvisioning
             return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
         }
 
+        $snapshotFormatted = $snapshotDt->format('Y-m-d H:i:s.u');
+
         $stale = DB::table('chapter_provisionings')
             ->where('organization_id', $scope['organization_id'])
             ->where('provider_user_id', $scope['provider_user_id'])
-            ->where('created_at', '>', $snapshotDt->format('Y-m-d H:i:s.u'))
+            ->where('created_at', '>', $snapshotFormatted)
             ->exists();
+
+        if (! $stale) {
+            $stale = DB::table('initial_head_designations')
+                ->join('chapter_provisionings', 'initial_head_designations.provisioning_id', '=', 'chapter_provisionings.id')
+                ->where('chapter_provisionings.organization_id', $scope['organization_id'])
+                ->where('chapter_provisionings.provider_user_id', $scope['provider_user_id'])
+                ->where('initial_head_designations.appointed_at', '>', $snapshotFormatted)
+                ->exists();
+        }
+
+        if (! $stale) {
+            $stale = DB::table('initial_head_bootstraps')
+                ->join('initial_head_designations', 'initial_head_bootstraps.designation_id', '=', 'initial_head_designations.id')
+                ->join('chapter_provisionings', 'initial_head_designations.provisioning_id', '=', 'chapter_provisionings.id')
+                ->where('chapter_provisionings.organization_id', $scope['organization_id'])
+                ->where('chapter_provisionings.provider_user_id', $scope['provider_user_id'])
+                ->where('initial_head_bootstraps.installed_at', '>', $snapshotFormatted)
+                ->exists();
+        }
+
+        if (! $stale) {
+            $stale = DB::table('initial_head_bootstraps')
+                ->join('initial_head_designations', 'initial_head_bootstraps.designation_id', '=', 'initial_head_designations.id')
+                ->join('chapter_provisionings', 'initial_head_designations.provisioning_id', '=', 'chapter_provisionings.id')
+                ->join('memberships', 'initial_head_bootstraps.membership_id', '=', 'memberships.id')
+                ->join('users', 'memberships.user_id', '=', 'users.id')
+                ->join('duty_grants', 'initial_head_bootstraps.duty_grant_id', '=', 'duty_grants.id')
+                ->where('chapter_provisionings.organization_id', $scope['organization_id'])
+                ->where('chapter_provisionings.provider_user_id', $scope['provider_user_id'])
+                ->where(function ($q) use ($snapshotFormatted): void {
+                    $q->where('memberships.disabled_at', '>', $snapshotFormatted)
+                        ->orWhere('users.disabled_at', '>', $snapshotFormatted)
+                        ->orWhere('duty_grants.revoked_at', '>', $snapshotFormatted)
+                        ->orWhere(function ($q2) use ($snapshotFormatted): void {
+                            $q2->whereNotNull('duty_grants.ends_at')
+                                ->where('duty_grants.ends_at', '<=', now())
+                                ->where('duty_grants.ends_at', '>', $snapshotFormatted);
+                        });
+                })
+                ->exists();
+        }
 
         if ($stale) {
             return response()->json([
@@ -529,7 +572,7 @@ final class ChapterProvisioning
                 })->join('users', 'users.id', '=', 'memberships.user_id')
                     ->where('memberships.id', $bootstrap->membership_id)->where('memberships.status', 'active')->whereNull('memberships.disabled_at')
                     ->where('users.status', 'active')->whereNull('users.disabled_at')
-                    ->where('duty_grants.id', $bootstrap->duty_grant_id)->whereNull('duty_grants.revoked_at')->where('duty_grants.starts_at', '<=', now())
+                    ->where('duty_grants.id', $bootstrap->duty_grant_id)->whereNull('duty_grants.revoked_at')->where('duty_grants.starts_at', '<=', now()->format('Y-m-d H:i:s.u'))
                     ->where(fn ($query) => $query->whereNull('duty_grants.ends_at')->orWhere('duty_grants.ends_at', '>', now()))->exists();
                 $projection['initial_head_membership_authorization'] = $active ? 'authorized' : 'ended';
             }

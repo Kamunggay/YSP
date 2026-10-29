@@ -15,7 +15,6 @@ return new class extends Migration
             $table->unsignedInteger('row_version')->default(1);
             $table->foreignId('authorized_by_user_id')->nullable()->constrained('users')->restrictOnDelete();
             $table->timestamp('authorized_at', 6)->nullable();
-            $table->unique(['chapter_id', 'id']);
         });
         DB::statement('ALTER TABLE duty_grants MODIFY monetary_limit DECIMAL(20,2) NULL, ADD CONSTRAINT duty_grant_row_version CHECK (row_version >= 1)');
         // Chapter outcomes retain the complete original terms, reason, actor and
@@ -63,7 +62,6 @@ return new class extends Migration
         DB::statement('ALTER TABLE duty_grants DROP CHECK duty_grant_row_version');
         Schema::table('duty_grants', function (Blueprint $table): void {
             $table->dropForeign(['authorized_by_user_id']);
-            $table->dropUnique(['chapter_id', 'id']);
             $table->dropColumn(['row_version', 'authorized_by_user_id', 'authorized_at']);
         });
     }

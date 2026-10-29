@@ -26,6 +26,7 @@ return new class extends Migration
             $table->unsignedInteger('row_version')->default(1);
             $table->timestamp('created_at', 6);
             $table->foreign(['organization_id', 'chapter_id'])->references(['organization_id', 'id'])->on('chapters')->restrictOnDelete();
+            $table->unique(['chapter_id', 'id']);
             $table->index(['organization_id', 'provider_user_id', 'id']);
         });
         DB::statement('ALTER TABLE chapter_provisionings ADD CONSTRAINT chapter_provisionings_version CHECK (row_version BETWEEN 1 AND 2147483647)');

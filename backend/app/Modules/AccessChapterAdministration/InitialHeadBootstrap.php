@@ -54,9 +54,10 @@ final class InitialHeadBootstrap
                 throw new RuntimeException('Initial authority cannot be established.');
             }
             $now = now();
+            $time = $now->format('Y-m-d H:i:s.u');
             DB::table('memberships')->insert([
                 'chapter_id' => $chapter->id, 'user_id' => $approval['user_id'], 'status' => 'active',
-                'authorized_by_user_id' => $approval['approved_by_user_id'], 'authorized_at' => $now,
+                'authorized_by_user_id' => $approval['approved_by_user_id'], 'authorized_at' => $time,
             ]);
             $membership = DB::connection()->getPdo()->lastInsertId();
             DB::table('duty_grants')->insert([
@@ -74,10 +75,10 @@ final class InitialHeadBootstrap
                 'executed_by_user_id' => $executor, 'operator_reference' => $operator,
                 'approval_reference' => $approval['approval_reference'], 'payload_hash' => $hash,
                 'approval_snapshot' => json_encode($approval, JSON_THROW_ON_ERROR),
-                'result_snapshot' => json_encode($result, JSON_THROW_ON_ERROR), 'installed_at' => $now,
+                'result_snapshot' => json_encode($result, JSON_THROW_ON_ERROR), 'installed_at' => $time,
             ]);
             DB::table('chapter_control_guards')->where('chapter_id', $chapter->id)
-                ->update(['authority_version' => $guard->authority_version + 1, 'updated_at' => $now]);
+                ->update(['authority_version' => $guard->authority_version + 1, 'updated_at' => $time]);
             DB::table('chapter_provisionings')->where('id', $provisioning->id)->increment('row_version');
 
             return $result;

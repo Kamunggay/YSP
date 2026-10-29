@@ -87,6 +87,7 @@ return new class extends Migration
             $table->timestamp('revoked_at', 6)->nullable();
             $table->foreign(['chapter_id', 'membership_id'])->references(['chapter_id', 'id'])->on('memberships')->restrictOnDelete();
             $table->foreign(['chapter_id', 'requesting_unit_id'])->references(['chapter_id', 'id'])->on('requesting_units')->restrictOnDelete();
+            $table->unique(['chapter_id', 'id']);
             $table->index(['membership_id', 'starts_at', 'ends_at']);
         });
         foreach (['duty_grants', 'provider_role_grants'] as $table) {
