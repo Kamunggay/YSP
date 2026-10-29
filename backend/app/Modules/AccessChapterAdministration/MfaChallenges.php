@@ -230,6 +230,11 @@ final class MfaChallenges
 
     public function assistedRecovery(Request $request): JsonResponse
     {
+        $limited = $this->throttle->throttleIp($request, $this->contract, 'mfa');
+        if ($limited !== null) {
+            return $limited;
+        }
+
         $snapshot = $this->sessions->snapshot($request);
         if ($snapshot['state'] === 'signed_out') {
             return $this->contract->failure('EnrollmentUnauthorized', 401);

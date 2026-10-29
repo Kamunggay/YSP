@@ -11,21 +11,23 @@ final class GlobalIdentityDisable
 {
     public function __construct(
         private BrowserSessions $sessions,
+        private SessionContract $contract,
+        private SignInThrottle $throttle,
     ) {}
 
     public function disable(Request $request): JsonResponse
     {
+        $limited = $this->throttle->throttleIp($request, $this->contract, 'identity-disable');
+        if ($limited !== null) {
+            return $limited;
+        }
+
         if ($this->hasInvalidSelectors($request) || $request->query->count() > 0) {
             return $this->invalidSelector();
         }
 
-        $snapshot = $this->sessions->snapshot($request);
-        if ($snapshot['state'] === 'signed_out') {
-            return $this->unauthorized();
-        }
-
-        if ($snapshot['state'] !== 'authenticated') {
-            return $this->forbidden();
+        if ($authFailure = $this->guardAuthentication($request)) {
+            return $authFailure;
         }
 
         $body = json_decode($request->getContent(), true);
@@ -57,7 +59,7 @@ final class GlobalIdentityDisable
         }
 
         $key = $body['idempotency_key'] ?? null;
-        if (! is_string($key) || ! preg_match('/^[A-Za-z0-9._~-]{1,100}$/D', $key)) {
+        if (! is_string($key) || ! preg_match('/^[A-Za-z0-9._:-]{1,128}$/D', $key)) {
             $feedback[] = [
                 'path' => '/idempotency_key',
                 'code' => 'INVALID',
@@ -75,7 +77,14 @@ final class GlobalIdentityDisable
         } else {
             $userId = $identity['user_id'] ?? null;
             $extraIdentityKeys = array_diff(array_keys($identity), ['user_id']);
-            if ($extraIdentityKeys !== [] || ! is_string($userId) || ! preg_match('/^[1-9][0-9]{0,19}$/D', $userId) || (strlen($userId) === 20 && strcmp($userId, '18446744073709551615') > 0)) {
+            foreach ($extraIdentityKeys as $extraKey) {
+                $feedback[] = [
+                    'path' => '/identity/'.$extraKey,
+                    'code' => 'INVALID',
+                    'message' => 'Use only documented fields.',
+                ];
+            }
+            if (! is_string($userId) || ! preg_match('/^[1-9][0-9]{0,19}$/D', $userId) || (strlen($userId) === 20 && strcmp($userId, '18446744073709551615') > 0)) {
                 $feedback[] = [
                     'path' => '/identity/user_id',
                     'code' => 'INVALID',
@@ -94,7 +103,7 @@ final class GlobalIdentityDisable
         }
 
         $reason = $body['reason'] ?? null;
-        if (! is_string($reason) || strlen($reason) < 1 || strlen($reason) > 500) {
+        if (! is_string($reason) || trim($reason) === '' || mb_strlen($reason) > 500) {
             $feedback[] = [
                 'path' => '/reason',
                 'code' => 'INVALID',
@@ -116,17 +125,17 @@ final class GlobalIdentityDisable
 
     public function lookupByKey(Request $request): JsonResponse
     {
+        $limited = $this->throttle->throttleIp($request, $this->contract, 'identity-disable');
+        if ($limited !== null) {
+            return $limited;
+        }
+
         if ($this->hasInvalidSelectors($request)) {
             return $this->invalidSelector();
         }
 
-        $snapshot = $this->sessions->snapshot($request);
-        if ($snapshot['state'] === 'signed_out') {
-            return $this->unauthorized();
-        }
-
-        if ($snapshot['state'] !== 'authenticated') {
-            return $this->forbidden();
+        if ($authFailure = $this->guardAuthentication($request)) {
+            return $authFailure;
         }
 
         $query = $request->query->all();
@@ -136,23 +145,41 @@ final class GlobalIdentityDisable
 
         if ($extraKeys !== []
             || ! is_string($actionCode) || $actionCode !== 'identity.disable'
-            || ! is_string($idempotencyKey) || ! preg_match('/^[A-Za-z0-9._~-]{1,100}$/D', $idempotencyKey)) {
+            || ! is_string($idempotencyKey) || ! preg_match('/^[A-Za-z0-9._:-]{1,128}$/D', $idempotencyKey)) {
             return $this->invalidSelector();
         }
 
         return $this->unavailable();
     }
 
-    public function lookupById(Request $request, string $operation_id): JsonResponse
+    public function lookupById(Request $request, string $operationId): JsonResponse
     {
-        if ($this->hasInvalidSelectors($request) || $request->query->count() > 0) {
+        $limited = $this->throttle->throttleIp($request, $this->contract, 'identity-disable');
+        if ($limited !== null) {
+            return $limited;
+        }
+
+        if ($this->hasInvalidSelectors($request)) {
             return $this->invalidSelector();
         }
 
-        if (! preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/D', $operation_id)) {
+        if ($authFailure = $this->guardAuthentication($request)) {
+            return $authFailure;
+        }
+
+        if ($request->query->count() > 0) {
             return $this->invalidSelector();
         }
 
+        if (! preg_match('/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/D', $operationId)) {
+            return $this->invalidSelector();
+        }
+
+        return $this->unavailable();
+    }
+
+    private function guardAuthentication(Request $request): ?JsonResponse
+    {
         $snapshot = $this->sessions->snapshot($request);
         if ($snapshot['state'] === 'signed_out') {
             return $this->unauthorized();
@@ -162,7 +189,7 @@ final class GlobalIdentityDisable
             return $this->forbidden();
         }
 
-        return $this->unavailable();
+        return null;
     }
 
     private function hasInvalidSelectors(Request $request): bool

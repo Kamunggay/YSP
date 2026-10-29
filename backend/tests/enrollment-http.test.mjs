@@ -1365,6 +1365,38 @@ test('ticket04 global identity disable preserves safely unavailable mutation bou
   const longReasonBody = await longReasonRes.json();
   assert.equal(longReasonBody.field_feedback[0].path, '/reason');
 
+  // Meaningful nonblank reason validation (whitespace only -> 422)
+  const blankReasonRes = await post(authBrowser, disablePath, {
+    ...validBody,
+    reason: '   \t\n  ',
+  });
+  assert.equal(blankReasonRes.status, 422);
+  const blankReasonBody = await blankReasonRes.json();
+  assert.equal(blankReasonBody.field_feedback[0].path, '/reason');
+
+  // Extra field inside identity points to actual property path
+  const extraIdPropRes = await post(authBrowser, disablePath, {
+    ...validBody,
+    identity: { user_id: '9007199254740994', display_name: 'Officer Jane' },
+  });
+  assert.equal(extraIdPropRes.status, 422);
+  const extraIdPropBody = await extraIdPropRes.json();
+  assert.equal(extraIdPropBody.field_feedback[0].path, '/identity/display_name');
+
+  // IdempotencyKey allows colons per transport schema, rejects tilde
+  const tildeKeyRes = await post(authBrowser, disablePath, {
+    ...validBody,
+    idempotency_key: 'attempt~01',
+  });
+  assert.equal(tildeKeyRes.status, 422);
+  assert.equal((await tildeKeyRes.json()).field_feedback[0].path, '/idempotency_key');
+
+  const colonKeyRes = await post(authBrowser, disablePath, {
+    ...validBody,
+    idempotency_key: 'attempt:01.seq_1',
+  });
+  assert.equal(colonKeyRes.status, 503);
+
   // 7. Valid authenticated request -> 503 GlobalIdentityDisableUnavailable
   const validRes = await post(authBrowser, disablePath, validBody);
   assert.equal(validRes.status, 503);
@@ -1381,10 +1413,11 @@ test('ticket04 global identity disable outcome lookups preserve safely unavailab
   const lookupIdPath = '/api/v1/identity-disable-operations/by-id';
   const validOpId = '01K8A6J0A00000000000000001';
 
-  // 1. Unauthenticated -> 401
+  // 1. Unauthenticated -> 401 (precedes selector/ULID validation to prevent selector disclosure)
   const unauthBrowser = new Browser();
   assert.equal((await unauthBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k1`)).status, 401);
   assert.equal((await unauthBrowser.request(`${lookupIdPath}/${validOpId}`)).status, 401);
+  assert.equal((await unauthBrowser.request(`${lookupIdPath}/not-a-ulid`)).status, 401, 'Unauthenticated lookup must return 401 even for malformed ULID');
 
   // 2. Reject X-Chapter-Context header -> 400
   const { browser: authBrowser } = await signedInBrowser('t04-lookup-auth');
@@ -1418,10 +1451,15 @@ test('ticket04 global identity disable outcome lookups preserve safely unavailab
   // Query parameters on by-id
   assert.equal((await authBrowser.request(`${lookupIdPath}/${validOpId}?action_code=identity.disable`)).status, 400);
 
-  // 5. Incomplete MFA (restricted state) -> 403
+  // 5. Incomplete MFA (restricted state) -> 403 (precedes selector/ULID validation)
   const { browser: mfaIncompleteBrowser } = await preparedOfficer('t04-lookup-mfa');
   assert.equal((await mfaIncompleteBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k1`)).status, 403);
   assert.equal((await mfaIncompleteBrowser.request(`${lookupIdPath}/${validOpId}`)).status, 403);
+  assert.equal((await mfaIncompleteBrowser.request(`${lookupIdPath}/not-a-ulid`)).status, 403, 'Restricted lookup must return 403 even for malformed ULID');
+
+  // Idempotency key pattern accepts colons and rejects tildes
+  assert.equal((await authBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k~1`)).status, 400);
+  assert.equal((await authBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k:1.sub`)).status, 503);
 
   // 6. Valid authenticated lookups -> 503 GlobalIdentityDisableUnavailable
   const keySuccess = await authBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k1`);

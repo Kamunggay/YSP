@@ -22,8 +22,8 @@ final class GlobalIdentityDisableController
         return $this->operation->lookupByKey($request);
     }
 
-    public function lookupById(Request $request, string $operation_id): JsonResponse
+    public function lookupById(Request $request, string $operationId): JsonResponse
     {
-        return $this->operation->lookupById($request, $operation_id);
+        return $this->operation->lookupById($request, $operationId);
     }
 }
