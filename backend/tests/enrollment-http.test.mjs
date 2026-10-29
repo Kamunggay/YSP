@@ -1653,9 +1653,10 @@ for (const injectOverlap of [false,true]) {
     } finally { release(); }
     const responses = await Promise.all(requests);
     assert.deepEqual(responses.map(response=>response.status),injectOverlap ? [409,409] : [200,200]);
-    const first = await responses[0].json();
-    const second = await responses[1].json();
-    assert.equal(first.operation.replayed,false);
+    const outcomes = await Promise.all(responses.map(response => response.json()));
+    assert.deepEqual(outcomes.map(outcome => outcome.operation.replayed).sort(), [false, true], 'one original result and exactly one replay, independent of request scheduling');
+    const first = outcomes.find(outcome => !outcome.operation.replayed);
+    const second = outcomes.find(outcome => outcome.operation.replayed);
     assert.deepEqual(second,{...first,operation:{...first.operation,replayed:true}});
     if (injectOverlap) assert.equal(first.code,'duty_grant_state_conflict');
     const recovered = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/operations/by-id/${first.operation.identity.operation_id}`);
@@ -4836,19 +4837,19 @@ test('verification tooling fixture failures exit nonzero without echoing input o
   assert.ok(!result.stderr.includes('SQL:'));
 });
 
-test('verification tooling timestamps retain a supported future instant and fail safely outside MySQL range', async () => {
+test('verification tooling datetime instants retain future precision and reject values outside MySQL range', async () => {
   const { id } = await signedInBrowser('tooling-timestamp');
   const member = chapterFixture('membership', id, { duties: [] });
-  const grant = chapterFixture('grant', id, { ...member, ends_at: '2037-01-01 00:00:00.000000' });
-  assert.equal(grant.ends_at, '2037-01-01T00:00:00.000000Z');
+  const grant = chapterFixture('grant', id, { ...member, ends_at: '2099-01-01 00:00:00.123456' });
+  assert.equal(grant.ends_at, '2099-01-01T00:00:00.123456Z');
   const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
     'php', 'tests/fixtures/chapter-context-state.php', 'grant', id], { encoding: 'utf8',
-    input: JSON.stringify({ ...member, ends_at: '2099-01-01 00:00:00.000000' }) });
+    input: JSON.stringify({ ...member, ends_at: '10000-01-01 00:00:00.000000' }) });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Fixture failed: Illuminate\\Database\\QueryException/);
   assert.equal(result.stdout, '');
   assert.ok(!result.stderr.includes('SQL:'));
-  assert.ok(!result.stderr.includes('2099'));
+  assert.ok(!result.stderr.includes('10000'));
 });
 
 test('verification tooling synthetic identity setup returns exact independent IDs usable by HTTP sign-in', async () => {
