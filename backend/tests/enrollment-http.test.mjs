@@ -1212,6 +1212,237 @@ test('ticket03 lost-response recovery via bootstrap recovers verified session wi
   assert.equal((await freshVerify.json()).state, 'authenticated');
 });
 
+test('ticket04 read-only unavailable assisted recovery guidance returns truthful boundary across authentication states', async () => {
+  const assistedPath = '/api/v1/session/mfa/assisted-recovery';
+
+  // 1. Signed-out browser -> 401 EnrollmentUnauthorized
+  const unauthBrowser = new Browser();
+  const unauthRes = await unauthBrowser.request(assistedPath);
+  assert.equal(unauthRes.status, 401);
+  const unauthBody = await unauthRes.json();
+  assert.deepEqual(unauthBody, { code: 'authentication_required', message: 'Sign in to continue.' });
+
+  // 2. Bad origin -> 403 origin_forbidden
+  const badOriginBrowser = new Browser();
+  const badOriginRes = await badOriginBrowser.request(assistedPath, {
+    headers: { Origin: 'https://evil.example.test' },
+  });
+  assert.equal(badOriginRes.status, 403);
+
+  // 3. Officer in restricted state (MFA enrollment required) -> 200 with truthful unavailable guidance
+  const { browser: restrictedBrowser } = await preparedOfficer('t04-restricted-enroll');
+  assert.equal((await (await restrictedBrowser.request('/api/v1/session')).json()).state, 'mfa_enrollment_required');
+  const restrictedRes = await restrictedBrowser.request(assistedPath);
+  assert.equal(restrictedRes.status, 200);
+  assert.match(restrictedRes.headers.get('cache-control'), /no-store/);
+  const guidance = await restrictedRes.json();
+  assert.deepEqual(guidance, {
+    availability: 'unavailable',
+    blocker: 'assisted_recovery_not_approved',
+    message: 'Assisted recovery is unavailable until an authorized proof and reset procedure is approved.',
+    next_actions: ['bootstrap_session', 'sign_out'],
+  });
+
+  // Verify response reveals no secret or invented support fields
+  for (const field of ['contact', 'upload_url', 'reset_token', 'ticket_id', 'notification', 'recovery_code']) {
+    assert.equal(guidance[field], undefined);
+  }
+
+  // 4. Officer in restricted state (MFA challenge required) -> 200 with truthful unavailable guidance
+  const enrolled = await enrolledOfficer('t04-restricted-challenge');
+  const { browser: challengeClient } = await returningBrowser(enrolled);
+  assert.equal((await (await challengeClient.request('/api/v1/session')).json()).state, 'mfa_challenge_required');
+  const challengeGuidanceRes = await challengeClient.request(assistedPath);
+  assert.equal(challengeGuidanceRes.status, 200);
+  assert.deepEqual(await challengeGuidanceRes.json(), guidance);
+
+  // 5. Authenticated officer -> 200 with truthful unavailable guidance
+  const { browser: authBrowser } = await signedInBrowser('t04-authenticated');
+  assert.equal((await (await authBrowser.request('/api/v1/session')).json()).state, 'authenticated');
+  const authGuidanceRes = await authBrowser.request(assistedPath);
+  assert.equal(authGuidanceRes.status, 200);
+  assert.deepEqual(await authGuidanceRes.json(), guidance);
+});
+
+test('ticket04 global identity disable preserves safely unavailable mutation boundary', async () => {
+  const disablePath = '/api/v1/identities/disable';
+  const validBody = {
+    idempotency_key: 'global-disable-attempt-01',
+    identity: { user_id: '9007199254740994' },
+    expected_identity_version: 7,
+    reason: 'Explicit security action requested',
+  };
+
+  // 1. Signed-out browser -> 401
+  const unauthBrowser = new Browser();
+  await unauthBrowser.request('/csrf-cookie');
+  const unauthRes = await post(unauthBrowser, disablePath, validBody);
+  assert.equal(unauthRes.status, 401);
+  assert.deepEqual(await unauthRes.json(), { code: 'authentication_required', message: 'Sign in to continue.' });
+
+  // 2. Missing or mismatched CSRF token -> 419
+  const { browser: noCsrfBrowser } = await signedInBrowser('t04-no-csrf');
+  const noCsrfRes = await noCsrfBrowser.request(disablePath, {
+    method: 'POST',
+    body: validBody,
+    headers: { 'X-XSRF-TOKEN': 'tampered-csrf-token' },
+  });
+  assert.equal(noCsrfRes.status, 419);
+  assert.deepEqual(await noCsrfRes.json(), {
+    code: 'csrf_mismatch',
+    message: 'Refresh CSRF before a reviewed new attempt.',
+  });
+
+  // 3. Reserved X-Chapter-Context header rejected -> 400
+  const { browser: authBrowser } = await signedInBrowser('t04-auth-disable');
+  const ctxHeaderRes = await authBrowser.request(disablePath, {
+    method: 'POST',
+    body: validBody,
+    headers: {
+      'X-XSRF-TOKEN': decodeURIComponent(authBrowser.cookies.get('XSRF-TOKEN')),
+      'X-Chapter-Context': 'ctx_synthetic',
+    },
+  });
+  assert.equal(ctxHeaderRes.status, 400);
+  assert.deepEqual(await ctxHeaderRes.json(), {
+    code: 'invalid_selector',
+    message: 'Use only the documented single-valued selectors.',
+  });
+
+  // 4. Query parameters rejected -> 400
+  const queryParamRes = await post(authBrowser, `${disablePath}?chapter_id=1`, validBody);
+  assert.equal(queryParamRes.status, 400);
+  assert.deepEqual(await queryParamRes.json(), {
+    code: 'invalid_selector',
+    message: 'Use only the documented single-valued selectors.',
+  });
+
+  // 5. Incomplete MFA (restricted officer) -> 403
+  const { browser: mfaIncompleteBrowser } = await preparedOfficer('t04-mfa-incomplete');
+  const mfaIncompleteRes = await post(mfaIncompleteBrowser, disablePath, validBody);
+  assert.equal(mfaIncompleteRes.status, 403);
+  assert.deepEqual(await mfaIncompleteRes.json(), {
+    code: 'forbidden',
+    message: 'This request is not permitted.',
+  });
+
+  // 6. Invalid body variations -> 422 with RFC 6901 pointers
+  // Numeric user_id
+  const numericUserIdRes = await post(authBrowser, disablePath, {
+    ...validBody,
+    identity: { user_id: 1 },
+  });
+  assert.equal(numericUserIdRes.status, 422);
+  const numericUserIdBody = await numericUserIdRes.json();
+  assert.equal(numericUserIdBody.code, 'validation_failed');
+  assert.equal(numericUserIdBody.field_feedback[0].path, '/identity/user_id');
+
+  // Extra field at root (scope / chapter_id / etc.)
+  const extraFieldRes = await post(authBrowser, disablePath, {
+    ...validBody,
+    chapter_id: '1',
+  });
+  assert.equal(extraFieldRes.status, 422);
+  const extraFieldBody = await extraFieldRes.json();
+  assert.equal(extraFieldBody.code, 'validation_failed');
+  assert.equal(extraFieldBody.field_feedback[0].path, '/chapter_id');
+
+  // Invalid version (0)
+  const invalidVersionRes = await post(authBrowser, disablePath, {
+    ...validBody,
+    expected_identity_version: 0,
+  });
+  assert.equal(invalidVersionRes.status, 422);
+  const invalidVersionBody = await invalidVersionRes.json();
+  assert.equal(invalidVersionBody.field_feedback[0].path, '/expected_identity_version');
+
+  // Reason too long (> 500 chars)
+  const longReasonRes = await post(authBrowser, disablePath, {
+    ...validBody,
+    reason: 'x'.repeat(501),
+  });
+  assert.equal(longReasonRes.status, 422);
+  const longReasonBody = await longReasonRes.json();
+  assert.equal(longReasonBody.field_feedback[0].path, '/reason');
+
+  // 7. Valid authenticated request -> 503 GlobalIdentityDisableUnavailable
+  const validRes = await post(authBrowser, disablePath, validBody);
+  assert.equal(validRes.status, 503);
+  assert.match(validRes.headers.get('cache-control'), /no-store/);
+  assert.deepEqual(await validRes.json(), {
+    code: 'global_identity_disable_unavailable',
+    message: 'Global identity disable is unavailable.',
+    next_action: 'do_not_retry_mutation',
+  });
+});
+
+test('ticket04 global identity disable outcome lookups preserve safely unavailable boundary', async () => {
+  const lookupKeyPath = '/api/v1/identity-disable-operations/by-key';
+  const lookupIdPath = '/api/v1/identity-disable-operations/by-id';
+  const validOpId = '01K8A6J0A00000000000000001';
+
+  // 1. Unauthenticated -> 401
+  const unauthBrowser = new Browser();
+  assert.equal((await unauthBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k1`)).status, 401);
+  assert.equal((await unauthBrowser.request(`${lookupIdPath}/${validOpId}`)).status, 401);
+
+  // 2. Reject X-Chapter-Context header -> 400
+  const { browser: authBrowser } = await signedInBrowser('t04-lookup-auth');
+  const keyWithCtxHeader = await authBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k1`, {
+    headers: { 'X-Chapter-Context': 'ctx_synthetic' },
+  });
+  assert.equal(keyWithCtxHeader.status, 400);
+  assert.deepEqual(await keyWithCtxHeader.json(), {
+    code: 'invalid_selector',
+    message: 'Use only the documented single-valued selectors.',
+  });
+
+  const idWithCtxHeader = await authBrowser.request(`${lookupIdPath}/${validOpId}`, {
+    headers: { 'X-Chapter-Context': 'ctx_synthetic' },
+  });
+  assert.equal(idWithCtxHeader.status, 400);
+
+  // 3. by-key selector validation -> 400
+  // Missing action_code
+  assert.equal((await authBrowser.request(`${lookupKeyPath}?idempotency_key=k1`)).status, 400);
+  // Wrong action_code
+  assert.equal((await authBrowser.request(`${lookupKeyPath}?action_code=memberships.disable&idempotency_key=k1`)).status, 400);
+  // Missing idempotency_key
+  assert.equal((await authBrowser.request(`${lookupKeyPath}?action_code=identity.disable`)).status, 400);
+  // Extra query parameter
+  assert.equal((await authBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k1&organization_id=1`)).status, 400);
+
+  // 4. by-id selector validation -> 400
+  // Invalid ULID format
+  assert.equal((await authBrowser.request(`${lookupIdPath}/not-a-ulid`)).status, 400);
+  // Query parameters on by-id
+  assert.equal((await authBrowser.request(`${lookupIdPath}/${validOpId}?action_code=identity.disable`)).status, 400);
+
+  // 5. Incomplete MFA (restricted state) -> 403
+  const { browser: mfaIncompleteBrowser } = await preparedOfficer('t04-lookup-mfa');
+  assert.equal((await mfaIncompleteBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k1`)).status, 403);
+  assert.equal((await mfaIncompleteBrowser.request(`${lookupIdPath}/${validOpId}`)).status, 403);
+
+  // 6. Valid authenticated lookups -> 503 GlobalIdentityDisableUnavailable
+  const keySuccess = await authBrowser.request(`${lookupKeyPath}?action_code=identity.disable&idempotency_key=k1`);
+  assert.equal(keySuccess.status, 503);
+  assert.match(keySuccess.headers.get('cache-control'), /no-store/);
+  assert.deepEqual(await keySuccess.json(), {
+    code: 'global_identity_disable_unavailable',
+    message: 'Global identity disable is unavailable.',
+    next_action: 'do_not_retry_mutation',
+  });
+
+  const idSuccess = await authBrowser.request(`${lookupIdPath}/${validOpId}`);
+  assert.equal(idSuccess.status, 503);
+  assert.match(idSuccess.headers.get('cache-control'), /no-store/);
+  assert.deepEqual(await idSuccess.json(), {
+    code: 'global_identity_disable_unavailable',
+    message: 'Global identity disable is unavailable.',
+    next_action: 'do_not_retry_mutation',
+  });
+});
+
 function provisioningFixture(action, id, input = {}) {
   const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
     'php', 'tests/fixtures/provisioning-state.php', action, id], {encoding:'utf8', input:JSON.stringify(input)});

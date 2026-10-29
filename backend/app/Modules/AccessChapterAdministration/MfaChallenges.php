@@ -227,4 +227,22 @@ final class MfaChallenges
             });
         });
     }
+
+    public function assistedRecovery(Request $request): JsonResponse
+    {
+        $snapshot = $this->sessions->snapshot($request);
+        if ($snapshot['state'] === 'signed_out') {
+            return $this->contract->failure('EnrollmentUnauthorized', 401);
+        }
+
+        return response()->json([
+            'availability' => 'unavailable',
+            'blocker' => 'assisted_recovery_not_approved',
+            'message' => 'Assisted recovery is unavailable until an authorized proof and reset procedure is approved.',
+            'next_actions' => [
+                'bootstrap_session',
+                'sign_out',
+            ],
+        ], 200, ['Cache-Control' => 'no-store']);
+    }
 }

@@ -35,6 +35,11 @@ final class SessionController
         return $challenges->regenerate($request);
     }
 
+    public function getAssistedRecoveryGuidance(Request $request, MfaChallenges $challenges): JsonResponse
+    {
+        return $challenges->assistedRecovery($request);
+    }
+
     public function signOut(Request $request, BrowserSessions $sessions): Response
     {
         $sessions->cycleSession($request);

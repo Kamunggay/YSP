@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\GlobalIdentityDisableController;
 use App\Http\Controllers\SessionController;
 use App\Http\Middleware\SessionBoundary;
 use App\Http\Middleware\SessionForgeryGuard;
@@ -39,6 +40,10 @@ Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::
         Route::get('/api/v1/provider/provisionings/{provisioning_id}', [ChapterProvisioning::class, 'read']);
         Route::get('/api/v1/provider/provisioning-operations/by-key', [ChapterProvisioning::class, 'lookupByKey']);
         Route::get('/api/v1/provider/provisioning-operations/by-id/{operation_id}', [ChapterProvisioning::class, 'lookupById']);
+        Route::get('/api/v1/session/mfa/assisted-recovery', [SessionController::class, 'getAssistedRecoveryGuidance']);
+        Route::post('/api/v1/identities/disable', [GlobalIdentityDisableController::class, 'disable']);
+        Route::get('/api/v1/identity-disable-operations/by-key', [GlobalIdentityDisableController::class, 'lookupByKey']);
+        Route::get('/api/v1/identity-disable-operations/by-id/{operation_id}', [GlobalIdentityDisableController::class, 'lookupById']);
         $operations = app(SessionContract::class)->metadata()['operations'];
         Route::match([$operations['initializeCsrf']['method']], $operations['initializeCsrf']['path'], fn () => response()->noContent());
         Route::match([$operations['signIn']['method']], $operations['signIn']['path'], [SessionController::class, 'signIn']);

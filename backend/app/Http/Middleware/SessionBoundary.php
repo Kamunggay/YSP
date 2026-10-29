@@ -32,13 +32,13 @@ final class SessionBoundary
                 $response = $next($request);
             } catch (Throwable $exception) {
                 report($exception);
-                $response = $this->contract->failure('SessionUnavailable', 503);
+                $response = $this->serverErrorResponse($request);
             }
         }
         // Laravel's routing pipeline can render an inner exception before it
         // reaches this middleware's catch. Normalize that rendered failure too.
-        if ($response->isServerError()) {
-            $response = $this->contract->failure('SessionUnavailable', 503);
+        if ($response->getStatusCode() === 500) {
+            $response = $this->serverErrorResponse($request);
         }
         if (preg_match('#^api/v1/chapters/([1-9][0-9]{0,19})/operations/(?:by-key|by-id/[^/]+)$#D', $request->path(), $scope)
             && in_array($response->getStatusCode(), [400, 401, 403, 503], true)) {
@@ -47,5 +47,18 @@ final class SessionBoundary
         $response->headers->set('Cache-Control', 'no-store, private');
 
         return $response;
+    }
+
+    private function serverErrorResponse(Request $request): Response
+    {
+        if (preg_match('#^api/v1/(?:identities/disable|identity-disable-operations/(?:by-key|by-id/[^/]+))$#D', $request->path())) {
+            return response()->json([
+                'code' => 'global_identity_disable_unavailable',
+                'message' => 'Global identity disable is unavailable.',
+                'next_action' => 'do_not_retry_mutation',
+            ], 503, ['Cache-Control' => 'no-store']);
+        }
+
+        return $this->contract->failure('SessionUnavailable', 503);
     }
 }
