@@ -4,7 +4,7 @@ Use this procedure to verify that another developer can build and run the baseli
 
 ## Start from the submitted revision
 
-Install Git, Docker with Linux containers/Compose/BuildKit and PowerShell. Allow package/image downloads, at least 4 GB of Docker memory and adequate image disk space. Compose 2.38.2 and 5.1.3 have been exercised. Host PHP, Composer, Node and a browser installation are unnecessary.
+Install Git, Docker with Linux containers/Compose/BuildKit, PowerShell and Node 24 (including npm). Allow package/image downloads, at least 4 GB of Docker memory and adequate image disk space. Compose 2.38.2 and 5.1.3 have been exercised. Host PHP, Composer and a browser installation are unnecessary.
 
 In PowerShell, choose a new absolute directory and replace the commit placeholder with the full revision being reviewed:
 
@@ -45,7 +45,7 @@ if ($verificationExit -ne 0) { throw 'Verification failed; retain the log' }
 git status --short
 ```
 
-The command initializes separate backend/frontend environment files, builds the application and verifier, checks contracts and dependencies, and runs backend/browser tests against two fresh disposable MySQL projects. Expected success is exit 0 with all required checks completed and disposable resources removed.
+The command initializes separate backend/frontend environment files, builds the application and verifier, checks contracts and dependencies, and runs backend/session/enrollment/browser tests against fresh disposable MySQL projects. Expected success is exit 0 with `Full verification passed` and disposable resources removed. See [stage usage](README.md#what-runs-in-order) for targeted debugging; selected stages report partial verification and do not replace a complete reproduction.
 
 Confirm initial migrations and the second no-op migration passed. The checkpoint verifier must report intended MySQL 8.4/InnoDB and `0001_01_01_000000_health_baseline`. The baseline has only the migration repository, not business tables.
 
@@ -69,7 +69,7 @@ Retain failures as well as reruns. An absent response is not approval. A success
 
 ## Local data and cleanup
 
-`backend/.env` contains the generated application/database credentials. `frontend/.env` currently needs no variables. Both remain private and uncommitted. Compose mounts only the needed secrets into each service; the backend does not receive the actual root database credential. No `.runtime` directory is needed.
+`backend/.env` contains the generated application/database credentials. `frontend/.env` currently needs no variables. Both remain private and uncommitted. Compose mounts only the needed secrets into each service; the backend does not receive the actual root database credential. Ignored `.runtime/` files hold enrollment ownership, retained lock files and failure diagnostics; preserve ownership records for explicit cleanup after interruptions.
 
 The scripts create uniquely named verification projects and remove only their own containers, networks and volumes. They preserve ordinary development data. If interrupted, identify the exact project name in the log before cleaning it up. Review logs before sharing; do not include populated environment files, environment dumps or resolved secret values.
 

@@ -12,9 +12,13 @@ powershell -NoProfile -File scripts/verify.ps1
 
 # Linux/macOS with PowerShell 7
 pwsh -File scripts/verify.ps1
+
+# Rerun one stage, or that stage and the remaining stages.
+powershell -NoProfile -File scripts/verify.ps1 -Stage enrollment
+powershell -NoProfile -File scripts/verify.ps1 -From sessions
 ```
 
-Install Git, Docker with Compose/BuildKit, and PowerShell. No host PHP, Composer, Node or browser installation is required. Allow dependency/image downloads, at least 4 GB of Docker memory and enough disk space for images. Compose 2.38.2 and 5.1.3 have been exercised; other versions have not been verified.
+Install Git, Docker with Compose/BuildKit, and PowerShell. Full verification also requires Node 24 (including npm) for the existing enrollment and script regression checks; their locked transport dependencies are installed automatically once per invocation. Other stages require no host Node. No host PHP, Composer or browser installation is required. Allow dependency/image downloads, at least 4 GB of Docker memory and enough disk space for images. Compose 2.38.2 and 5.1.3 have been exercised; other versions have not been verified.
 
 The session verifier builds a pinned Node/Docker CLI test image and uses the Docker socket to target disposable containers. Schema migrations run through the short-lived `migrate` service; its elevated database secret is never mounted into the HTTP backend. Ordinary runtime credentials have DML privileges only, with database guards protecting identity history.
 
@@ -22,21 +26,25 @@ Setup creates missing `backend/.env` and `frontend/.env` files from their commit
 
 ## What runs, in order
 
-| Phase | Checks | Failure means |
+| Stage name (execution order) | Checks | Prerequisites prepared on selection |
 | --- | --- | --- |
-| Configuration | Compose structure, private MySQL networking, loopback gateway, ignored secret paths and generated-secret scan | Local configuration or repository contents violate the current checks |
-| Verification image | Locked Node dependencies and container Chromium | Tooling installation or image build failed |
-| Contracts | OpenAPI, JSON schemas/examples, actual typed health-client compatibility and frozen coverage/reconciliation consistency | A checked contract or its consumer is incompatible |
-| Client tests and audits | Frontend client tests and both npm lockfile audits | Client behavior failed or the dependency audit returned a failure |
-| Backend | Locked build, Composer validation, PHP syntax, Pint, PHPStan and Composer audit | Backend source/build/static/dependency verification failed |
-| Fresh database | Intended MySQL startup, initial migration, repeated no-op migration, InnoDB/checkpoint identity, host/container HTTP, safe outage/recovery and cached configuration | The baseline cannot start or recover correctly against a fresh MySQL database |
-| Backend tests | The current backend test suite | A tested backend behavior failed |
-| Frontend and browser | Lint, strict TypeScript, Vite build, same-origin browser checks, pending/timeout/retry/error behavior, keyboard/mobile/axe and actual MySQL/backend/missing-key outage recovery | Build, client integration or a checked browser behavior failed |
-| Identity and cleanup | Lock/schema/frontend hashes, image/runtime identities and removal of disposable projects | The run could not record an identity or finish its cleanup |
+| `preflight` | Revision/tool versions and lock/schema hashes; environment initialization; Compose structure, private MySQL networking, loopback gateway, ignored secrets and secret scan | None |
+| `toolchain` | Locked verification image, Chromium and image/Node identities | Preflight |
+| `script-tests` | Script execution, focused-test runner, native-output and enrollment lifecycle regressions | Preflight, host Node 24 and locked transport install |
+| `contracts` | OpenAPI, schemas/examples, typed health-client compatibility and frozen coverage/reconciliation | Preflight, current verification image |
+| `client` | Frontend client tests and both npm lockfile audits | Preflight, current verification image |
+| `backend` | Existing backend build/static/audit checks, fresh MySQL, repeat migrations, HTTP/outage/cache checks and backend tests | Preflight; child builds and owns a fresh environment |
+| `sessions` | Existing gateway/CLI/session/security and outage checks | Preflight; child builds its test image and fresh environment |
+| `enrollment` | Existing complete enrollment/MFA/provisioning/chapter/membership HTTP/MySQL suite and PHPUnit | Preflight, host Node 24 and locked transport install; child builds and owns a fresh environment |
+| `same-origin` | Frontend lint/TypeScript/build, browser behavior, keyboard/mobile/axe and actual outage/configuration recovery; runtime/image/frontend hashes | Preflight, current verification image; child builds and owns a fresh environment |
 
-Every required command must succeed. A failure exits nonzero and stops subsequent checks; a partial run is not a complete pass. An outage probe intentionally expects HTTP 503 before checking recovery to HTTP 200.
+No arguments runs every stage in this order. `-Stage <name>` runs one stage; `-From <name>` runs the ordered suffix. Names are case-insensitive. Invalid names, empty names and combining the options fail before setup. Either option always reports partial verification, even when selecting `-From preflight`.
 
-The commands use shared local image tags, so run them serially. Runtime verification creates two uniquely named Compose projects, fresh database volumes and temporary loopback ports. Each script removes its own project and volumes in `finally`. The ordinary development database is preserved.
+Prerequisites run once within an invocation, before their consumer. Selecting `same-origin`, for example, runs preflight and rebuilds the verification image from current inputs, without rerunning contracts, audits or earlier integration suites. Docker layer caching can reuse unchanged inputs; image-tag existence alone is never treated as proof of freshness. Runtime stages keep their own fresh environment rather than depending on a previous stage's disposable database. There are no saved resume checkpoints.
+
+Every required command must succeed. A failure stops subsequent checks, preserves the failed executable's nonzero status (PowerShell exceptions exit 1), and prints the failed stage plus an exact targeted rerun command. Prerequisite failures name the prerequisite stage. After fixing it, rerun the original selection to finish its consumers. An outage probe intentionally expects HTTP 503 before checking recovery to HTTP 200.
+
+The commands use shared local image tags, so run them serially. Runtime verification creates uniquely named Compose projects, fresh database volumes and temporary loopback ports. Each child retains its own ownership, diagnostics and `finally` cleanup; enrollment also retains its exclusive project lock. The ordinary development database is preserved. For repeated focused enrollment debugging, invoke `verify-enrollment.ps1` directly with `-Action Start`, then `-Action Test -TestNamePattern '<pattern>'`, then `-Action Stop`, using the same `-Project ysp-enrollment-check-<task>` each time. This retains the owned environment between tests instead of rebuilding through the orchestrator.
 
 ## What GitHub Actions runs
 
@@ -46,7 +54,7 @@ Workflow: `Combined application and contract checks`, defined in `.github/workfl
 - Runner: `ubuntu-24.04`.
 - Job: `backend`. Despite that historical name, it runs frontend, backend, contracts, database and browser verification together.
 - Timeout: 30 minutes.
-- Steps: checkout the submitted revision, then run `./scripts/verify.ps1` with PowerShell.
+- Steps: checkout the submitted revision, prepare Node 24 for enrollment/script checks, then run `./scripts/verify.ps1` with PowerShell.
 - Repository permissions: read-only; checkout does not retain Git credentials.
 - No deployment, registry publication or production credentials are configured.
 
@@ -62,14 +70,14 @@ The corrected workflow passed on revision `225ae8b862bc19dcd7d09ec9f189dff3e760a
 | PHP and JavaScript dependencies | Composer lock and both npm locks; installs use those locks |
 | Browser | Locked Playwright package selects its Chromium revision |
 | Browser operating-system packages | Downloaded from Debian repositories during image build; not a byte-identical package snapshot |
-| GitHub checkout action | Pinned commit |
+| GitHub checkout and Node setup actions | Pinned commits |
 | Hosted runner, Docker, Compose and PowerShell | Supplied by the runner; their exact versions are not pinned by this workflow |
 
 The log records the Git revision, Docker/Compose versions, dependency hashes, image identities, built frontend hashes and database/runtime checkpoint. Preserve those values when reporting a failure. A dependency or runner update requires fresh verification.
 
 ## Find and fix a failure
 
-Open the failed job's log and read the first command error above the final PowerShell exception. The exception identifies which command failed; earlier Docker/tool output usually identifies why.
+Open the failed job's log and read the first command error above `Verification failed at stage`. Use the printed `Targeted rerun` command after fixing it, or `-From <stage>` to continue the remaining checks. A successful targeted run reports only a partial pass; rerun without arguments for full verification evidence. Earlier Docker/tool output usually identifies the cause.
 
 | Symptom | What to check |
 | --- | --- |

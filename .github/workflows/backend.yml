@@ -13,6 +13,11 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           persist-credentials: false
+      - name: Prepare host verification runtime
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
       - name: Combined builds, contracts, fresh MySQL migrations and browser checks
         shell: pwsh
         run: ./scripts/verify.ps1
