@@ -15,9 +15,9 @@ use stdClass;
 
 final class MembershipAdministration
 {
-    public function __construct(private ProtectedChapterExecution $execution, private CanonicalRequest $canonical, private ChapterOutcomes $outcomes) {}
+    public function __construct(private ProtectedChapterExecution $execution, private CanonicalRequest $canonical, private ChapterOutcomes $outcomes, private MembershipCandidates $candidates) {}
 
-    public function lookupMembershipIdentity(Request $request, string $chapter_id, MembershipCandidates $candidates): JsonResponse
+    public function lookupMembershipIdentity(Request $request, string $chapter_id): JsonResponse
     {
         if (! InitialHeadApproval::validId($chapter_id) || $request->getQueryString() !== null || strlen($request->getContent()) > 8192) {
             return $this->invalidSelector();
@@ -37,7 +37,7 @@ final class MembershipAdministration
             return $this->invalid('/user_id');
         }
 
-        return $this->execution->execute($request, function (array $session) use ($chapter_id, $body, $candidates): JsonResponse {
+        return $this->execution->execute($request, function (array $session) use ($chapter_id, $body): JsonResponse {
             $user = $session['user'];
             $key = hash('sha256', 'membership-identity-lookup:'.$user['id']);
             DB::table('session_throttles')->insertOrIgnore(['key' => $key, 'attempts' => 0, 'expires_at' => time() + 900]);
@@ -50,7 +50,7 @@ final class MembershipAdministration
             }
             DB::table('session_throttles')->where('key', $key)->increment('attempts');
 
-            $identity = $candidates->eligible($chapter_id, $body->user_id);
+            $identity = $this->candidates->eligible($chapter_id, $body->user_id);
 
             return response()->json([
                 'identity' => $identity === null ? null : [
@@ -59,7 +59,7 @@ final class MembershipAdministration
                 ],
             ]);
         }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
-            'action' => 'memberships.prepare', 'membership_contract' => true]);
+            'action' => 'memberships.prepare', 'membership_contract' => true, 'read_only' => true]);
     }
 
     public function listMemberships(Request $request, string $chapter_id): JsonResponse
@@ -134,7 +134,7 @@ final class MembershipAdministration
             $rows = $query->select('memberships.*', 'users.id as user_id', 'users.name as user_name')
                 ->orderBy('memberships.id', 'asc')
                 ->limit($limit + 1)
-                ->lockForUpdate()
+                ->sharedLock()
                 ->get();
 
             $nextCursor = null;
@@ -157,14 +157,14 @@ final class MembershipAdministration
                 'next_cursor' => $nextCursor,
             ]);
         }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
-            'action' => 'memberships.read', 'membership_contract' => true]);
+            'action' => 'memberships.read', 'membership_contract' => true, 'read_only' => true]);
     }
 
     private function membershipStateHash(string $chapterId): string
     {
         $stats = DB::table('memberships')->where('chapter_id', $chapterId)
             ->selectRaw('COUNT(*) as cnt, COALESCE(MAX(id), 0) as max_id, COALESCE(SUM(row_version), 0) as sum_ver, COALESCE(MAX(row_version), 0) as max_ver, COALESCE(SUM(CASE status WHEN "active" THEN 1 WHEN "disabled" THEN 2 WHEN "revoked" THEN 3 ELSE 0 END), 0) as status_sum')
-            ->lockForUpdate()
+            ->sharedLock()
             ->first();
         $raw = "{$stats->cnt}:{$stats->max_id}:{$stats->sum_ver}:{$stats->max_ver}:{$stats->status_sum}";
 
@@ -262,7 +262,7 @@ final class MembershipAdministration
                 ->where('memberships.chapter_id', $chapter_id)
                 ->where('memberships.id', $membership_id)
                 ->select('memberships.*', 'users.id as user_id', 'users.name as user_name')
-                ->lockForUpdate()
+                ->sharedLock()
                 ->first();
             if ($member === null) {
                 return response()->json(['code' => 'membership_not_visible', 'message' => 'Membership unavailable.'], 404);
@@ -271,7 +271,7 @@ final class MembershipAdministration
 
             return response()->json($this->projection($member, $user));
         }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
-            'action' => 'memberships.read', 'membership_contract' => true]);
+            'action' => 'memberships.read', 'membership_contract' => true, 'read_only' => true]);
     }
 
     public function authorizeMembership(Request $request, string $chapter_id): JsonResponse
@@ -325,10 +325,8 @@ final class MembershipAdministration
                 return response()->json(['code' => 'membership_not_visible', 'message' => 'Membership is not visible.'], 404);
             }
             $userId = $authorize ? $body->identity->user_id : (string) $before->user_id;
-            $user = DB::table('users')->where('id', $userId)->where('status', 'active')->whereNull('disabled_at')->lockForUpdate()->first();
-            $candidate = $authorize ? DB::table('membership_candidates')->where('chapter_id', $chapter_id)->where('user_id', $userId)
-                ->where('purpose', 'membership_authorization')->whereNull('revoked_at')->where('authorized_at', '<=', now())
-                ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>', now()))->lockForUpdate()->first() : null;
+            $user = DB::table('users')->where('id', $userId)->lockForUpdate()->first();
+            $candidate = $authorize ? $this->candidates->eligible($chapter_id, $userId) : null;
             if ($user === null || ($authorize && $candidate === null)) {
                 return $this->invalid('/identity/user_id');
             }
@@ -342,7 +340,7 @@ final class MembershipAdministration
             $time = now()->format('Y-m-d\TH:i:s.u\Z');
             $operation = ['identity' => ['operation_id' => $operationId, 'action_code' => $action,
                 'idempotency_key' => $body->idempotency_key], 'outcome' => 'committed', 'committed_at' => $time, 'replayed' => false];
-            if ($before !== null && (($authorize && $before->status === 'active') || (! $authorize && $before->status !== 'active')
+            if ($before !== null && ((! $authorize && ($user->status !== 'active' || $user->disabled_at !== null)) || ($authorize && $before->status === 'active') || (! $authorize && $before->status !== 'active')
                 || $before->row_version >= 4294967295 || $before->authority_version >= 2147483647)) {
                 $operation['outcome'] = 'rejected';
                 $result = ['resource_type' => 'membership', 'action_result' => 'blocked', 'chapter_id' => $chapter_id,
@@ -385,7 +383,8 @@ final class MembershipAdministration
 
             return response()->json($result);
         }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
-            'expected_authority_version' => $body->expected_authority_version, 'action' => $action, 'membership_contract' => true],
+            'expected_authority_version' => $body->expected_authority_version, 'action' => $action, 'membership_contract' => true,
+            'target_user_id' => $authorize ? $body->identity->user_id : null, 'target_membership_id' => $membership_id],
             fn (array $session): ?JsonResponse => $this->outcomes->replay($chapter_id, $action, $body->idempotency_key, $fingerprint, $session['user']['id']));
     }
 

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Modules\AccessChapterAdministration\MembershipAdministration;
+use App\Modules\AccessChapterAdministration\MembershipCandidates;
 use App\Modules\AccessChapterAdministration\ProtectedChapterExecution;
 use Carbon\Carbon;
 use Illuminate\Contracts\Console\Kernel;
@@ -20,7 +22,7 @@ $app->make(Kernel::class)->bootstrap();
 require __DIR__.'/fixture-support.php';
 installFixtureFailureHandler();
 $user = $argv[2];
-$input = json_decode($argv[1] === 'hold-context' ? fgets(STDIN) : stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
+$input = json_decode(in_array($argv[1], ['hold-context', 'hold-membership-read'], true) ? fgets(STDIN) : stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
 if ($argv[1] === 'grant-approval-security') {
     $approval = DB::table('duty_grant_limit_approvals')->where('chapter_id', $input['chapter_id'])->first();
     if ($approval === null) {
@@ -98,7 +100,7 @@ if ($argv[1] === 'grant-approval-security') {
 
         return ['chapter_id' => (string) $chapter, 'membership_id' => (string) $member, 'expected_membership_version' => 1];
     });
-} elseif (in_array($argv[1], ['execute', 'execute-batch', 'follow-up', 'hold-context'], true)) {
+} elseif (in_array($argv[1], ['execute', 'execute-batch', 'follow-up', 'hold-context', 'hold-membership-read'], true)) {
     $session = app('session')->driver();
     foreach (DB::table('sessions')->get() as $row) {
         $payload = json_decode(base64_decode($row->payload), true, flags: JSON_THROW_ON_ERROR);
@@ -135,6 +137,32 @@ if ($argv[1] === 'grant-approval-security') {
             return response()->json(['executed' => true]);
         };
         $execution = app(ProtectedChapterExecution::class);
+        if ($argv[1] === 'hold-membership-read') {
+            $response = DB::transaction(function () use ($request, $input): JsonResponse {
+                $admin = app(MembershipAdministration::class);
+                if ($input['operation'] === 'list') {
+                    $response = $admin->listMemberships($request, $input['chapter_id']);
+                } elseif ($input['operation'] === 'read') {
+                    $response = $admin->readMembership($request, $input['chapter_id'], $input['membership_id']);
+                } else {
+                    $candidateRequest = Request::create('/synthetic-protected-consumer', 'POST', server: ['CONTENT_TYPE' => 'application/json'],
+                        content: json_encode(['user_id' => $input['target_user_id']], JSON_THROW_ON_ERROR));
+                    $candidateRequest->setLaravelSession($request->session());
+                    $candidateRequest->headers->set('X-Chapter-Context', $input['revision']);
+                    $response = $admin->lookupMembershipIdentity($candidateRequest, $input['chapter_id'], app(MembershipCandidates::class));
+                }
+                if ($response->getStatusCode() !== 200) {
+                    throw new RuntimeException('Membership read did not succeed: '.$response->getContent());
+                }
+                echo "held\n";
+                fflush(STDOUT);
+                fgets(STDIN);
+
+                return $response;
+            });
+
+            return ['status' => $response->getStatusCode()];
+        }
         $response = $argv[1] === 'follow-up'
             ? $execution->withCurrentAccess($request, $scope['chapter_id'], $scope['action'], $effect)
             : $execution->execute($request, $effect, $scope);

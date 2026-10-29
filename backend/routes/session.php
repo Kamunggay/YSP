@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\GlobalIdentityDisableController;
 use App\Http\Controllers\SessionController;
 use App\Http\Middleware\ChapterContextThrottle;
+use App\Http\Middleware\MembershipThrottle;
 use App\Http\Middleware\SessionBoundary;
 use App\Http\Middleware\SessionForgeryGuard;
 use App\Modules\AccessChapterAdministration\ChapterContext;
@@ -23,11 +24,11 @@ Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::
         Route::get('/api/v1/chapters/{chapter_id}/duty-grants/{grant_id}', [DutyGrantAuthorization::class, 'readDutyGrant']);
         Route::post('/api/v1/chapters/{chapter_id}/duty-grants/authorize', [DutyGrantAuthorization::class, 'authorizeDutyGrant']);
         Route::post('/api/v1/chapters/{chapter_id}/memberships/identity-reference', [MembershipAdministration::class, 'lookupMembershipIdentity']);
-        Route::get('/api/v1/chapters/{chapter_id}/memberships', [MembershipAdministration::class, 'listMemberships']);
-        Route::get('/api/v1/chapters/{chapter_id}/memberships/{membership_id}', [MembershipAdministration::class, 'readMembership']);
-        Route::post('/api/v1/chapters/{chapter_id}/memberships/authorize', [MembershipAdministration::class, 'authorizeMembership']);
-        Route::post('/api/v1/chapters/{chapter_id}/memberships/{membership_id}/disable', [MembershipAdministration::class, 'disableMembership']);
-        Route::post('/api/v1/chapters/{chapter_id}/memberships/{membership_id}/revoke', [MembershipAdministration::class, 'revokeMembership']);
+        Route::get('/api/v1/chapters/{chapter_id}/memberships', [MembershipAdministration::class, 'listMemberships'])->middleware(MembershipThrottle::class);
+        Route::get('/api/v1/chapters/{chapter_id}/memberships/{membership_id}', [MembershipAdministration::class, 'readMembership'])->middleware(MembershipThrottle::class);
+        Route::post('/api/v1/chapters/{chapter_id}/memberships/authorize', [MembershipAdministration::class, 'authorizeMembership'])->middleware(MembershipThrottle::class);
+        Route::post('/api/v1/chapters/{chapter_id}/memberships/{membership_id}/disable', [MembershipAdministration::class, 'disableMembership'])->middleware(MembershipThrottle::class);
+        Route::post('/api/v1/chapters/{chapter_id}/memberships/{membership_id}/revoke', [MembershipAdministration::class, 'revokeMembership'])->middleware(MembershipThrottle::class);
         Route::get('/api/v1/chapters/{chapter_id}/operations/by-key', [MembershipAdministration::class, 'lookupByKey']);
         Route::get('/api/v1/chapters/{chapter_id}/operations/by-id/{operation_id}', [MembershipAdministration::class, 'lookupById']);
         Route::middleware(ChapterContextThrottle::class)->group(function (): void {

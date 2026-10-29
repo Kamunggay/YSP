@@ -27,18 +27,19 @@ final class ProtectedChapterExecution
         try {
             return DB::transaction(function () use ($request, $operation, $scope, $replay): JsonResponse {
                 $actorId = $request->session()->get('identity_id');
-                $targetUser = isset($scope['target_membership_id']) ? DB::table('memberships')
-                    ->where('chapter_id', $scope['chapter_id'])->where('id', $scope['target_membership_id'])->value('user_id') : null;
+                $targetUser = $scope['target_user_id'] ?? (isset($scope['target_membership_id']) ? DB::table('memberships')
+                    ->where('chapter_id', $scope['chapter_id'])->where('id', $scope['target_membership_id'])->value('user_id') : null);
                 if ($targetUser !== null) {
                     // Discover the complete actor/target authority set before
                     // chapter control locks; sort each category consistently.
                     DB::table('users')->whereIn('id', [$actorId, $targetUser])->orderBy('id')->lockForUpdate()->get();
+                    DB::table('provider_role_grants')->whereIn('user_id', [$actorId, $targetUser])->orderBy('id')->lockForUpdate()->get();
                     $authority = DB::table('memberships')->whereIn('user_id', [$actorId, $targetUser])->orderBy('id')->lockForUpdate()->get();
                     DB::table('duty_grants')->whereIn('membership_id', $authority->pluck('id'))->orderBy('id')->lockForUpdate()->get();
                 }
                 // Context reads share authority locks; scoped mutations retain their
                 // exclusive authority set before taking selection/control locks.
-                $authorityLock = $scope === null ? 'sharedLock' : 'lockForUpdate';
+                $authorityLock = ($scope === null || ($scope['read_only'] ?? false)) ? 'sharedLock' : 'lockForUpdate';
                 $user = DB::table('users')->where('id', $actorId)->{$authorityLock}()->first();
                 if ($user !== null) {
                     DB::table('provider_role_grants')->where('user_id', $user->id)->orderBy('id')->{$authorityLock}()->get();
@@ -137,7 +138,8 @@ final class ProtectedChapterExecution
         if (($stale = $this->verifyRevision($request, $selection)) !== null) {
             return ($scope['membership_contract'] ?? false) ? $this->membershipConflict('chapter_context_stale') : $stale;
         }
-        $member = DB::table('memberships')->where('id', $selection->membership_id)->where('user_id', $selection->user_id)->lockForUpdate()->first();
+        $authorityLock = ($scope['read_only'] ?? false) ? 'sharedLock' : 'lockForUpdate';
+        $member = DB::table('memberships')->where('id', $selection->membership_id)->where('user_id', $selection->user_id)->{$authorityLock}()->first();
         // A Head's intentional self-removal is part of this guarded write. Its
         // locked pre-change authority must still be temporally effective at commit.
         $selfRemoval = $member !== null && isset($selection->ended_actor_version)
@@ -147,7 +149,7 @@ final class ProtectedChapterExecution
             || (! $selfRemoval && ($member->status !== 'active' || $member->disabled_at !== null))) {
             return ($scope['membership_contract'] ?? false) ? $this->membershipConflict('chapter_context_stale') : $this->stale();
         }
-        $guard = DB::table('chapter_control_guards')->where('chapter_id', $member->chapter_id)->lockForUpdate()->first();
+        $guard = DB::table('chapter_control_guards')->where('chapter_id', $member->chapter_id)->{$authorityLock}()->first();
         if ($guard === null || (array_key_exists('expected_authority_version', $scope) && $guard->authority_version !== $scope['expected_authority_version'])) {
             return ($scope['membership_contract'] ?? false) ? $this->membershipConflict('authority_stale') : $this->stale();
         }

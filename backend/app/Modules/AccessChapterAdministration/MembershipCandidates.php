@@ -35,6 +35,6 @@ final class MembershipCandidates
             ->where('candidates.purpose', 'membership_authorization')->where('users.status', 'active')
             ->whereNull('users.disabled_at')->whereNull('candidates.revoked_at')->where('candidates.authorized_at', '<=', now())
             ->where(fn ($query) => $query->whereNull('candidates.ends_at')->orWhere('candidates.ends_at', '>', now()))
-            ->select('users.id', 'users.name')->orderBy('candidates.id')->lockForUpdate()->first();
+            ->select('users.id', 'users.name')->orderBy('candidates.id')->sharedLock()->first();
     }
 }

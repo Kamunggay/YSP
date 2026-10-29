@@ -42,6 +42,7 @@ class Browser {
     const membershipContractPath = contractPath.split('?')[0]
       .replace(/^\/chapters\/[^/]+\//, '/chapters/{chapter_id}/')
       .replace(/\/memberships\/[^/]+\/(disable|revoke)$/, '/memberships/{membership_id}/$1')
+      .replace(/\/memberships\/(?!authorize$|identity-reference$)[^/]+$/, '/memberships/{membership_id}')
       .replace(/\/operations\/by-id\/[^/]+$/, '/operations/by-id/{operation_id}');
     const operation = api.paths[contractPath]?.[method.toLowerCase()]
       ?? (contractPath.startsWith('/chapters/') ? api.paths[membershipContractPath]?.[method.toLowerCase()] : undefined);
@@ -50,6 +51,17 @@ class Browser {
       if (schema) {
         const validate = ajv.compile(schema);
         assert.ok(validate(await response.clone().json()), JSON.stringify(validate.errors));
+      }
+      if (response.status === 422 && membershipContractPath.includes('/memberships')) {
+        const requestSchema = operation.requestBody?.content?.['application/json']?.schema;
+        const result = await response.clone().json();
+        for (const feedback of result.field_feedback ?? []) {
+          let field = requestSchema;
+          for (const part of feedback.path.split('/').slice(1)) {
+            field = field?.properties?.[part.replaceAll('~1', '/').replaceAll('~0', '~')];
+          }
+          assert.ok(field, `Feedback ${feedback.path} must name a field declared by this operation`);
+        }
       }
       assert.match(response.headers.get('cache-control'), /no-store/);
     }
@@ -2869,16 +2881,19 @@ test('ticket08 disabled-account rejections enforce validation and authentication
   arrangeState('disable', activeTarget.id);
   head.selected = await (await head.browser.request(contextPath)).json();
 
-  // Attempting to disable/revoke an already disabled user account -> 422 validation_failed (/identity/user_id)
-  res = await membershipPost(head, membershipPath(head.member.chapter_id) + `/${memberData.membership_id}/disable`, {
-    idempotency_key: 'disable-disabled-user',
-    expected_authority_version: head.selected.context.authority_version,
-    expected_membership_version: memberData.version,
-  });
-  assert.equal(res.status, 422);
-  body = await res.json();
-  assert.equal(body.code, 'validation_failed');
-  assert.equal(body.field_feedback[0].path, '/identity/user_id');
+  // Removal has no identity input; disabled account state is a retained rejection.
+  for (const action of ['disable', 'revoke']) {
+    res = await membershipPost(head, membershipPath(head.member.chapter_id) + `/${memberData.membership_id}/${action}`, {
+      idempotency_key: `${action}-disabled-user`,
+      expected_authority_version: head.selected.context.authority_version,
+      expected_membership_version: memberData.version,
+    });
+    assert.equal(res.status, 409);
+    body = await res.json();
+    assert.equal(body.code, 'membership_state_conflict');
+    assert.equal(body.operation.outcome, 'rejected');
+    assert.equal(body.field_feedback, undefined);
+  }
 
   // Head's own account disabled -> 401
   arrangeState('disable', head.id);
@@ -5193,4 +5208,115 @@ test('verification tooling batched provider arrangements are independent and req
   const { browser } = await signedInBrowser('tooling-provider', first);
   assert.equal((await (await browser.request('/api/v1/session')).json()).state, 'mfa_enrollment_required');
   assert.equal((await browser.request('/api/v1/provider/provisioning-context')).status, 403);
+});
+
+
+test('ticket08 membership operations throttle before authority locks and retain forgery precedence', async t => {
+  const head = await membershipHead('p08-throttle');
+  const path = membershipPath(head.member.chapter_id);
+  for (const action of ['list', 'read', 'authorize', 'disable', 'revoke']) {
+    arrangeState('clear-throttles', head.id);
+    const send = () => action === 'list' ? head.browser.request(path + '?unknown=1')
+      : action === 'read' ? head.browser.request(path + `/${head.member.membership_id}?unknown=1`)
+      : membershipPost(head, path + (action === 'authorize' ? '/authorize' : `/${head.member.membership_id}/${action}`), {});
+    let response;
+    for (let i = 0; i < 61; i++) {
+      response = await send();
+      if (response.status === 429) break;
+    }
+    assert.equal(response.status, 429, action);
+    assert.equal((await response.json()).code, 'throttled');
+    assert.match(response.headers.get('retry-after'), /^[1-9][0-9]*$/);
+    const holder = await chapterLockHolder(t, head.id);
+    try { assert.equal((await withDeadline(send(), 'Throttled membership request waited for authority')).status, 429); }
+    finally { holder.release(); }
+    assert.equal(await withDeadline(holder.exited, 'Throttle holder failed to exit'), 0);
+    assert.equal((await head.browser.request(path, {headers:{Origin:'https://foreign.test'}})).status, 403);
+    assert.equal((await head.browser.request(path + '/authorize', {method:'POST', body:{}})).status, 419);
+    arrangeState('expire-throttles', head.id);
+    const context = await (await head.browser.request(contextPath)).json();
+    assert.equal(context.selection_revision, head.selected.selection_revision);
+    assert.equal(context.context.authority_version, head.selected.context.authority_version);
+  }
+});
+
+
+test('ticket08 membership reads share reference locks and permit independent officers while revocation waits', async t => {
+  const first = await membershipHead('p08-read-lock-first');
+  const second = await enrolledOfficer('p08-read-lock-peer');
+  const peer = chapterFixture('peer-membership', second.id, {chapter_id:first.member.chapter_id});
+  chapterFixture('grant', second.id, {membership_id:peer.membership_id, duty:'CHAPTER_HEAD'});
+  const context = await (await second.browser.request(contextPath)).json();
+  second.selected = await (await selectChapter(second.browser, context.selection_revision, {...peer, expected_membership_version:1})).json();
+  const third = await membershipHead('p08-read-lock-other');
+  chapterFixture('membership-candidate', second.id, {chapter_id:first.member.chapter_id, approved_by_user_id:first.id});
+  for (const operation of ['list', 'read', 'candidate']) {
+    const holder = await chapterLockHolder(t, first.id, 'hold-membership-read', {
+      revision:first.selected.selection_revision, chapter_id:first.member.chapter_id,
+      membership_id:peer.membership_id, target_user_id:second.id, operation,
+    });
+    try {
+      assert.equal(Number(mysqlProbe("SELECT COUNT(*) FROM performance_schema.data_locks WHERE OBJECT_NAME IN ('users','memberships','duty_grants','roles','chapters') AND LOCK_TYPE='RECORD' AND LOCK_MODE LIKE 'X%'")), 0,
+        `${operation} must not take exclusive authority or reference locks`);
+      for (const officer of [second, third]) {
+        const chapter = officer === second ? first.member.chapter_id : third.member.chapter_id;
+        const res = await withDeadline(officer.browser.request(membershipPath(chapter), {
+          headers:{'X-Chapter-Context':officer.selected.selection_revision},
+        }), 'Independent membership reader blocked');
+        assert.equal(res.status, 200);
+      }
+      if (operation === 'candidate') {
+        const revoke = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+          'php', 'tests/fixtures/chapter-context-state.php', 'end-membership', first.id]);
+        const revoked = new Promise((resolve, reject) => { revoke.once('error', reject); revoke.once('exit', resolve); });
+        revoke.stdin.end(JSON.stringify({membership_id:first.member.membership_id}));
+        try { assert.ok(await waitForChapterWaiters(1) >= 1); }
+        finally { holder.release(); }
+        assert.equal(await withDeadline(revoked, 'Revocation did not finish'), 0);
+      }
+    } finally { holder.release(); }
+    assert.equal(await withDeadline(holder.exited, 'Membership read holder failed'), 0);
+  }
+});
+
+
+test('ticket08 reciprocal removals acquire the complete sorted authority set before chapter control', async t => {
+  const first = await membershipHead('p08-ordered-first');
+  const second = await enrolledOfficer('p08-ordered-second');
+  const peer = chapterFixture('peer-membership', second.id, {chapter_id:first.member.chapter_id});
+  chapterFixture('grant', second.id, {membership_id:peer.membership_id, duty:'CHAPTER_HEAD'});
+  const context = await (await second.browser.request(contextPath)).json();
+  const selected = await selectChapter(second.browser, context.selection_revision, {...peer, expected_membership_version:1});
+  assert.equal(selected.status, 200);
+  second.selected = await selected.json();
+  second.browser.worker = 'contender';
+  const holder = await chapterLockHolder(t, first.id);
+  const path = membershipPath(first.member.chapter_id);
+  const requests = [membershipPost(first, path + `/${peer.membership_id}/disable`, {
+    idempotency_key:'reciprocal-disable', expected_authority_version:first.selected.context.authority_version,
+    expected_membership_version:1,
+  }), membershipPost(second, path + `/${first.member.membership_id}/revoke`, {
+    idempotency_key:'reciprocal-revoke', expected_authority_version:second.selected.context.authority_version,
+    expected_membership_version:1,
+  })];
+  t.after(() => Promise.allSettled(requests));
+  try {
+    assert.ok(await waitForChapterWaiters(2) >= 2, 'Both independent workers must overlap on the ordered identity set');
+    assert.equal(Number(mysqlProbe("SELECT COUNT(*) FROM performance_schema.data_locks WHERE OBJECT_NAME='chapter_control_guards' AND LOCK_TYPE='RECORD' AND LOCK_MODE LIKE 'X%'")), 0,
+      'Neither mutation may lock chapter control before its complete identity set: ' + mysqlProbe("SELECT OBJECT_NAME, LOCK_MODE, LOCK_DATA, ENGINE_TRANSACTION_ID FROM performance_schema.data_locks WHERE OBJECT_NAME IN ('users','chapter_control_guards') AND LOCK_TYPE='RECORD'"));
+  } finally { holder.release(); }
+  const responses = await Promise.all(requests);
+  assert.equal(await withDeadline(holder.exited, 'Authority holder failed'), 0);
+  assert.equal(responses.filter(r => r.status === 200).length, 1);
+  const loser = responses.find(r => r.status !== 200);
+  assert.ok([403,409].includes(loser.status));
+  const winnerIndex = responses.findIndex(r => r.status === 200);
+  const winner = winnerIndex === 0 ? first : second;
+  const result = await responses[winnerIndex].json();
+  const recovered = await winner.browser.request(`/api/v1/chapters/${first.member.chapter_id}/operations/by-id/${result.operation.identity.operation_id}`);
+  assert.equal(recovered.status, 200);
+  assert.deepEqual(await recovered.json(), {...result, operation:{...result.operation,replayed:true}});
+  const removed = winnerIndex === 0 ? second : first;
+  const denied = await removed.browser.request(`/api/v1/chapters/${first.member.chapter_id}/operations/by-id/${result.operation.identity.operation_id}`);
+  assert.equal(denied.status, 403, 'The removed Head cannot recover outcomes in the original chapter');
 });
