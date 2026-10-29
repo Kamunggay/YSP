@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AccessChapterAdministration;
 
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -86,5 +87,48 @@ final class SignInThrottle
 
             return null;
         });
+    }
+
+    public function throttleMfaIdentity(string $userId, SessionContract $contract): ?JsonResponse
+    {
+        $key = hash('sha256', 'mfa-identity:'.$userId);
+        $now = time();
+        DB::table('session_throttles')->insertOrIgnore(['key' => $key, 'attempts' => 0, 'expires_at' => $now + self::WINDOW_SECONDS]);
+        $counter = DB::table('session_throttles')->where('key', $key)->lockForUpdate()->first();
+        if ($counter->expires_at <= $now) {
+            DB::table('session_throttles')->where('key', $key)->update(['attempts' => 0, 'expires_at' => $now + self::WINDOW_SECONDS]);
+        } elseif ($counter->attempts >= 5) {
+            return $contract->failure('SessionThrottled', 429)
+                ->header('Retry-After', (string) ($counter->expires_at - $now));
+        }
+
+        return null;
+    }
+
+    /** @param array{id: string, expires_at: string} $challenge */
+    public function throttleMfaChallenge(array $challenge, CarbonImmutable $now, SessionContract $contract): ?JsonResponse
+    {
+        $key = hash('sha256', 'mfa-challenge:'.$challenge['id']);
+        $until = CarbonImmutable::parse($challenge['expires_at']);
+        DB::table('session_throttles')->insertOrIgnore(['key' => $key, 'attempts' => 0,
+            'expires_at' => $until->getTimestamp()]);
+        $counter = DB::table('session_throttles')->where('key', $key)->lockForUpdate()->first();
+        // A challenge never regains attempts, even when its identity's older window expires.
+        if ($counter->attempts >= 5) {
+            return $contract->failure('SessionThrottled', 429)
+                ->header('Retry-After', (string) max(1, $until->getTimestamp() - $now->getTimestamp()));
+        }
+
+        return null;
+    }
+
+    public function recordMfaProofRejection(string $userId, ?string $challengeId, SessionContract $contract): JsonResponse
+    {
+        DB::table('session_throttles')->where('key', hash('sha256', 'mfa-identity:'.$userId))->increment('attempts');
+        if ($challengeId !== null) {
+            DB::table('session_throttles')->where('key', hash('sha256', 'mfa-challenge:'.$challengeId))->increment('attempts');
+        }
+
+        return $contract->failure('MfaProofRejected', 400);
     }
 }

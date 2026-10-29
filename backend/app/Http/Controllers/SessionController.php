@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Modules\AccessChapterAdministration\AuthenticatorEnrollments;
 use App\Modules\AccessChapterAdministration\BrowserSessions;
+use App\Modules\AccessChapterAdministration\MfaChallenges;
 use App\Modules\AccessChapterAdministration\SessionContract;
 use App\Modules\AccessChapterAdministration\SignInThrottle;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,16 @@ final class SessionController
     public function confirmEnrollment(Request $request, AuthenticatorEnrollments $enrollments): JsonResponse
     {
         return $enrollments->confirm($request);
+    }
+
+    public function verifyMfaChallenge(Request $request, MfaChallenges $challenges): JsonResponse
+    {
+        return $challenges->verify($request);
+    }
+
+    public function regenerateRecoveryCodes(Request $request, MfaChallenges $challenges): JsonResponse
+    {
+        return $challenges->regenerate($request);
     }
 
     public function signOut(Request $request, BrowserSessions $sessions): Response

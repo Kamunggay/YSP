@@ -9,7 +9,6 @@ use App\Modules\AccessChapterAdministration\ChapterContext;
 use App\Modules\AccessChapterAdministration\ChapterProvisioning;
 use App\Modules\AccessChapterAdministration\DutyGrantAuthorization;
 use App\Modules\AccessChapterAdministration\MembershipAdministration;
-use App\Modules\AccessChapterAdministration\MfaChallenges;
 use App\Modules\AccessChapterAdministration\SessionContract;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -45,8 +44,8 @@ Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::
         Route::match([$operations['signIn']['method']], $operations['signIn']['path'], [SessionController::class, 'signIn']);
         Route::match([$operations['getSession']['method']], $operations['getSession']['path'], [SessionController::class, 'getSession']);
         Route::match([$operations['signOut']['method']], $operations['signOut']['path'], [SessionController::class, 'signOut']);
-        Route::match([$operations['regenerateRecoveryCodes']['method']], $operations['regenerateRecoveryCodes']['path'], [MfaChallenges::class, 'regenerate']);
-        Route::match([$operations['verifyMfaChallenge']['method']], $operations['verifyMfaChallenge']['path'], [MfaChallenges::class, 'verify']);
+        Route::match([$operations['regenerateRecoveryCodes']['method']], $operations['regenerateRecoveryCodes']['path'], [SessionController::class, 'regenerateRecoveryCodes']);
+        Route::match([$operations['verifyMfaChallenge']['method']], $operations['verifyMfaChallenge']['path'], [SessionController::class, 'verifyMfaChallenge']);
         Route::match([$operations['prepareAuthenticatorEnrollment']['method']], $operations['prepareAuthenticatorEnrollment']['path'], [SessionController::class, 'prepareEnrollment']);
         Route::match([$operations['confirmAuthenticatorEnrollment']['method']], $operations['confirmAuthenticatorEnrollment']['path'], [SessionController::class, 'confirmEnrollment']);
     });

@@ -22,6 +22,11 @@ final class BrowserSessions
         $request->session()->put('mfa_verified_at', $verifiedAt);
     }
 
+    public function sessionExists(Request $request): bool
+    {
+        return DB::table('sessions')->where('id', $request->session()->getId())->exists();
+    }
+
     public function commitVerifiedMfa(Request $request, string $verifiedAt): void
     {
         $this->verifyMfa($request, $verifiedAt);
@@ -29,7 +34,7 @@ final class BrowserSessions
         $request->session()->save();
         // Laravel's database handler can swallow a failed INSERT and update
         // zero rows. Do not commit confirmation without the rotated session.
-        if (! DB::table('sessions')->where('id', $request->session()->getId())->exists()) {
+        if (! $this->sessionExists($request)) {
             throw new RuntimeException('Verified session was not persisted.');
         }
     }
