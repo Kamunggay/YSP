@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Modules\DocumentsReporting\SecurityHistory;
+use App\Modules\AccessChapterAdministration\IdentityAdministration;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 final class CreateIdentity extends Command
 {
@@ -16,7 +14,7 @@ final class CreateIdentity extends Command
 
     protected $description = 'Create only an identity in a restricted account-holder terminal session';
 
-    public function handle(SecurityHistory $history): int
+    public function handle(IdentityAdministration $identities): int
     {
         if (! $this->input->isInteractive() || ! stream_isatty(STDIN)) {
             $this->error('An interactive terminal with hidden input is required.');
@@ -43,20 +41,11 @@ final class CreateIdentity extends Command
 
             return self::FAILURE;
         }
-        $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        $cost = (int) env('BCRYPT_ROUNDS', app()->environment('production') ? 12 : 4);
+        $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => $cost]);
         unset($password, $confirmation);
         try {
-            $id = DB::transaction(function () use ($name, $email, $hash, $history, $operator): string {
-                DB::table('users')->insert([
-                    'public_id' => (string) Str::ulid(), 'name' => $name,
-                    'email' => $email, 'email_key' => $email, 'password_hash' => $hash,
-                    'created_at' => now(), 'updated_at' => now(),
-                ]);
-                $id = DB::connection()->getPdo()->lastInsertId();
-                $history->identityCreated($id, $operator);
-
-                return $id;
-            });
+            $id = $identities->createIdentity($name, $email, $hash, $operator);
         } catch (QueryException) {
             $this->error('Identity creation failed; check the login and database availability.');
 

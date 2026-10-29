@@ -19,6 +19,12 @@ final class BrowserSessions
         $request->session()->put('mfa_verified_at', $verifiedAt);
     }
 
+    public function cycleSession(Request $request): void
+    {
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+    }
+
     public function passwordMatches(string $password, string $hash): bool
     {
         return password_verify($password, $hash) && strlen($password) <= 72;
@@ -29,13 +35,14 @@ final class BrowserSessions
     {
         $user = DB::table('users')->where('email_key', strtolower(trim($email)))->first();
         // The dummy verifier keeps nonexistent and disabled logins on the hashing path.
-        $hash = $user->password_hash ?? '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
+        $cost = (int) env('BCRYPT_ROUNDS', app()->environment('production') ? 12 : 4);
+        $dummyCost = sprintf('%02d', $cost);
+        $hash = $user->password_hash ?? "\$2y\${$dummyCost}\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.";
         $matches = $this->passwordMatches($password, $hash);
         if (! $matches || $user === null || $user->status !== 'active') {
             return null;
         }
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $this->cycleSession($request);
         $request->session()->put([
             'identity_id' => (string) $user->id, 'auth_version' => $user->auth_version,
             'signed_in_at' => time(),

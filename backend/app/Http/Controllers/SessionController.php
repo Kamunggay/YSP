@@ -13,10 +13,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class SessionController
 {
-    public function signOut(Request $request): Response
+    public function signOut(Request $request, BrowserSessions $sessions): Response
     {
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $sessions->cycleSession($request);
 
         return response()->noContent();
     }
