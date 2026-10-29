@@ -12,16 +12,16 @@ use Illuminate\Support\Facades\DB;
 use OTPHP\InternalClock;
 use OTPHP\TOTP;
 use ParagonIE\ConstantTime\Base32;
-use RuntimeException;
-use Throwable;
 
 final class AuthenticatorEnrollments
 {
-    private const IP_ATTEMPT_LIMIT = 60;
-
-    private const IP_WINDOW_SECONDS = 900;
-
-    public function __construct(private BrowserSessions $sessions, private CurrentAuthority $authority, private SessionContract $contract) {}
+    public function __construct(
+        private BrowserSessions $sessions,
+        private CurrentAuthority $authority,
+        private SessionContract $contract,
+        private AuthenticatorProofs $proofs,
+        private SignInThrottle $throttle,
+    ) {}
 
     public function prepare(Request $request): JsonResponse
     {
@@ -47,9 +47,7 @@ final class AuthenticatorEnrollments
                     'code' => 'invalid', 'message' => 'Check this field.'], $errors ?: [$confirm ? 'enrollment_id' : 'intent'])], 422);
         }
 
-        $originalSessionId = $request->session()->getId();
-        $originalSession = $request->session()->all();
-        try {
+        return $this->sessions->withTransactionProtection($request, function () use ($request, $confirm, $body): JsonResponse {
             return DB::transaction(function () use ($request, $confirm, $body): JsonResponse {
                 // Every transition locks the identity first, including first preparation.
                 $user = DB::table('users')->where('id', $request->session()->get('identity_id'))->lockForUpdate()->first();
@@ -76,8 +74,9 @@ final class AuthenticatorEnrollments
                     if ($enrollment->failed_attempts >= 5) {
                         return $this->throttled($enrollment->attempt_window_expires_at);
                     }
-                    // Bounded skew: current 30-second step only.
-                    if (! app(AuthenticatorProofs::class)->accepts($enrollment->secret_ciphertext, $body['authenticator_code'], $now)) {
+                    // Bounded skew: current 30-second step only. Never accept a used step.
+                    $lastStep = $user->mfa_last_used_step !== null ? (int) $user->mfa_last_used_step : null;
+                    if (! $this->proofs->accepts($enrollment->secret_ciphertext, $body['authenticator_code'], $now, $lastStep)) {
                         DB::table('authenticator_enrollments')->where('user_id', $user->id)->increment('failed_attempts');
 
                         return $this->contract->failure('EnrollmentProofRejected', 400);
@@ -89,18 +88,12 @@ final class AuthenticatorEnrollments
                     DB::table('authenticator_enrollments')->where('user_id', $user->id)->update([
                         'consumed_at' => $now, 'secret_ciphertext' => null,
                     ]);
-                    $codes = app(AuthenticatorProofs::class)->issueCodes((string) $user->id, $now);
+                    $codes = $this->proofs->issueCodes((string) $user->id, $now);
                     DB::table('global_security_events')->insert(['user_id' => $user->id,
                         'event_code' => 'authenticator_confirmed', 'operator_reference' => 'authenticated_identity',
                         'occurred_at' => $now, 'details' => json_encode(['recovery_code_count' => 10], JSON_THROW_ON_ERROR)]);
-                    $this->sessions->verifyMfa($request, $now->format('Y-m-d\TH:i:s.u\Z'));
                     // Persist rotated state in this transaction, before any response can disclose codes.
-                    $request->session()->save();
-                    // Laravel's database handler can swallow a failed INSERT and update
-                    // zero rows. Do not commit confirmation without the rotated session.
-                    if (! DB::table('sessions')->where('id', $request->session()->getId())->exists()) {
-                        throw new RuntimeException('Verified session was not persisted.');
-                    }
+                    $this->sessions->commitVerifiedMfa($request, $now->format('Y-m-d\TH:i:s.u\Z'));
 
                     return response()->json(['session' => $this->sessions->snapshot($request),
                         'recovery_codes' => ['issued_at' => $now->format('Y-m-d\TH:i:s.u\Z'), 'codes' => $codes]]);
@@ -139,42 +132,12 @@ final class AuthenticatorEnrollments
                     'setup_uri' => $totp->getProvisioningUri(), 'manual_key' => $secret,
                 ]]);
             });
-        } catch (Throwable $failure) {
-            // Middleware may save again while unwinding a failed request. Restore
-            // the pre-transaction attributes so rolled-back MFA cannot leak into it.
-            $request->session()->setId($originalSessionId);
-            $request->session()->flush();
-            $request->session()->put($originalSession);
-            throw $failure;
-        }
+        });
     }
 
     public function throttleIp(Request $request, string $scope = 'enrollment'): ?JsonResponse
     {
-        // Commit the IP counter before entering the identity transaction: independent
-        // identities do not hold a network-wide lock throughout proof verification.
-        return DB::transaction(function () use ($request, $scope): ?JsonResponse {
-            $key = hash('sha256', $scope.'-ip:'.$request->ip());
-            $now = time();
-            DB::table('session_throttles')->insertOrIgnore([
-                'key' => $key, 'attempts' => 0, 'expires_at' => $now + self::IP_WINDOW_SECONDS,
-            ]);
-            $counter = DB::table('session_throttles')->where('key', $key)->lockForUpdate()->first();
-            if ($counter->expires_at <= $now) {
-                $counter->attempts = 0;
-                $counter->expires_at = $now + self::IP_WINDOW_SECONDS;
-                DB::table('session_throttles')->where('key', $key)->update([
-                    'attempts' => 0, 'expires_at' => $counter->expires_at,
-                ]);
-            }
-            if ($counter->attempts >= self::IP_ATTEMPT_LIMIT) {
-                return $this->contract->failure('SessionThrottled', 429)
-                    ->header('Retry-After', (string) ($counter->expires_at - $now));
-            }
-            DB::table('session_throttles')->where('key', $key)->increment('attempts');
-
-            return null;
-        });
+        return $this->throttle->throttleIp($request, $this->contract, $scope);
     }
 
     private function throttled(string $until): JsonResponse

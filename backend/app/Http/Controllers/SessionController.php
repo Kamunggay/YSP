@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Modules\AccessChapterAdministration\AuthenticatorEnrollments;
 use App\Modules\AccessChapterAdministration\BrowserSessions;
 use App\Modules\AccessChapterAdministration\SessionContract;
 use App\Modules\AccessChapterAdministration\SignInThrottle;
@@ -13,6 +14,16 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class SessionController
 {
+    public function prepareEnrollment(Request $request, AuthenticatorEnrollments $enrollments): JsonResponse
+    {
+        return $enrollments->prepare($request);
+    }
+
+    public function confirmEnrollment(Request $request, AuthenticatorEnrollments $enrollments): JsonResponse
+    {
+        return $enrollments->confirm($request);
+    }
+
     public function signOut(Request $request, BrowserSessions $sessions): Response
     {
         $sessions->cycleSession($request);

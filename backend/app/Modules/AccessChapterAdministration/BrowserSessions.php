@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\AccessChapterAdministration;
 
+use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
+use Throwable;
 
 final class BrowserSessions
 {
@@ -17,6 +20,42 @@ final class BrowserSessions
         $request->session()->regenerateToken();
         $request->session()->forget('mfa_challenge');
         $request->session()->put('mfa_verified_at', $verifiedAt);
+    }
+
+    public function commitVerifiedMfa(Request $request, string $verifiedAt): void
+    {
+        $this->verifyMfa($request, $verifiedAt);
+        // Persist rotated state in this transaction, before any response can disclose codes.
+        $request->session()->save();
+        // Laravel's database handler can swallow a failed INSERT and update
+        // zero rows. Do not commit confirmation without the rotated session.
+        if (! DB::table('sessions')->where('id', $request->session()->getId())->exists()) {
+            throw new RuntimeException('Verified session was not persisted.');
+        }
+    }
+
+    /**
+     * Executes a transactional callback with protection against session mutation leakage on failure.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $callback
+     * @return T
+     */
+    public function withTransactionProtection(Request $request, Closure $callback): mixed
+    {
+        $originalSessionId = $request->session()->getId();
+        $originalSession = $request->session()->all();
+        try {
+            return $callback();
+        } catch (Throwable $failure) {
+            // Middleware may save again while unwinding a failed request. Restore
+            // the pre-transaction attributes so rolled-back MFA cannot leak into it.
+            $request->session()->setId($originalSessionId);
+            $request->session()->flush();
+            $request->session()->put($originalSession);
+            throw $failure;
+        }
     }
 
     public function cycleSession(Request $request): void

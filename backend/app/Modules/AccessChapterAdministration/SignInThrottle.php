@@ -59,4 +59,32 @@ final class SignInThrottle
             return $response;
         });
     }
+
+    public function throttleIp(Request $request, SessionContract $contract, string $scope = 'enrollment'): ?JsonResponse
+    {
+        // Commit the IP counter before entering the identity transaction: independent
+        // identities do not hold a network-wide lock throughout proof verification.
+        return DB::transaction(function () use ($request, $contract, $scope): ?JsonResponse {
+            $key = hash('sha256', $scope.'-ip:'.$request->ip());
+            $now = time();
+            DB::table('session_throttles')->insertOrIgnore([
+                'key' => $key, 'attempts' => 0, 'expires_at' => $now + self::WINDOW_SECONDS,
+            ]);
+            $counter = DB::table('session_throttles')->where('key', $key)->lockForUpdate()->first();
+            if ($counter->expires_at <= $now) {
+                $counter->attempts = 0;
+                $counter->expires_at = $now + self::WINDOW_SECONDS;
+                DB::table('session_throttles')->where('key', $key)->update([
+                    'attempts' => 0, 'expires_at' => $counter->expires_at,
+                ]);
+            }
+            if ($counter->attempts >= self::IP_ATTEMPT_LIMIT) {
+                return $contract->failure('SessionThrottled', 429)
+                    ->header('Retry-After', (string) ($counter->expires_at - $now));
+            }
+            DB::table('session_throttles')->where('key', $key)->increment('attempts');
+
+            return null;
+        });
+    }
 }

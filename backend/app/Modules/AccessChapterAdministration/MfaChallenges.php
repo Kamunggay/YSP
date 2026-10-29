@@ -8,12 +8,15 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
-use Throwable;
 
 final class MfaChallenges
 {
-    public function __construct(private BrowserSessions $sessions, private AuthenticatorProofs $proofs, private SessionContract $contract) {}
+    public function __construct(
+        private BrowserSessions $sessions,
+        private AuthenticatorProofs $proofs,
+        private SessionContract $contract,
+        private SignInThrottle $throttle,
+    ) {}
 
     public function verify(Request $request): JsonResponse
     {
@@ -28,7 +31,7 @@ final class MfaChallenges
     private function transition(Request $request, bool $regenerate): JsonResponse
     {
         $receivedAt = CarbonImmutable::now('UTC');
-        $limited = app(AuthenticatorEnrollments::class)->throttleIp($request, 'mfa');
+        $limited = $this->throttle->throttleIp($request, $this->contract, 'mfa');
         if ($limited !== null) {
             return $limited;
         }
@@ -56,10 +59,9 @@ final class MfaChallenges
                 'field_errors' => array_map(fn (string $field): array => ['pointer' => '/'.$field,
                     'code' => 'invalid', 'message' => 'Check this field.'], array_values(array_unique($errors)))], 422);
         }
-        $sessionId = $request->session()->getId();
-        $attributes = $request->session()->all();
-        try {
-            return DB::transaction(function () use ($request, $body, $sessionId, $regenerate, $receivedAt): JsonResponse {
+
+        return $this->sessions->withTransactionProtection($request, function () use ($request, $body, $regenerate, $receivedAt): JsonResponse {
+            return DB::transaction(function () use ($request, $body, $regenerate, $receivedAt): JsonResponse {
                 // One identity lock serializes proof use across all of its sessions.
                 $user = DB::table('users')->where('id', $request->session()->get('identity_id'))->lockForUpdate()->first();
                 $snapshot = $this->sessions->snapshot($request);
@@ -75,7 +77,7 @@ final class MfaChallenges
                 if ($regenerate) {
                     if ($snapshot['state'] !== 'authenticated' || ($snapshot['mfa']['status'] ?? null) !== 'verified'
                         || $user->mfa_confirmed_at === null || $user->mfa_secret_ciphertext === null
-                        || ! DB::table('sessions')->where('id', $sessionId)->exists()) {
+                        || ! DB::table('sessions')->where('id', $request->session()->getId())->exists()) {
                         return $this->contract->failure('SessionForbidden', 403, 'forbidden');
                     }
                     // Freshness is measured from this request, never a cached session flag or caller timestamp.
@@ -87,7 +89,7 @@ final class MfaChallenges
                     }
                 } elseif ($snapshot['state'] !== 'mfa_challenge_required' || $challenge === null
                     || $challenge['id'] !== $body['challenge_id'] || $now->greaterThanOrEqualTo($challenge['expires_at'])
-                    || ! DB::table('sessions')->where('id', $sessionId)->exists()) {
+                    || ! DB::table('sessions')->where('id', $request->session()->getId())->exists()) {
                     return $this->contract->failure('ChallengeUnavailable', 409);
                 }
                 if (! $regenerate) {
@@ -119,23 +121,14 @@ final class MfaChallenges
                     'event_code' => $regenerate ? 'recovery_codes_regenerated' : 'mfa_challenge_verified',
                     'operator_reference' => 'authenticated_identity', 'occurred_at' => $now,
                     'details' => json_encode($regenerate ? ['recovery_code_count' => 10] : ['method' => $body['method']], JSON_THROW_ON_ERROR)]);
-                $this->sessions->verifyMfa($request, $now->format('Y-m-d\TH:i:s.u\Z'));
-                $request->session()->save();
-                if (! DB::table('sessions')->where('id', $request->session()->getId())->exists()) {
-                    throw new RuntimeException('Verified session was not persisted.');
-                }
+                $this->sessions->commitVerifiedMfa($request, $now->format('Y-m-d\TH:i:s.u\Z'));
 
                 $snapshot = $this->sessions->snapshot($request);
 
                 return response()->json($regenerate ? ['session' => $snapshot,
                     'recovery_codes' => ['issued_at' => $now->format('Y-m-d\TH:i:s.u\Z'), 'codes' => $codes]] : $snapshot);
             });
-        } catch (Throwable $failure) {
-            $request->session()->setId($sessionId);
-            $request->session()->flush();
-            $request->session()->put($attributes);
-            throw $failure;
-        }
+        });
     }
 
     // Call only with the identity locked. The budget outlives every five-minute challenge.

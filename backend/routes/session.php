@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Http\Controllers\SessionController;
 use App\Http\Middleware\SessionBoundary;
 use App\Http\Middleware\SessionForgeryGuard;
-use App\Modules\AccessChapterAdministration\AuthenticatorEnrollments;
 use App\Modules\AccessChapterAdministration\ChapterContext;
 use App\Modules\AccessChapterAdministration\ChapterProvisioning;
 use App\Modules\AccessChapterAdministration\DutyGrantAuthorization;
@@ -48,6 +47,6 @@ Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::
         Route::match([$operations['signOut']['method']], $operations['signOut']['path'], [SessionController::class, 'signOut']);
         Route::match([$operations['regenerateRecoveryCodes']['method']], $operations['regenerateRecoveryCodes']['path'], [MfaChallenges::class, 'regenerate']);
         Route::match([$operations['verifyMfaChallenge']['method']], $operations['verifyMfaChallenge']['path'], [MfaChallenges::class, 'verify']);
-        Route::match([$operations['prepareAuthenticatorEnrollment']['method']], $operations['prepareAuthenticatorEnrollment']['path'], [AuthenticatorEnrollments::class, 'prepare']);
-        Route::match([$operations['confirmAuthenticatorEnrollment']['method']], $operations['confirmAuthenticatorEnrollment']['path'], [AuthenticatorEnrollments::class, 'confirm']);
+        Route::match([$operations['prepareAuthenticatorEnrollment']['method']], $operations['prepareAuthenticatorEnrollment']['path'], [SessionController::class, 'prepareEnrollment']);
+        Route::match([$operations['confirmAuthenticatorEnrollment']['method']], $operations['confirmAuthenticatorEnrollment']['path'], [SessionController::class, 'confirmEnrollment']);
     });
