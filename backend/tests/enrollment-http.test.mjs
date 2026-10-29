@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { spawn, spawnSync as nativeSpawnSync } from 'node:child_process';
 import { measure, measureSync } from './helpers/verification-profile.mjs';
 
@@ -1487,6 +1488,117 @@ function provisioningFixture(action, id, input = {}) {
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return JSON.parse(result.stdout);
 }
+
+async function withDeadline(promise, message, milliseconds = 5000) {
+  let timer;
+  try {
+    return await Promise.race([promise,
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), milliseconds); })]);
+  } finally { clearTimeout(timer); }
+}
+
+async function chapterLockHolder(t, id, action = 'hold', input) {
+  const fixture = action === 'hold' ? 'enrollment-state.php' : 'chapter-context-state.php';
+  const child = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', `tests/fixtures/${fixture}`, action, id]);
+  const release = () => { if (!child.stdin.writableEnded && !child.stdin.destroyed) child.stdin.end('\n'); };
+  t.after(release);
+  const exited = new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', resolve); });
+  const held = new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
+    child.once('exit', code => reject(new Error(`Chapter holder exited ${code}`)));
+  });
+  if (input) child.stdin.write(JSON.stringify(input) + '\n');
+  await withDeadline(held, 'Chapter holder timeout');
+  return {release, exited};
+}
+
+function mysqlProbe(sql) {
+  const result = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+    'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "$1"', 'sh', sql], {encoding:'utf8'});
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+async function waitForChapterWaiters(count) {
+  let waiting = 0;
+  for (let i = 0; i < 40; i++) {
+    waiting = Number(mysqlProbe('SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits'));
+    if (waiting >= count) break;
+    await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 50)));
+  }
+  return waiting;
+}
+
+async function concurrentChapterSelections(t, id, send) {
+  const holder = await chapterLockHolder(t, id);
+  const pending = Promise.all(send());
+  let waiting;
+  try { waiting = await waitForChapterWaiters(2); }
+  finally { holder.release(); }
+  const responses = await pending;
+  assert.equal(await holder.exited, 0);
+  assert.ok(waiting >= 2, `Both independent HTTP transactions must overlap; waiters=${waiting}`);
+  return responses;
+}
+
+test('ticket07 context routes throttle before selectors and authority writes with safe retry guidance', async t => {
+  for (const route of ['context', 'memberships', 'select']) {
+    const {browser, id} = await signedInBrowser(`p07-throttle-${route}`);
+    arrangeState('clear-throttles', id);
+    const before = await (await browser.request(contextPath)).json();
+    const send = () => route === 'context' ? browser.request(contextPath + '?unknown=1')
+      : route === 'memberships' ? browser.request('/api/v1/session/chapter-memberships?unknown=1')
+      : post(browser, '/api/v1/session/chapter-selection', {});
+    let response;
+    for (let i = 0; i < 61; i++) {
+      response = await send();
+      if (response.status === 429) break;
+    }
+    assert.equal(response.status, 429, route);
+    assert.equal((await response.json()).code, 'throttled');
+    assert.match(response.headers.get('retry-after'), /^[1-9][0-9]*$/);
+    const holder = await chapterLockHolder(t, id);
+    try { assert.equal((await withDeadline(send(), 'Throttled request waited for authority')).status, 429); }
+    finally { holder.release(); }
+    assert.equal(await withDeadline(holder.exited, 'Throttle lock holder failed to exit'), 0);
+    assert.equal((await browser.request(contextPath, {headers:{Origin:'https://foreign.test'}})).status, 403);
+    assert.equal((await browser.request('/api/v1/session/chapter-selection', {method:'POST', body:{}})).status, 419);
+    arrangeState('expire-throttles', id);
+    const after = await (await browser.request(contextPath)).json();
+    assert.equal(after.selection_revision, before.selection_revision);
+    assert.equal(after.chapter_state, 'no_authorized_memberships');
+  }
+});
+
+test('ticket07 independent officers share authority reads across same and different chapters while revocation waits', async t => {
+  const first = await signedInBrowser('p07-shared-first');
+  const own = chapterFixture('membership', first.id);
+  const second = await signedInBrowser('p07-shared-second');
+  chapterFixture('peer-membership', second.id, {chapter_id:own.chapter_id});
+  const third = await signedInBrowser('p07-shared-third');
+  chapterFixture('membership', third.id);
+  const holder = await chapterLockHolder(t, first.id, 'hold-context', {revision:'ctx_' + 'x'.repeat(32)});
+  try {
+    for (const officer of [second, third]) {
+      const response = await withDeadline(officer.browser.request(contextPath), 'Independent context read blocked');
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).chapter_state, 'selected');
+    }
+    assert.equal(Number(mysqlProbe("SELECT COUNT(*) FROM performance_schema.data_locks WHERE OBJECT_NAME IN ('users','memberships','duty_grants','roles','chapters','requesting_units') AND LOCK_TYPE='RECORD' AND LOCK_MODE LIKE 'X%'")), 0,
+      'Authority reads must hold shared locks');
+    const revoke = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+      'php', 'tests/fixtures/chapter-context-state.php', 'end-membership', first.id]);
+    const revoked = new Promise((resolve, reject) => { revoke.once('error', reject); revoke.once('exit', resolve); });
+    revoke.stdin.end(JSON.stringify({membership_id:own.membership_id}));
+    try { assert.ok(await waitForChapterWaiters(1) >= 1, 'Conflicting revocation must wait for the context reader'); }
+    finally { holder.release(); }
+    assert.equal(await withDeadline(revoked, 'Revocation failed to complete'), 0);
+  } finally { holder.release(); }
+  assert.equal(await withDeadline(holder.exited, 'Context holder failed to exit'), 0);
+  assert.equal((await (await first.browser.request(contextPath)).json()).chapter_state, 'no_authorized_memberships');
+});
 
 test('ticket07 zero memberships is an authenticated empty context with a stable server revision', async () => {
   const {browser} = await signedInBrowser('p07-empty');
@@ -3044,29 +3156,7 @@ test('ticket07 concurrent tabs overlap real MySQL transactions and accept only o
   const contender = new Browser();
   contender.cookies = new Map(browser.cookies);
   contender.worker = 'contender';
-  const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
-    'php', 'tests/fixtures/enrollment-state.php', 'hold', id]);
-  t.after(() => holder.stdin.end('\n'));
-  await Promise.race([new Promise((resolve, reject) => {
-    holder.once('error', reject);
-    holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
-    holder.once('exit', () => reject(new Error('Chapter context lock holder exited')));
-  }), new Promise((_, reject) => setTimeout(() => reject(new Error('Lock timeout')), 5000))]);
-  const pending = Promise.all([selectChapter(browser, initial.selection_revision, first),
-    selectChapter(contender, initial.selection_revision, second)]);
-  let waiting = 0;
-  try {
-    for (let i = 0; i < 40; i++) {
-      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
-        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], {encoding:'utf8'});
-      assert.equal(probe.status, 0, probe.stderr);
-      waiting = Number(probe.stdout.trim());
-      if (waiting >= 2) break;
-      await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 50)));
-    }
-  } finally { holder.stdin.end('\n'); }
-  const responses = await pending;
-  assert.ok(waiting >= 2, `Both independent HTTP transactions must overlap; waiters=${waiting}`);
+  const responses = await concurrentChapterSelections(t, id, () => [selectChapter(browser, initial.selection_revision, first), selectChapter(contender, initial.selection_revision, second)]);
   assert.deepEqual(responses.map(r => r.status).sort(), [200,409]);
   const accepted = await responses.find(r => r.status === 200).json();
   const denied = await responses.find(r => r.status === 409).json();
@@ -3141,6 +3231,8 @@ test('ticket07 test-only database fixtures exercise remaining authorized duty in
   const member = chapterFixture('membership', id, {duties:[]});
   const setup = chapterFixture('duties-matrix', id, {membership_id:member.membership_id});
   assert.ok(setup.active_unit_id);
+  assert.ok(setup.zero_unit_id);
+  assert.equal(setup.nonoverlapping, true);
   assert.ok(setup.inactive_unit_id);
   const vocabulary = [
     'COMMITTEE_REQUESTER','RF_APPROVER','SALES_OFFICER','SALES_REVIEWER','FINANCE',
@@ -3167,6 +3259,28 @@ test('ticket07 test-only database fixtures exercise remaining authorized duty in
     assert.ok(!grantIds.has(row.expired), `Expired grant for ${duty} must be excluded`);
     assert.ok(!grantIds.has(row.revoked), `Revoked grant for ${duty} must be excluded`);
     assert.ok(!grantIds.has(row.inactive_unit), `Inactive unit grant for ${duty} must be excluded`);
+  }
+
+  // Each amount check sees only this duty's unit grant; chapter null limits cannot mask it.
+  const catalogue = JSON.parse(readFileSync(new URL('../../contracts/transport/v1/p02-action-catalogue.json', import.meta.url)));
+  for (const duty of vocabulary) {
+    const row = setup.matrix[duty];
+    for (const action of catalogue.actions.filter(a => a.enabled_boundary && a.chapter_duties.includes(duty))) {
+      for (const [unit, amount, status] of [
+        [row.zero_unit_id, '0.00', 200], [row.zero_unit_id, '0.01', 403],
+        [row.finite_unit_id, '1500.00', 200], [row.finite_unit_id, '1500.01', 403],
+      ]) {
+        const result = chapterFixture('execute', id, {revision:current.selection_revision,
+          scope:{chapter_id:member.chapter_id, membership_id:member.membership_id,
+            expected_authority_version:current.context.authority_version, requesting_unit_id:unit,
+            action:action.action, amount}});
+        assert.equal(result.status, status, `${duty} ${action.action} ${amount}`);
+        assert.equal(result.effect_committed, status === 200);
+      }
+    }
+    const refreshed = await (await browser.request(contextPath)).json();
+    assert.equal(refreshed.selection_revision, current.selection_revision);
+    assert.deepEqual(refreshed.context.duty_grants, current.context.duty_grants);
   }
 
   // Chapter-level actions include Head, Finance, and universal status reads, but exclude provider/disabled actions.
@@ -3204,14 +3318,29 @@ test('ticket07 test-only database fixtures exercise remaining authorized duty in
   // Unit-scoped grant with zero limit (0.00):
   assert.equal(chapterFixture('execute', id, {
     revision: current.selection_revision,
-    scope: {...baseScope, requesting_unit_id: setup.active_unit_id, action: 'policy.status.read', amount: '0.00'},
+    scope: {...baseScope, requesting_unit_id: setup.zero_unit_id, action: 'policy.status.read', amount: '0.00'},
   }).status, 200);
+  assert.equal(chapterFixture('execute', id, {
+    revision: current.selection_revision,
+    scope: {...baseScope, requesting_unit_id: setup.zero_unit_id, action: 'policy.status.read', amount: '0.01'},
+  }).status, 403);
 
   // Unit-scoped grant on inactive unit is rejected:
   assert.equal(chapterFixture('execute', id, {
     revision: current.selection_revision,
     scope: {...baseScope, requesting_unit_id: setup.inactive_unit_id, action: 'policy.status.read'},
   }).status, 403);
+});
+
+test('ticket07 duty matrix rejects overlapping authority instead of labeling it authorized coverage', async () => {
+  const {id} = await signedInBrowser('p07-matrix-overlap');
+  const member = chapterFixture('membership', id);
+  const result = spawnSync('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/chapter-context-state.php', 'duties-matrix', id],
+  {encoding:'utf8', input:JSON.stringify({membership_id:member.membership_id})});
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /RuntimeException/);
+  assert.ok(!result.stderr.includes('SQL') && !result.stderr.includes('membership_id'));
 });
 
 test('ticket07 0 1 many membership discovery and restoration tracks dynamic changes and retains selection across context reads', async () => {
@@ -3569,38 +3698,7 @@ test('ticket07 concurrent chapter selection updates under database contention ac
   contender.worker = 'contender';
 
   // Hold row lock to force both workers to wait and overlap transactions
-  const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
-    'php', 'tests/fixtures/enrollment-state.php', 'hold', id]);
-  t.after(() => holder.stdin.end('\n'));
-
-  await Promise.race([new Promise((resolve, reject) => {
-    holder.once('error', reject);
-    holder.stdout.on('data', data => { if (data.toString().includes('held')) resolve(); });
-    holder.once('exit', () => reject(new Error('Chapter context lock holder exited')));
-  }), new Promise((_, reject) => setTimeout(() => reject(new Error('Lock timeout')), 5000))]);
-
-  // Tab 1 tries switching to Chapter 2; Tab 2 tries switching to Chapter 3
-  const pending = Promise.all([
-    selectChapter(browser, revA, second),
-    selectChapter(contender, revA, third),
-  ]);
-
-  let waiting = 0;
-  try {
-    for (let i = 0; i < 40; i++) {
-      const probe = spawnSync('docker', ['exec', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
-        'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot -Nse "SELECT COUNT(DISTINCT REQUESTING_THREAD_ID) FROM performance_schema.data_lock_waits"'], {encoding: 'utf8'});
-      assert.equal(probe.status, 0, probe.stderr);
-      waiting = Number(probe.stdout.trim());
-      if (waiting >= 2) break;
-      await measure('synchronization-sleep', () => new Promise(resolve => setTimeout(resolve, 50)));
-    }
-  } finally {
-    holder.stdin.end('\n');
-  }
-
-  const responses = await pending;
-  assert.ok(waiting >= 2, `Both independent HTTP update transactions must overlap in lock waits; waiters=${waiting}`);
+  const responses = await concurrentChapterSelections(t, id, () => [selectChapter(browser, revA, second), selectChapter(contender, revA, third)]);
   assert.deepEqual(responses.map(r => r.status).sort(), [200, 409]);
 
   const accepted = await responses.find(r => r.status === 200).json();

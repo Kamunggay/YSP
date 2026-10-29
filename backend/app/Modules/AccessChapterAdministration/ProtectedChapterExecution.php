@@ -36,11 +36,14 @@ final class ProtectedChapterExecution
                     $authority = DB::table('memberships')->whereIn('user_id', [$actorId, $targetUser])->orderBy('id')->lockForUpdate()->get();
                     DB::table('duty_grants')->whereIn('membership_id', $authority->pluck('id'))->orderBy('id')->lockForUpdate()->get();
                 }
-                $user = DB::table('users')->where('id', $actorId)->lockForUpdate()->first();
+                // Context reads share authority locks; scoped mutations retain their
+                // exclusive authority set before taking selection/control locks.
+                $authorityLock = $scope === null ? 'sharedLock' : 'lockForUpdate';
+                $user = DB::table('users')->where('id', $actorId)->{$authorityLock}()->first();
                 if ($user !== null) {
-                    DB::table('provider_role_grants')->where('user_id', $user->id)->orderBy('id')->lockForUpdate()->get();
-                    $memberships = DB::table('memberships')->where('user_id', $user->id)->orderBy('id')->lockForUpdate()->get();
-                    DB::table('duty_grants')->whereIn('membership_id', $memberships->pluck('id'))->orderBy('id')->lockForUpdate()->get();
+                    DB::table('provider_role_grants')->where('user_id', $user->id)->orderBy('id')->{$authorityLock}()->get();
+                    $memberships = DB::table('memberships')->where('user_id', $user->id)->orderBy('id')->{$authorityLock}()->get();
+                    DB::table('duty_grants')->whereIn('membership_id', $memberships->pluck('id'))->orderBy('id')->{$authorityLock}()->get();
                 }
                 $session = $this->sessions->snapshot($request);
                 if ($user === null || $user->disabled_at !== null || $session['state'] === 'signed_out') {
@@ -67,7 +70,7 @@ final class ProtectedChapterExecution
                 // Locks prevent concurrent authority changes; time can still cross an
                 // expiry during the operation. Recheck immediately before commitment.
                 $current = $this->sessions->snapshot($request);
-                $live = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+                $live = DB::table('users')->where('id', $user->id)->{$authorityLock}()->first();
                 if ($live === null || $live->disabled_at !== null || $current['state'] === 'signed_out') {
                     throw new HttpResponseException($this->contract->failure('EnrollmentUnauthorized', 401));
                 }
@@ -235,7 +238,7 @@ final class ProtectedChapterExecution
         $query = DB::table('memberships')->join('chapters', 'chapters.id', '=', 'memberships.chapter_id')
             ->where('memberships.user_id', $user)->where('memberships.status', 'active')->whereNull('memberships.disabled_at')
             ->select('memberships.*', 'chapters.name as chapter_name')->orderBy('memberships.chapter_id')->orderBy('memberships.id')
-            ->lockForUpdate();
+            ->sharedLock();
         if ($after !== null) {
             $query->where('memberships.chapter_id', '>', $after);
         }
@@ -257,6 +260,6 @@ final class ProtectedChapterExecution
             ->where(fn ($query) => $query->where('scope_kind', 'chapter')->orWhere('requesting_units.active', true))
             ->whereNull('revoked_at')->where('starts_at', '<=', now())
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', now()))
-            ->select('duty_grants.*', 'roles.code as duty_code')->orderBy('duty_grants.id')->lockForUpdate()->get()->all();
+            ->select('duty_grants.*', 'roles.code as duty_code')->orderBy('duty_grants.id')->sharedLock()->get()->all();
     }
 }

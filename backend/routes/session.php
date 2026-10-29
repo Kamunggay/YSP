@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\GlobalIdentityDisableController;
 use App\Http\Controllers\SessionController;
+use App\Http\Middleware\ChapterContextThrottle;
 use App\Http\Middleware\SessionBoundary;
 use App\Http\Middleware\SessionForgeryGuard;
 use App\Modules\AccessChapterAdministration\ChapterContext;
@@ -29,9 +30,11 @@ Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::
         Route::post('/api/v1/chapters/{chapter_id}/memberships/{membership_id}/revoke', [MembershipAdministration::class, 'revokeMembership']);
         Route::get('/api/v1/chapters/{chapter_id}/operations/by-key', [MembershipAdministration::class, 'lookupByKey']);
         Route::get('/api/v1/chapters/{chapter_id}/operations/by-id/{operation_id}', [MembershipAdministration::class, 'lookupById']);
-        Route::get('/api/v1/session/chapter-context', [ChapterContext::class, 'context']);
-        Route::get('/api/v1/session/chapter-memberships', [ChapterContext::class, 'memberships']);
-        Route::post('/api/v1/session/chapter-selection', [ChapterContext::class, 'select']);
+        Route::middleware(ChapterContextThrottle::class)->group(function (): void {
+            Route::get('/api/v1/session/chapter-context', [ChapterContext::class, 'context']);
+            Route::get('/api/v1/session/chapter-memberships', [ChapterContext::class, 'memberships']);
+            Route::post('/api/v1/session/chapter-selection', [ChapterContext::class, 'select']);
+        });
         Route::get('/api/v1/provider/provisioning-context', [ChapterProvisioning::class, 'context']);
         Route::get('/api/v1/provider/provisionings', [ChapterProvisioning::class, 'list']);
         Route::post('/api/v1/provider/provisionings', [ChapterProvisioning::class, 'createProvisionedChapter']);

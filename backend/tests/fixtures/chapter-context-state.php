@@ -20,7 +20,7 @@ $app->make(Kernel::class)->bootstrap();
 require __DIR__.'/fixture-support.php';
 installFixtureFailureHandler();
 $user = $argv[2];
-$input = json_decode(stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
+$input = json_decode($argv[1] === 'hold-context' ? fgets(STDIN) : stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
 if ($argv[1] === 'grant-approval-security') {
     $approval = DB::table('duty_grant_limit_approvals')->where('chapter_id', $input['chapter_id'])->first();
     if ($approval === null) {
@@ -66,6 +66,13 @@ if ($argv[1] === 'grant-approval-security') {
         'executed_by_user_id' => $user, 'operator_reference' => 'Synthetic operator',
         'approval_reference' => 'Synthetic independent approval', 'authorized_at' => now()]);
     $result = ['authorized' => true];
+} elseif ($argv[1] === 'peer-membership') {
+    $member = insertFixtureId('memberships', ['chapter_id' => $input['chapter_id'], 'user_id' => $user,
+        'authorized_by_user_id' => $user, 'authorized_at' => now()]);
+    insertFixtureId('duty_grants', ['chapter_id' => $input['chapter_id'], 'membership_id' => $member,
+        'role_id' => DB::table('roles')->where('code', 'COMMITTEE_REQUESTER')->value('id'),
+        'scope_kind' => 'chapter', 'starts_at' => now()->subMinute()]);
+    $result = ['chapter_id' => $input['chapter_id'], 'membership_id' => $member];
 } elseif ($argv[1] === 'membership') {
     $result = DB::transaction(function () use ($user, $input): array {
         DB::table('users')->where('id', $user)->lockForUpdate()->first();
@@ -91,7 +98,7 @@ if ($argv[1] === 'grant-approval-security') {
 
         return ['chapter_id' => (string) $chapter, 'membership_id' => (string) $member, 'expected_membership_version' => 1];
     });
-} elseif (in_array($argv[1], ['execute', 'follow-up'], true)) {
+} elseif (in_array($argv[1], ['execute', 'follow-up', 'hold-context'], true)) {
     $session = app('session')->driver();
     foreach (DB::table('sessions')->get() as $row) {
         $payload = json_decode(base64_decode($row->payload), true, flags: JSON_THROW_ON_ERROR);
@@ -105,7 +112,17 @@ if ($argv[1] === 'grant-approval-security') {
     $request->setLaravelSession($session);
     $request->headers->set('X-Chapter-Context', $input['revision']);
     $marker = hash('sha256', random_bytes(32));
-    $effect = function () use ($marker, $input): JsonResponse {
+    $holdingContext = $argv[1] === 'hold-context';
+    $effect = function () use ($marker, $input, $holdingContext, $user): JsonResponse {
+        if ($holdingContext) {
+            $execution = app(ProtectedChapterExecution::class);
+            foreach ($execution->memberships($user) as $member) {
+                $execution->grants($member);
+            }
+            echo "held\n";
+            fflush(STDOUT);
+            fgets(STDIN);
+        }
         DB::table('session_throttles')->insert(['key' => $marker, 'attempts' => 1, 'expires_at' => time() + 60]);
         if (isset($input['wait_until'])) {
             while (now()->lt(Carbon::parse($input['wait_until'], 'UTC'))) {
@@ -118,7 +135,7 @@ if ($argv[1] === 'grant-approval-security') {
     $execution = app(ProtectedChapterExecution::class);
     $response = $argv[1] === 'follow-up'
         ? $execution->withCurrentAccess($request, $input['scope']['chapter_id'], $input['scope']['action'], $effect)
-        : $execution->execute($request, $effect, $input['scope']);
+        : $execution->execute($request, $effect, $input['scope'] ?? null);
     $result = ['status' => $response->getStatusCode(), 'body' => $response->getData(true),
         'effect_committed' => DB::table('session_throttles')->where('key', $marker)->exists()];
 } elseif ($argv[1] === 'grant') {
@@ -182,64 +199,50 @@ if ($argv[1] === 'grant-approval-security') {
         DB::table('users')->where('id', $user)->lockForUpdate()->first();
         $member = DB::table('memberships')->where('id', $input['membership_id'])->where('user_id', $user)->lockForUpdate()->first();
         DB::table('requesting_units')->insert(['chapter_id' => $member->chapter_id,
-            'code' => 'UACT'.bin2hex(random_bytes(4)), 'name' => 'Synthetic test active unit', 'active' => true]);
-        $activeUnit = (string) DB::connection()->getPdo()->lastInsertId();
-
-        DB::table('requesting_units')->insert(['chapter_id' => $member->chapter_id,
             'code' => 'UINACT'.bin2hex(random_bytes(4)), 'name' => 'Synthetic test inactive unit', 'active' => false]);
         $inactiveUnit = (string) DB::connection()->getPdo()->lastInsertId();
 
+        $futureUnit = insertFixtureId('requesting_units', ['chapter_id' => $member->chapter_id,
+            'code' => 'UFUT'.bin2hex(random_bytes(4)), 'name' => 'Synthetic future unit', 'active' => true]);
         $duties = DB::table('roles')->orderBy('id')->pluck('id', 'code')->all();
         $matrix = [];
         foreach ($duties as $code => $roleId) {
-            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
-                'role_id' => $roleId, 'scope_kind' => 'chapter', 'requesting_unit_id' => null,
-                'monetary_limit' => null, 'starts_at' => now()->subMinute(), 'ends_at' => null, 'revoked_at' => null]);
-            $chGrant = (string) DB::connection()->getPdo()->lastInsertId();
-
-            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
-                'role_id' => $roleId, 'scope_kind' => 'unit', 'requesting_unit_id' => $activeUnit,
-                'monetary_limit' => '1500.00', 'starts_at' => now()->subMinute(), 'ends_at' => null, 'revoked_at' => null]);
-            $unitFiniteGrant = (string) DB::connection()->getPdo()->lastInsertId();
-
-            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
-                'role_id' => $roleId, 'scope_kind' => 'unit', 'requesting_unit_id' => $activeUnit,
-                'monetary_limit' => '0.00', 'starts_at' => now()->subMinute(), 'ends_at' => null, 'revoked_at' => null]);
-            $unitZeroGrant = (string) DB::connection()->getPdo()->lastInsertId();
-
-            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
-                'role_id' => $roleId, 'scope_kind' => 'chapter', 'requesting_unit_id' => null,
-                'monetary_limit' => null, 'starts_at' => now()->addDay(), 'ends_at' => null, 'revoked_at' => null]);
-            $futureGrant = (string) DB::connection()->getPdo()->lastInsertId();
-
-            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
-                'role_id' => $roleId, 'scope_kind' => 'chapter', 'requesting_unit_id' => null,
-                'monetary_limit' => null, 'starts_at' => now()->subDays(2), 'ends_at' => now()->subDay(), 'revoked_at' => null]);
-            $expiredGrant = (string) DB::connection()->getPdo()->lastInsertId();
-
-            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
-                'role_id' => $roleId, 'scope_kind' => 'chapter', 'requesting_unit_id' => null,
-                'monetary_limit' => null, 'starts_at' => now()->subDays(2), 'ends_at' => null, 'revoked_at' => now()->subDay()]);
-            $revokedGrant = (string) DB::connection()->getPdo()->lastInsertId();
-
-            DB::table('duty_grants')->insert(['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
-                'role_id' => $roleId, 'scope_kind' => 'unit', 'requesting_unit_id' => $inactiveUnit,
-                'monetary_limit' => '500.00', 'starts_at' => now()->subMinute(), 'ends_at' => null, 'revoked_at' => null]);
-            $inactiveUnitGrant = (string) DB::connection()->getPdo()->lastInsertId();
-
+            $finiteUnit = insertFixtureId('requesting_units', ['chapter_id' => $member->chapter_id,
+                'code' => 'UFIN'.bin2hex(random_bytes(4)), 'name' => 'Synthetic finite-only duty unit', 'active' => true]);
+            $dutyZeroUnit = insertFixtureId('requesting_units', ['chapter_id' => $member->chapter_id,
+                'code' => 'UDZERO'.bin2hex(random_bytes(4)), 'name' => 'Synthetic zero-only duty unit', 'active' => true]);
+            $insert = function (string $scope, ?string $unit, ?string $limit, mixed $starts, mixed $ends = null, mixed $revoked = null) use ($member, $roleId): string {
+                return insertFixtureId('duty_grants', ['chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
+                    'role_id' => $roleId, 'scope_kind' => $scope, 'requesting_unit_id' => $unit,
+                    'monetary_limit' => $limit, 'starts_at' => $starts, 'ends_at' => $ends, 'revoked_at' => $revoked]);
+            };
             $matrix[$code] = [
-                'chapter_active' => $chGrant,
-                'unit_finite' => $unitFiniteGrant,
-                'unit_zero' => $unitZeroGrant,
-                'future' => $futureGrant,
-                'expired' => $expiredGrant,
-                'revoked' => $revokedGrant,
-                'inactive_unit' => $inactiveUnitGrant,
+                'finite_unit_id' => $finiteUnit,
+                'zero_unit_id' => $dutyZeroUnit,
+                'chapter_active' => $insert('chapter', null, null, now()->subMinute()),
+                'unit_finite' => $insert('unit', $finiteUnit, '1500.00', now()->subMinute()),
+                'unit_zero' => $insert('unit', $dutyZeroUnit, '0.00', now()->subMinute()),
+                'future' => $insert('unit', $futureUnit, null, now()->addDay()),
+                'expired' => $insert('chapter', null, null, now()->subDays(2), now()->subDay()),
+                'revoked' => $insert('chapter', null, null, now()->subDays(2), now()->subMinute(), now()->subMinute()),
+                'inactive_unit' => $insert('unit', $inactiveUnit, '500.00', now()->subMinute()),
             ];
+        }
+        $overlaps = DB::table('duty_grants as a')->join('duty_grants as b', function ($join): void {
+            $join->on('a.membership_id', '=', 'b.membership_id')->on('a.role_id', '=', 'b.role_id')
+                ->on('a.scope_kind', '=', 'b.scope_kind')->whereRaw('a.requesting_unit_id <=> b.requesting_unit_id')
+                ->on('a.id', '<', 'b.id');
+        })->where('a.membership_id', $member->id)->whereNull('a.revoked_at')->whereNull('b.revoked_at')
+            ->where(fn ($q) => $q->whereNull('a.ends_at')->orWhereColumn('b.starts_at', '<', 'a.ends_at'))
+            ->where(fn ($q) => $q->whereNull('b.ends_at')->orWhereColumn('a.starts_at', '<', 'b.ends_at'))->exists();
+        if ($overlaps) {
+            throw new RuntimeException('Overlapping synthetic duty authority.');
         }
 
         return [
-            'active_unit_id' => $activeUnit,
+            'active_unit_id' => $matrix['FINANCE']['finite_unit_id'],
+            'zero_unit_id' => $matrix['FINANCE']['zero_unit_id'],
+            'nonoverlapping' => true,
             'inactive_unit_id' => $inactiveUnit,
             'matrix' => $matrix,
         ];
