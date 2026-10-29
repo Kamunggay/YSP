@@ -3263,25 +3263,28 @@ test('ticket07 test-only database fixtures exercise remaining authorized duty in
 
   // Each amount check sees only this duty's unit grant; chapter null limits cannot mask it.
   const catalogue = JSON.parse(readFileSync(new URL('../../contracts/transport/v1/p02-action-catalogue.json', import.meta.url)));
+  const cases = [];
   for (const duty of vocabulary) {
     const row = setup.matrix[duty];
     for (const action of catalogue.actions.filter(a => a.enabled_boundary && a.chapter_duties.includes(duty))) {
       for (const [unit, amount, status] of [
         [row.zero_unit_id, '0.00', 200], [row.zero_unit_id, '0.01', 403],
         [row.finite_unit_id, '1500.00', 200], [row.finite_unit_id, '1500.01', 403],
-      ]) {
-        const result = chapterFixture('execute', id, {revision:current.selection_revision,
-          scope:{chapter_id:member.chapter_id, membership_id:member.membership_id,
-            expected_authority_version:current.context.authority_version, requesting_unit_id:unit,
-            action:action.action, amount}});
-        assert.equal(result.status, status, `${duty} ${action.action} ${amount}`);
-        assert.equal(result.effect_committed, status === 200);
-      }
+      ]) cases.push({label:`${duty} ${action.action} ${amount}`, status,
+        scope:{chapter_id:member.chapter_id, membership_id:member.membership_id,
+          expected_authority_version:current.context.authority_version, requesting_unit_id:unit,
+          action:action.action, amount}});
     }
-    const refreshed = await (await browser.request(contextPath)).json();
-    assert.equal(refreshed.selection_revision, current.selection_revision);
-    assert.deepEqual(refreshed.context.duty_grants, current.context.duty_grants);
   }
+  const results = chapterFixture('execute-batch', id, {revision:current.selection_revision, scopes:cases.map(c => c.scope)});
+  assert.equal(results.length, cases.length);
+  for (const [index, result] of results.entries()) {
+    assert.equal(result.status, cases[index].status, cases[index].label);
+    assert.equal(result.effect_committed, cases[index].status === 200, cases[index].label);
+  }
+  const refreshed = await (await browser.request(contextPath)).json();
+  assert.equal(refreshed.selection_revision, current.selection_revision);
+  assert.deepEqual(refreshed.context.duty_grants, current.context.duty_grants);
 
   // Chapter-level actions include Head, Finance, and universal status reads, but exclude provider/disabled actions.
   assert.ok(current.context.available_actions.includes('policy.status.read'));

@@ -98,7 +98,7 @@ if ($argv[1] === 'grant-approval-security') {
 
         return ['chapter_id' => (string) $chapter, 'membership_id' => (string) $member, 'expected_membership_version' => 1];
     });
-} elseif (in_array($argv[1], ['execute', 'follow-up', 'hold-context'], true)) {
+} elseif (in_array($argv[1], ['execute', 'execute-batch', 'follow-up', 'hold-context'], true)) {
     $session = app('session')->driver();
     foreach (DB::table('sessions')->get() as $row) {
         $payload = json_decode(base64_decode($row->payload), true, flags: JSON_THROW_ON_ERROR);
@@ -111,33 +111,38 @@ if ($argv[1] === 'grant-approval-security') {
     $request = Request::create('/synthetic-protected-consumer', 'POST');
     $request->setLaravelSession($session);
     $request->headers->set('X-Chapter-Context', $input['revision']);
-    $marker = hash('sha256', random_bytes(32));
-    $holdingContext = $argv[1] === 'hold-context';
-    $effect = function () use ($marker, $input, $holdingContext, $user): JsonResponse {
-        if ($holdingContext) {
-            $execution = app(ProtectedChapterExecution::class);
-            foreach ($execution->memberships($user) as $member) {
-                $execution->grants($member);
+    // Each batch item still owns an independent protected transaction and marker.
+    $run = function (?array $scope) use ($request, $input, $user, $argv): array {
+        $marker = hash('sha256', random_bytes(32));
+        $holdingContext = $argv[1] === 'hold-context';
+        $effect = function () use ($marker, $input, $holdingContext, $user): JsonResponse {
+            if ($holdingContext) {
+                $execution = app(ProtectedChapterExecution::class);
+                foreach ($execution->memberships($user) as $member) {
+                    $execution->grants($member);
+                }
+                echo "held\n";
+                fflush(STDOUT);
+                fgets(STDIN);
             }
-            echo "held\n";
-            fflush(STDOUT);
-            fgets(STDIN);
-        }
-        DB::table('session_throttles')->insert(['key' => $marker, 'attempts' => 1, 'expires_at' => time() + 60]);
-        if (isset($input['wait_until'])) {
-            while (now()->lt(Carbon::parse($input['wait_until'], 'UTC'))) {
-                usleep(10000);
+            DB::table('session_throttles')->insert(['key' => $marker, 'attempts' => 1, 'expires_at' => time() + 60]);
+            if (isset($input['wait_until'])) {
+                while (now()->lt(Carbon::parse($input['wait_until'], 'UTC'))) {
+                    usleep(10000);
+                }
             }
-        }
 
-        return response()->json(['executed' => true]);
+            return response()->json(['executed' => true]);
+        };
+        $execution = app(ProtectedChapterExecution::class);
+        $response = $argv[1] === 'follow-up'
+            ? $execution->withCurrentAccess($request, $scope['chapter_id'], $scope['action'], $effect)
+            : $execution->execute($request, $effect, $scope);
+
+        return ['status' => $response->getStatusCode(), 'body' => $response->getData(true),
+            'effect_committed' => DB::table('session_throttles')->where('key', $marker)->exists()];
     };
-    $execution = app(ProtectedChapterExecution::class);
-    $response = $argv[1] === 'follow-up'
-        ? $execution->withCurrentAccess($request, $input['scope']['chapter_id'], $input['scope']['action'], $effect)
-        : $execution->execute($request, $effect, $input['scope'] ?? null);
-    $result = ['status' => $response->getStatusCode(), 'body' => $response->getData(true),
-        'effect_committed' => DB::table('session_throttles')->where('key', $marker)->exists()];
+    $result = $argv[1] === 'execute-batch' ? array_map($run, $input['scopes']) : $run($input['scope'] ?? null);
 } elseif ($argv[1] === 'grant') {
     $result = DB::transaction(function () use ($user, $input): array {
         DB::table('users')->where('id', $user)->lockForUpdate()->first();
