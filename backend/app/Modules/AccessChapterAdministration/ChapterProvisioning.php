@@ -16,6 +16,20 @@ use stdClass;
 
 final class ChapterProvisioning
 {
+    /** @var list<string> */
+    private const PROVISIONING_COLUMNS = [
+        'chapter_provisionings.id as provisioning_id',
+        'chapter_provisionings.organization_id',
+        'chapter_provisionings.provider_user_id',
+        'chapter_provisionings.chapter_id',
+        'chapter_provisionings.status',
+        'chapter_provisionings.row_version',
+        'chapter_provisionings.created_at as provisioning_created_at',
+        'chapters.code as chapter_code',
+        'chapters.name as chapter_name',
+        'users.name as user_name',
+    ];
+
     public function __construct(private BrowserSessions $sessions, private SessionContract $contract, private CanonicalRequest $canonical, private ProviderOutcomes $outcomes) {}
 
     public function context(Request $request): JsonResponse
@@ -38,31 +52,44 @@ final class ChapterProvisioning
 
     public function list(Request $request): JsonResponse
     {
-        $query = $request->query();
-        if (array_diff(array_keys($query), ['limit', 'status', 'cursor']) !== []) {
-            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        $rawQuery = (string) $request->server('QUERY_STRING', '');
+        $seen = [];
+        if ($rawQuery !== '') {
+            foreach (explode('&', $rawQuery) as $pair) {
+                if ($pair === '') {
+                    continue;
+                }
+                $rawKey = explode('=', $pair, 2)[0];
+                $decodedKey = urldecode($rawKey);
+                if ($rawKey !== $decodedKey || ! in_array($rawKey, ['limit', 'status', 'cursor'], true) || isset($seen[$decodedKey]) || ! is_string($request->query($rawKey))) {
+                    return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+                }
+                $seen[$decodedKey] = true;
+            }
         }
 
         $limit = 50;
-        if (isset($query['limit'])) {
-            if (! is_string($query['limit']) || ! preg_match('/^[1-9][0-9]*$/D', $query['limit'])) {
+        if (isset($seen['limit'])) {
+            $limitVal = $request->query('limit');
+            if (! is_string($limitVal) || ! preg_match('/^[1-9][0-9]*$/D', $limitVal)) {
                 return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
             }
-            $limit = (int) $query['limit'];
+            $limit = (int) $limitVal;
             if ($limit < 1 || $limit > 100) {
                 return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
             }
         }
 
         $status = null;
-        if (isset($query['status'])) {
-            if (! is_string($query['status']) || ! in_array($query['status'], ['awaiting_initial_head', 'initial_head_designated'], true)) {
+        if (isset($seen['status'])) {
+            $statusVal = $request->query('status');
+            if (! is_string($statusVal) || ! in_array($statusVal, ['awaiting_initial_head', 'initial_head_designated'], true)) {
                 return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
             }
-            $status = $query['status'];
+            $status = $statusVal;
         }
 
-        $cursor = $query['cursor'] ?? null;
+        $cursor = isset($seen['cursor']) ? $request->query('cursor') : null;
         if ($cursor !== null && (! is_string($cursor) || ! preg_match('/^cur_[A-Za-z0-9_-]{32,96}$/D', $cursor))) {
             return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
         }
@@ -99,18 +126,7 @@ final class ChapterProvisioning
             }
 
             $rows = $queryBuilder
-                ->select([
-                    'chapter_provisionings.id as provisioning_id',
-                    'chapter_provisionings.organization_id',
-                    'chapter_provisionings.provider_user_id',
-                    'chapter_provisionings.chapter_id',
-                    'chapter_provisionings.status',
-                    'chapter_provisionings.row_version',
-                    'chapter_provisionings.created_at as provisioning_created_at',
-                    'chapters.code as chapter_code',
-                    'chapters.name as chapter_name',
-                    'users.name as user_name',
-                ])
+                ->select(self::PROVISIONING_COLUMNS)
                 ->orderBy('chapter_provisionings.id', 'asc')
                 ->limit($limit + 1)
                 ->lockForUpdate()
@@ -125,24 +141,7 @@ final class ChapterProvisioning
                 $items = $rows;
             }
 
-            $formatted = $items->map(fn ($row) => $this->withInitialHead([
-                'id' => (string) $row->provisioning_id,
-                'scope' => $scope,
-                'chapter' => [
-                    'id' => (string) $row->chapter_id,
-                    'code' => $row->chapter_code,
-                    'name' => $row->chapter_name,
-                ],
-                'version' => (int) $row->row_version,
-                'created_by' => [
-                    'user_id' => (string) $row->provider_user_id,
-                    'display_name' => $row->user_name,
-                ],
-                'created_at' => Carbon::parse($row->provisioning_created_at)->utc()->format('Y-m-d\TH:i:s.u\Z'),
-                'status' => $row->status,
-                'initial_head' => null,
-                'initial_head_membership_authorization' => 'not_applicable',
-            ]))->values()->all();
+            $formatted = $items->map(fn (stdClass $row): array => $this->formatProvisioning($row, $scope))->values()->all();
 
             return response()->json([
                 'items' => $formatted,
@@ -237,6 +236,32 @@ final class ChapterProvisioning
         return [$lastId, $snapshotTimeStr];
     }
 
+    /**
+     * @param  array<string, string>  $scope
+     * @return array<string, mixed>
+     */
+    private function formatProvisioning(stdClass $row, array $scope): array
+    {
+        return $this->withInitialHead([
+            'id' => (string) $row->provisioning_id,
+            'scope' => $scope,
+            'chapter' => [
+                'id' => (string) $row->chapter_id,
+                'code' => $row->chapter_code,
+                'name' => $row->chapter_name,
+            ],
+            'version' => (int) $row->row_version,
+            'created_by' => [
+                'user_id' => (string) $row->provider_user_id,
+                'display_name' => $row->user_name,
+            ],
+            'created_at' => Carbon::parse($row->provisioning_created_at)->utc()->format('Y-m-d\TH:i:s.u\Z'),
+            'status' => $row->status,
+            'initial_head' => null,
+            'initial_head_membership_authorization' => 'not_applicable',
+        ]);
+    }
+
     public function read(Request $request, string $provisioning_id): JsonResponse
     {
         if ($request->getQueryString() !== null || ! preg_match('/^[1-9][0-9]{0,19}$/D', $provisioning_id)) {
@@ -256,18 +281,7 @@ final class ChapterProvisioning
                 ->where('chapter_provisionings.id', $provisioning_id)
                 ->where('chapter_provisionings.organization_id', $scope['organization_id'])
                 ->where('chapter_provisionings.provider_user_id', $scope['provider_user_id'])
-                ->select([
-                    'chapter_provisionings.id as provisioning_id',
-                    'chapter_provisionings.organization_id',
-                    'chapter_provisionings.provider_user_id',
-                    'chapter_provisionings.chapter_id',
-                    'chapter_provisionings.status',
-                    'chapter_provisionings.row_version',
-                    'chapter_provisionings.created_at as provisioning_created_at',
-                    'chapters.code as chapter_code',
-                    'chapters.name as chapter_name',
-                    'users.name as user_name',
-                ])
+                ->select(self::PROVISIONING_COLUMNS)
                 ->lockForUpdate()
                 ->first();
 
@@ -275,39 +289,42 @@ final class ChapterProvisioning
                 return response()->json(['code' => 'provisioning_not_visible', 'message' => 'Provisioning is not available.'], 404);
             }
 
-            return response()->json($this->withInitialHead([
-                'id' => (string) $row->provisioning_id,
-                'scope' => $scope,
-                'chapter' => [
-                    'id' => (string) $row->chapter_id,
-                    'code' => $row->chapter_code,
-                    'name' => $row->chapter_name,
-                ],
-                'version' => (int) $row->row_version,
-                'created_by' => [
-                    'user_id' => (string) $row->provider_user_id,
-                    'display_name' => $row->user_name,
-                ],
-                'created_at' => Carbon::parse($row->provisioning_created_at)->utc()->format('Y-m-d\TH:i:s.u\Z'),
-                'status' => $row->status,
-                'initial_head' => null,
-                'initial_head_membership_authorization' => 'not_applicable',
-            ]));
+            return response()->json($this->formatProvisioning($row, $scope));
         }, 3);
     }
 
     public function lookupByKey(Request $request): JsonResponse
     {
-        $query = $request->query();
-        if (array_diff(array_keys($query), ['action_code', 'idempotency_key']) !== []
-            || ! isset($query['action_code'], $query['idempotency_key'])
-            || ! is_string($query['action_code']) || ! is_string($query['idempotency_key'])
-            || ! in_array($query['action_code'], ['provider.chapters.create', 'provider.initial_head.appoint'], true)
-            || ! preg_match('/^[A-Za-z0-9._:-]{1,128}$/D', $query['idempotency_key'])) {
+        $rawQuery = (string) $request->server('QUERY_STRING', '');
+        $seen = [];
+        if ($rawQuery === '') {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+        foreach (explode('&', $rawQuery) as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+            $rawKey = explode('=', $pair, 2)[0];
+            $decodedKey = urldecode($rawKey);
+            if ($rawKey !== $decodedKey || ! in_array($rawKey, ['action_code', 'idempotency_key'], true) || isset($seen[$decodedKey]) || ! is_string($request->query($rawKey))) {
+                return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+            }
+            $seen[$decodedKey] = true;
+        }
+
+        if (! isset($seen['action_code'], $seen['idempotency_key'])) {
             return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
         }
 
-        return DB::transaction(function () use ($request, $query): JsonResponse {
+        $actionCode = $request->query('action_code');
+        $idempotencyKey = $request->query('idempotency_key');
+        if (! in_array($actionCode, ['provider.chapters.create', 'provider.initial_head.appoint'], true)
+            || ! is_string($idempotencyKey)
+            || ! preg_match('/^[A-Za-z0-9._:-]{1,128}$/D', $idempotencyKey)) {
+            return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+        }
+
+        return DB::transaction(function () use ($request, $actionCode, $idempotencyKey): JsonResponse {
             $authority = $this->authorize($request);
             if ($authority instanceof JsonResponse) {
                 return $authority;
@@ -317,8 +334,8 @@ final class ChapterProvisioning
             $attempt = DB::table('provider_operation_attempts')
                 ->where('organization_id', $scope['organization_id'])
                 ->where('provider_user_id', $scope['provider_user_id'])
-                ->where('action_code', $query['action_code'])
-                ->where('idempotency_key', $query['idempotency_key'])
+                ->where('action_code', $actionCode)
+                ->where('idempotency_key', $idempotencyKey)
                 ->first();
 
             return $this->formatLookupResult($scope, $attempt);

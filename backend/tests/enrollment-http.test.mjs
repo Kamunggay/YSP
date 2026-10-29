@@ -4742,6 +4742,9 @@ test('ticket05 outcome recovery via key and ID lookup returns committed/rejected
     `${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=k&organization_id=2`,
     `${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=k&operation_id=${operationId}`,
     `${lookupKeyPath}?action_code[]=provider.chapters.create&idempotency_key=k`,
+    `${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=k1&idempotency_key=k2`,
+    `${lookupKeyPath}?action_code=provider.chapters.create&action_code=provider.chapters.create&idempotency_key=k`,
+    `${lookupKeyPath}?action%5Fcode=provider.chapters.create&idempotency_key=k`,
     `${lookupIdPath}/${operationId}?organization_id=2`,
     `${lookupIdPath}/bad_ulid`,
   ]) {
@@ -4804,6 +4807,9 @@ test('ticket05 listProvisionings pages with bounded deterministic cursors and re
     `${provisioningPath}?status=invalid_status`,
     `${provisioningPath}?organization_id=2`,
     `${provisioningPath}?limit[]=2`,
+    `${provisioningPath}?limit=10&limit=20`,
+    `${provisioningPath}?status=awaiting_initial_head&status=initial_head_designated`,
+    `${provisioningPath}?limit=10&%6cimit=20`,
     `${provisioningPath}?limit=2&cursor=cur_invalid_short`,
     `${provisioningPath}?limit=1&cursor=${p1Body.next_cursor}`, // Changed limit
     `${provisioningPath}?limit=2&status=awaiting_initial_head&cursor=${p1Body.next_cursor}`, // Changed status filter
@@ -4867,21 +4873,35 @@ test('ticket05 after-commit failure recovery via key or ID lookup preserves dura
   const {browser, id, organization} = await verifiedProvisioner('p05-lost-response');
   const body = createChapterBody('LOST_RESP_' + Date.now());
 
-  // Successful commit
-  const response = await post(browser, provisioningPath, body);
-  assert.equal(response.status, 200);
-  const original = await response.json();
-  const operationId = original.operation.identity.operation_id;
-  const provisioningId = original.provisioning.id;
+  // Inject a controlled fault after database commit:
+  // Trigger on sessions table causes middleware session persistence to fail with SQLSTATE 45000 after inner chapter transaction commits
+  assert.match(id, /^[1-9][0-9]*$/);
+  mysqlFault(`DELIMITER //
+CREATE TRIGGER provisioning_test_reject_session BEFORE UPDATE ON sessions FOR EACH ROW
+BEGIN IF JSON_UNQUOTE(JSON_EXTRACT(CONVERT(FROM_BASE64(NEW.payload) USING utf8mb4), '$.identity_id')) = '${id}'
+AND COALESCE(@provisioning_fault_fired, 0) = 0 THEN
+SET @provisioning_fault_fired = 1;
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Synthetic session persistence fault after chapter commit'; END IF; END//
+DELIMITER ;\n`);
 
-  // Simulate lost response: client did not receive response, recovers by looking up via idempotency key
+  try {
+    const response = await post(browser, provisioningPath, body);
+    assert.ok(response.status === 500 || response.status === 503, `Expected server failure after commit, got ${response.status}`);
+    assert.equal((await response.json()).provisioning, undefined);
+  } finally {
+    mysqlFault('DROP TRIGGER IF EXISTS provisioning_test_reject_session;');
+  }
+
+  // Simulate lost response: client did not receive 200 response, recovers by looking up via idempotency key
   const recoveredByKey = await browser.request(`${lookupKeyPath}?action_code=provider.chapters.create&idempotency_key=${body.idempotency_key}`);
   assert.equal(recoveredByKey.status, 200);
   const keyBody = await recoveredByKey.json();
   assert.equal(keyBody.action_result, 'success');
-  assert.equal(keyBody.provisioning.id, provisioningId);
-  assert.equal(keyBody.operation.identity.operation_id, operationId);
+  assert.equal(keyBody.operation.identity.idempotency_key, body.idempotency_key);
+  assert.equal(keyBody.operation.outcome, 'committed');
   assert.equal(keyBody.operation.replayed, true);
+  const operationId = keyBody.operation.identity.operation_id;
+  const provisioningId = keyBody.provisioning.id;
 
   // Client recovers by looking up via known operation ID
   const recoveredById = await browser.request(`${lookupIdPath}/${operationId}`);
@@ -4892,7 +4912,9 @@ test('ticket05 after-commit failure recovery via key or ID lookup preserves dura
   // Client retries POST with the same key
   const replayed = await post(browser, provisioningPath, body);
   assert.equal(replayed.status, 200);
-  assert.deepEqual(await replayed.json(), {...original, operation:{...original.operation, replayed:true}});
+  const replayedBody = await replayed.json();
+  assert.equal(replayedBody.operation.replayed, true);
+  assert.equal(replayedBody.provisioning.id, provisioningId);
 
   // Exactly one chapter and one attempt exist
   assert.equal(provisioningFixture('attempt-count', id).count, 1);
