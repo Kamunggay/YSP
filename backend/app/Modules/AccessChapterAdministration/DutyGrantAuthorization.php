@@ -193,4 +193,357 @@ final class DutyGrantAuthorization
         return response()->json(['code' => 'validation_failed', 'message' => 'Review marked fields.',
             'field_feedback' => [['path' => $path, 'code' => 'INVALID', 'message' => 'Review this field.']], 'next_action' => 'correct_fields'], 422);
     }
+
+    public function readDutyCatalogue(Request $request, string $chapter_id): JsonResponse
+    {
+        $queryString = (string) $request->server('QUERY_STRING', '');
+        if ($queryString !== '' || ! InitialHeadApproval::validId($chapter_id)) {
+            return $this->invalidSelector();
+        }
+
+        return $this->execution->execute($request, function (): JsonResponse {
+            $duties = $this->contract->metadata()['duties'];
+            sort($duties);
+            $items = array_map(fn (string $duty): array => ['duty_code' => $duty], $duties);
+
+            return response()->json(['items' => $items]);
+        }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
+            'action' => 'duty_grants.read', 'membership_contract' => true]);
+    }
+
+    public function readDutyGrant(Request $request, string $chapter_id, string $grant_id): JsonResponse
+    {
+        $queryString = (string) $request->server('QUERY_STRING', '');
+        if ($queryString !== '' || ! InitialHeadApproval::validId($chapter_id) || ! InitialHeadApproval::validId($grant_id)) {
+            return $this->invalidSelector();
+        }
+
+        return $this->execution->execute($request, function () use ($chapter_id, $grant_id): JsonResponse {
+            $row = DB::table('duty_grants')
+                ->join('roles', 'roles.id', '=', 'duty_grants.role_id')
+                ->join('memberships', 'memberships.id', '=', 'duty_grants.membership_id')
+                ->join('users', 'users.id', '=', 'memberships.user_id')
+                ->where('duty_grants.chapter_id', $chapter_id)
+                ->where('duty_grants.id', $grant_id)
+                ->select(
+                    'duty_grants.*',
+                    'roles.code as duty_code',
+                    'memberships.row_version as membership_row_version',
+                    'memberships.authority_version as membership_authority_version',
+                    'users.id as user_id',
+                    'users.name as user_name'
+                )
+                ->lockForUpdate()
+                ->first();
+
+            if ($row === null) {
+                return response()->json([
+                    'code' => 'duty_grant_not_visible',
+                    'message' => 'Reference unavailable.',
+                ], 404);
+            }
+
+            return response()->json($this->grantProjection($row));
+        }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
+            'action' => 'duty_grants.read', 'membership_contract' => true]);
+    }
+
+    public function listDutyGrants(Request $request, string $chapter_id): JsonResponse
+    {
+        $allowedKeys = ['membership_id', 'duty_code', 'scope_kind', 'requesting_unit_id', 'status', 'limit', 'cursor'];
+        $seen = [];
+        $queryString = (string) $request->server('QUERY_STRING', '');
+        foreach ($queryString === '' ? [] : explode('&', $queryString) as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+            $key = urldecode(explode('=', $pair, 2)[0]);
+            if (! in_array($key, $allowedKeys, true) || isset($seen[$key]) || ! is_string($request->query($key))) {
+                return $this->invalidSelector();
+            }
+            $seen[$key] = true;
+        }
+
+        if (! InitialHeadApproval::validId($chapter_id)) {
+            return $this->invalidSelector();
+        }
+
+        $membershipId = $request->query('membership_id');
+        if ($membershipId !== null && (! is_string($membershipId) || ! InitialHeadApproval::validId($membershipId))) {
+            return $this->invalidSelector();
+        }
+
+        $dutyCode = $request->query('duty_code');
+        if ($dutyCode !== null && (! is_string($dutyCode) || ! in_array($dutyCode, $this->contract->metadata()['duties'], true))) {
+            return $this->invalidSelector();
+        }
+
+        $scopeKind = $request->query('scope_kind');
+        if ($scopeKind !== null && (! is_string($scopeKind) || ! in_array($scopeKind, ['chapter', 'unit'], true))) {
+            return $this->invalidSelector();
+        }
+
+        $requestingUnitId = $request->query('requesting_unit_id');
+        if ($requestingUnitId !== null) {
+            if (! is_string($requestingUnitId) || ! InitialHeadApproval::validId($requestingUnitId) || $scopeKind !== 'unit') {
+                return $this->invalidSelector();
+            }
+        }
+
+        $status = $request->query('status');
+        if ($status !== null && (! is_string($status) || ! in_array($status, ['effective', 'scheduled', 'ended', 'revoked'], true))) {
+            return $this->invalidSelector();
+        }
+
+        $limit = 50;
+        if ($request->query('limit') !== null) {
+            $limitStr = $request->query('limit');
+            if (! is_string($limitStr) || ! preg_match('/^[1-9][0-9]*$/D', $limitStr) || (int) $limitStr < 1 || (int) $limitStr > 100) {
+                return $this->invalidSelector();
+            }
+            $limit = (int) $limitStr;
+        }
+
+        $cursor = $request->query('cursor');
+        if ($cursor !== null && (! is_string($cursor) || ! preg_match('/^cur_[A-Za-z0-9_-]{32,96}$/D', $cursor))) {
+            return $this->invalidSelector();
+        }
+
+        return $this->execution->execute($request, function (array $session) use ($chapter_id, $membershipId, $dutyCode, $scopeKind, $requestingUnitId, $status, $limit, $cursor): JsonResponse {
+            $actor = (string) $session['user']['id'];
+            $lastId = null;
+            $snapshotTime = (string) time();
+
+            if ($cursor !== null) {
+                $decoded = $this->decodeDutyGrantCursor($actor, $chapter_id, $cursor, $membershipId, $dutyCode, $scopeKind, $requestingUnitId, $status, $limit);
+                if ($decoded instanceof JsonResponse) {
+                    return $decoded;
+                }
+                [$lastId, $snapshotTime] = $decoded;
+            }
+
+            $stateHash = $this->dutyGrantStateHash($chapter_id);
+
+            $query = DB::table('duty_grants')
+                ->join('roles', 'roles.id', '=', 'duty_grants.role_id')
+                ->join('memberships', 'memberships.id', '=', 'duty_grants.membership_id')
+                ->join('users', 'users.id', '=', 'memberships.user_id')
+                ->where('duty_grants.chapter_id', $chapter_id);
+
+            if ($membershipId !== null) {
+                $memberExists = DB::table('memberships')
+                    ->where('chapter_id', $chapter_id)
+                    ->where('id', $membershipId)
+                    ->exists();
+                if (! $memberExists) {
+                    return response()->json([
+                        'code' => 'duty_grant_not_visible',
+                        'message' => 'Reference unavailable.',
+                    ], 404);
+                }
+                $query->where('duty_grants.membership_id', $membershipId);
+            }
+            if ($dutyCode !== null) {
+                $query->where('roles.code', $dutyCode);
+            }
+            if ($scopeKind !== null) {
+                $query->where('duty_grants.scope_kind', $scopeKind);
+            }
+            if ($requestingUnitId !== null) {
+                $unitExists = DB::table('requesting_units')
+                    ->where('chapter_id', $chapter_id)
+                    ->where('id', $requestingUnitId)
+                    ->exists();
+                if (! $unitExists) {
+                    return response()->json([
+                        'code' => 'duty_grant_not_visible',
+                        'message' => 'Reference unavailable.',
+                    ], 404);
+                }
+                $query->where('duty_grants.requesting_unit_id', $requestingUnitId);
+            }
+            if ($status !== null) {
+                $snapshotUtc = Carbon::createFromTimestamp((int) $snapshotTime, 'UTC')->format('Y-m-d H:i:s.u');
+                if ($status === 'effective') {
+                    $query->whereNull('duty_grants.revoked_at')
+                        ->where('duty_grants.starts_at', '<=', $snapshotUtc)
+                        ->where(fn ($q) => $q->whereNull('duty_grants.ends_at')->orWhere('duty_grants.ends_at', '>', $snapshotUtc));
+                } elseif ($status === 'scheduled') {
+                    $query->whereNull('duty_grants.revoked_at')
+                        ->where('duty_grants.starts_at', '>', $snapshotUtc);
+                } elseif ($status === 'ended') {
+                    $query->whereNull('duty_grants.revoked_at')
+                        ->whereNotNull('duty_grants.ends_at')
+                        ->where('duty_grants.ends_at', '<=', $snapshotUtc);
+                } elseif ($status === 'revoked') {
+                    $query->whereNotNull('duty_grants.revoked_at');
+                }
+            }
+
+            if ($lastId !== null) {
+                $query->where('duty_grants.id', '>', $lastId);
+            }
+
+            $rows = $query->select(
+                'duty_grants.*',
+                'roles.code as duty_code',
+                'memberships.row_version as membership_row_version',
+                'memberships.authority_version as membership_authority_version',
+                'users.id as user_id',
+                'users.name as user_name'
+            )
+                ->orderBy('duty_grants.id', 'asc')
+                ->limit($limit + 1)
+                ->lockForUpdate()
+                ->get();
+
+            $nextCursor = null;
+            if ($rows->count() > $limit) {
+                $items = $rows->slice(0, $limit);
+                $lastItem = $items->last();
+                $nextCursor = $this->encodeDutyGrantCursor($actor, $chapter_id, (string) $lastItem->id, $membershipId, $dutyCode, $scopeKind, $requestingUnitId, $status, $limit, "{$snapshotTime}_{$stateHash}");
+            } else {
+                $items = $rows;
+            }
+
+            $formatted = $items->map(fn (object $row): array => $this->grantProjection($row))->values()->all();
+
+            return response()->json([
+                'items' => $formatted,
+                'next_cursor' => $nextCursor,
+            ]);
+        }, ['chapter_id' => $chapter_id, 'membership_id' => $this->selectedMembership($request),
+            'action' => 'duty_grants.read', 'membership_contract' => true]);
+    }
+
+    private function dutyGrantStateHash(string $chapterId): string
+    {
+        $stats = DB::table('duty_grants')->where('chapter_id', $chapterId)
+            ->selectRaw('COUNT(*) as cnt, COALESCE(MAX(id), 0) as max_id, COALESCE(SUM(row_version), 0) as sum_ver, COALESCE(MAX(row_version), 0) as max_ver, COUNT(revoked_at) as revoked_cnt')
+            ->lockForUpdate()
+            ->first();
+        $raw = "{$stats->cnt}:{$stats->max_id}:{$stats->sum_ver}:{$stats->max_ver}:{$stats->revoked_cnt}";
+
+        return substr(hash('sha256', $raw), 0, 16);
+    }
+
+    private function encodeDutyGrantCursor(string $actor, string $chapter, string $lastId, ?string $membershipId, ?string $dutyCode, ?string $scopeKind, ?string $requestingUnitId, ?string $status, int $limit, string $snapshot): string
+    {
+        $filterData = implode('|', [$membershipId ?? '', $dutyCode ?? '', $scopeKind ?? '', $requestingUnitId ?? '', $status ?? '']);
+        $filterHash = substr(hash('sha256', $filterData), 0, 8);
+        $payload = "{$lastId}.{$snapshot}.{$limit}.{$filterHash}";
+        $b64Payload = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+        $sigData = "{$actor}|{$chapter}|{$payload}";
+        $rawHmac = substr(hash_hmac('sha256', $sigData, (string) config('app.key'), true), 0, 12);
+        $b64Sig = rtrim(strtr(base64_encode($rawHmac), '+/', '-_'), '=');
+
+        return "cur_{$b64Payload}{$b64Sig}";
+    }
+
+    /**
+     * @return array{string, string}|JsonResponse
+     */
+    private function decodeDutyGrantCursor(string $actor, string $chapter, string $cursor, ?string $membershipId, ?string $dutyCode, ?string $scopeKind, ?string $requestingUnitId, ?string $status, int $limit): array|JsonResponse
+    {
+        if (strlen($cursor) < 36 || strlen($cursor) > 100 || ! str_starts_with($cursor, 'cur_')) {
+            return $this->invalidSelector();
+        }
+
+        $b64Sig = substr($cursor, -16);
+        $b64Payload = substr($cursor, 4, -16);
+
+        $remainder = strlen($b64Payload) % 4;
+        $padded = $remainder ? $b64Payload.str_repeat('=', 4 - $remainder) : $b64Payload;
+        $payload = base64_decode(strtr($padded, '-_', '+/'), true);
+        if ($payload === false) {
+            return $this->invalidSelector();
+        }
+
+        $sigData = "{$actor}|{$chapter}|{$payload}";
+        $expectedHmac = substr(hash_hmac('sha256', $sigData, (string) config('app.key'), true), 0, 12);
+        $expectedB64Sig = rtrim(strtr(base64_encode($expectedHmac), '+/', '-_'), '=');
+        if (! hash_equals($expectedB64Sig, $b64Sig)) {
+            return $this->invalidSelector();
+        }
+
+        $parts = explode('.', $payload);
+        if (count($parts) !== 4) {
+            return $this->invalidSelector();
+        }
+        [$lastId, $snapshot, $cursorLimitStr, $cursorFilterHash] = $parts;
+
+        if (! InitialHeadApproval::validId($lastId) || ! ctype_digit($cursorLimitStr)) {
+            return $this->invalidSelector();
+        }
+
+        $expectedFilterData = implode('|', [$membershipId ?? '', $dutyCode ?? '', $scopeKind ?? '', $requestingUnitId ?? '', $status ?? '']);
+        $expectedFilterHash = substr(hash('sha256', $expectedFilterData), 0, 8);
+        if ($cursorFilterHash !== $expectedFilterHash || (int) $cursorLimitStr !== $limit) {
+            return $this->invalidSelector();
+        }
+
+        $snapshotParts = explode('_', $snapshot, 2);
+        if (count($snapshotParts) !== 2 || ! ctype_digit($snapshotParts[0])) {
+            return $this->invalidSelector();
+        }
+        [$snapshotTime, $cursorStateHash] = $snapshotParts;
+
+        if (abs(time() - (int) $snapshotTime) > 3600) {
+            return $this->invalidSelector();
+        }
+
+        $currentStateHash = $this->dutyGrantStateHash($chapter);
+        if (! hash_equals($currentStateHash, $cursorStateHash)) {
+            return response()->json([
+                'code' => 'grant_stale',
+                'message' => 'Review the original attempt with current access.',
+                'next_action' => 'review_original_attempt',
+            ], 409);
+        }
+
+        return [$lastId, $snapshotTime];
+    }
+
+    /** @return array<string, mixed> */
+    private function grantProjection(object $row): array
+    {
+        $attribution = fn ($id, $at) => ['user_id' => (string) $id, 'at' => Carbon::parse($at, 'UTC')->format('Y-m-d\TH:i:s.u\Z')];
+
+        $monetaryLimit = null;
+        if ($row->monetary_limit !== null) {
+            $parts = explode('.', (string) $row->monetary_limit);
+            $amount = $parts[0].'.'.str_pad($parts[1] ?? '00', 2, '0');
+            $monetaryLimit = ['currency' => 'PHP', 'amount' => $amount];
+        }
+
+        $authorizedUserId = $row->authorized_by_user_id !== null ? (string) $row->authorized_by_user_id : (string) $row->user_id;
+        $authorizedAt = $row->authorized_at !== null ? $row->authorized_at : $row->starts_at;
+
+        return [
+            'id' => (string) $row->id,
+            'chapter_id' => (string) $row->chapter_id,
+            'membership_id' => (string) $row->membership_id,
+            'identity' => ['user_id' => (string) $row->user_id, 'display_name' => $row->user_name],
+            'duty_code' => $row->duty_code,
+            'scope_kind' => $row->scope_kind,
+            'requesting_unit_id' => $row->requesting_unit_id !== null ? (string) $row->requesting_unit_id : null,
+            'starts_at' => Carbon::parse($row->starts_at, 'UTC')->format('Y-m-d\TH:i:s.u\Z'),
+            'ends_at' => $row->ends_at !== null ? Carbon::parse($row->ends_at, 'UTC')->format('Y-m-d\TH:i:s.u\Z') : null,
+            'monetary_limit' => $monetaryLimit,
+            'version' => (int) $row->row_version,
+            'membership_version' => (int) $row->membership_row_version,
+            'authority_version' => (int) $row->membership_authority_version,
+            'is_alternate' => false,
+            'replaces_grant_id' => null,
+            'revoked_at' => $row->revoked_at !== null ? Carbon::parse($row->revoked_at, 'UTC')->format('Y-m-d\TH:i:s.u\Z') : null,
+            'authorized' => $attribution($authorizedUserId, $authorizedAt),
+            'last_changed' => $attribution($authorizedUserId, $authorizedAt),
+            'history_reference' => 'gh_'.hash_hmac('sha256', (string) $row->chapter_id.':'.(string) $row->id, (string) config('app.key')),
+        ];
+    }
+
+    private function invalidSelector(): JsonResponse
+    {
+        return response()->json(['code' => 'invalid_selector', 'message' => 'Use only the documented single-valued selectors.'], 400);
+    }
 }

@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware([SessionBoundary::class, EncryptCookies::class, StartSession::class, SessionForgeryGuard::class])
     ->group(function (): void {
+        Route::get('/api/v1/chapters/{chapter_id}/duty-grants/catalogue', [DutyGrantAuthorization::class, 'readDutyCatalogue']);
+        Route::get('/api/v1/chapters/{chapter_id}/duty-grants', [DutyGrantAuthorization::class, 'listDutyGrants']);
+        Route::get('/api/v1/chapters/{chapter_id}/duty-grants/{grant_id}', [DutyGrantAuthorization::class, 'readDutyGrant']);
         Route::post('/api/v1/chapters/{chapter_id}/duty-grants/authorize', [DutyGrantAuthorization::class, 'authorizeDutyGrant']);
         Route::post('/api/v1/chapters/{chapter_id}/memberships/identity-reference', [MembershipAdministration::class, 'lookupMembershipIdentity']);
         Route::get('/api/v1/chapters/{chapter_id}/memberships', [MembershipAdministration::class, 'listMemberships']);

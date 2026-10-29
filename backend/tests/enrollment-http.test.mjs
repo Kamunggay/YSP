@@ -1320,6 +1320,51 @@ test('ticket09 core grant retains exact terms identity attribution and resulting
     {headers:{'X-Chapter-Context':head.selected.selection_revision}})).json();
   assert.equal(member.version, 2);
 });
+test('ticket09 authorizeDutyGrant immediately updates getChapterContext', async () => {
+  const targetUser = await enrolledOfficer('p09-context-target');
+  const {head, target, result} = await authorizedMember('p09-context-update', targetUser);
+  const targetContextBefore = await (await target.browser.request(contextPath)).json();
+  const targetSelected = await selectChapter(target.browser, targetContextBefore.selection_revision, {
+    chapter_id: head.member.chapter_id,
+    membership_id: result.membership.membership_id,
+    expected_membership_version: result.membership.version,
+  });
+  assert.equal(targetSelected.status, 200);
+  const selectedBefore = await targetSelected.json();
+  assert.deepEqual(selectedBefore.context.duty_grants, []);
+  assert.deepEqual(selectedBefore.context.available_actions, []);
+
+  // Synchronize activation at a whole UTC second so starts_at is valid and becomes effective
+  const starts = new Date(Math.ceil((Date.now() + 1000) / 1000) * 1000).toISOString().replace(/\.([0-9]{3})Z$/, '.$1000Z');
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const body = grantAttempt(head, result.membership, {
+    idempotency_key: 'grant-context-immediate',
+    grant: {
+      duty_code: 'FINANCE',
+      scope_kind: 'chapter',
+      requesting_unit_id: null,
+      starts_at: starts,
+      ends_at: null,
+      monetary_limit: null,
+    },
+  });
+
+  const response = await membershipPost(head, dutyGrantPath(head.member.chapter_id), body);
+  assert.equal(response.status, 200);
+  const outcome = await response.json();
+  assert.equal(outcome.operation.outcome, 'committed');
+
+  // Wait until starts is reached
+  await new Promise(resolve => setTimeout(resolve, Math.max(0, Date.parse(starts) - Date.now() + 100)));
+
+  // Target member requests getChapterContext
+  const targetContextAfter = await (await target.browser.request(contextPath)).json();
+  assert.equal(targetContextAfter.context.authority_version, body.expected_authority_version + 1);
+  assert.equal(targetContextAfter.context.duty_grants.length, 1);
+  assert.equal(targetContextAfter.context.duty_grants[0].duty_code, 'FINANCE');
+  assert.equal(targetContextAfter.context.duty_grants[0].id, outcome.grant.id);
+  assert.ok(targetContextAfter.context.available_actions.length > 0);
+});
 test('ticket09 replay and lookup retain approved grant outcomes after approval loss and chapter switching', async () => {
   const {head, result} = await authorizedMember('p09-replay');
   head.selected = await (await head.browser.request(contextPath)).json();
@@ -1613,6 +1658,279 @@ for (const injectOverlap of [false,true]) {
     assert.equal(member.version,injectOverlap ? 1 : 2);
   });
 }
+
+test('ticket09 readDutyCatalogue returns fixed fourteen duties in lexicographical order', async () => {
+  const {head, target, result} = await authorizedMember('p09-catalogue');
+  const path = `/api/v1/chapters/${head.member.chapter_id}/duty-grants/catalogue`;
+
+  let res = await head.browser.request(path, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  const expected = [
+    'BOOTH_CASHIER',
+    'BOOTH_CUSTODIAN',
+    'BUDGET_APPROVER',
+    'CHAPTER_HEAD',
+    'COMMITTEE_REQUESTER',
+    'DISPATCH',
+    'FINANCE',
+    'INDEPENDENT_REVIEWER',
+    'INVENTORY',
+    'PURCHASING',
+    'RECEIVING',
+    'RF_APPROVER',
+    'SALES_OFFICER',
+    'SALES_REVIEWER',
+  ];
+  assert.equal(data.items.length, 14);
+  assert.deepEqual(data.items.map(i => i.duty_code), expected);
+
+  // Unexpected query parameter -> 400 invalid_selector
+  res = await head.browser.request(path + '?unexpected=1', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+  assert.deepEqual(await res.json(), {
+    code: 'invalid_selector',
+    message: 'Use only the documented single-valued selectors.',
+  });
+
+  // Invalid chapter ID -> 400 invalid_selector
+  res = await head.browser.request('/api/v1/chapters/bad-id/duty-grants/catalogue', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+
+  // Non-Head member cannot read catalogue -> 403
+  const targetContext = await (await target.browser.request(contextPath)).json();
+  const targetSelected = await selectChapter(target.browser, targetContext.selection_revision, {
+    chapter_id: head.member.chapter_id,
+    membership_id: result.membership.membership_id,
+    expected_membership_version: result.membership.version,
+  });
+  assert.equal(targetSelected.status, 200);
+  const targetSelectedData = await targetSelected.json();
+  res = await target.browser.request(path, {
+    headers: {'X-Chapter-Context': targetSelectedData.selection_revision},
+  });
+  assert.equal(res.status, 403);
+});
+
+test('ticket09 readDutyGrant returns stable duty grant projection and uniform 404 for absent or foreign targets', async () => {
+  const {head, target, result} = await authorizedMember('p09-read-grant');
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const body = grantAttempt(head, result.membership);
+  const authRes = await membershipPost(head, dutyGrantPath(head.member.chapter_id), body);
+  assert.equal(authRes.status, 200);
+  const created = (await authRes.json()).grant;
+
+  const path = `/api/v1/chapters/${head.member.chapter_id}/duty-grants/${created.id}`;
+
+  // Read existing grant
+  let res = await head.browser.request(path, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  const grant = await res.json();
+  assert.equal(grant.id, created.id);
+  assert.equal(grant.chapter_id, head.member.chapter_id);
+  assert.equal(grant.membership_id, result.membership.membership_id);
+  assert.equal(grant.identity.user_id, target.id);
+  assert.equal(grant.duty_code, body.grant.duty_code);
+  assert.equal(grant.scope_kind, body.grant.scope_kind);
+  assert.equal(grant.requesting_unit_id, null);
+  assert.equal(grant.starts_at, body.grant.starts_at);
+  assert.equal(grant.ends_at, null);
+  assert.equal(grant.monetary_limit, null);
+  assert.equal(grant.version, 1);
+  assert.equal(grant.membership_version, 2);
+  assert.equal(grant.authority_version, 2);
+  assert.equal(grant.is_alternate, false);
+  assert.equal(grant.replaces_grant_id, null);
+  assert.equal(grant.revoked_at, null);
+  assert.equal(grant.authorized.user_id, head.id);
+  assert.deepEqual(grant.last_changed, grant.authorized);
+  assert.match(grant.history_reference, /^gh_[A-Za-z0-9_-]{32,96}$/);
+
+  // Absent grant ID in this chapter -> 404 duty_grant_not_visible
+  res = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/duty-grants/999999999999999999`, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), {code: 'duty_grant_not_visible', message: 'Reference unavailable.'});
+
+  // Query parameters present -> 400 invalid_selector
+  res = await head.browser.request(path + '?unexpected=1', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+  assert.deepEqual(await res.json(), {code: 'invalid_selector', message: 'Use only the documented single-valued selectors.'});
+
+  // Invalid grant ID in path -> 400 invalid_selector
+  res = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/duty-grants/bad-id`, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+
+  // Non-Head member cannot read duty grant -> 403
+  const targetContext = await (await target.browser.request(contextPath)).json();
+  const targetSelected = await selectChapter(target.browser, targetContext.selection_revision, {
+    chapter_id: head.member.chapter_id,
+    membership_id: result.membership.membership_id,
+    expected_membership_version: 2,
+  });
+  assert.equal(targetSelected.status, 200);
+  const targetSelectedData = await targetSelected.json();
+  res = await target.browser.request(path, {
+    headers: {'X-Chapter-Context': targetSelectedData.selection_revision},
+  });
+  assert.equal(res.status, 403);
+});
+
+test('ticket09 listDutyGrants enforces filtering, bounded deterministic cursors, and snapshot invalidation', async () => {
+  const {head, target, result} = await authorizedMember('p09-list-grants');
+  const path = `/api/v1/chapters/${head.member.chapter_id}/duty-grants`;
+  const grantPostPath = dutyGrantPath(head.member.chapter_id);
+
+  // Authorize three grants for target member: COMMITTEE_REQUESTER, RF_APPROVER, FINANCE
+  const baseGrant = grantAttempt(head, result.membership).grant;
+  let membershipVersion = result.membership.version;
+
+  // 1. COMMITTEE_REQUESTER
+  head.selected = await (await head.browser.request(contextPath)).json();
+  let res = await membershipPost(head, grantPostPath, grantAttempt(head, {membership_id: result.membership.membership_id, version: membershipVersion}, {
+    idempotency_key: 'list-grant-1',
+    grant: {...baseGrant, duty_code: 'COMMITTEE_REQUESTER', starts_at: '2029-01-01T00:00:00.000000Z', ends_at: '2029-06-01T00:00:00.000000Z'},
+  }));
+  assert.equal(res.status, 200);
+  membershipVersion = (await res.json()).grant.membership_version;
+
+  // 2. RF_APPROVER
+  head.selected = await (await head.browser.request(contextPath)).json();
+  res = await membershipPost(head, grantPostPath, grantAttempt(head, {membership_id: result.membership.membership_id, version: membershipVersion}, {
+    idempotency_key: 'list-grant-2',
+    grant: {...baseGrant, duty_code: 'RF_APPROVER', starts_at: '2029-01-01T00:00:00.000000Z', ends_at: '2029-06-01T00:00:00.000000Z'},
+  }));
+  assert.equal(res.status, 200);
+  membershipVersion = (await res.json()).grant.membership_version;
+
+  // 3. FINANCE
+  head.selected = await (await head.browser.request(contextPath)).json();
+  res = await membershipPost(head, grantPostPath, grantAttempt(head, {membership_id: result.membership.membership_id, version: membershipVersion}, {
+    idempotency_key: 'list-grant-3',
+    grant: {...baseGrant, duty_code: 'FINANCE', starts_at: '2029-01-01T00:00:00.000000Z', ends_at: '2029-06-01T00:00:00.000000Z'},
+  }));
+  assert.equal(res.status, 200);
+  membershipVersion = (await res.json()).grant.membership_version;
+
+  head.selected = await (await head.browser.request(contextPath)).json();
+
+  // Page 1 with limit 2: returns 2 items and a next_cursor
+  res = await head.browser.request(path + '?limit=2', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  let page1 = await res.json();
+  assert.equal(page1.items.length, 2);
+  assert.match(page1.next_cursor, /^cur_[A-Za-z0-9_-]{32,96}$/);
+
+  // Page 2 with limit 2 and cursor: returns remaining item(s) and next_cursor: null
+  res = await head.browser.request(path + '?limit=2&cursor=' + page1.next_cursor, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  let page2 = await res.json();
+  assert.ok(page2.items.length >= 1);
+  assert.equal(page2.next_cursor, null);
+
+  // Numerical ordering: IDs strictly ascending
+  const allIds = [...page1.items.map(g => BigInt(g.id)), ...page2.items.map(g => BigInt(g.id))];
+  assert.ok(allIds[0] < allIds[1]);
+  assert.ok(allIds[1] < allIds[2]);
+
+  // Filtering by duty_code=FINANCE
+  res = await head.browser.request(path + '?duty_code=FINANCE', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  const financePage = await res.json();
+  assert.ok(financePage.items.length >= 1);
+  for (const item of financePage.items) {
+    assert.equal(item.duty_code, 'FINANCE');
+  }
+
+  // Filtering by membership_id
+  res = await head.browser.request(path + '?membership_id=' + result.membership.membership_id, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 200);
+  const memberGrants = await res.json();
+  assert.equal(memberGrants.items.length, 3);
+  for (const item of memberGrants.items) {
+    assert.equal(item.membership_id, result.membership.membership_id);
+  }
+
+  // Reject requesting_unit_id when scope_kind is not 'unit' -> 400 invalid_selector
+  res = await head.browser.request(path + '?requesting_unit_id=1', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+
+  // Foreign/absent membership_id -> 404 duty_grant_not_visible
+  res = await head.browser.request(path + '?membership_id=999999999999999999', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), {code: 'duty_grant_not_visible', message: 'Reference unavailable.'});
+
+  // Foreign/absent requesting_unit_id with scope_kind=unit -> 404 duty_grant_not_visible
+  res = await head.browser.request(path + '?scope_kind=unit&requesting_unit_id=999999999999999999', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 404);
+  assert.deepEqual(await res.json(), {code: 'duty_grant_not_visible', message: 'Reference unavailable.'});
+
+  // Reject unexpected query param -> 400 invalid_selector
+  res = await head.browser.request(path + '?unexpected=1', {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+
+  // Mismatched cursor: limit changed -> 400 invalid_selector
+  res = await head.browser.request(path + '?limit=1&cursor=' + page1.next_cursor, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+
+  // Mismatched cursor: duty_code changed -> 400 invalid_selector
+  res = await head.browser.request(path + '?duty_code=FINANCE&limit=2&cursor=' + page1.next_cursor, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 400);
+
+  // Invalidate snapshot: authorize a fourth grant
+  head.selected = await (await head.browser.request(contextPath)).json();
+  res = await membershipPost(head, grantPostPath, grantAttempt(head, {membership_id: result.membership.membership_id, version: membershipVersion}, {
+    idempotency_key: 'list-grant-4',
+    grant: {...baseGrant, duty_code: 'PURCHASING', starts_at: '2029-01-01T00:00:00.000000Z', ends_at: '2029-06-01T00:00:00.000000Z'},
+  }));
+  assert.equal(res.status, 200);
+
+  head.selected = await (await head.browser.request(contextPath)).json();
+
+  // Using the old cursor after grant state change -> 409 grant_stale
+  res = await head.browser.request(path + '?limit=2&cursor=' + page1.next_cursor, {
+    headers: {'X-Chapter-Context': head.selected.selection_revision},
+  });
+  assert.equal(res.status, 409);
+  assert.deepEqual(await res.json(), {
+    code: 'grant_stale',
+    message: 'Review the original attempt with current access.',
+    next_action: 'review_original_attempt',
+  });
+});
 async function membershipHead(label) {
   const officer = await enrolledOfficer(label);
   const member = chapterFixture('membership', officer.id, {duties:['CHAPTER_HEAD']});
@@ -1650,9 +1968,9 @@ test('ticket08 core write authorizes an audited candidate with no automatic duti
   assert.equal(access.membership.membership_id, result.membership.membership_id);
   assert.deepEqual(access.context.available_actions, []);
 });
-async function authorizedMember(label) {
+async function authorizedMember(label, targetOfficer = null) {
   const head = await membershipHead(label);
-  const target = await signedInBrowser(label+'-target');
+  const target = targetOfficer ?? await signedInBrowser(label+'-target');
   chapterFixture('membership-candidate', target.id, {chapter_id:head.member.chapter_id, approved_by_user_id:head.id});
   const body = {idempotency_key:'authorize-attempt', expected_authority_version:head.selected.context.authority_version,
     identity:{user_id:target.id}, expected_membership_version:null};
