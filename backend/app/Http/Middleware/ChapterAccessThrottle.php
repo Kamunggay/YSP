@@ -10,12 +10,12 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-final class ChapterContextThrottle
+final class ChapterAccessThrottle
 {
     public function __construct(private SignInThrottle $throttle, private SessionContract $contract) {}
 
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, string $scope): Response
     {
-        return $this->throttle->throttleIp($request, $this->contract, 'chapter-context') ?? $next($request);
+        return $this->throttle->throttleIp($request, $this->contract, $scope) ?? $next($request);
     }
 }
