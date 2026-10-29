@@ -12,6 +12,13 @@ import { loadContract } from '../../contracts/transport/validation/operation-exa
 
 const { api, ajv } = await loadContract();
 
+function validateOperation(operationId, status, body) {
+  const operation = Object.values(api.paths).flatMap(path => Object.values(path))
+    .find(value => value?.operationId === operationId);
+  const validate = ajv.compile(operation.responses[status].content['application/json'].schema);
+  assert.ok(validate(body), JSON.stringify(validate.errors));
+}
+
 const origin = process.env.YSP_TEST_ORIGIN;
 const browserOrigin = process.env.YSP_TEST_BROWSER_ORIGIN ?? origin;
 const container = process.env.YSP_TEST_CONTAINER;
@@ -1658,6 +1665,173 @@ for (const injectOverlap of [false,true]) {
     assert.equal(member.version,injectOverlap ? 1 : 2);
   });
 }
+
+test('ticket09 review unsigned grant pagination round trips a maximum size page', async () => {
+  const {head, target, result} = await authorizedMember('p09-review-cursor');
+  const firstId = 10000000000000000000n + BigInt(Date.now()) * 1000n;
+  const ids = Array.from({length:101}, (_, index) => (firstId + BigInt(index)).toString());
+  chapterFixture('grant-page', target.id, {membership_id:result.membership.membership_id, ids, authorized_by_user_id:head.id});
+  const path = `/api/v1/chapters/${head.member.chapter_id}/duty-grants?membership_id=${result.membership.membership_id}&limit=100`;
+  const headers = {'X-Chapter-Context':head.selected.selection_revision};
+  const first = await head.browser.request(path, {headers});
+  assert.equal(first.status, 200);
+  const page = await first.json();
+  validateOperation('listDutyGrants', 200, page);
+  assert.deepEqual(page.items.map(item => item.id), ids.slice(0, 100));
+  const second = await head.browser.request(path + '&cursor=' + page.next_cursor, {headers});
+  assert.equal(second.status, 200);
+  const last = await second.json();
+  assert.deepEqual(last.items.map(item => item.id), ids.slice(100));
+  assert.equal(last.next_cursor, null);
+  const altered = await head.browser.request(path.replace('limit=100', 'limit=99') + '&cursor=' + page.next_cursor, {headers});
+  assert.equal(altered.status, 400);
+});
+
+test('ticket09 review grant cursor rejects a reauthorized membership snapshot', async () => {
+  const {head, target, result, path:authorizePath, body:authorizeBody} = await authorizedMember('p09-review-snapshot');
+  chapterFixture('grant', target.id, {membership_id:result.membership.membership_id, duty:'COMMITTEE_REQUESTER'});
+  chapterFixture('grant', target.id, {membership_id:result.membership.membership_id, duty:'RF_APPROVER'});
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const disabledResponse = await membershipPost(head, membershipPath(head.member.chapter_id)+`/${result.membership.membership_id}/disable`, {
+    idempotency_key:'snapshot-disable', expected_authority_version:head.selected.context.authority_version,
+    expected_membership_version:result.membership.version,
+  });
+  assert.equal(disabledResponse.status, 200);
+  const disabled = await disabledResponse.json();
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const path = `/api/v1/chapters/${head.member.chapter_id}/duty-grants?membership_id=${result.membership.membership_id}&limit=1`;
+  const first = await head.browser.request(path, {headers:{'X-Chapter-Context':head.selected.selection_revision}});
+  assert.equal(first.status, 200);
+  const page = await first.json();
+  assert.ok(page.next_cursor);
+  const reauthorized = await membershipPost(head, authorizePath, {...authorizeBody, idempotency_key:'snapshot-reauthorize',
+    expected_authority_version:head.selected.context.authority_version, expected_membership_version:disabled.membership.version});
+  assert.equal(reauthorized.status, 200);
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const stale = await head.browser.request(path+'&cursor='+page.next_cursor,
+    {headers:{'X-Chapter-Context':head.selected.selection_revision}});
+  assert.equal(stale.status, 409);
+  assert.equal((await stale.json()).code, 'grant_stale');
+});
+
+test('ticket09 review bootstrap grant retains its independent authorizer', async () => {
+  const head = await bootstrappedHead('p09-review-attribution');
+  const prepared = await (await post(head.browser, enrollmentPath, {intent:'begin'})).json();
+  const remaining = 30000 - Date.now() % 30000;
+  if (remaining < 3000) await new Promise(resolve => setTimeout(resolve, remaining + 100));
+  assert.equal((await post(head.browser, enrollmentPath+'/confirm', {
+    enrollment_id:prepared.enrollment.id, authenticator_code:authenticatorCode(prepared.enrollment.manual_key),
+  })).status, 200);
+  const selected = await (await head.browser.request(contextPath)).json();
+  const path = `/api/v1/chapters/${head.provisioning.chapter.id}/duty-grants`;
+  const headers = {'X-Chapter-Context':selected.selection_revision};
+  const response = await head.browser.request(path, {headers});
+  assert.equal(response.status, 200);
+  const page = await response.json();
+  assert.equal(page.items.length, 1);
+  const grant = page.items[0];
+  assert.equal(grant.identity.user_id, head.head);
+  assert.equal(grant.authorized.user_id, head.id);
+  assert.notEqual(grant.authorized.user_id, grant.identity.user_id);
+  assert.deepEqual(grant.last_changed, grant.authorized);
+  const rewrite = spawnSync('docker', ['exec', '-i', process.env.YSP_TEST_MYSQL_CONTAINER, 'sh', '-c',
+    'MYSQL_PWD="$(cat /run/secrets/db_root_password)" mysql -uroot ysp_local'],
+  {encoding:'utf8', input:`UPDATE duty_grants SET authorized_by_user_id=${head.head} WHERE id=${grant.id};`});
+  assert.notEqual(rewrite.status, 0, 'even privileged writers must preserve initial attribution');
+  assert.match(rewrite.stderr, /1644/);
+  const read = await head.browser.request(path+'/'+grant.id, {headers});
+  assert.equal(read.status, 200);
+  assert.deepEqual(await read.json(), grant);
+});
+
+async function whileAuthorityHeld(t, mode, id, request) {
+  const holder = spawn('docker', ['exec', '-i', '-e', 'YSP_SESSION_FIXTURES=1', container,
+    'php', 'tests/fixtures/enrollment-state.php', mode, id]);
+  const release = () => { if (! holder.stdin.writableEnded) holder.stdin.end('\n'); };
+  t.after(release);
+  await new Promise((resolve, reject) => {
+    holder.once('error', reject);
+    holder.stdout.on('data', chunk => { if (chunk.toString().includes('held')) resolve(); });
+    holder.once('exit', () => reject(new Error('Authority barrier exited')));
+  });
+  let timeout;
+  const pending = request();
+  try {
+    const response = await Promise.race([pending, new Promise((_, reject) => {
+      timeout = setTimeout(() => reject(new Error('Independent operation blocked on unrelated authority')), 6000);
+    })]);
+    assert.equal(response.status, 200, await response.text());
+  } finally {
+    clearTimeout(timeout);
+    release();
+    await pending;
+  }
+}
+
+test('ticket09 review grant reads coexist with shared duty reference locks', async t => {
+  const head = await membershipHead('p09-review-shared');
+  const page = await (await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/duty-grants`,
+    {headers:{'X-Chapter-Context':head.selected.selection_revision}})).json();
+  await whileAuthorityHeld(t, 'hold-duty-reference', head.id, () => head.browser.request(
+    `/api/v1/chapters/${head.member.chapter_id}/duty-grants/${page.items[0].id}`,
+    {headers:{'X-Chapter-Context':head.selected.selection_revision}}));
+});
+
+test('ticket09 review grant authorization ignores unrelated target chapter locks', async t => {
+  const {head, target, result} = await authorizedMember('p09-review-scoped');
+  const other = chapterFixture('membership', target.id, {duties:[]});
+  head.selected = await (await head.browser.request(contextPath)).json();
+  await whileAuthorityHeld(t, 'hold-membership', other.membership_id, () => membershipPost(head,
+    dutyGrantPath(head.member.chapter_id), grantAttempt(head, result.membership)));
+});
+
+for (const operationId of ['readDutyCatalogue', 'listDutyGrants', 'readDutyGrant', 'authorizeDutyGrant']) {
+  test(`ticket09 review ${operationId} returns bounded throttling with transport precedence`, async () => {
+    const head = await membershipHead('p09-review-throttle-'+operationId);
+    const root = `/api/v1/chapters/${head.member.chapter_id}/duty-grants`;
+    const headers = {'X-Chapter-Context':head.selected.selection_revision};
+    const page = await (await head.browser.request(root, {headers})).json();
+    const path = root + ({readDutyCatalogue:'/catalogue', listDutyGrants:'', readDutyGrant:'/'+page.items[0].id, authorizeDutyGrant:'/authorize'}[operationId]);
+    const body = grantAttempt(head, {membership_id:head.member.membership_id, version:1});
+    const invoke = () => operationId === 'authorizeDutyGrant' ? membershipPost(head, path, body) : head.browser.request(path, {headers});
+    arrangeState('clear-throttles', head.id);
+    for (let attempt = 0; attempt < 60; attempt++) {
+      const response = await invoke();
+      assert.equal(response.status, 200, await response.text());
+    }
+    const limited = await invoke();
+    assert.equal(limited.status, 429);
+    validateOperation(operationId, 429, await limited.json());
+    assert.match(limited.headers.get('Retry-After'), /^[1-9][0-9]*$/);
+    assert.equal((await head.browser.request(path, {headers:{...headers, Origin:'https://untrusted.example'}})).status, 403);
+    if (operationId === 'authorizeDutyGrant') {
+      assert.equal((await head.browser.request(path, {method:'POST', body, headers})).status, 419);
+    }
+    arrangeState('expire-throttles', head.id);
+    assert.equal((await invoke()).status, 200);
+  });
+}
+
+test('ticket09 review approved grant intervals round trip beyond the timestamp range', async () => {
+  const head = await membershipHead('p09-review-datetime');
+  head.approverId = syntheticOfficer('p09-review-datetime-approver').id;
+  grantLimitApproval(head, {starts:'2040-01-01 00:00:00.123456', ends:'2041-01-01 00:00:00.654321'});
+  const body = grantAttempt(head, {membership_id:head.member.membership_id, version:1}, {
+    grant:{duty_code:'RF_APPROVER', scope_kind:'chapter', requesting_unit_id:null,
+      starts_at:'2040-01-01T00:00:00.123456Z', ends_at:'2041-01-01T00:00:00.654321Z',
+      monetary_limit:{currency:'PHP', amount:'1000.00'}},
+  });
+  const response = await membershipPost(head, dutyGrantPath(head.member.chapter_id), body);
+  assert.equal(response.status, 200, await response.clone().text());
+  const result = await response.json();
+  head.selected = await (await head.browser.request(contextPath)).json();
+  const read = await head.browser.request(`/api/v1/chapters/${head.member.chapter_id}/duty-grants/${result.grant.id}`,
+    {headers:{'X-Chapter-Context':head.selected.selection_revision}});
+  assert.equal(read.status, 200);
+  assert.deepEqual(await read.json(), result.grant);
+  assert.equal(result.grant.starts_at, body.grant.starts_at);
+  assert.equal(result.grant.ends_at, body.grant.ends_at);
+});
 
 test('ticket09 readDutyCatalogue returns fixed fourteen duties in lexicographical order', async () => {
   const {head, target, result} = await authorizedMember('p09-catalogue');

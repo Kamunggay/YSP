@@ -4,11 +4,22 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 final class BaselineTest extends TestCase
 {
+    public function test_duty_grant_instants_use_the_documented_datetime_precision(): void
+    {
+        $columns = DB::table('information_schema.COLUMNS')->where('TABLE_SCHEMA', DB::getDatabaseName())
+            ->whereIn('TABLE_NAME', ['duty_grants', 'duty_grant_limit_approvals'])
+            ->whereIn('COLUMN_NAME', ['starts_at', 'ends_at', 'revoked_at', 'authorized_at', 'approved_at'])
+            ->pluck('COLUMN_TYPE')->all();
+        $this->assertCount(8, $columns);
+        $this->assertSame(['datetime(6)'], array_values(array_unique($columns)));
+    }
+
     public function test_unsupported_database_configuration_fails_without_internal_detail(): void
     {
         $verify = new Process(
@@ -37,8 +48,8 @@ final class BaselineTest extends TestCase
         $identity = json_decode($verify->getOutput(), true, flags: JSON_THROW_ON_ERROR);
         $this->assertSame('MySQL', $identity['database']);
         $this->assertSame('InnoDB', $identity['engine']);
-        $this->assertSame('2026_10_28_000016_create_duty_grant_authorization', $identity['migration']);
-        $this->assertCount(17, $identity['migrations']);
+        $this->assertSame('2026_10_29_000017_reconcile_duty_grant_history', $identity['migration']);
+        $this->assertCount(18, $identity['migrations']);
         $this->assertCount(30, $identity['tables']);
         $this->assertStringStartsWith('8.4.', $identity['version']);
     }

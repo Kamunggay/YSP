@@ -15,9 +15,16 @@ $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 $id = $argv[2];
 $action = $argv[1];
-if ($action === 'hold') {
+if (in_array($action, ['hold', 'hold-duty-reference', 'hold-membership'], true)) {
     DB::beginTransaction();
-    DB::table('users')->where('id', $id)->lockForUpdate()->first();
+    if ($action === 'hold-duty-reference') {
+        DB::table('users')->where('id', $id)->sharedLock()->first();
+        DB::table('roles')->where('code', 'CHAPTER_HEAD')->sharedLock()->first();
+    } elseif ($action === 'hold-membership') {
+        DB::table('memberships')->where('id', $id)->lockForUpdate()->first();
+    } else {
+        DB::table('users')->where('id', $id)->lockForUpdate()->first();
+    }
     echo "held\n";
     fflush(STDOUT);
     fgets(STDIN);
