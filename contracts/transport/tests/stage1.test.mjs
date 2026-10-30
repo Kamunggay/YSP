@@ -74,6 +74,13 @@ test('Stage 1: IPC approvers and allocation consumers can read their scoped inpu
 });
 
 test('Stage 1: replay identity, denial redaction and rollback-preserving errors remain consumable examples', () => {
+  for (const row of examples.filter(row => row.method !== 'get' && row.response.status === 200)) {
+    const committedAt = row.response.body.operation.committed_at;
+    const facts = [row.request.body.occurred_at, row.request.body.inspected_at,
+      row.request.body.material?.counted_at,
+      ...(row.response.body.data.record?.approvals ?? []).map(decision => decision.decided_at)].filter(Boolean);
+    for (const fact of facts) assert.ok(committedAt >= fact, `${row.name}: commitment precedes its physical or approval fact`);
+  }
   for (const operation of ['acceptStage1OpeningReceipt', 'allocateStage1Rf', 'confirmStage1RfHandover']) {
     const first = example(`${operation}-success-example`);
     const replay = example(`${operation}-same-key-replay-example`);

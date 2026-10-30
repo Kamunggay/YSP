@@ -316,7 +316,7 @@
             "idempotency_key": "stage1-stageStage1PaperEvidence-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -394,7 +394,7 @@
             "idempotency_key": "stage1-validateStage1PaperEvidence-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -551,7 +551,7 @@
             "idempotency_key": "stage1-bindStage1PaperEvidence-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -791,7 +791,7 @@
             "idempotency_key": "stage1-createStage1IpcDraft-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -970,7 +970,7 @@
             "idempotency_key": "stage1-saveStage1IpcDraft-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -1211,7 +1211,7 @@
             "idempotency_key": "stage1-submitStage1Ipc-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -1314,7 +1314,9 @@
             "receipt_inspection": null,
             "related_records": [],
             "approvals": [],
-            "evidence_binding_ids": []
+            "evidence_binding_ids": [
+              "861"
+            ]
           }
         }
       }
@@ -1403,7 +1405,11 @@
         "expected_material_version": 1,
         "decision": "approve",
         "reason": "synthetic",
-        "evidence_binding_ids": []
+        "evidence_binding_ids": [
+          "861",
+          "862",
+          "863"
+        ]
       }
     },
     "response": {
@@ -1423,7 +1429,7 @@
             "idempotency_key": "stage1-reviewStage1Ipc-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -1539,7 +1545,11 @@
                 "decided_at": "2026-11-02T01:00:00.000001Z"
               }
             ],
-            "evidence_binding_ids": []
+            "evidence_binding_ids": [
+              "861",
+              "862",
+              "863"
+            ]
           }
         }
       }
@@ -1566,7 +1576,11 @@
         "expected_material_version": 1,
         "decision": "approve",
         "reason": "synthetic",
-        "evidence_binding_ids": []
+        "evidence_binding_ids": [
+          "861",
+          "862",
+          "863"
+        ]
       }
     },
     "response": {
@@ -1619,7 +1633,11 @@
         "expected_material_version": 1,
         "decision": "approve",
         "reason": "synthetic",
-        "evidence_binding_ids": []
+        "evidence_binding_ids": [
+          "861",
+          "862",
+          "863"
+        ]
       }
     },
     "response": {
@@ -1702,7 +1720,7 @@
             "idempotency_key": "stage1-reviseStage1Ipc-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -1850,7 +1868,7 @@
             "idempotency_key": "stage1-cancelStage1Ipc-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -2004,7 +2022,7 @@
             "idempotency_key": "stage1-createStage1RfDraft-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -2136,7 +2154,7 @@
             "idempotency_key": "stage1-saveStage1RfDraft-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -2330,7 +2348,7 @@
             "idempotency_key": "stage1-submitStage1Rf-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -2515,7 +2533,7 @@
             "idempotency_key": "stage1-reviewStage1Rf-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -2760,7 +2778,7 @@
             "idempotency_key": "stage1-reviseStage1Rf-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -2881,7 +2899,7 @@
             "idempotency_key": "stage1-cancelStage1Rf-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -3002,7 +3020,7 @@
             "idempotency_key": "stage1-prepareStage1OpeningReceipt-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -3154,7 +3172,7 @@
             "idempotency_key": "stage1-inspectStage1OpeningReceipt-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -3286,7 +3304,7 @@
             "idempotency_key": "stage1-acceptStage1OpeningReceipt-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -3376,7 +3394,7 @@
             "idempotency_key": "stage1-acceptStage1OpeningReceipt-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": true
         },
         "record": {
@@ -3923,7 +3941,7 @@
             "idempotency_key": "stage1-allocateStage1Rf-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -4010,7 +4028,7 @@
             "idempotency_key": "stage1-allocateStage1Rf-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": true
         },
         "record": {
@@ -4370,7 +4388,7 @@
             "idempotency_key": "stage1-prepareStage1RfHandover-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -4479,7 +4497,7 @@
             "idempotency_key": "stage1-bindStage1RfHandoverEvidence-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -4722,7 +4740,7 @@
             "idempotency_key": "stage1-confirmStage1RfHandover-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": false
         },
         "record": {
@@ -4835,7 +4853,7 @@
             "idempotency_key": "stage1-confirmStage1RfHandover-1"
           },
           "outcome": "committed",
-          "committed_at": "2026-10-24T04:00:00.000001Z",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
           "replayed": true
         },
         "record": {
