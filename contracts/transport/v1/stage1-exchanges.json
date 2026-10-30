@@ -21,9 +21,54 @@
       "body": {
         "chapter_id": "1",
         "revision": 1,
-        "units": [],
-        "variants": [],
-        "locations": [],
+        "units": [
+          {
+            "id": "201",
+            "code": "pcs",
+            "quantity_scale": 0
+          }
+        ],
+        "variants": [
+          {
+            "id": "501",
+            "item_code": "DEMO-ITEM",
+            "description": "Synthetic counted goods",
+            "unit_id": "201",
+            "policy_version_id": "301"
+          }
+        ],
+        "locations": [
+          {
+            "id": "601",
+            "name": "Synthetic stockroom",
+            "kind": "stockroom",
+            "custodian_user_id": "11"
+          },
+          {
+            "id": "602",
+            "name": "Synthetic nonusable custody",
+            "kind": "quarantine",
+            "custodian_user_id": "11"
+          }
+        ],
+        "conditions": [
+          {
+            "id": "611",
+            "code": "USABLE",
+            "usable": true
+          },
+          {
+            "id": "612",
+            "code": "DAMAGED",
+            "usable": false
+          }
+        ],
+        "requesting_units": [
+          {
+            "id": "101",
+            "name": "Synthetic committee"
+          }
+        ],
         "blockers": []
       }
     }
@@ -279,7 +324,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -514,7 +559,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -588,7 +633,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -654,7 +699,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -754,7 +799,7 @@
             "kind": "IPC",
             "id": "900"
           },
-          "row_version": 7,
+          "row_version": 1,
           "material_version": 1,
           "states": {
             "approval": "draft",
@@ -780,7 +825,7 @@
                 "kind": "IPC",
                 "id": "900"
               },
-              "row_version": 7,
+              "row_version": 1,
               "material_version": 1,
               "states": {
                 "approval": "draft",
@@ -788,7 +833,7 @@
                 "exception": "none"
               }
             },
-            "reference": "DEMO-IPC-2026-0001",
+            "reference": null,
             "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "prepared_by_user_id": "11",
             "policy_version_ids": [
@@ -811,7 +856,7 @@
               }
             ],
             "allowed_actions": [
-              "rf.handover_prepare"
+              "ipc.submit"
             ],
             "blockers": [],
             "material": {
@@ -848,15 +893,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -941,8 +978,8 @@
             "kind": "IPC",
             "id": "900"
           },
-          "row_version": 7,
-          "material_version": 1,
+          "row_version": 2,
+          "material_version": 2,
           "states": {
             "approval": "approved",
             "fulfillment": "partial",
@@ -967,15 +1004,15 @@
                 "kind": "IPC",
                 "id": "900"
               },
-              "row_version": 7,
-              "material_version": 1,
+              "row_version": 2,
+              "material_version": 2,
               "states": {
                 "approval": "approved",
                 "fulfillment": "partial",
                 "exception": "none"
               }
             },
-            "reference": "DEMO-IPC-2026-0001",
+            "reference": null,
             "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "prepared_by_user_id": "11",
             "policy_version_ids": [
@@ -998,7 +1035,7 @@
               }
             ],
             "allowed_actions": [
-              "rf.handover_prepare"
+              "ipc.submit"
             ],
             "blockers": [],
             "material": {
@@ -1035,15 +1072,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -1119,8 +1148,8 @@
             "kind": "IPC",
             "id": "900"
           },
-          "row_version": 7,
-          "material_version": 1,
+          "row_version": 2,
+          "material_version": 2,
           "states": {
             "approval": "approved",
             "fulfillment": "partial",
@@ -1190,7 +1219,7 @@
             "kind": "IPC",
             "id": "900"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "submitted",
@@ -1216,7 +1245,7 @@
                 "kind": "IPC",
                 "id": "900"
               },
-              "row_version": 7,
+              "row_version": 2,
               "material_version": 1,
               "states": {
                 "approval": "submitted",
@@ -1247,7 +1276,7 @@
               }
             ],
             "allowed_actions": [
-              "rf.handover_prepare"
+              "ipc.review"
             ],
             "blockers": [],
             "material": {
@@ -1284,15 +1313,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -1336,7 +1357,7 @@
             "kind": "IPC",
             "id": "900"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "submitted",
@@ -1410,7 +1431,7 @@
             "kind": "IPC",
             "id": "900"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -1436,7 +1457,7 @@
                 "kind": "IPC",
                 "id": "900"
               },
-              "row_version": 7,
+              "row_version": 2,
               "material_version": 1,
               "states": {
                 "approval": "approved",
@@ -1466,9 +1487,7 @@
                 "reserved_quantity": "0.000000"
               }
             ],
-            "allowed_actions": [
-              "rf.handover_prepare"
-            ],
+            "allowed_actions": [],
             "blockers": [],
             "material": {
               "cutoff_at": "2026-11-02T01:00:00.000001Z",
@@ -1506,8 +1525,15 @@
             "related_records": [],
             "approvals": [
               {
+                "user_id": "14",
+                "duty_code": "CHAPTER_HEAD",
+                "material_version": 1,
+                "decision": "approve",
+                "decided_at": "2026-11-02T01:00:00.000001Z"
+              },
+              {
                 "user_id": "12",
-                "duty_code": "RF_APPROVER",
+                "duty_code": "FINANCE",
                 "material_version": 1,
                 "decision": "approve",
                 "decided_at": "2026-11-02T01:00:00.000001Z"
@@ -1612,7 +1638,7 @@
             "kind": "IPC",
             "id": "900"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -1684,8 +1710,8 @@
             "kind": "IPC",
             "id": "900"
           },
-          "row_version": 7,
-          "material_version": 1,
+          "row_version": 2,
+          "material_version": 2,
           "states": {
             "approval": "approved",
             "fulfillment": "partial",
@@ -1710,15 +1736,15 @@
                 "kind": "IPC",
                 "id": "900"
               },
-              "row_version": 7,
-              "material_version": 1,
+              "row_version": 2,
+              "material_version": 2,
               "states": {
                 "approval": "approved",
                 "fulfillment": "partial",
                 "exception": "none"
               }
             },
-            "reference": "DEMO-IPC-2026-0001",
+            "reference": null,
             "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "prepared_by_user_id": "11",
             "policy_version_ids": [
@@ -1741,7 +1767,7 @@
               }
             ],
             "allowed_actions": [
-              "rf.handover_prepare"
+              "ipc.submit"
             ],
             "blockers": [],
             "material": {
@@ -1778,15 +1804,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -1840,7 +1858,7 @@
             "kind": "IPC",
             "id": "900"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "canceled",
@@ -1866,7 +1884,7 @@
                 "kind": "IPC",
                 "id": "900"
               },
-              "row_version": 7,
+              "row_version": 2,
               "material_version": 1,
               "states": {
                 "approval": "canceled",
@@ -1896,9 +1914,7 @@
                 "reserved_quantity": "0.000000"
               }
             ],
-            "allowed_actions": [
-              "rf.handover_prepare"
-            ],
+            "allowed_actions": [],
             "blockers": [],
             "material": {
               "cutoff_at": "2026-11-02T01:00:00.000001Z",
@@ -1934,15 +1950,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -2004,7 +2012,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 1,
           "material_version": 1,
           "states": {
             "approval": "draft",
@@ -2030,7 +2038,7 @@
                 "kind": "RF",
                 "id": "700"
               },
-              "row_version": 7,
+              "row_version": 1,
               "material_version": 1,
               "states": {
                 "approval": "draft",
@@ -2038,7 +2046,7 @@
                 "exception": "none"
               }
             },
-            "reference": "DEMO-RF-2026-0001",
+            "reference": null,
             "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "prepared_by_user_id": "11",
             "policy_version_ids": [
@@ -2054,7 +2062,7 @@
               }
             ],
             "allowed_actions": [
-              "rf.handover_prepare"
+              "rf.submit"
             ],
             "blockers": [],
             "material": {
@@ -2071,15 +2079,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -2144,8 +2144,8 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
-          "material_version": 1,
+          "row_version": 2,
+          "material_version": 2,
           "states": {
             "approval": "approved",
             "fulfillment": "partial",
@@ -2170,15 +2170,15 @@
                 "kind": "RF",
                 "id": "700"
               },
-              "row_version": 7,
-              "material_version": 1,
+              "row_version": 2,
+              "material_version": 2,
               "states": {
                 "approval": "approved",
                 "fulfillment": "partial",
                 "exception": "none"
               }
             },
-            "reference": "DEMO-RF-2026-0001",
+            "reference": null,
             "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "prepared_by_user_id": "11",
             "policy_version_ids": [
@@ -2194,7 +2194,7 @@
               }
             ],
             "allowed_actions": [
-              "rf.handover_prepare"
+              "rf.submit"
             ],
             "blockers": [],
             "material": {
@@ -2211,15 +2211,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -2275,8 +2267,8 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
-          "material_version": 1,
+          "row_version": 2,
+          "material_version": 2,
           "states": {
             "approval": "approved",
             "fulfillment": "partial",
@@ -2346,7 +2338,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "submitted",
@@ -2372,7 +2364,7 @@
                 "kind": "RF",
                 "id": "700"
               },
-              "row_version": 7,
+              "row_version": 2,
               "material_version": 1,
               "states": {
                 "approval": "submitted",
@@ -2396,7 +2388,7 @@
               }
             ],
             "allowed_actions": [
-              "rf.handover_prepare"
+              "rf.review"
             ],
             "blockers": [],
             "material": {
@@ -2413,15 +2405,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -2465,7 +2449,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "submitted",
@@ -2539,7 +2523,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -2565,7 +2549,7 @@
                 "kind": "RF",
                 "id": "700"
               },
-              "row_version": 7,
+              "row_version": 2,
               "material_version": 1,
               "states": {
                 "approval": "approved",
@@ -2588,9 +2572,7 @@
                 "reserved_quantity": "0.000000"
               }
             ],
-            "allowed_actions": [
-              "rf.handover_prepare"
-            ],
+            "allowed_actions": [],
             "blockers": [],
             "material": {
               "requesting_unit_id": "101",
@@ -2714,7 +2696,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -2786,8 +2768,8 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
-          "material_version": 1,
+          "row_version": 2,
+          "material_version": 2,
           "states": {
             "approval": "approved",
             "fulfillment": "partial",
@@ -2812,15 +2794,15 @@
                 "kind": "RF",
                 "id": "700"
               },
-              "row_version": 7,
-              "material_version": 1,
+              "row_version": 2,
+              "material_version": 2,
               "states": {
                 "approval": "approved",
                 "fulfillment": "partial",
                 "exception": "none"
               }
             },
-            "reference": "DEMO-RF-2026-0001",
+            "reference": null,
             "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "prepared_by_user_id": "11",
             "policy_version_ids": [
@@ -2836,7 +2818,7 @@
               }
             ],
             "allowed_actions": [
-              "rf.handover_prepare"
+              "rf.submit"
             ],
             "blockers": [],
             "material": {
@@ -2853,15 +2835,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -2915,7 +2889,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "canceled",
@@ -2941,7 +2915,7 @@
                 "kind": "RF",
                 "id": "700"
               },
-              "row_version": 7,
+              "row_version": 2,
               "material_version": 1,
               "states": {
                 "approval": "canceled",
@@ -2964,9 +2938,7 @@
                 "reserved_quantity": "0.000000"
               }
             ],
-            "allowed_actions": [
-              "rf.handover_prepare"
-            ],
+            "allowed_actions": [],
             "blockers": [],
             "material": {
               "requesting_unit_id": "101",
@@ -2982,15 +2954,7 @@
             },
             "receipt_inspection": null,
             "related_records": [],
-            "approvals": [
-              {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
-              }
-            ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -3049,8 +3013,8 @@
           "row_version": 7,
           "material_version": 1,
           "states": {
-            "approval": "approved",
-            "fulfillment": "partial",
+            "inspection": "draft",
+            "posting": "draft",
             "exception": "none"
           }
         },
@@ -3075,12 +3039,12 @@
               "row_version": 7,
               "material_version": 1,
               "states": {
-                "approval": "approved",
-                "fulfillment": "partial",
+                "inspection": "draft",
+                "posting": "draft",
                 "exception": "none"
               }
             },
-            "reference": "DEMO-RM-2026-0001",
+            "reference": null,
             "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "prepared_by_user_id": "11",
             "policy_version_ids": [
@@ -3102,22 +3066,20 @@
                 "reserved_quantity": "0.000000"
               }
             ],
-            "allowed_actions": [
-              "rf.handover_prepare"
-            ],
+            "allowed_actions": [],
             "blockers": [],
             "material": null,
             "receipt_inspection": null,
-            "related_records": [],
-            "approvals": [
+            "related_records": [
               {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
+                "reference": {
+                  "id": "900",
+                  "kind": "IPC"
+                },
+                "relation": "source"
               }
             ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -3200,12 +3162,12 @@
             "kind": "RM",
             "id": "901"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
-            "approval": "approved",
-            "fulfillment": "partial",
-            "exception": "none"
+            "inspection": "complete",
+            "posting": "draft",
+            "exception": "open"
           }
         },
         "field_feedback": [],
@@ -3226,15 +3188,15 @@
                 "kind": "RM",
                 "id": "901"
               },
-              "row_version": 7,
+              "row_version": 2,
               "material_version": 1,
               "states": {
-                "approval": "approved",
-                "fulfillment": "partial",
-                "exception": "none"
+                "inspection": "complete",
+                "posting": "draft",
+                "exception": "open"
               }
             },
-            "reference": "DEMO-RM-2026-0001",
+            "reference": null,
             "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "prepared_by_user_id": "11",
             "policy_version_ids": [
@@ -3256,22 +3218,20 @@
                 "reserved_quantity": "0.000000"
               }
             ],
-            "allowed_actions": [
-              "rf.handover_prepare"
-            ],
+            "allowed_actions": [],
             "blockers": [],
             "material": null,
             "receipt_inspection": null,
-            "related_records": [],
-            "approvals": [
+            "related_records": [
               {
-                "user_id": "12",
-                "duty_code": "RF_APPROVER",
-                "material_version": 1,
-                "decision": "approve",
-                "decided_at": "2026-11-02T01:00:00.000001Z"
+                "reference": {
+                  "id": "900",
+                  "kind": "IPC"
+                },
+                "relation": "source"
               }
             ],
+            "approvals": [],
             "evidence_binding_ids": []
           }
         }
@@ -3971,7 +3931,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -4058,7 +4018,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -4194,7 +4154,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -4264,7 +4224,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -4334,7 +4294,7 @@
             "kind": "RF",
             "id": "700"
           },
-          "row_version": 7,
+          "row_version": 2,
           "material_version": 1,
           "states": {
             "approval": "approved",
@@ -4376,7 +4336,7 @@
       },
       "mediaType": "application/json",
       "body": {
-        "expected_row_version": 1,
+        "expected_row_version": 7,
         "expected_material_version": 1,
         "recipient": {
           "name": "Synthetic committee recipient",

@@ -13959,7 +13959,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -14015,7 +14016,8 @@
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
             "DISPATCH",
-            "CHAPTER_HEAD"
+            "CHAPTER_HEAD",
+            "FINANCE"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
           "independence": "Per owning source action; no blanket self-approval exemption",
@@ -14085,7 +14087,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -14202,7 +14205,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -14258,7 +14262,9 @@
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
             "DISPATCH",
-            "CHAPTER_HEAD"
+            "CHAPTER_HEAD",
+            "FINANCE",
+            "PURCHASING"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
           "independence": "Per owning source action; no blanket self-approval exemption",
@@ -14319,7 +14325,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -14375,7 +14382,9 @@
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
             "DISPATCH",
-            "CHAPTER_HEAD"
+            "CHAPTER_HEAD",
+            "FINANCE",
+            "PURCHASING"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
           "independence": "Per owning source action; no blanket self-approval exemption",
@@ -14453,7 +14462,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -14519,7 +14529,8 @@
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
             "DISPATCH",
-            "CHAPTER_HEAD"
+            "CHAPTER_HEAD",
+            "FINANCE"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
           "independence": "Per owning source action; no blanket self-approval exemption",
@@ -14597,7 +14608,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -14663,7 +14675,8 @@
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
             "DISPATCH",
-            "CHAPTER_HEAD"
+            "CHAPTER_HEAD",
+            "FINANCE"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
           "independence": "Per owning source action; no blanket self-approval exemption",
@@ -14724,7 +14737,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -14780,7 +14794,9 @@
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
             "DISPATCH",
-            "CHAPTER_HEAD"
+            "CHAPTER_HEAD",
+            "FINANCE",
+            "PURCHASING"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
           "independence": "Per owning source action; no blanket self-approval exemption",
@@ -14858,7 +14874,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -14924,7 +14941,8 @@
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
             "DISPATCH",
-            "CHAPTER_HEAD"
+            "CHAPTER_HEAD",
+            "FINANCE"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
           "independence": "Per owning source action; no blanket self-approval exemption",
@@ -14996,7 +15014,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -15137,7 +15156,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -15278,7 +15298,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -15419,7 +15440,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -15561,7 +15583,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -15702,7 +15725,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -15835,7 +15859,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -15978,7 +16003,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -16121,7 +16147,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -16264,7 +16291,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -16406,7 +16434,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -16549,7 +16578,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -16683,7 +16713,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -16823,7 +16854,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -16966,7 +16998,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -17089,7 +17122,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -17142,6 +17176,9 @@
           "duties": [
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
+            "INVENTORY",
+            "DISPATCH",
+            "PURCHASING",
             "CHAPTER_HEAD"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
@@ -17222,7 +17259,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -17362,7 +17400,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -17511,7 +17550,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -17665,7 +17705,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -17788,7 +17829,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -17845,7 +17887,9 @@
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
             "DISPATCH",
-            "CHAPTER_HEAD"
+            "CHAPTER_HEAD",
+            "FINANCE",
+            "PURCHASING"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
           "independence": "Per owning source action; no blanket self-approval exemption",
@@ -17905,7 +17949,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }
@@ -17961,7 +18006,9 @@
             "COMMITTEE_REQUESTER",
             "RF_APPROVER",
             "DISPATCH",
-            "CHAPTER_HEAD"
+            "CHAPTER_HEAD",
+            "FINANCE",
+            "PURCHASING"
           ],
           "scope": "Current chapter, duty and owning-source read/action scope; requester unit where applicable. No provider-derived operational authority.",
           "independence": "Per owning source action; no blanket self-approval exemption",
@@ -18030,7 +18077,8 @@
                 "RF_APPROVER",
                 "DISPATCH",
                 "CHAPTER_HEAD",
-                "FINANCE"
+                "FINANCE",
+                "PURCHASING"
               ]
             }
           }

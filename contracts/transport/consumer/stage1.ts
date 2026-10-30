@@ -6,6 +6,12 @@ type Stage1Operation = {
   [K in keyof operations]: K extends `${string}Stage1${string}` ? K : never
 }[keyof operations];
 type Parameters<K extends Stage1Operation> = operations[K]['parameters'];
+type Query<K extends Stage1Operation> = undefined extends Parameters<K>['query']
+  ? { query?: Parameters<K>['query'] } : { query: Parameters<K>['query'] };
+type Headers<R> = R extends { headers: infer H }
+  ? { 'cache-control': H extends { 'Cache-Control': infer C } ? C : never }
+    & (H extends { 'Retry-After': infer T } ? { 'retry-after': T } : { 'retry-after'?: never })
+  : never;
 type Body<K extends Stage1Operation> = operations[K] extends {
   requestBody: { content: { 'application/json': infer B } }
 } ? { mediaType: 'application/json'; body: B } : { body?: never; mediaType?: never };
@@ -13,9 +19,7 @@ type Result<K extends Stage1Operation> = {
   [S in keyof operations[K]['responses']]: operations[K]['responses'][S] extends {
     content: infer C
   } ? {
-    [M in keyof C]: { status: S; mediaType: M; body: C[M]; headers: {
-      'cache-control': 'no-store'; 'retry-after'?: number
-    } }
+    [M in keyof C]: { status: S; mediaType: M; body: C[M]; headers: Headers<operations[K]['responses'][S]> }
   }[keyof C] : never
 }[keyof operations[K]['responses']];
 
@@ -30,8 +34,7 @@ export type Stage1Example = {
     method: Lowercase<typeof routes[K]['method']>;
     // Templated path is validated against OpenAPI by validateExchange.
     path: string;
-    request: { path: Parameters<K>['path']; header: Parameters<K>['header'];
-      query?: Parameters<K>['query'] } & Body<K>;
+    request: { path: Parameters<K>['path']; header: Parameters<K>['header'] } & Query<K> & Body<K>;
     response: Result<K>;
   }
 }[Stage1Operation];

@@ -1,7 +1,7 @@
 {
   "sources": {
-    "api-v1.json": "9352b348ab8efad1e94e50c8b873114ec6361f625bf32e6e1a0a14ea7691d3ad",
-    "transport.schema.json": "6cd86296db6e8b7040eb713d860849f7822d47690dd939513210c8fb2cfc815d",
+    "api-v1.json": "c4bc7abe418eda14389bf614ff74e00b760af2e6c3a3e91218490dcaf1c747e6",
+    "transport.schema.json": "092fdb272f84e4e49de342ed3fea1c122a784eaf82d846e23a4bcb6c9d1de34c",
     "p02-action-catalogue.json": "a58911bb8317998f6605ac6f36a5884ba1ea53eb8e5c922879ce6eef1f598554"
   },
   "operations": {

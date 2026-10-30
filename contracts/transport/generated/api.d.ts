@@ -3176,11 +3176,20 @@ export interface components {
         Stage1Catalogue: {
             blockers: components["schemas"]["BlockingReason"][];
             chapter_id: components["schemas"]["Id"];
+            conditions: {
+                code: string;
+                id: components["schemas"]["Id"];
+                usable: boolean;
+            }[];
             locations: {
                 custodian_user_id: components["schemas"]["Id"] | null;
                 id: components["schemas"]["Id"];
                 /** @enum {unknown} */
                 kind: "stockroom" | "quarantine" | "booth";
+                name: string;
+            }[];
+            requesting_units: {
+                id: components["schemas"]["Id"];
                 name: string;
             }[];
             revision: components["schemas"]["Version"];
@@ -3691,7 +3700,7 @@ export interface operations {
             query?: never;
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
             };
             path: {
                 chapter_id: components["schemas"]["Id"];
@@ -4637,7 +4646,7 @@ export interface operations {
             query?: never;
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
             };
             path: {
                 chapter_id: components["schemas"]["Id"];
@@ -4672,7 +4681,7 @@ export interface operations {
             query?: never;
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
             };
             path: {
                 chapter_id: components["schemas"]["Id"];
@@ -4708,7 +4717,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -4751,7 +4760,7 @@ export interface operations {
             };
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
             };
             path: {
                 chapter_id: components["schemas"]["Id"];
@@ -5431,7 +5440,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -5472,7 +5481,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -5513,7 +5522,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -5554,7 +5563,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -5595,7 +5604,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -5636,7 +5645,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -5676,7 +5685,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -5717,7 +5726,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -5758,7 +5767,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7014,7 +7023,7 @@ export interface operations {
             query?: never;
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
             };
             path: {
                 chapter_id: components["schemas"]["Id"];
@@ -7050,7 +7059,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7091,7 +7100,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7131,7 +7140,7 @@ export interface operations {
             query?: never;
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
             };
             path: {
                 chapter_id: components["schemas"]["Id"];
@@ -7166,7 +7175,7 @@ export interface operations {
             query?: never;
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
             };
             path: {
                 chapter_id: components["schemas"]["Id"];
@@ -7202,7 +7211,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7242,7 +7251,7 @@ export interface operations {
             query?: never;
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
             };
             path: {
                 chapter_id: components["schemas"]["Id"];
@@ -7278,7 +7287,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7319,7 +7328,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7359,7 +7368,7 @@ export interface operations {
             query?: never;
             header: {
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
             };
             path: {
                 chapter_id: components["schemas"]["Id"];
@@ -7396,7 +7405,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7438,7 +7447,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7480,7 +7489,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7521,7 +7530,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7562,7 +7571,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7603,7 +7612,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {
@@ -7644,7 +7653,7 @@ export interface operations {
             header: {
                 "Idempotency-Key": components["schemas"]["IdempotencyKey"];
                 "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
-                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE";
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
                 "X-XSRF-TOKEN": string;
             };
             path: {

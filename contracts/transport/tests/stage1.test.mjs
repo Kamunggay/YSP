@@ -57,6 +57,22 @@ test('Stage 1: paper readiness and exact-batch pins are distinct; arbitrary sour
   assert.ok(!operations.some(op => /inventory.*(post|set_balance)/.test(op['x-action-code'])));
 });
 
+test('Stage 1: IPC approvers and allocation consumers can read their scoped inputs', () => {
+  const byId = id => operations.find(row => row.operationId === id);
+  for (const id of ['readStage1Record', 'readStage1RecordHistory', 'readStage1Evidence', 'downloadStage1Evidence', 'printStage1Record', 'bindStage1PaperEvidence']) {
+    assert.ok(byId(id)['x-authorization'].duties.includes('FINANCE'), id);
+    assert.match(byId(id)['x-authorization'].scope, /owning-source/);
+  }
+  for (const duty of ['INVENTORY', 'DISPATCH', 'PURCHASING']) assert.ok(byId('readStage1RfAllocationProposal')['x-authorization'].duties.includes(duty));
+  const catalogue = example('readStage1Catalogue-success-example').response.body;
+  const count = example('createStage1IpcDraft-success-example').request.body.material;
+  for (const line of count.lines) {
+    assert.ok(catalogue.conditions.some(condition => condition.id === line.condition_id));
+    assert.ok(catalogue.variants.some(variant => variant.id === line.variant_id));
+    assert.ok(catalogue.locations.some(location => location.id === line.location_id));
+  }
+});
+
 test('Stage 1: replay identity, denial redaction and rollback-preserving errors remain consumable examples', () => {
   for (const operation of ['acceptStage1OpeningReceipt', 'allocateStage1Rf', 'confirmStage1RfHandover']) {
     const first = example(`${operation}-success-example`);
