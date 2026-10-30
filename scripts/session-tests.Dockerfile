@@ -6,6 +6,8 @@ COPY contracts/transport/package.json contracts/transport/package-lock.json ./
 RUN npm ci --ignore-scripts
 WORKDIR /workspace
 COPY contracts ./contracts
+# Build ignored example fixtures from their authored exchanges on clean checkouts.
+RUN node contracts/transport/generate.mjs --fixtures
 COPY backend/resources/contracts ./backend/resources/contracts
 COPY backend/tests ./backend/tests
 COPY scripts/run-http-tests.mjs ./scripts/run-http-tests.mjs
