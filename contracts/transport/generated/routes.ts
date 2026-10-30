@@ -195,5 +195,129 @@ export const routes = {
   "lookupIdentityDisableById": {
     "method": "GET",
     "path": "/api/v1/identity-disable-operations/by-id/{operation_id}"
+  },
+  "readStage1Catalogue": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/catalogue"
+  },
+  "readStage1Availability": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/inventory/availability"
+  },
+  "readStage1Record": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/records/{record_id}"
+  },
+  "readStage1RecordHistory": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/records/{record_id}/history"
+  },
+  "stageStage1PaperEvidence": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/records/{record_id}/evidence/stage"
+  },
+  "validateStage1PaperEvidence": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/evidence/{evidence_id}/validate"
+  },
+  "readStage1Evidence": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/evidence/{evidence_id}"
+  },
+  "bindStage1PaperEvidence": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/records/{record_id}/evidence-bindings"
+  },
+  "createStage1IpcDraft": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/opening-counts/drafts"
+  },
+  "saveStage1IpcDraft": {
+    "method": "PUT",
+    "path": "/api/v1/chapters/{chapter_id}/opening-counts/{record_id}/draft"
+  },
+  "submitStage1Ipc": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/opening-counts/{record_id}/submit"
+  },
+  "reviewStage1Ipc": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/opening-counts/{record_id}/review"
+  },
+  "reviseStage1Ipc": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/opening-counts/{record_id}/revise"
+  },
+  "cancelStage1Ipc": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/opening-counts/{record_id}/cancel"
+  },
+  "createStage1RfDraft": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/drafts"
+  },
+  "saveStage1RfDraft": {
+    "method": "PUT",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/draft"
+  },
+  "submitStage1Rf": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/submit"
+  },
+  "reviewStage1Rf": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/review"
+  },
+  "reviseStage1Rf": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/revise"
+  },
+  "cancelStage1Rf": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/cancel"
+  },
+  "prepareStage1OpeningReceipt": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/opening-receipts/drafts"
+  },
+  "inspectStage1OpeningReceipt": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/opening-receipts/{record_id}/inspect"
+  },
+  "acceptStage1OpeningReceipt": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/opening-receipts/{record_id}/accept"
+  },
+  "readStage1RfAllocationProposal": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/allocation-proposal"
+  },
+  "allocateStage1Rf": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/allocate"
+  },
+  "prepareStage1RfHandover": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/handovers/prepare"
+  },
+  "bindStage1RfHandoverEvidence": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/evidence"
+  },
+  "confirmStage1RfHandover": {
+    "method": "POST",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm"
+  },
+  "downloadStage1Evidence": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/evidence/{evidence_id}/content"
+  },
+  "printStage1Record": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/records/{record_id}/print"
+  },
+  "readStage1RfHandover": {
+    "method": "GET",
+    "path": "/api/v1/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}"
   }
 } as const;

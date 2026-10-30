@@ -1,9 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { buildReview } from '../../p02-review/reconcile.mjs';
+import { buildReview, verifyP02Projection } from '../../p02-review/reconcile.mjs';
 
 const plan = JSON.parse(await readFile(new URL('../../p02-review/v1/review.json', import.meta.url), 'utf8'));
+
+test('P02 historical attestation excludes additive Stage 1 without permitting inherited contract drift', async () => {
+  const read = async path => JSON.parse(await readFile(new URL(path, import.meta.url), 'utf8'));
+  const api = await read('../v1/api-v1.json');
+  const definitions = await read('../v1/transport.schema.json');
+  const compatibility = await read('../../p02-review/v1/compatibility.json');
+  assert.equal(verifyP02Projection(api, definitions, compatibility), compatibility.apiProjectionSha256);
+  const changedApi = structuredClone(api);
+  changedApi.paths['/session'].get.summary = 'changed inherited contract';
+  assert.throws(() => verifyP02Projection(changedApi, definitions, compatibility), /preserved P02 API/);
+  const changedDefinitions = structuredClone(definitions);
+  changedDefinitions.$defs.Quantity.type = 'number';
+  assert.throws(() => verifyP02Projection(api, changedDefinitions, compatibility), /preserved P02 definitions/);
+  assert.ok(plan.peerReviews.every(row => row.contractSha256 === compatibility.historicalContractSha256));
+});
 
 test('TR-03: reconciliation rejects missing inventory operations and checklist positions', async () => {
   const missingOperation = structuredClone(plan);

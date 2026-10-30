@@ -1,0 +1,8 @@
+{
+  "sourceRevision": "d7aac148625eba79eaa6bd32c1704d61fb10a3b6",
+  "historicalContractSha256": "c04bac4d0515f19c7d82ba1cf8aebe5163724ce597cd0b26203366612c87e4fd",
+  "projectionFormat": "sha256(JSON.stringify(parsed inherited document, null, 2) + LF)",
+  "apiProjectionSha256": "ca1ecec5082ac6a1f06ff280454e4d819084c857ce51822ff1e079b3ca4be128",
+  "definitionsProjectionSha256": "368e4afe01a8e83d0de7edda4c5157e6b4d168827c3980ca36764b02f8399c04",
+  "scope": "Historical P02 review only. Additive Stage1-marked paths, Stage1-named components/definitions and x-stage1-contract metadata are excluded. No new Glenn/Efren review attestation."
+}

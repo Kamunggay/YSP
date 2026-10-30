@@ -23,6 +23,10 @@ function nameSharedRefs(value, prefix) {
 }
 const input = nameSharedRefs(source, './transport.schema.json#/$defs/');
 Object.assign(input.components.schemas, nameSharedRefs(shared.$defs, '#/$defs/'));
+// JSON Schema permits extension members here by default. Make that default
+// explicit for openapi-typescript so domain allOf payloads are not intersected
+// with Record<string, never>. Owning result schemas still constrain each payload.
+input.components.schemas.ActionResult.properties.data.additionalProperties = true;
 // Resolve local shared definitions first; generation must never fetch remote schemas.
 const api = await SwaggerParser.bundle(fileURLToPath(new URL('./v1/api-v1.json', import.meta.url)), input, {
   resolve: { http: false },
@@ -58,8 +62,13 @@ for (const item of Object.values(resolved.paths)) {
   }
 }
 outputs['session-validation.json'] = `${JSON.stringify(consumerSchemas, null, 2)}\n`;
-const exchanges = (await Promise.all(exampleSlices.map(async slice =>
+const allExchanges = (await Promise.all(exampleSlices.map(async slice =>
   JSON.parse(await readFile(new URL(`./v1/${slice}-exchanges.json`, import.meta.url), 'utf8'))))).flat();
+const stage1Exchanges = allExchanges.filter(row => api.paths[row.path][row.method]['x-stage1-contract']);
+const exchanges = allExchanges.filter(row => !api.paths[row.path][row.method]['x-stage1-contract']);
+outputs['stage1-examples.ts'] = '// Generated from illustrative exchanges; no runtime acceptance.\n'
+  + 'import type { Stage1Example } from "../consumer/stage1.ts";\n'
+  + `export const stage1Examples = ${JSON.stringify(stage1Exchanges, null, 2)} as const satisfies readonly Stage1Example[];\n`;
 const examples = exchanges.map(({ operationId, request, response }) => ({
   operationId,
   request: {
@@ -88,7 +97,7 @@ outputs['session-examples.ts'] = '// Generated from the validated operation exch
   + `export const rejectedRequestResponses = ${JSON.stringify(invalidExamples, null, 2)} as const satisfies readonly ConsumerResponseExample[];\n`;
 await mkdir(new URL('./generated/', import.meta.url), { recursive: true });
 for (const [name, output] of Object.entries(outputs)) {
-  if (process.argv.includes('--fixtures') && !['session-validation.json', 'session-examples.ts'].includes(name)) continue;
+  if (process.argv.includes('--fixtures') && !['session-validation.json', 'session-examples.ts', 'stage1-examples.ts'].includes(name)) continue;
   const target = new URL(`./generated/${name}`, import.meta.url);
   if (process.argv.includes('--check')) assert.equal((await readFile(target, 'utf8')).replaceAll('\r\n', '\n'), output, `generation drift: ${name}; run npm run generate`);
   else await writeFile(target, output);
