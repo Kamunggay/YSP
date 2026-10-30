@@ -74,11 +74,19 @@ Every endpoint in the Requisition module (`ModRF`) enforces the following non-ne
 
 ### 2.3 Standard Success Mutation Envelope
 
-All state-changing endpoints (`POST`, `PUT`, `DELETE`) execute inside **one operation-owned MySQL transaction** (`TR-10`) and return:
+All state-changing endpoints (`POST`, `PUT`, `DELETE`) execute inside **one operation-owned MySQL transaction** (`TR-10`) and return the shared TR-03 mutation envelope (`contracts/transport/v1/transport.schema.json`):
 
 ```json
 {
+  "schema_version": "1.0",
+  "chapter_id": "1",
+  "action_result": "success",
   "operation": {
+    "identity": {
+      "operation_id": "01JAZ9K4M2N8P5Q7R9S1T3V5W7",
+      "action_code": "rf.submit",
+      "idempotency_key": "idem_rf_submit_01JAZ9K4"
+    },
     "public_id": "01JAZ9K4M2N8P5Q7R9S1T3V5W7",
     "action_code": "rf.submit",
     "idempotency_key": "idem_rf_submit_01JAZ9K4",
@@ -116,16 +124,37 @@ All state-changing endpoints (`POST`, `PUT`, `DELETE`) execute inside **one oper
       "task_kind": "work_queue.refresh_rf_review",
       "execution_policy": "essential_control"
     }
-  ]
+  ],
+  "blocking_reason": null,
+  "field_feedback": [],
+  "input_policy": "preserve",
+  "lookup_state": "terminal",
+  "permitted_next_actions": []
 }
 ```
 
+> **Note on Transport Compatibility:** In accordance with TR-03 and `transport.schema.json`, `operation.identity` wraps `operation_id`, `action_code`, and `idempotency_key`. The alias `public_id` (matching `operations.public_id` in `DATABASE-SCHEMA.md`) is provided alongside `operation_id`. `chapter_id` is the top-level scalar string, accompanied by the structured `chapter` object for frontend convenience.
+
 ### 2.4 Standard Error, Conflict & Blocker Envelope (`Q10`, `Q17`, `DOC-11`, `UX-02`)
 
-When an action is blocked by validation, stale `row_version`/`material_version`, missing policy, independence rules, or stock competition, the API returns a structured error that preserves user input and provides the current authorized state for comparison:
+When an action is blocked by validation, stale `row_version`/`material_version`, missing policy, independence rules, or stock competition, the API returns a structured error conforming to TR-03 (`action_result: "blocked" | "stale" | "forbidden"`) that preserves user input and provides the current authorized state for comparison:
 
 ```json
 {
+  "schema_version": "1.0",
+  "chapter_id": "1",
+  "action_result": "stale",
+  "operation": {
+    "identity": {
+      "operation_id": "01JAZ9M0X1Y2Z3A4B5C6D7E8F9",
+      "action_code": "rf.submit",
+      "idempotency_key": "idem_rf_submit_01JAZ9K4"
+    },
+    "public_id": "01JAZ9M0X1Y2Z3A4B5C6D7E8F9",
+    "outcome": "rejected",
+    "committed_at": "2026-10-24T01:15:02.000000Z",
+    "replayed": false
+  },
   "error": {
     "code": "STALE_RECORD_VERSION",
     "http_status": 409,
@@ -143,6 +172,18 @@ When an action is blocked by validation, stale `row_version`/`material_version`,
       "current_authorized_snapshot": {
         "approval_state": "returned",
         "return_reason": "Please reduce requested quantity of YSP Polo Shirt (M) to 15 pcs for Phase 1."
+      }
+    }
+  },
+  "blocking_reason": {
+    "code": "STALE_RECORD_VERSION",
+    "message": "This requisition was updated by another officer. Review the current authorized values before resubmitting."
+  },
+  "field_feedback": [],
+  "input_policy": "preserve",
+  "lookup_state": "terminal"
+}
+```
       }
     }
   }
@@ -1009,6 +1050,7 @@ Physical fulfillment of an RF is strictly a **three-step gated flow** (`Prepare 
 
 #### **R-19: `POST /api/v1/chapters/{chapterId}/requisitions/{rfId}/handovers/prepare`**
 Prepares a draft `IS_AR` handover batch (`handover_kind = 'internal_issue'` for internal RF, or `'booth_checkout'` for booth RF), reserves a document number in `document_number_claims`, validates batch quantities against active RF reservations, and returns the canonical `acknowledged_snapshot_hash` to display on the signature screen (`S-07`).
+- **Database Schema Alignment (`DATABASE-SCHEMA.md §5.3`):** Staged preparation creates a draft row in `records` (`record_kind = 'IS_AR'`) under `document_number_claims`, returned as `handover_record_id`. The actual `handovers` and `handover_lines` table rows are NOT inserted at this stage because `handovers.posting_id` and `handovers.acknowledgment_id` are `NOT NULL` foreign keys requiring committed movement and signed acknowledgment; they are inserted atomically upon confirmation in `R-21`.
 - **Rule (`Q12`, `RF-06`):** If `batch_qty < remaining_demand_qty`, sets `is_partial_batch = true` and requires recipient partial-acceptance acknowledgment. Never defaults a partial batch to completing the entire RF.
 
 **Request Body:**

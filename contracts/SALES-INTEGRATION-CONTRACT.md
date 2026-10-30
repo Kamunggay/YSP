@@ -33,7 +33,7 @@ All versioned JSON operations use the shared response fields required by TR-03: 
 - Keep the 48-hour unpaid available-stock reservation timer separate from the accepted-backorder deposit timer. Do not expire paid/funded stock or commitments under the available-stock timer.
 - Deposits remain customer credit against their SO even when they fund procurement. Procurement funding is not a second payment or charge.
 - Recheck current authority, independent approval, material version, remaining demand, allocation and competing release state inside the transaction.
-- Use exact decimal arithmetic for quantities and money. Persist chapter/action/idempotency key, request fingerprint and committed result with financial and release writes.
+- Use exact decimal arithmetic for quantities and money. Persist chapter/action/idempotency key, request fingerprint and committed result with financial and release writes. Lost responses are recovered via operation lookup (`GET /api/v1/chapters/{chapterId}/operations/by-key?action_code={action_code}&idempotency_key={idempotency_key}` or `GET /api/v1/chapters/{chapterId}/operations/by-id/{operation_id}`).
 
 ## Proposed cross-module behavior
 
