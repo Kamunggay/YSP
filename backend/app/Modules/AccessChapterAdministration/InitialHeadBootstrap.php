@@ -63,6 +63,7 @@ final class InitialHeadBootstrap
             DB::table('duty_grants')->insert([
                 'chapter_id' => $chapter->id, 'membership_id' => $membership, 'role_id' => $headRole->id,
                 'scope_kind' => 'chapter', 'requesting_unit_id' => null, 'monetary_limit' => null, 'starts_at' => $now,
+                'authorized_by_user_id' => $approval['approved_by_user_id'], 'authorized_at' => $now,
             ]);
             $grant = DB::connection()->getPdo()->lastInsertId();
             $result = ['chapter_id' => (string) $chapter->id, 'user_id' => $approval['user_id'],

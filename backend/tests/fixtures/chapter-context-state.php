@@ -95,7 +95,8 @@ if ($argv[1] === 'grant-approval-security') {
         $member = DB::connection()->getPdo()->lastInsertId();
         foreach ($input['duties'] ?? ['COMMITTEE_REQUESTER'] as $duty) {
             DB::table('duty_grants')->insert(['chapter_id' => $chapter, 'membership_id' => $member,
-                'role_id' => DB::table('roles')->where('code', $duty)->value('id'), 'scope_kind' => 'chapter', 'starts_at' => now()->subMinute()]);
+                'role_id' => DB::table('roles')->where('code', $duty)->value('id'), 'scope_kind' => 'chapter', 'starts_at' => now()->subMinute(),
+                'authorized_by_user_id' => $user, 'authorized_at' => now()->subMinute()]);
         }
 
         return ['chapter_id' => (string) $chapter, 'membership_id' => (string) $member, 'expected_membership_version' => 1];
@@ -171,6 +172,18 @@ if ($argv[1] === 'grant-approval-security') {
             'effect_committed' => DB::table('session_throttles')->where('key', $marker)->exists()];
     };
     $result = $argv[1] === 'execute-batch' ? array_map($run, $input['scopes']) : $run($input['scope'] ?? null);
+} elseif ($argv[1] === 'grant-page') {
+    $member = DB::table('memberships')->where('id', $input['membership_id'])->where('user_id', $user)->first();
+    $role = DB::table('roles')->where('code', 'COMMITTEE_REQUESTER')->value('id');
+    $rows = [];
+    foreach ($input['ids'] as $offset => $id) {
+        $start = Carbon::parse('2020-01-01', 'UTC')->addDays($offset);
+        $rows[] = ['id' => $id, 'chapter_id' => $member->chapter_id, 'membership_id' => $member->id,
+            'role_id' => $role, 'scope_kind' => 'chapter', 'starts_at' => $start,
+            'ends_at' => $start->copy()->addDay(), 'authorized_by_user_id' => $input['authorized_by_user_id'], 'authorized_at' => $start];
+    }
+    DB::table('duty_grants')->insert($rows);
+    $result = ['count' => count($rows)];
 } elseif ($argv[1] === 'grant') {
     $result = DB::transaction(function () use ($user, $input): array {
         DB::table('users')->where('id', $user)->lockForUpdate()->first();
@@ -187,7 +200,8 @@ if ($argv[1] === 'grant-approval-security') {
             'role_id' => DB::table('roles')->where('code', $input['duty'] ?? 'COMMITTEE_REQUESTER')->value('id'),
             'scope_kind' => $scopeKind, 'requesting_unit_id' => $unit,
             'monetary_limit' => $input['limit'] ?? null, 'starts_at' => $input['starts_at'] ?? now()->subMinute(),
-            'ends_at' => $ends, 'revoked_at' => $input['revoked_at'] ?? null]);
+            'ends_at' => $ends, 'revoked_at' => $input['revoked_at'] ?? null,
+            'authorized_by_user_id' => $input['authorized_by_user_id'] ?? $user, 'authorized_at' => now()->subMinute()]);
         $grant = DB::connection()->getPdo()->lastInsertId();
 
         return ['grant_id' => (string) $grant, 'requesting_unit_id' => $unit === null ? null : (string) $unit,

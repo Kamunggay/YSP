@@ -7,6 +7,7 @@ namespace App\Modules\AccessChapterAdministration;
 use App\Modules\DocumentsReporting\CanonicalRequest;
 use App\Modules\DocumentsReporting\ChapterOutcomes;
 use Carbon\Carbon;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -85,7 +86,7 @@ final class DutyGrantAuthorization
             if ($terms->starts_at < now()->format('Y-m-d\TH:i:s.u\Z')) {
                 return $this->invalid('/grant/starts_at');
             }
-            $user = DB::table('users')->where('id', $member->user_id)->lockForUpdate()->first();
+            $user = DB::table('users')->where('id', $member->user_id)->sharedLock()->first();
             $actor = ['user_id' => $session['user']['id'], 'membership_id' => (string) $selection->membership_id,
                 'authority_version' => $body->expected_authority_version,
                 'duty_grants' => $this->execution->grants(DB::table('memberships')->where('id', $selection->membership_id)->first())];
@@ -138,13 +139,8 @@ final class DutyGrantAuthorization
                 'authorized_by_user_id' => $session['user']['id'], 'authorized_at' => Carbon::parse($at)->format('Y-m-d H:i:s.u')]);
             $id = DB::connection()->getPdo()->lastInsertId();
             DB::table('memberships')->where('id', $member->id)->update(['row_version' => $member->row_version + 1, 'authority_version' => $member->authority_version + 1]);
-            $attribution = ['user_id' => $session['user']['id'], 'at' => $at];
-            $grant = get_object_vars($terms) + ['id' => $id, 'chapter_id' => $chapter_id, 'membership_id' => (string) $member->id,
-                'identity' => ['user_id' => (string) $user->id, 'display_name' => $user->name],
-                'version' => 1, 'membership_version' => $member->row_version + 1, 'authority_version' => $member->authority_version + 1,
-                'is_alternate' => false, 'replaces_grant_id' => null, 'revoked_at' => null,
-                'authorized' => $attribution, 'last_changed' => $attribution,
-                'history_reference' => 'gh_'.hash_hmac('sha256', $chapter_id.':'.$id, (string) config('app.key'))];
+            $grant = $this->grantProjection($this->grantQuery($chapter_id)->where('duty_grants.id', $id)->first()
+                ?? throw new \LogicException('Committed grant unavailable.'));
             $result = ['resource_type' => 'duty_grant', 'action_result' => 'success', 'chapter_id' => $chapter_id,
                 'grant' => $grant, 'replaced_grant' => null, 'operation' => $operation];
             $this->outcomes->record($chapter_id, $fingerprint, $actor, $member, $result, 200, $body);
@@ -170,7 +166,7 @@ final class DutyGrantAuthorization
             return false;
         }
         try {
-            return Carbon::parse($value)->format('Y-m-d\TH:i:s.u\Z') === $value && $value >= '1970-01-01T00:00:01.000000Z' && $value < '2038-01-19T03:14:07.000000Z';
+            return Carbon::parse($value)->format('Y-m-d\TH:i:s.u\Z') === $value && $value >= '1000-01-01T00:00:00.000000Z';
         } catch (\Throwable) {
             return false;
         }
@@ -219,22 +215,7 @@ final class DutyGrantAuthorization
         }
 
         return $this->execution->execute($request, function () use ($chapter_id, $grant_id): JsonResponse {
-            $row = DB::table('duty_grants')
-                ->join('roles', 'roles.id', '=', 'duty_grants.role_id')
-                ->join('memberships', 'memberships.id', '=', 'duty_grants.membership_id')
-                ->join('users', 'users.id', '=', 'memberships.user_id')
-                ->where('duty_grants.chapter_id', $chapter_id)
-                ->where('duty_grants.id', $grant_id)
-                ->select(
-                    'duty_grants.*',
-                    'roles.code as duty_code',
-                    'memberships.row_version as membership_row_version',
-                    'memberships.authority_version as membership_authority_version',
-                    'users.id as user_id',
-                    'users.name as user_name'
-                )
-                ->lockForUpdate()
-                ->first();
+            $row = $this->grantQuery($chapter_id)->where('duty_grants.id', $grant_id)->first();
 
             if ($row === null) {
                 return response()->json([
@@ -315,7 +296,7 @@ final class DutyGrantAuthorization
             $snapshotTime = (string) time();
 
             if ($cursor !== null) {
-                $decoded = $this->decodeDutyGrantCursor($actor, $chapter_id, $cursor, $membershipId, $dutyCode, $scopeKind, $requestingUnitId, $status, $limit);
+                $decoded = $this->decodeDutyGrantCursor($actor, $chapter_id, $cursor, [$membershipId, $dutyCode, $scopeKind, $requestingUnitId, $status, $limit]);
                 if ($decoded instanceof JsonResponse) {
                     return $decoded;
                 }
@@ -324,11 +305,7 @@ final class DutyGrantAuthorization
 
             $stateHash = $this->dutyGrantStateHash($chapter_id);
 
-            $query = DB::table('duty_grants')
-                ->join('roles', 'roles.id', '=', 'duty_grants.role_id')
-                ->join('memberships', 'memberships.id', '=', 'duty_grants.membership_id')
-                ->join('users', 'users.id', '=', 'memberships.user_id')
-                ->where('duty_grants.chapter_id', $chapter_id);
+            $query = $this->grantQuery($chapter_id);
 
             if ($membershipId !== null) {
                 $memberExists = DB::table('memberships')
@@ -384,24 +361,16 @@ final class DutyGrantAuthorization
                 $query->where('duty_grants.id', '>', $lastId);
             }
 
-            $rows = $query->select(
-                'duty_grants.*',
-                'roles.code as duty_code',
-                'memberships.row_version as membership_row_version',
-                'memberships.authority_version as membership_authority_version',
-                'users.id as user_id',
-                'users.name as user_name'
-            )
-                ->orderBy('duty_grants.id', 'asc')
+            $rows = $query->orderBy('duty_grants.id', 'asc')
                 ->limit($limit + 1)
-                ->lockForUpdate()
+                ->sharedLock()
                 ->get();
 
             $nextCursor = null;
             if ($rows->count() > $limit) {
                 $items = $rows->slice(0, $limit);
                 $lastItem = $items->last();
-                $nextCursor = $this->encodeDutyGrantCursor($actor, $chapter_id, (string) $lastItem->id, $membershipId, $dutyCode, $scopeKind, $requestingUnitId, $status, $limit, "{$snapshotTime}_{$stateHash}");
+                $nextCursor = $this->encodeDutyGrantCursor($actor, $chapter_id, (string) $lastItem->id, [$membershipId, $dutyCode, $scopeKind, $requestingUnitId, $status, $limit], "{$snapshotTime}_{$stateHash}");
             } else {
                 $items = $rows;
             }
@@ -416,22 +385,42 @@ final class DutyGrantAuthorization
             'action' => 'duty_grants.read', 'membership_contract' => true]);
     }
 
-    private function dutyGrantStateHash(string $chapterId): string
+    private function grantQuery(string $chapter): Builder
     {
-        $stats = DB::table('duty_grants')->where('chapter_id', $chapterId)
-            ->selectRaw('COUNT(*) as cnt, COALESCE(MAX(id), 0) as max_id, COALESCE(SUM(row_version), 0) as sum_ver, COALESCE(MAX(row_version), 0) as max_ver, COUNT(revoked_at) as revoked_cnt')
-            ->lockForUpdate()
-            ->first();
-        $raw = "{$stats->cnt}:{$stats->max_id}:{$stats->sum_ver}:{$stats->max_ver}:{$stats->revoked_cnt}";
-
-        return substr(hash('sha256', $raw), 0, 16);
+        return DB::table('duty_grants')
+            ->join('roles', 'roles.id', '=', 'duty_grants.role_id')
+            ->join('memberships', 'memberships.id', '=', 'duty_grants.membership_id')
+            ->join('users', 'users.id', '=', 'memberships.user_id')
+            ->where('duty_grants.chapter_id', $chapter)
+            ->select('duty_grants.*', 'roles.code as duty_code',
+                'memberships.row_version as membership_row_version',
+                'memberships.authority_version as membership_authority_version',
+                'users.id as user_id', 'users.name as user_name')
+            ->sharedLock();
     }
 
-    private function encodeDutyGrantCursor(string $actor, string $chapter, string $lastId, ?string $membershipId, ?string $dutyCode, ?string $scopeKind, ?string $requestingUnitId, ?string $status, int $limit, string $snapshot): string
+    private function dutyGrantStateHash(string $chapterId): string
     {
-        $filterData = implode('|', [$membershipId ?? '', $dutyCode ?? '', $scopeKind ?? '', $requestingUnitId ?? '', $status ?? '']);
-        $filterHash = substr(hash('sha256', $filterData), 0, 8);
-        $payload = "{$lastId}.{$snapshot}.{$limit}.{$filterHash}";
+        $rows = DB::table('duty_grants')
+            ->join('memberships', 'memberships.id', '=', 'duty_grants.membership_id')
+            ->join('users', 'users.id', '=', 'memberships.user_id')
+            ->where('duty_grants.chapter_id', $chapterId)
+            ->select('duty_grants.*', 'memberships.row_version as membership_version',
+                'memberships.authority_version', 'users.name')
+            ->orderBy('duty_grants.id')->sharedLock()->cursor();
+        $hash = hash_init('sha256');
+        foreach ($rows as $row) {
+            hash_update($hash, json_encode($row, JSON_THROW_ON_ERROR)."\n");
+        }
+
+        return substr(hash_final($hash), 0, 16);
+    }
+
+    /** @param array{?string, ?string, ?string, ?string, ?string, int} $filters */
+    private function encodeDutyGrantCursor(string $actor, string $chapter, string $lastId, array $filters, string $snapshot): string
+    {
+        $filterHash = $this->filterHash($filters);
+        $payload = "{$lastId}.{$snapshot}.{$filterHash}";
         $b64Payload = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
         $sigData = "{$actor}|{$chapter}|{$payload}";
         $rawHmac = substr(hash_hmac('sha256', $sigData, (string) config('app.key'), true), 0, 12);
@@ -441,9 +430,10 @@ final class DutyGrantAuthorization
     }
 
     /**
+     * @param  array{?string, ?string, ?string, ?string, ?string, int}  $filters
      * @return array{string, string}|JsonResponse
      */
-    private function decodeDutyGrantCursor(string $actor, string $chapter, string $cursor, ?string $membershipId, ?string $dutyCode, ?string $scopeKind, ?string $requestingUnitId, ?string $status, int $limit): array|JsonResponse
+    private function decodeDutyGrantCursor(string $actor, string $chapter, string $cursor, array $filters): array|JsonResponse
     {
         if (strlen($cursor) < 36 || strlen($cursor) > 100 || ! str_starts_with($cursor, 'cur_')) {
             return $this->invalidSelector();
@@ -467,18 +457,16 @@ final class DutyGrantAuthorization
         }
 
         $parts = explode('.', $payload);
-        if (count($parts) !== 4) {
+        if (count($parts) !== 3) {
             return $this->invalidSelector();
         }
-        [$lastId, $snapshot, $cursorLimitStr, $cursorFilterHash] = $parts;
+        [$lastId, $snapshot, $cursorFilterHash] = $parts;
 
-        if (! InitialHeadApproval::validId($lastId) || ! ctype_digit($cursorLimitStr)) {
+        if (! InitialHeadApproval::validId($lastId)) {
             return $this->invalidSelector();
         }
 
-        $expectedFilterData = implode('|', [$membershipId ?? '', $dutyCode ?? '', $scopeKind ?? '', $requestingUnitId ?? '', $status ?? '']);
-        $expectedFilterHash = substr(hash('sha256', $expectedFilterData), 0, 8);
-        if ($cursorFilterHash !== $expectedFilterHash || (int) $cursorLimitStr !== $limit) {
+        if (! hash_equals($this->filterHash($filters), $cursorFilterHash)) {
             return $this->invalidSelector();
         }
 
@@ -504,6 +492,12 @@ final class DutyGrantAuthorization
         return [$lastId, $snapshotTime];
     }
 
+    /** @param array{?string, ?string, ?string, ?string, ?string, int} $filters */
+    private function filterHash(array $filters): string
+    {
+        return substr(hash('sha256', json_encode($filters, JSON_THROW_ON_ERROR)), 0, 8);
+    }
+
     /** @return array<string, mixed> */
     private function grantProjection(object $row): array
     {
@@ -516,8 +510,8 @@ final class DutyGrantAuthorization
             $monetaryLimit = ['currency' => 'PHP', 'amount' => $amount];
         }
 
-        $authorizedUserId = $row->authorized_by_user_id !== null ? (string) $row->authorized_by_user_id : (string) $row->user_id;
-        $authorizedAt = $row->authorized_at !== null ? $row->authorized_at : $row->starts_at;
+        $authorizedUserId = (string) ($row->authorized_by_user_id ?? throw new \LogicException('Grant attribution unavailable.'));
+        $authorizedAt = $row->authorized_at ?? throw new \LogicException('Grant attribution unavailable.');
 
         return [
             'id' => (string) $row->id,
