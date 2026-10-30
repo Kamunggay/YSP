@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 
-export const exampleSlices = ['session', 'enrollment', 'mfa-recovery', 'chapter-context', 'membership', 'duty-grant', 'policy', 'provisioning', 'identity-disable'];
+export const exampleSlices = ['session', 'enrollment', 'mfa-recovery', 'chapter-context', 'membership', 'duty-grant', 'policy', 'provisioning', 'identity-disable', 'stage1'];
 
 export function buildExamples(slice, exchanges) {
   assert.ok(exampleSlices.includes(slice), `unknown example slice: ${slice}`);

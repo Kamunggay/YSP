@@ -1,0 +1,5472 @@
+[
+  {
+    "name": "readStage1Catalogue-success-example",
+    "operationId": "readStage1Catalogue",
+    "path": "/chapters/{chapter_id}/catalogue",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "chapter_id": "1",
+        "revision": 1,
+        "units": [
+          {
+            "id": "201",
+            "code": "pcs",
+            "quantity_scale": 0
+          }
+        ],
+        "variants": [
+          {
+            "id": "501",
+            "item_code": "DEMO-ITEM",
+            "description": "Synthetic counted goods",
+            "unit_id": "201",
+            "policy_version_id": "301"
+          }
+        ],
+        "locations": [
+          {
+            "id": "601",
+            "name": "Synthetic stockroom",
+            "kind": "stockroom",
+            "custodian_user_id": "11"
+          },
+          {
+            "id": "602",
+            "name": "Synthetic nonusable custody",
+            "kind": "quarantine",
+            "custodian_user_id": "11"
+          }
+        ],
+        "conditions": [
+          {
+            "id": "611",
+            "code": "USABLE",
+            "usable": true
+          },
+          {
+            "id": "612",
+            "code": "DAMAGED",
+            "usable": false
+          }
+        ],
+        "requesting_units": [
+          {
+            "id": "101",
+            "name": "Synthetic committee"
+          }
+        ],
+        "blockers": []
+      }
+    }
+  },
+  {
+    "name": "readStage1Availability-success-example",
+    "operationId": "readStage1Availability",
+    "path": "/chapters/{chapter_id}/inventory/availability",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "query": {
+        "variant_id": "501",
+        "requesting_unit_id": "101"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "chapter_id": "1",
+        "revision": 3,
+        "variant_id": "501",
+        "purpose_kind": "internal",
+        "requesting_unit_id": "101",
+        "views": {
+          "usable_on_hand": "10.000000",
+          "available_to_allocate": "3.000000",
+          "rf_reserved": "7.000000",
+          "so_reserved": "0.000000",
+          "booth_custody": "0.000000",
+          "quarantined_rejected": "2.000000",
+          "inbound_open_po": "0.000000"
+        },
+        "eligible_lots": [
+          {
+            "lot_id": "971",
+            "position_id": "981",
+            "eligible_quantity": "3.000000",
+            "revision": 3
+          }
+        ],
+        "blockers": []
+      }
+    }
+  },
+  {
+    "name": "readStage1Record-success-example",
+    "operationId": "readStage1Record",
+    "path": "/chapters/{chapter_id}/records/{record_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "chapter_id": "1",
+        "state": {
+          "reference": {
+            "id": "700",
+            "kind": "RF"
+          },
+          "row_version": 7,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "reference": "DEMO-RF-2026-0001",
+        "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prepared_by_user_id": "11",
+        "policy_version_ids": [
+          "301"
+        ],
+        "lines": [
+          {
+            "id": "701",
+            "variant_id": "501",
+            "quantity": "7.000000",
+            "fulfilled_quantity": "0.000000",
+            "reserved_quantity": "7.000000"
+          }
+        ],
+        "allowed_actions": [
+          "rf.handover_prepare"
+        ],
+        "blockers": [],
+        "material": {
+          "requesting_unit_id": "101",
+          "purpose_kind": "internal",
+          "purpose": "Synthetic committee supplies",
+          "required_at": "2026-11-02T01:00:00.000001Z",
+          "lines": [
+            {
+              "variant_id": "501",
+              "quantity": "7.000000"
+            }
+          ]
+        },
+        "receipt_inspection": null,
+        "related_records": [],
+        "approvals": [
+          {
+            "user_id": "12",
+            "duty_code": "RF_APPROVER",
+            "material_version": 1,
+            "decision": "approve",
+            "decided_at": "2026-11-02T01:00:00.000001Z"
+          }
+        ],
+        "evidence_binding_ids": []
+      }
+    }
+  },
+  {
+    "name": "readStage1Record-revoked-or-invisible-example",
+    "operationId": "readStage1Record",
+    "path": "/chapters/{chapter_id}/records/{record_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 403,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": null,
+        "action_result": "forbidden",
+        "operation": null,
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "FORBIDDEN",
+          "message": "Current authority does not permit this action or result."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "request_access",
+            "label": "Ask the authorized chapter administrator to review access"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "readStage1RecordHistory-success-example",
+    "operationId": "readStage1RecordHistory",
+    "path": "/chapters/{chapter_id}/records/{record_id}/history",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "chapter_id": "1",
+        "record_id": "1",
+        "events": []
+      }
+    }
+  },
+  {
+    "name": "stageStage1PaperEvidence-success-example",
+    "operationId": "stageStage1PaperEvidence",
+    "path": "/chapters/{chapter_id}/records/{record_id}/evidence/stage",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-stageStage1PaperEvidence-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "file_name": "synthetic",
+        "media_type": "image/jpeg",
+        "content_base64": "c3ludGhldGlj",
+        "purpose_code": "synthetic"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "documents.stage_paper",
+            "idempotency_key": "stage1-stageStage1PaperEvidence-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "evidence": {
+            "id": "851",
+            "lifecycle": "staged",
+            "content_hash": null,
+            "object_version": "immutable-v1",
+            "media_type": "application/pdf",
+            "byte_length": 9,
+            "failure_code": null
+          },
+          "binding_id": null
+        }
+      }
+    }
+  },
+  {
+    "name": "validateStage1PaperEvidence-success-example",
+    "operationId": "validateStage1PaperEvidence",
+    "path": "/chapters/{chapter_id}/evidence/{evidence_id}/validate",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "evidence_id": "851"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-validateStage1PaperEvidence-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "object_version": "synthetic"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "documents.validate_paper",
+            "idempotency_key": "stage1-validateStage1PaperEvidence-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 7,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "evidence": {
+            "id": "851",
+            "lifecycle": "ready",
+            "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "object_version": "immutable-v1",
+            "media_type": "application/pdf",
+            "byte_length": 9,
+            "failure_code": null
+          },
+          "binding_id": null
+        }
+      }
+    }
+  },
+  {
+    "name": "readStage1Evidence-success-example",
+    "operationId": "readStage1Evidence",
+    "path": "/chapters/{chapter_id}/evidence/{evidence_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "evidence_id": "851"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "id": "1",
+        "lifecycle": "staged",
+        "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "object_version": "synthetic",
+        "media_type": "image/jpeg",
+        "byte_length": 1,
+        "failure_code": "synthetic"
+      }
+    }
+  },
+  {
+    "name": "readStage1Evidence-revoked-or-invisible-example",
+    "operationId": "readStage1Evidence",
+    "path": "/chapters/{chapter_id}/evidence/{evidence_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "evidence_id": "851"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 403,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": null,
+        "action_result": "forbidden",
+        "operation": null,
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "FORBIDDEN",
+          "message": "Current authority does not permit this action or result."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "request_access",
+            "label": "Ask the authorized chapter administrator to review access"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "bindStage1PaperEvidence-success-example",
+    "operationId": "bindStage1PaperEvidence",
+    "path": "/chapters/{chapter_id}/records/{record_id}/evidence-bindings",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-bindStage1PaperEvidence-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "evidence_id": "1",
+        "object_version": "synthetic",
+        "purpose_code": "synthetic",
+        "line_id": "1"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "documents.bind_paper",
+            "idempotency_key": "stage1-bindStage1PaperEvidence-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "evidence": {
+            "id": "851",
+            "lifecycle": "ready",
+            "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "object_version": "immutable-v1",
+            "media_type": "application/pdf",
+            "byte_length": 9,
+            "failure_code": null
+          },
+          "binding_id": "861"
+        }
+      }
+    }
+  },
+  {
+    "name": "bindStage1PaperEvidence-stale-material-example",
+    "operationId": "bindStage1PaperEvidence",
+    "path": "/chapters/{chapter_id}/records/{record_id}/evidence-bindings",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-bindStage1PaperEvidence-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "evidence_id": "1",
+        "object_version": "synthetic",
+        "purpose_code": "synthetic",
+        "line_id": "1"
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "stale",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "STALE_MATERIAL_VERSION",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "bindStage1PaperEvidence-missing-evidence-example",
+    "operationId": "bindStage1PaperEvidence",
+    "path": "/chapters/{chapter_id}/records/{record_id}/evidence-bindings",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-bindStage1PaperEvidence-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "evidence_id": "1",
+        "object_version": "synthetic",
+        "purpose_code": "synthetic",
+        "line_id": "1"
+      }
+    },
+    "response": {
+      "status": 422,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "EVIDENCE_NOT_READY",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "createStage1IpcDraft-success-example",
+    "operationId": "createStage1IpcDraft",
+    "path": "/chapters/{chapter_id}/opening-counts/drafts",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-createStage1IpcDraft-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "material": {
+          "cutoff_at": "2026-11-02T01:00:00.000001Z",
+          "counted_at": "2026-11-02T01:00:00.000001Z",
+          "purpose": "Synthetic complete opening baseline",
+          "policy_version_id": "301",
+          "counter_user_ids": [
+            "11",
+            "12"
+          ],
+          "lines": [
+            {
+              "variant_id": "501",
+              "location_id": "601",
+              "condition_id": "611",
+              "counted_quantity": "10.000000",
+              "unit_value": "20.000000",
+              "currency": "PHP",
+              "valuation_basis": "Synthetic reviewed count valuation",
+              "restriction_version_id": null
+            },
+            {
+              "variant_id": "501",
+              "location_id": "602",
+              "condition_id": "612",
+              "counted_quantity": "2.000000",
+              "unit_value": "20.000000",
+              "currency": "PHP",
+              "valuation_basis": "Synthetic damaged stock valuation",
+              "restriction_version_id": null
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "ipc.create_draft",
+            "idempotency_key": "stage1-createStage1IpcDraft-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "IPC",
+            "id": "900"
+          },
+          "row_version": 1,
+          "material_version": 1,
+          "states": {
+            "approval": "draft",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "IPC",
+                "id": "900"
+              },
+              "row_version": 1,
+              "material_version": 1,
+              "states": {
+                "approval": "draft",
+                "fulfillment": "unissued",
+                "exception": "none"
+              }
+            },
+            "reference": null,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "911",
+                "variant_id": "501",
+                "quantity": "10.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              },
+              {
+                "id": "912",
+                "variant_id": "501",
+                "quantity": "2.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [
+              "ipc.submit"
+            ],
+            "blockers": [],
+            "material": {
+              "cutoff_at": "2026-11-02T01:00:00.000001Z",
+              "counted_at": "2026-11-02T01:00:00.000001Z",
+              "purpose": "Synthetic complete opening baseline",
+              "policy_version_id": "301",
+              "counter_user_ids": [
+                "11",
+                "12"
+              ],
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "location_id": "601",
+                  "condition_id": "611",
+                  "counted_quantity": "10.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic reviewed count valuation",
+                  "restriction_version_id": null
+                },
+                {
+                  "variant_id": "501",
+                  "location_id": "602",
+                  "condition_id": "612",
+                  "counted_quantity": "2.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic damaged stock valuation",
+                  "restriction_version_id": null
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "saveStage1IpcDraft-success-example",
+    "operationId": "saveStage1IpcDraft",
+    "path": "/chapters/{chapter_id}/opening-counts/{record_id}/draft",
+    "method": "put",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "900"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-saveStage1IpcDraft-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "material": {
+          "cutoff_at": "2026-11-02T01:00:00.000001Z",
+          "counted_at": "2026-11-02T01:00:00.000001Z",
+          "purpose": "Synthetic complete opening baseline",
+          "policy_version_id": "301",
+          "counter_user_ids": [
+            "11",
+            "12"
+          ],
+          "lines": [
+            {
+              "variant_id": "501",
+              "location_id": "601",
+              "condition_id": "611",
+              "counted_quantity": "10.000000",
+              "unit_value": "20.000000",
+              "currency": "PHP",
+              "valuation_basis": "Synthetic reviewed count valuation",
+              "restriction_version_id": null
+            },
+            {
+              "variant_id": "501",
+              "location_id": "602",
+              "condition_id": "612",
+              "counted_quantity": "2.000000",
+              "unit_value": "20.000000",
+              "currency": "PHP",
+              "valuation_basis": "Synthetic damaged stock valuation",
+              "restriction_version_id": null
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "ipc.save_draft",
+            "idempotency_key": "stage1-saveStage1IpcDraft-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "IPC",
+            "id": "900"
+          },
+          "row_version": 2,
+          "material_version": 2,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "IPC",
+                "id": "900"
+              },
+              "row_version": 2,
+              "material_version": 2,
+              "states": {
+                "approval": "approved",
+                "fulfillment": "partial",
+                "exception": "none"
+              }
+            },
+            "reference": null,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "911",
+                "variant_id": "501",
+                "quantity": "10.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              },
+              {
+                "id": "912",
+                "variant_id": "501",
+                "quantity": "2.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [
+              "ipc.submit"
+            ],
+            "blockers": [],
+            "material": {
+              "cutoff_at": "2026-11-02T01:00:00.000001Z",
+              "counted_at": "2026-11-02T01:00:00.000001Z",
+              "purpose": "Synthetic complete opening baseline",
+              "policy_version_id": "301",
+              "counter_user_ids": [
+                "11",
+                "12"
+              ],
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "location_id": "601",
+                  "condition_id": "611",
+                  "counted_quantity": "10.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic reviewed count valuation",
+                  "restriction_version_id": null
+                },
+                {
+                  "variant_id": "501",
+                  "location_id": "602",
+                  "condition_id": "612",
+                  "counted_quantity": "2.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic damaged stock valuation",
+                  "restriction_version_id": null
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "saveStage1IpcDraft-stale-material-example",
+    "operationId": "saveStage1IpcDraft",
+    "path": "/chapters/{chapter_id}/opening-counts/{record_id}/draft",
+    "method": "put",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "900"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-saveStage1IpcDraft-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "material": {
+          "cutoff_at": "2026-11-02T01:00:00.000001Z",
+          "counted_at": "2026-11-02T01:00:00.000001Z",
+          "purpose": "Synthetic complete opening baseline",
+          "policy_version_id": "301",
+          "counter_user_ids": [
+            "11",
+            "12"
+          ],
+          "lines": [
+            {
+              "variant_id": "501",
+              "location_id": "601",
+              "condition_id": "611",
+              "counted_quantity": "10.000000",
+              "unit_value": "20.000000",
+              "currency": "PHP",
+              "valuation_basis": "Synthetic reviewed count valuation",
+              "restriction_version_id": null
+            },
+            {
+              "variant_id": "501",
+              "location_id": "602",
+              "condition_id": "612",
+              "counted_quantity": "2.000000",
+              "unit_value": "20.000000",
+              "currency": "PHP",
+              "valuation_basis": "Synthetic damaged stock valuation",
+              "restriction_version_id": null
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "stale",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "IPC",
+            "id": "900"
+          },
+          "row_version": 2,
+          "material_version": 2,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "STALE_MATERIAL_VERSION",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "submitStage1Ipc-success-example",
+    "operationId": "submitStage1Ipc",
+    "path": "/chapters/{chapter_id}/opening-counts/{record_id}/submit",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "900"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-submitStage1Ipc-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "ipc.submit",
+            "idempotency_key": "stage1-submitStage1Ipc-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "IPC",
+            "id": "900"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "submitted",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "IPC",
+                "id": "900"
+              },
+              "row_version": 2,
+              "material_version": 1,
+              "states": {
+                "approval": "submitted",
+                "fulfillment": "unissued",
+                "exception": "none"
+              }
+            },
+            "reference": "DEMO-IPC-2026-0001",
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "911",
+                "variant_id": "501",
+                "quantity": "10.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              },
+              {
+                "id": "912",
+                "variant_id": "501",
+                "quantity": "2.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [
+              "ipc.review"
+            ],
+            "blockers": [],
+            "material": {
+              "cutoff_at": "2026-11-02T01:00:00.000001Z",
+              "counted_at": "2026-11-02T01:00:00.000001Z",
+              "purpose": "Synthetic complete opening baseline",
+              "policy_version_id": "301",
+              "counter_user_ids": [
+                "11",
+                "12"
+              ],
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "location_id": "601",
+                  "condition_id": "611",
+                  "counted_quantity": "10.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic reviewed count valuation",
+                  "restriction_version_id": null
+                },
+                {
+                  "variant_id": "501",
+                  "location_id": "602",
+                  "condition_id": "612",
+                  "counted_quantity": "2.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic damaged stock valuation",
+                  "restriction_version_id": null
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": [
+              "861"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "submitStage1Ipc-missing-policy-example",
+    "operationId": "submitStage1Ipc",
+    "path": "/chapters/{chapter_id}/opening-counts/{record_id}/submit",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "900"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-submitStage1Ipc-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1
+      }
+    },
+    "response": {
+      "status": 423,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "IPC",
+            "id": "900"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "submitted",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "POLICY_NOT_APPROVED",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "reviewStage1Ipc-success-example",
+    "operationId": "reviewStage1Ipc",
+    "path": "/chapters/{chapter_id}/opening-counts/{record_id}/review",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "900"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-reviewStage1Ipc-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "decision": "approve",
+        "reason": "synthetic",
+        "evidence_binding_ids": [
+          "861",
+          "862",
+          "863"
+        ]
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "ipc.review",
+            "idempotency_key": "stage1-reviewStage1Ipc-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "IPC",
+            "id": "900"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "IPC",
+                "id": "900"
+              },
+              "row_version": 2,
+              "material_version": 1,
+              "states": {
+                "approval": "approved",
+                "fulfillment": "unissued",
+                "exception": "none"
+              }
+            },
+            "reference": "DEMO-IPC-2026-0001",
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "911",
+                "variant_id": "501",
+                "quantity": "10.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              },
+              {
+                "id": "912",
+                "variant_id": "501",
+                "quantity": "2.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [],
+            "blockers": [],
+            "material": {
+              "cutoff_at": "2026-11-02T01:00:00.000001Z",
+              "counted_at": "2026-11-02T01:00:00.000001Z",
+              "purpose": "Synthetic complete opening baseline",
+              "policy_version_id": "301",
+              "counter_user_ids": [
+                "11",
+                "12"
+              ],
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "location_id": "601",
+                  "condition_id": "611",
+                  "counted_quantity": "10.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic reviewed count valuation",
+                  "restriction_version_id": null
+                },
+                {
+                  "variant_id": "501",
+                  "location_id": "602",
+                  "condition_id": "612",
+                  "counted_quantity": "2.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic damaged stock valuation",
+                  "restriction_version_id": null
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [
+              {
+                "user_id": "14",
+                "duty_code": "CHAPTER_HEAD",
+                "material_version": 1,
+                "decision": "approve",
+                "decided_at": "2026-11-02T01:00:00.000001Z"
+              },
+              {
+                "user_id": "12",
+                "duty_code": "FINANCE",
+                "material_version": 1,
+                "decision": "approve",
+                "decided_at": "2026-11-02T01:00:00.000001Z"
+              }
+            ],
+            "evidence_binding_ids": [
+              "861",
+              "862",
+              "863"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "reviewStage1Ipc-revoked-or-invisible-example",
+    "operationId": "reviewStage1Ipc",
+    "path": "/chapters/{chapter_id}/opening-counts/{record_id}/review",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "900"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-reviewStage1Ipc-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "decision": "approve",
+        "reason": "synthetic",
+        "evidence_binding_ids": [
+          "861",
+          "862",
+          "863"
+        ]
+      }
+    },
+    "response": {
+      "status": 403,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": null,
+        "action_result": "forbidden",
+        "operation": null,
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "FORBIDDEN",
+          "message": "Current authority does not permit this action or result."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "request_access",
+            "label": "Ask the authorized chapter administrator to review access"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "reviewStage1Ipc-independence-example",
+    "operationId": "reviewStage1Ipc",
+    "path": "/chapters/{chapter_id}/opening-counts/{record_id}/review",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "900"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-reviewStage1Ipc-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "decision": "approve",
+        "reason": "synthetic",
+        "evidence_binding_ids": [
+          "861",
+          "862",
+          "863"
+        ]
+      }
+    },
+    "response": {
+      "status": 423,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "IPC",
+            "id": "900"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "INDEPENDENT_ACTOR_REQUIRED",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "reviseStage1Ipc-success-example",
+    "operationId": "reviseStage1Ipc",
+    "path": "/chapters/{chapter_id}/opening-counts/{record_id}/revise",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "900"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-reviseStage1Ipc-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "reason": "synthetic"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "ipc.revise",
+            "idempotency_key": "stage1-reviseStage1Ipc-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "IPC",
+            "id": "900"
+          },
+          "row_version": 2,
+          "material_version": 2,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "IPC",
+                "id": "900"
+              },
+              "row_version": 2,
+              "material_version": 2,
+              "states": {
+                "approval": "approved",
+                "fulfillment": "partial",
+                "exception": "none"
+              }
+            },
+            "reference": null,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "911",
+                "variant_id": "501",
+                "quantity": "10.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              },
+              {
+                "id": "912",
+                "variant_id": "501",
+                "quantity": "2.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [
+              "ipc.submit"
+            ],
+            "blockers": [],
+            "material": {
+              "cutoff_at": "2026-11-02T01:00:00.000001Z",
+              "counted_at": "2026-11-02T01:00:00.000001Z",
+              "purpose": "Synthetic complete opening baseline",
+              "policy_version_id": "301",
+              "counter_user_ids": [
+                "11",
+                "12"
+              ],
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "location_id": "601",
+                  "condition_id": "611",
+                  "counted_quantity": "10.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic reviewed count valuation",
+                  "restriction_version_id": null
+                },
+                {
+                  "variant_id": "501",
+                  "location_id": "602",
+                  "condition_id": "612",
+                  "counted_quantity": "2.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic damaged stock valuation",
+                  "restriction_version_id": null
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "cancelStage1Ipc-success-example",
+    "operationId": "cancelStage1Ipc",
+    "path": "/chapters/{chapter_id}/opening-counts/{record_id}/cancel",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "900"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-cancelStage1Ipc-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "reason": "synthetic"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "ipc.cancel",
+            "idempotency_key": "stage1-cancelStage1Ipc-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "IPC",
+            "id": "900"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "canceled",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "IPC",
+                "id": "900"
+              },
+              "row_version": 2,
+              "material_version": 1,
+              "states": {
+                "approval": "canceled",
+                "fulfillment": "unissued",
+                "exception": "none"
+              }
+            },
+            "reference": "DEMO-IPC-2026-0001",
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "911",
+                "variant_id": "501",
+                "quantity": "10.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              },
+              {
+                "id": "912",
+                "variant_id": "501",
+                "quantity": "2.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [],
+            "blockers": [],
+            "material": {
+              "cutoff_at": "2026-11-02T01:00:00.000001Z",
+              "counted_at": "2026-11-02T01:00:00.000001Z",
+              "purpose": "Synthetic complete opening baseline",
+              "policy_version_id": "301",
+              "counter_user_ids": [
+                "11",
+                "12"
+              ],
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "location_id": "601",
+                  "condition_id": "611",
+                  "counted_quantity": "10.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic reviewed count valuation",
+                  "restriction_version_id": null
+                },
+                {
+                  "variant_id": "501",
+                  "location_id": "602",
+                  "condition_id": "612",
+                  "counted_quantity": "2.000000",
+                  "unit_value": "20.000000",
+                  "currency": "PHP",
+                  "valuation_basis": "Synthetic damaged stock valuation",
+                  "restriction_version_id": null
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "createStage1RfDraft-success-example",
+    "operationId": "createStage1RfDraft",
+    "path": "/chapters/{chapter_id}/requisitions/drafts",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-createStage1RfDraft-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "material": {
+          "requesting_unit_id": "101",
+          "purpose_kind": "internal",
+          "purpose": "Synthetic committee supplies",
+          "required_at": "2026-11-02T01:00:00.000001Z",
+          "lines": [
+            {
+              "variant_id": "501",
+              "quantity": "7.000000"
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.create_draft",
+            "idempotency_key": "stage1-createStage1RfDraft-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 1,
+          "material_version": 1,
+          "states": {
+            "approval": "draft",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "RF",
+                "id": "700"
+              },
+              "row_version": 1,
+              "material_version": 1,
+              "states": {
+                "approval": "draft",
+                "fulfillment": "unissued",
+                "exception": "none"
+              }
+            },
+            "reference": null,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "701",
+                "variant_id": "501",
+                "quantity": "7.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [
+              "rf.submit"
+            ],
+            "blockers": [],
+            "material": {
+              "requesting_unit_id": "101",
+              "purpose_kind": "internal",
+              "purpose": "Synthetic committee supplies",
+              "required_at": "2026-11-02T01:00:00.000001Z",
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "quantity": "7.000000"
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "saveStage1RfDraft-success-example",
+    "operationId": "saveStage1RfDraft",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/draft",
+    "method": "put",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-saveStage1RfDraft-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "material": {
+          "requesting_unit_id": "101",
+          "purpose_kind": "internal",
+          "purpose": "Synthetic committee supplies",
+          "required_at": "2026-11-02T01:00:00.000001Z",
+          "lines": [
+            {
+              "variant_id": "501",
+              "quantity": "7.000000"
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.save_draft",
+            "idempotency_key": "stage1-saveStage1RfDraft-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 2,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "RF",
+                "id": "700"
+              },
+              "row_version": 2,
+              "material_version": 2,
+              "states": {
+                "approval": "approved",
+                "fulfillment": "partial",
+                "exception": "none"
+              }
+            },
+            "reference": null,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "701",
+                "variant_id": "501",
+                "quantity": "7.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [
+              "rf.submit"
+            ],
+            "blockers": [],
+            "material": {
+              "requesting_unit_id": "101",
+              "purpose_kind": "internal",
+              "purpose": "Synthetic committee supplies",
+              "required_at": "2026-11-02T01:00:00.000001Z",
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "quantity": "7.000000"
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "saveStage1RfDraft-stale-material-example",
+    "operationId": "saveStage1RfDraft",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/draft",
+    "method": "put",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-saveStage1RfDraft-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "material": {
+          "requesting_unit_id": "101",
+          "purpose_kind": "internal",
+          "purpose": "Synthetic committee supplies",
+          "required_at": "2026-11-02T01:00:00.000001Z",
+          "lines": [
+            {
+              "variant_id": "501",
+              "quantity": "7.000000"
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "stale",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 2,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "STALE_MATERIAL_VERSION",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "submitStage1Rf-success-example",
+    "operationId": "submitStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/submit",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-submitStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.submit",
+            "idempotency_key": "stage1-submitStage1Rf-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "submitted",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "RF",
+                "id": "700"
+              },
+              "row_version": 2,
+              "material_version": 1,
+              "states": {
+                "approval": "submitted",
+                "fulfillment": "unissued",
+                "exception": "none"
+              }
+            },
+            "reference": "DEMO-RF-2026-0001",
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "701",
+                "variant_id": "501",
+                "quantity": "7.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [
+              "rf.review"
+            ],
+            "blockers": [],
+            "material": {
+              "requesting_unit_id": "101",
+              "purpose_kind": "internal",
+              "purpose": "Synthetic committee supplies",
+              "required_at": "2026-11-02T01:00:00.000001Z",
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "quantity": "7.000000"
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "submitStage1Rf-missing-policy-example",
+    "operationId": "submitStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/submit",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-submitStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1
+      }
+    },
+    "response": {
+      "status": 423,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "submitted",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "POLICY_NOT_APPROVED",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "reviewStage1Rf-success-example",
+    "operationId": "reviewStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/review",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-reviewStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "decision": "approve",
+        "reason": "synthetic",
+        "evidence_binding_ids": []
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.review",
+            "idempotency_key": "stage1-reviewStage1Rf-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "RF",
+                "id": "700"
+              },
+              "row_version": 2,
+              "material_version": 1,
+              "states": {
+                "approval": "approved",
+                "fulfillment": "unissued",
+                "exception": "none"
+              }
+            },
+            "reference": "DEMO-RF-2026-0001",
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "701",
+                "variant_id": "501",
+                "quantity": "7.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [],
+            "blockers": [],
+            "material": {
+              "requesting_unit_id": "101",
+              "purpose_kind": "internal",
+              "purpose": "Synthetic committee supplies",
+              "required_at": "2026-11-02T01:00:00.000001Z",
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "quantity": "7.000000"
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [
+              {
+                "user_id": "12",
+                "duty_code": "RF_APPROVER",
+                "material_version": 1,
+                "decision": "approve",
+                "decided_at": "2026-11-02T01:00:00.000001Z"
+              }
+            ],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "reviewStage1Rf-revoked-or-invisible-example",
+    "operationId": "reviewStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/review",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-reviewStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "decision": "approve",
+        "reason": "synthetic",
+        "evidence_binding_ids": []
+      }
+    },
+    "response": {
+      "status": 403,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": null,
+        "action_result": "forbidden",
+        "operation": null,
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "FORBIDDEN",
+          "message": "Current authority does not permit this action or result."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "request_access",
+            "label": "Ask the authorized chapter administrator to review access"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "reviewStage1Rf-independence-example",
+    "operationId": "reviewStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/review",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-reviewStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "decision": "approve",
+        "reason": "synthetic",
+        "evidence_binding_ids": []
+      }
+    },
+    "response": {
+      "status": 423,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "INDEPENDENT_ACTOR_REQUIRED",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "reviseStage1Rf-success-example",
+    "operationId": "reviseStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/revise",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-reviseStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "reason": "synthetic"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.revise",
+            "idempotency_key": "stage1-reviseStage1Rf-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 2,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "RF",
+                "id": "700"
+              },
+              "row_version": 2,
+              "material_version": 2,
+              "states": {
+                "approval": "approved",
+                "fulfillment": "partial",
+                "exception": "none"
+              }
+            },
+            "reference": null,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "701",
+                "variant_id": "501",
+                "quantity": "7.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [
+              "rf.submit"
+            ],
+            "blockers": [],
+            "material": {
+              "requesting_unit_id": "101",
+              "purpose_kind": "internal",
+              "purpose": "Synthetic committee supplies",
+              "required_at": "2026-11-02T01:00:00.000001Z",
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "quantity": "7.000000"
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "cancelStage1Rf-success-example",
+    "operationId": "cancelStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/cancel",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-cancelStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "reason": "synthetic"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.cancel",
+            "idempotency_key": "stage1-cancelStage1Rf-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "canceled",
+            "fulfillment": "unissued",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "RF",
+                "id": "700"
+              },
+              "row_version": 2,
+              "material_version": 1,
+              "states": {
+                "approval": "canceled",
+                "fulfillment": "unissued",
+                "exception": "none"
+              }
+            },
+            "reference": "DEMO-RF-2026-0001",
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "701",
+                "variant_id": "501",
+                "quantity": "7.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [],
+            "blockers": [],
+            "material": {
+              "requesting_unit_id": "101",
+              "purpose_kind": "internal",
+              "purpose": "Synthetic committee supplies",
+              "required_at": "2026-11-02T01:00:00.000001Z",
+              "lines": [
+                {
+                  "variant_id": "501",
+                  "quantity": "7.000000"
+                }
+              ]
+            },
+            "receipt_inspection": null,
+            "related_records": [],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "prepareStage1OpeningReceipt-success-example",
+    "operationId": "prepareStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/drafts",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-prepareStage1OpeningReceipt-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "source": {
+          "record_id": "900",
+          "row_version": 8,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "purchasing.prepare_opening_rm",
+            "idempotency_key": "stage1-prepareStage1OpeningReceipt-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RM",
+            "id": "901"
+          },
+          "row_version": 7,
+          "material_version": 1,
+          "states": {
+            "inspection": "draft",
+            "posting": "draft",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "RM",
+                "id": "901"
+              },
+              "row_version": 7,
+              "material_version": 1,
+              "states": {
+                "inspection": "draft",
+                "posting": "draft",
+                "exception": "none"
+              }
+            },
+            "reference": null,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "921",
+                "variant_id": "501",
+                "quantity": "10.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              },
+              {
+                "id": "922",
+                "variant_id": "501",
+                "quantity": "2.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [],
+            "blockers": [],
+            "material": null,
+            "receipt_inspection": null,
+            "related_records": [
+              {
+                "reference": {
+                  "id": "900",
+                  "kind": "IPC"
+                },
+                "relation": "source"
+              }
+            ],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "inspectStage1OpeningReceipt-success-example",
+    "operationId": "inspectStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/{record_id}/inspect",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "901"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-inspectStage1OpeningReceipt-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "inspected_at": "2026-11-02T01:00:00.000001Z",
+        "representative_user_ids": [],
+        "evidence_binding_ids": [
+          "851",
+          "852"
+        ],
+        "lines": [
+          {
+            "ipc_line_id": "911",
+            "expected_quantity": "10.000000",
+            "delivered_quantity": "10.000000",
+            "missing_quantity": "0.000000",
+            "accepted_quantity": "10.000000",
+            "rejected_quantity": "0.000000",
+            "held_quantity": "0.000000",
+            "recorded_nonusable_quantity": "0.000000",
+            "discrepancy_reason": null
+          },
+          {
+            "ipc_line_id": "912",
+            "expected_quantity": "2.000000",
+            "delivered_quantity": "2.000000",
+            "missing_quantity": "0.000000",
+            "accepted_quantity": "0.000000",
+            "rejected_quantity": "2.000000",
+            "held_quantity": "0.000000",
+            "recorded_nonusable_quantity": "2.000000",
+            "discrepancy_reason": "Synthetic damaged units remain nonusable"
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "purchasing.inspect_opening_rm",
+            "idempotency_key": "stage1-inspectStage1OpeningReceipt-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RM",
+            "id": "901"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "inspection": "complete",
+            "posting": "draft",
+            "exception": "open"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "record": {
+            "chapter_id": "1",
+            "state": {
+              "reference": {
+                "kind": "RM",
+                "id": "901"
+              },
+              "row_version": 2,
+              "material_version": 1,
+              "states": {
+                "inspection": "complete",
+                "posting": "draft",
+                "exception": "open"
+              }
+            },
+            "reference": null,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "prepared_by_user_id": "11",
+            "policy_version_ids": [
+              "301"
+            ],
+            "lines": [
+              {
+                "id": "921",
+                "variant_id": "501",
+                "quantity": "10.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              },
+              {
+                "id": "922",
+                "variant_id": "501",
+                "quantity": "2.000000",
+                "fulfilled_quantity": "0.000000",
+                "reserved_quantity": "0.000000"
+              }
+            ],
+            "allowed_actions": [],
+            "blockers": [],
+            "material": null,
+            "receipt_inspection": null,
+            "related_records": [
+              {
+                "reference": {
+                  "id": "900",
+                  "kind": "IPC"
+                },
+                "relation": "source"
+              }
+            ],
+            "approvals": [],
+            "evidence_binding_ids": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "acceptStage1OpeningReceipt-success-example",
+    "operationId": "acceptStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/{record_id}/accept",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "901"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-acceptStage1OpeningReceipt-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 4,
+        "expected_material_version": 1,
+        "source": {
+          "record_id": "900",
+          "row_version": 8,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "evidence_binding_ids": [
+          "861",
+          "862"
+        ]
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "purchasing.accept_opening_rm",
+            "idempotency_key": "stage1-acceptStage1OpeningReceipt-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RM",
+            "id": "901"
+          },
+          "row_version": 5,
+          "material_version": 1,
+          "states": {
+            "inspection": "complete",
+            "posting": "posted",
+            "exception": "open"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "ipc_id": "900",
+          "rm_id": "901",
+          "opening_id": "921",
+          "posting_id": "931",
+          "movement_ids": [
+            "941",
+            "942"
+          ],
+          "accepted_quantity": "10.000000",
+          "nonusable_quantity": "2.000000",
+          "inventory_revision": 2
+        }
+      }
+    }
+  },
+  {
+    "name": "acceptStage1OpeningReceipt-same-key-replay-example",
+    "operationId": "acceptStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/{record_id}/accept",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "901"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-acceptStage1OpeningReceipt-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 4,
+        "expected_material_version": 1,
+        "source": {
+          "record_id": "900",
+          "row_version": 8,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "evidence_binding_ids": [
+          "861",
+          "862"
+        ]
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "purchasing.accept_opening_rm",
+            "idempotency_key": "stage1-acceptStage1OpeningReceipt-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": true
+        },
+        "record": {
+          "reference": {
+            "kind": "RM",
+            "id": "901"
+          },
+          "row_version": 5,
+          "material_version": 1,
+          "states": {
+            "inspection": "complete",
+            "posting": "posted",
+            "exception": "open"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "ipc_id": "900",
+          "rm_id": "901",
+          "opening_id": "921",
+          "posting_id": "931",
+          "movement_ids": [
+            "941",
+            "942"
+          ],
+          "accepted_quantity": "10.000000",
+          "nonusable_quantity": "2.000000",
+          "inventory_revision": 2
+        }
+      }
+    }
+  },
+  {
+    "name": "acceptStage1OpeningReceipt-revoked-or-invisible-example",
+    "operationId": "acceptStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/{record_id}/accept",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "901"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-acceptStage1OpeningReceipt-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 4,
+        "expected_material_version": 1,
+        "source": {
+          "record_id": "900",
+          "row_version": 8,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "evidence_binding_ids": [
+          "861",
+          "862"
+        ]
+      }
+    },
+    "response": {
+      "status": 403,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": null,
+        "action_result": "forbidden",
+        "operation": null,
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "FORBIDDEN",
+          "message": "Current authority does not permit this action or result."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "request_access",
+            "label": "Ask the authorized chapter administrator to review access"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "acceptStage1OpeningReceipt-duplicate-baseline-example",
+    "operationId": "acceptStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/{record_id}/accept",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "901"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-second-opening-key",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 4,
+        "expected_material_version": 1,
+        "source": {
+          "record_id": "900",
+          "row_version": 8,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "evidence_binding_ids": [
+          "861",
+          "862"
+        ]
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RM",
+            "id": "901"
+          },
+          "row_version": 5,
+          "material_version": 1,
+          "states": {
+            "inspection": "complete",
+            "posting": "posted",
+            "exception": "open"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "BASELINE_ALREADY_POSTED",
+          "message": "An opening baseline already exists; reconcile the original receipt instead of posting another."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "acceptStage1OpeningReceipt-stale-material-example",
+    "operationId": "acceptStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/{record_id}/accept",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "901"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-acceptStage1OpeningReceipt-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 4,
+        "expected_material_version": 1,
+        "source": {
+          "record_id": "900",
+          "row_version": 8,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "evidence_binding_ids": [
+          "861",
+          "862"
+        ]
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "stale",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RM",
+            "id": "901"
+          },
+          "row_version": 5,
+          "material_version": 1,
+          "states": {
+            "inspection": "complete",
+            "posting": "posted",
+            "exception": "open"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "STALE_MATERIAL_VERSION",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "acceptStage1OpeningReceipt-changed-key-payload-example",
+    "operationId": "acceptStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/{record_id}/accept",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "901"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-acceptStage1OpeningReceipt-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 5,
+        "expected_material_version": 1,
+        "source": {
+          "record_id": "900",
+          "row_version": 8,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "evidence_binding_ids": [
+          "861",
+          "862"
+        ]
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RM",
+            "id": "901"
+          },
+          "row_version": 5,
+          "material_version": 1,
+          "states": {
+            "inspection": "complete",
+            "posting": "posted",
+            "exception": "open"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "IDEMPOTENCY_CONFLICT",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "acceptStage1OpeningReceipt-missing-policy-example",
+    "operationId": "acceptStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/{record_id}/accept",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "901"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-acceptStage1OpeningReceipt-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 4,
+        "expected_material_version": 1,
+        "source": {
+          "record_id": "900",
+          "row_version": 8,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "evidence_binding_ids": [
+          "861",
+          "862"
+        ]
+      }
+    },
+    "response": {
+      "status": 423,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RM",
+            "id": "901"
+          },
+          "row_version": 5,
+          "material_version": 1,
+          "states": {
+            "inspection": "complete",
+            "posting": "posted",
+            "exception": "open"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "POLICY_NOT_APPROVED",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "acceptStage1OpeningReceipt-missing-evidence-example",
+    "operationId": "acceptStage1OpeningReceipt",
+    "path": "/chapters/{chapter_id}/opening-receipts/{record_id}/accept",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "901"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-acceptStage1OpeningReceipt-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 4,
+        "expected_material_version": 1,
+        "source": {
+          "record_id": "900",
+          "row_version": 8,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "evidence_binding_ids": [
+          "861",
+          "862"
+        ]
+      }
+    },
+    "response": {
+      "status": 422,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RM",
+            "id": "901"
+          },
+          "row_version": 5,
+          "material_version": 1,
+          "states": {
+            "inspection": "complete",
+            "posting": "posted",
+            "exception": "open"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "EVIDENCE_NOT_READY",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "readStage1RfAllocationProposal-success-example",
+    "operationId": "readStage1RfAllocationProposal",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/allocation-proposal",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "row_version": 7,
+        "material_version": 1,
+        "inventory_revision": 2,
+        "lines": [
+          {
+            "demand_line_id": "701",
+            "outstanding_quantity": "7.000000",
+            "eligible_quantity": "10.000000",
+            "reservable_quantity": "7.000000",
+            "shortage_quantity": "0.000000"
+          }
+        ],
+        "blockers": []
+      }
+    }
+  },
+  {
+    "name": "allocateStage1Rf-success-example",
+    "operationId": "allocateStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/allocate",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-allocateStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "inventory_revision": 2,
+        "mode": "full",
+        "lines": [
+          {
+            "demand_line_id": "701",
+            "quantity": "7.000000"
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.allocate_stock",
+            "idempotency_key": "stage1-allocateStage1Rf-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "reservations": [
+            {
+              "id": "751",
+              "demand_line_id": "701",
+              "quantity": "7.000000",
+              "unpaid_expires_at": null
+            }
+          ],
+          "remaining_shortage_quantity": "0.000000",
+          "inventory_revision": 3
+        }
+      }
+    }
+  },
+  {
+    "name": "allocateStage1Rf-same-key-replay-example",
+    "operationId": "allocateStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/allocate",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-allocateStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "inventory_revision": 2,
+        "mode": "full",
+        "lines": [
+          {
+            "demand_line_id": "701",
+            "quantity": "7.000000"
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.allocate_stock",
+            "idempotency_key": "stage1-allocateStage1Rf-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": true
+        },
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "reservations": [
+            {
+              "id": "751",
+              "demand_line_id": "701",
+              "quantity": "7.000000",
+              "unpaid_expires_at": null
+            }
+          ],
+          "remaining_shortage_quantity": "0.000000",
+          "inventory_revision": 3
+        }
+      }
+    }
+  },
+  {
+    "name": "allocateStage1Rf-revoked-or-invisible-example",
+    "operationId": "allocateStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/allocate",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-allocateStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "inventory_revision": 2,
+        "mode": "full",
+        "lines": [
+          {
+            "demand_line_id": "701",
+            "quantity": "7.000000"
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 403,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": null,
+        "action_result": "forbidden",
+        "operation": null,
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "FORBIDDEN",
+          "message": "Current authority does not permit this action or result."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "request_access",
+            "label": "Ask the authorized chapter administrator to review access"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "allocateStage1Rf-stale-material-example",
+    "operationId": "allocateStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/allocate",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-allocateStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "inventory_revision": 2,
+        "mode": "full",
+        "lines": [
+          {
+            "demand_line_id": "701",
+            "quantity": "7.000000"
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "stale",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "STALE_MATERIAL_VERSION",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "allocateStage1Rf-changed-key-payload-example",
+    "operationId": "allocateStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/allocate",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-allocateStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 2,
+        "expected_material_version": 1,
+        "inventory_revision": 2,
+        "mode": "full",
+        "lines": [
+          {
+            "demand_line_id": "701",
+            "quantity": "7.000000"
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "IDEMPOTENCY_CONFLICT",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "allocateStage1Rf-missing-policy-example",
+    "operationId": "allocateStage1Rf",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/allocate",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-allocateStage1Rf-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "inventory_revision": 2,
+        "mode": "full",
+        "lines": [
+          {
+            "demand_line_id": "701",
+            "quantity": "7.000000"
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 423,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "kind": "RF",
+            "id": "700"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "approval": "approved",
+            "fulfillment": "partial",
+            "exception": "none"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "POLICY_NOT_APPROVED",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "prepareStage1RfHandover-success-example",
+    "operationId": "prepareStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/prepare",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-prepareStage1RfHandover-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 7,
+        "expected_material_version": 1,
+        "recipient": {
+          "name": "Synthetic committee recipient",
+          "user_id": "13",
+          "capacity": "Committee representative"
+        },
+        "partial_acceptance": true,
+        "lines": [
+          {
+            "demand_line_id": "701",
+            "reservation_id": "751",
+            "actual_quantity": "4.000000"
+          }
+        ]
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.handover_prepare",
+            "idempotency_key": "stage1-prepareStage1RfHandover-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 1,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "required",
+            "posting": "draft"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "handover_id": "801",
+          "batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "recipient": {
+            "name": "Synthetic committee recipient",
+            "user_id": "13",
+            "capacity": "Committee representative"
+          },
+          "partial_acceptance": true,
+          "lines": [
+            {
+              "demand_line_id": "701",
+              "reservation_id": "751",
+              "actual_quantity": "4.000000"
+            }
+          ],
+          "posting_id": null,
+          "movement_ids": [],
+          "inventory_revision": 3,
+          "state": {
+            "reference": {
+              "id": "801",
+              "kind": "IS_AR"
+            },
+            "row_version": 1,
+            "material_version": 1,
+            "states": {
+              "acknowledgment": "required",
+              "posting": "draft"
+            }
+          },
+          "source": {
+            "record_id": "700",
+            "row_version": 7,
+            "material_version": 1,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "bindStage1RfHandoverEvidence-success-example",
+    "operationId": "bindStage1RfHandoverEvidence",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/evidence",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-bindStage1RfHandoverEvidence-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "evidence_id": "1",
+        "object_version": "synthetic",
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "acknowledged_at": "2026-11-02T01:00:00.000001Z"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.handover_bind_evidence",
+            "idempotency_key": "stage1-bindStage1RfHandoverEvidence-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "draft"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "handover_id": "801",
+          "batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "recipient": {
+            "name": "Synthetic committee recipient",
+            "user_id": "13",
+            "capacity": "Committee representative"
+          },
+          "partial_acceptance": true,
+          "lines": [
+            {
+              "demand_line_id": "701",
+              "reservation_id": "751",
+              "actual_quantity": "4.000000"
+            }
+          ],
+          "posting_id": null,
+          "movement_ids": [],
+          "inventory_revision": 3,
+          "state": {
+            "reference": {
+              "id": "801",
+              "kind": "IS_AR"
+            },
+            "row_version": 2,
+            "material_version": 1,
+            "states": {
+              "acknowledgment": "ready",
+              "posting": "draft"
+            }
+          },
+          "source": {
+            "record_id": "700",
+            "row_version": 7,
+            "material_version": 1,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "bindStage1RfHandoverEvidence-stale-material-example",
+    "operationId": "bindStage1RfHandoverEvidence",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/evidence",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-bindStage1RfHandoverEvidence-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "evidence_id": "1",
+        "object_version": "synthetic",
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "acknowledged_at": "2026-11-02T01:00:00.000001Z"
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "stale",
+        "operation": null,
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "draft"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "STALE_MATERIAL_VERSION",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "bindStage1RfHandoverEvidence-missing-evidence-example",
+    "operationId": "bindStage1RfHandoverEvidence",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/evidence",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-bindStage1RfHandoverEvidence-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 1,
+        "expected_material_version": 1,
+        "evidence_id": "1",
+        "object_version": "synthetic",
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "acknowledged_at": "2026-11-02T01:00:00.000001Z"
+      }
+    },
+    "response": {
+      "status": 422,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "draft"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "EVIDENCE_NOT_READY",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "confirmStage1RfHandover-success-example",
+    "operationId": "confirmStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-confirmStage1RfHandover-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 2,
+        "expected_material_version": 1,
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_binding_ids": [
+          "1"
+        ],
+        "occurred_at": "2026-11-02T01:00:00.000001Z",
+        "client_attempt_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.handover_confirm",
+            "idempotency_key": "stage1-confirmStage1RfHandover-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": false
+        },
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 3,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "posted"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "handover_id": "801",
+          "batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "recipient": {
+            "name": "Synthetic committee recipient",
+            "user_id": "13",
+            "capacity": "Committee representative"
+          },
+          "partial_acceptance": true,
+          "lines": [
+            {
+              "demand_line_id": "701",
+              "reservation_id": "751",
+              "actual_quantity": "4.000000"
+            }
+          ],
+          "posting_id": "951",
+          "movement_ids": [
+            "961"
+          ],
+          "inventory_revision": 4,
+          "state": {
+            "reference": {
+              "id": "801",
+              "kind": "IS_AR"
+            },
+            "row_version": 3,
+            "material_version": 1,
+            "states": {
+              "acknowledgment": "ready",
+              "posting": "posted"
+            }
+          },
+          "source": {
+            "record_id": "700",
+            "row_version": 8,
+            "material_version": 1,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "confirmStage1RfHandover-same-key-replay-example",
+    "operationId": "confirmStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-confirmStage1RfHandover-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 2,
+        "expected_material_version": 1,
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_binding_ids": [
+          "1"
+        ],
+        "occurred_at": "2026-11-02T01:00:00.000001Z",
+        "client_attempt_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "success",
+        "operation": {
+          "identity": {
+            "operation_id": "01K8A6J0A00000000000000001",
+            "action_code": "rf.handover_confirm",
+            "idempotency_key": "stage1-confirmStage1RfHandover-1"
+          },
+          "outcome": "committed",
+          "committed_at": "2026-11-02T01:05:00.000001Z",
+          "replayed": true
+        },
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 3,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "posted"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": null,
+        "permitted_next_actions": [
+          {
+            "code": "review_record",
+            "label": "Review the recorded result"
+          }
+        ],
+        "input_policy": "may_clear",
+        "lookup_state": null,
+        "data": {
+          "handover_id": "801",
+          "batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "recipient": {
+            "name": "Synthetic committee recipient",
+            "user_id": "13",
+            "capacity": "Committee representative"
+          },
+          "partial_acceptance": true,
+          "lines": [
+            {
+              "demand_line_id": "701",
+              "reservation_id": "751",
+              "actual_quantity": "4.000000"
+            }
+          ],
+          "posting_id": "951",
+          "movement_ids": [
+            "961"
+          ],
+          "inventory_revision": 4,
+          "state": {
+            "reference": {
+              "id": "801",
+              "kind": "IS_AR"
+            },
+            "row_version": 3,
+            "material_version": 1,
+            "states": {
+              "acknowledgment": "ready",
+              "posting": "posted"
+            }
+          },
+          "source": {
+            "record_id": "700",
+            "row_version": 8,
+            "material_version": 1,
+            "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "confirmStage1RfHandover-revoked-or-invisible-example",
+    "operationId": "confirmStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-confirmStage1RfHandover-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 2,
+        "expected_material_version": 1,
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_binding_ids": [
+          "1"
+        ],
+        "occurred_at": "2026-11-02T01:00:00.000001Z",
+        "client_attempt_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 403,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": null,
+        "action_result": "forbidden",
+        "operation": null,
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "FORBIDDEN",
+          "message": "Current authority does not permit this action or result."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "request_access",
+            "label": "Ask the authorized chapter administrator to review access"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "confirmStage1RfHandover-stale-material-example",
+    "operationId": "confirmStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-confirmStage1RfHandover-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 2,
+        "expected_material_version": 1,
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_binding_ids": [
+          "1"
+        ],
+        "occurred_at": "2026-11-02T01:00:00.000001Z",
+        "client_attempt_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "stale",
+        "operation": null,
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 3,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "posted"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "STALE_MATERIAL_VERSION",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "confirmStage1RfHandover-changed-key-payload-example",
+    "operationId": "confirmStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-confirmStage1RfHandover-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 3,
+        "expected_material_version": 1,
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_binding_ids": [
+          "1"
+        ],
+        "occurred_at": "2026-11-02T01:00:00.000001Z",
+        "client_attempt_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 409,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 3,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "posted"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "IDEMPOTENCY_CONFLICT",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "confirmStage1RfHandover-missing-policy-example",
+    "operationId": "confirmStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-confirmStage1RfHandover-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 2,
+        "expected_material_version": 1,
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_binding_ids": [
+          "1"
+        ],
+        "occurred_at": "2026-11-02T01:00:00.000001Z",
+        "client_attempt_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 423,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 3,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "posted"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "POLICY_NOT_APPROVED",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "confirmStage1RfHandover-missing-evidence-example",
+    "operationId": "confirmStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-confirmStage1RfHandover-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 2,
+        "expected_material_version": 1,
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_binding_ids": [
+          "1"
+        ],
+        "occurred_at": "2026-11-02T01:00:00.000001Z",
+        "client_attempt_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 422,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 3,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "posted"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "EVIDENCE_NOT_READY",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "confirmStage1RfHandover-throttled-example",
+    "operationId": "confirmStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm",
+    "method": "post",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "Idempotency-Key": "stage1-confirmStage1RfHandover-1",
+        "X-XSRF-TOKEN": "synthetic-csrf"
+      },
+      "mediaType": "application/json",
+      "body": {
+        "expected_row_version": 2,
+        "expected_material_version": 1,
+        "acknowledged_batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_binding_ids": [
+          "1"
+        ],
+        "occurred_at": "2026-11-02T01:00:00.000001Z",
+        "client_attempt_id": "01K8A6J0A00000000000000001"
+      }
+    },
+    "response": {
+      "status": 429,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store",
+        "retry-after": 30
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": "1",
+        "action_result": "blocked",
+        "operation": null,
+        "record": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 3,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "posted"
+          }
+        },
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "RATE_LIMITED",
+          "message": "Synthetic blocked example; preserve entered input and resolve the stated prerequisite."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "refresh_record",
+            "label": "Compare current progress with your preserved draft"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "downloadStage1Evidence-success-example",
+    "operationId": "downloadStage1Evidence",
+    "path": "/chapters/{chapter_id}/evidence/{evidence_id}/content",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "evidence_id": "851"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/octet-stream",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": "synthetic-protected-file-bytes"
+    }
+  },
+  {
+    "name": "downloadStage1Evidence-revoked-or-invisible-example",
+    "operationId": "downloadStage1Evidence",
+    "path": "/chapters/{chapter_id}/evidence/{evidence_id}/content",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "evidence_id": "851"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 403,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "schema_version": "1.0",
+        "chapter_id": null,
+        "action_result": "forbidden",
+        "operation": null,
+        "record": null,
+        "field_feedback": [],
+        "blocking_reason": {
+          "code": "FORBIDDEN",
+          "message": "Current authority does not permit this action or result."
+        },
+        "permitted_next_actions": [
+          {
+            "code": "request_access",
+            "label": "Ask the authorized chapter administrator to review access"
+          }
+        ],
+        "input_policy": "preserve",
+        "lookup_state": null,
+        "data": null
+      }
+    }
+  },
+  {
+    "name": "printStage1Record-success-example",
+    "operationId": "printStage1Record",
+    "path": "/chapters/{chapter_id}/records/{record_id}/print",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "text/html",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": "<!doctype html><title>DEMO RF - synthetic example</title><p>Printing does not post stock.</p>"
+    }
+  },
+  {
+    "name": "readStage1RfHandover-success-example",
+    "operationId": "readStage1RfHandover",
+    "path": "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}",
+    "method": "get",
+    "request": {
+      "path": {
+        "chapter_id": "1",
+        "record_id": "700",
+        "handover_id": "801"
+      },
+      "header": {
+        "X-Chapter-Context": "ctx_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "response": {
+      "status": 200,
+      "mediaType": "application/json",
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "body": {
+        "handover_id": "801",
+        "batch_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipient": {
+          "name": "Synthetic committee recipient",
+          "user_id": "13",
+          "capacity": "Committee representative"
+        },
+        "partial_acceptance": true,
+        "lines": [
+          {
+            "demand_line_id": "701",
+            "reservation_id": "751",
+            "actual_quantity": "4.000000"
+          }
+        ],
+        "posting_id": null,
+        "movement_ids": [],
+        "inventory_revision": 3,
+        "state": {
+          "reference": {
+            "id": "801",
+            "kind": "IS_AR"
+          },
+          "row_version": 2,
+          "material_version": 1,
+          "states": {
+            "acknowledgment": "ready",
+            "posting": "draft"
+          }
+        },
+        "source": {
+          "record_id": "700",
+          "row_version": 7,
+          "material_version": 1,
+          "material_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    }
+  }
+]

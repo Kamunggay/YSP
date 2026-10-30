@@ -69,7 +69,9 @@ export async function buildReview(plan) {
   const api = await read(apiPath);
   const validation = await read('contracts/transport/generated/session-validation.json');
   const operationRows = Object.entries(api.paths).flatMap(([path, item]) =>
-    Object.entries(item).filter(([, operation]) => operation?.operationId).map(([method, operation]) => ({ path, method, operation, item })));
+    // The frozen P02 review owns its original surface. Later additive agreements
+    // have their own examples and must not be represented as reviewed P02 work.
+    Object.entries(item).filter(([, operation]) => operation?.operationId && !operation['x-stage1-contract']).map(([method, operation]) => ({ path, method, operation, item })));
   const ids = operationRows.map(row => row.operation.operationId);
   assert.equal(new Set(ids).size, ids.length, 'unique operation inventory');
   const inventory = Object.values(plan.inventory).flat();
@@ -160,6 +162,7 @@ export async function buildReview(plan) {
   const files = new Set([apiPath, 'scripts/verification.Dockerfile', 'scripts/verification.Dockerfile.dockerignore', 'scripts/verify.ps1',
     'frontend/tsconfig.json', 'frontend/package-lock.json', 'backend/composer.lock', 'contracts/p02-review/reconcile.mjs',
     'contracts/p02-review/v1/.gitignore', 'contracts/p02-review/v1/README.md', 'contracts/p02-review/v1/review.json']);
+  if (api['x-stage1-contract']) files.add('contracts/p02-review/v1/compatibility.json');
   async function collect(directory) {
     for (const entry of (await readdir(new URL(directory, root), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
       if (entry.name === 'node_modules') continue;
@@ -172,9 +175,21 @@ export async function buildReview(plan) {
   const artifacts = [];
   for (const path of [...files].sort()) artifacts.push({ path, sha256: digest(await readFile(new URL(path, root), 'utf8')) });
   const contractSha256 = artifacts.find(row => row.path === apiPath).sha256;
+  // Historical reviews attest the original bytes, not later additive agreements.
+  // Check the complete inherited API and definitions against a compact record
+  // derived from that Git revision; never rewrite the reviewers' attestations.
+  let peerReviewContractSha256 = contractSha256;
+  let peerReviewCoverage = { contractSha256, scope: 'entire current API' };
+  if (api['x-stage1-contract']) {
+    const compatibility = await read('contracts/p02-review/v1/compatibility.json');
+    const projection = verifyP02Projection(api, await read('contracts/transport/v1/transport.schema.json'), compatibility);
+    peerReviewContractSha256 = compatibility.historicalContractSha256;
+    peerReviewCoverage = { contractSha256: peerReviewContractSha256, sourceRevision: compatibility.sourceRevision,
+      projectionSha256: projection, scope: 'preserved P02 only; additive Stage 1 owner/peer approval not asserted' };
+  }
   assert.deepEqual(plan.peerReviews.map(row => row.reviewer).sort(), ['Efren', 'Glenn'], 'both required peer reviews');
   for (const review of plan.peerReviews) {
-    assert.equal(review.contractSha256, contractSha256, 'peer review must identify this exact contract');
+    assert.equal(review.contractSha256, peerReviewContractSha256, 'peer review must identify this exact contract');
     assert.equal(review.status, 'completed_owner_attested');
     assert.ok(review.source && review.reportedOn && review.evidenceLimitations);
   }
@@ -183,9 +198,28 @@ export async function buildReview(plan) {
     artifactSetSha256: digest(JSON.stringify(artifacts)), artifacts,
     operations, scenarios, packs: Object.fromEntries(Object.entries(plan.packs).map(([pack, selectors]) =>
       [pack, scenarios.filter(row => selectors.some(selector => row.id.startsWith(selector))).map(row => row.id)])),
-    checklist: plan.checklist, peerReviews: plan.peerReviews,
+    checklist: plan.checklist, peerReviews: plan.peerReviews, peerReviewCoverage,
     independentImplementationReadiness: 'not asserted; see unresolved freeze and runtime-enablement gates in review.json',
   };
+}
+
+export function verifyP02Projection(api, definitions, compatibility) {
+  const inheritedApi = structuredClone(api);
+  delete inheritedApi['x-stage1-contract'];
+  for (const [path, item] of Object.entries(inheritedApi.paths)) {
+    for (const [method, operation] of Object.entries(item)) if (operation['x-stage1-contract']) delete item[method];
+    if (!Object.keys(item).length) delete inheritedApi.paths[path];
+  }
+  for (const category of ['schemas', 'responses']) {
+    for (const name of Object.keys(inheritedApi.components[category])) if (name.includes('Stage1')) delete inheritedApi.components[category][name];
+  }
+  const inheritedDefinitions = structuredClone(definitions);
+  for (const name of Object.keys(inheritedDefinitions.$defs)) if (name.includes('Stage1')) delete inheritedDefinitions.$defs[name];
+  const serialized = value => digest(JSON.stringify(value, null, 2) + '\n');
+  const projection = serialized(inheritedApi);
+  assert.equal(projection, compatibility.apiProjectionSha256, 'preserved P02 API must match its reviewed revision');
+  assert.equal(serialized(inheritedDefinitions), compatibility.definitionsProjectionSha256, 'preserved P02 definitions must match their reviewed revision');
+  return projection;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

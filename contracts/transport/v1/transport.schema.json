@@ -6611,6 +6611,2409 @@
         }
       },
       "description": "Nonterminal boundary failure with no identity/result data. Says nothing about an earlier uncertain mutation; never mint another key or infer rejection."
+    },
+    "Stage1EvidencePinIds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/Id"
+      },
+      "uniqueItems": true
+    },
+    "Stage1RfMaterial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requesting_unit_id",
+        "purpose_kind",
+        "purpose",
+        "required_at",
+        "lines"
+      ],
+      "properties": {
+        "requesting_unit_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "purpose_kind": {
+          "const": "internal"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "required_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "variant_id",
+              "quantity"
+            ],
+            "properties": {
+              "variant_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "quantity": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Quantity"
+                  },
+                  {
+                    "not": {
+                      "type": "string",
+                      "pattern": "^0(?:\\.0{1,6})?$"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "Stage1IpcMaterial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cutoff_at",
+        "counted_at",
+        "purpose",
+        "policy_version_id",
+        "counter_user_ids",
+        "lines"
+      ],
+      "properties": {
+        "cutoff_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "counted_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "policy_version_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "counter_user_ids": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "variant_id",
+              "location_id",
+              "condition_id",
+              "counted_quantity",
+              "unit_value",
+              "currency",
+              "valuation_basis",
+              "restriction_version_id"
+            ],
+            "properties": {
+              "variant_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "location_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "condition_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "counted_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "unit_value": {
+                "type": "string",
+                "pattern": "^(?:0|[1-9][0-9]{0,13})\\.[0-9]{6}$"
+              },
+              "currency": {
+                "const": "PHP"
+              },
+              "valuation_basis": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "restriction_version_id": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "Stage1Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "lifecycle",
+        "content_hash",
+        "object_version",
+        "media_type",
+        "byte_length",
+        "failure_code"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "lifecycle": {
+          "enum": [
+            "staged",
+            "validating",
+            "ready",
+            "quarantined",
+            "missing",
+            "rejected"
+          ]
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "object_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "media_type": {
+          "enum": [
+            "image/jpeg",
+            "image/png",
+            "application/pdf"
+          ]
+        },
+        "byte_length": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failure_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Stage1Record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "state",
+        "reference",
+        "material_hash",
+        "prepared_by_user_id",
+        "policy_version_ids",
+        "lines",
+        "allowed_actions",
+        "blockers",
+        "material",
+        "receipt_inspection",
+        "related_records",
+        "approvals",
+        "evidence_binding_ids"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "state": {
+          "$ref": "#/$defs/RecordState"
+        },
+        "reference": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "material_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "prepared_by_user_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "policy_version_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "variant_id",
+              "quantity",
+              "fulfilled_quantity",
+              "reserved_quantity"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "variant_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "fulfilled_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "reserved_quantity": {
+                "$ref": "#/$defs/Quantity"
+              }
+            }
+          }
+        },
+        "allowed_actions": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/BlockingReason"
+          }
+        },
+        "material": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Stage1RfMaterial"
+            },
+            {
+              "$ref": "#/$defs/Stage1IpcMaterial"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "RF/IPC immutable current content when authorized; null for other kinds or redacted material. Never replaces the local draft. IPC valuation requires applicable read duty."
+        },
+        "receipt_inspection": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source_record_id",
+                "inspected_at",
+                "inspector_user_id",
+                "representative_user_ids",
+                "lines"
+              ],
+              "properties": {
+                "source_record_id": {
+                  "$ref": "#/$defs/Id"
+                },
+                "inspected_at": {
+                  "$ref": "#/$defs/UtcInstant"
+                },
+                "inspector_user_id": {
+                  "$ref": "#/$defs/Id"
+                },
+                "representative_user_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/Id"
+                  }
+                },
+                "lines": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "ipc_line_id",
+                      "expected_quantity",
+                      "delivered_quantity",
+                      "missing_quantity",
+                      "accepted_quantity",
+                      "rejected_quantity",
+                      "held_quantity",
+                      "recorded_nonusable_quantity",
+                      "discrepancy_reason"
+                    ],
+                    "properties": {
+                      "ipc_line_id": {
+                        "$ref": "#/$defs/Id"
+                      },
+                      "expected_quantity": {
+                        "$ref": "#/$defs/Quantity"
+                      },
+                      "delivered_quantity": {
+                        "$ref": "#/$defs/Quantity"
+                      },
+                      "missing_quantity": {
+                        "$ref": "#/$defs/Quantity"
+                      },
+                      "accepted_quantity": {
+                        "$ref": "#/$defs/Quantity"
+                      },
+                      "rejected_quantity": {
+                        "$ref": "#/$defs/Quantity"
+                      },
+                      "held_quantity": {
+                        "$ref": "#/$defs/Quantity"
+                      },
+                      "recorded_nonusable_quantity": {
+                        "$ref": "#/$defs/Quantity"
+                      },
+                      "discrepancy_reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2000
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "related_records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "reference",
+              "relation"
+            ],
+            "properties": {
+              "reference": {
+                "$ref": "#/$defs/RecordReference"
+              },
+              "relation": {
+                "enum": [
+                  "source",
+                  "receipt",
+                  "handover",
+                  "reservation_source",
+                  "corrects"
+                ]
+              }
+            }
+          }
+        },
+        "approvals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "user_id",
+              "duty_code",
+              "material_version",
+              "decision",
+              "decided_at"
+            ],
+            "properties": {
+              "user_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "duty_code": {
+                "type": "string"
+              },
+              "material_version": {
+                "$ref": "#/$defs/Version"
+              },
+              "decision": {
+                "enum": [
+                  "review",
+                  "approve",
+                  "return"
+                ]
+              },
+              "decided_at": {
+                "$ref": "#/$defs/UtcInstant"
+              }
+            }
+          }
+        },
+        "evidence_binding_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "Stage1History": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "record_id",
+        "events"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "record_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "events": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "actor_user_id",
+              "action_code",
+              "occurred_at",
+              "row_version",
+              "material_version",
+              "reason"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "actor_user_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "action_code": {
+                "$ref": "#/$defs/ActionCode"
+              },
+              "occurred_at": {
+                "$ref": "#/$defs/UtcInstant"
+              },
+              "row_version": {
+                "$ref": "#/$defs/Version"
+              },
+              "material_version": {
+                "$ref": "#/$defs/Version"
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "Stage1Catalogue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "revision",
+        "units",
+        "variants",
+        "locations",
+        "blockers",
+        "conditions",
+        "requesting_units"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "$ref": "#/$defs/Version"
+        },
+        "units": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "code",
+              "quantity_scale"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "quantity_scale": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6
+              }
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "item_code",
+              "description",
+              "unit_id",
+              "policy_version_id"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "item_code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "unit_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "policy_version_id": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "locations": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "kind",
+              "custodian_user_id"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "kind": {
+                "enum": [
+                  "stockroom",
+                  "quarantine",
+                  "booth"
+                ]
+              },
+              "custodian_user_id": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/BlockingReason"
+          }
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "code",
+              "usable"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "usable": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "requesting_units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              }
+            }
+          }
+        }
+      }
+    },
+    "Stage1StockViews": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "usable_on_hand",
+        "available_to_allocate",
+        "rf_reserved",
+        "so_reserved",
+        "booth_custody",
+        "quarantined_rejected",
+        "inbound_open_po"
+      ],
+      "properties": {
+        "usable_on_hand": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "available_to_allocate": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "rf_reserved": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "so_reserved": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "booth_custody": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "quarantined_rejected": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "inbound_open_po": {
+          "$ref": "#/$defs/Quantity"
+        }
+      }
+    },
+    "Stage1Availability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "revision",
+        "variant_id",
+        "purpose_kind",
+        "requesting_unit_id",
+        "views",
+        "eligible_lots",
+        "blockers"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "revision": {
+          "$ref": "#/$defs/Version"
+        },
+        "variant_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "purpose_kind": {
+          "const": "internal"
+        },
+        "requesting_unit_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "views": {
+          "$ref": "#/$defs/Stage1StockViews"
+        },
+        "eligible_lots": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "lot_id",
+              "position_id",
+              "eligible_quantity",
+              "revision"
+            ],
+            "properties": {
+              "lot_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "position_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "eligible_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "revision": {
+                "$ref": "#/$defs/Version"
+              }
+            }
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/BlockingReason"
+          }
+        }
+      }
+    },
+    "Stage1AllocationProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chapter_id",
+        "record_id",
+        "row_version",
+        "material_version",
+        "inventory_revision",
+        "lines",
+        "blockers"
+      ],
+      "properties": {
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "record_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "inventory_revision": {
+          "$ref": "#/$defs/Version"
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "demand_line_id",
+              "outstanding_quantity",
+              "eligible_quantity",
+              "reservable_quantity",
+              "shortage_quantity"
+            ],
+            "properties": {
+              "demand_line_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "outstanding_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "eligible_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "reservable_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "shortage_quantity": {
+                "$ref": "#/$defs/Quantity"
+              }
+            }
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/BlockingReason"
+          }
+        }
+      }
+    },
+    "Stage1CommitEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "operation_id",
+        "chapter_id",
+        "action_code",
+        "record_id",
+        "row_version",
+        "material_version",
+        "inventory_revision",
+        "committed_at"
+      ],
+      "properties": {
+        "event_id": {
+          "$ref": "#/$defs/OperationId"
+        },
+        "operation_id": {
+          "$ref": "#/$defs/OperationId"
+        },
+        "chapter_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "action_code": {
+          "$ref": "#/$defs/ActionCode"
+        },
+        "record_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "inventory_revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "committed_at": {
+          "$ref": "#/$defs/UtcInstant"
+        }
+      },
+      "description": "Post-commit invalidation only, never stock/evidence/identity content or authority. Stable event_id survives redelivery; no client mutation follows an event. Subscription protocol is not selected by this schema."
+    },
+    "Stage1DraftInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "material"
+      ],
+      "properties": {
+        "material": {
+          "$ref": "#/$defs/Stage1RfMaterial"
+        }
+      }
+    },
+    "Stage1SaveRfInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "material"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "material": {
+          "$ref": "#/$defs/Stage1RfMaterial"
+        }
+      }
+    },
+    "Stage1OpeningDraftInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "material"
+      ],
+      "properties": {
+        "material": {
+          "$ref": "#/$defs/Stage1IpcMaterial"
+        }
+      }
+    },
+    "Stage1SaveIpcInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "material"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "material": {
+          "$ref": "#/$defs/Stage1IpcMaterial"
+        }
+      }
+    },
+    "Stage1VersionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        }
+      }
+    },
+    "Stage1ReasonInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "reason"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      }
+    },
+    "Stage1ReviewInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "decision",
+        "reason",
+        "evidence_binding_ids"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "decision": {
+          "enum": [
+            "approve",
+            "return"
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_binding_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        }
+      },
+      "description": "Authenticated reviewer and effective duty are server-derived. Return requires a nonempty reason; approve requires independent coverage of the current immutable material. No approver/approved flag supplied by client.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "return"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Stage1StagePaperInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "file_name",
+        "media_type",
+        "content_base64",
+        "purpose_code"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "file_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "media_type": {
+          "enum": [
+            "image/jpeg",
+            "image/png",
+            "application/pdf"
+          ]
+        },
+        "content_base64": {
+          "type": "string",
+          "minLength": 4,
+          "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+        },
+        "purpose_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        }
+      },
+      "description": "JSON upload of synthetic/real paper bytes, not an object-store URL. Server derives decoded length, MIME sniffing, hash and immutable object version. Size/retention/scanner limits require approved setup; missing validation/storage capability blocks ready. Never trust filename, declared MIME or client hash. No stock effect."
+    },
+    "Stage1ValidatePaperInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_version"
+      ],
+      "properties": {
+        "object_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
+      }
+    },
+    "Stage1BindPaperInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "evidence_id",
+        "object_version",
+        "purpose_code",
+        "line_id"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "object_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "purpose_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "line_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Stage1ReceiptDraftInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "record_id",
+            "row_version",
+            "material_version",
+            "material_hash"
+          ],
+          "properties": {
+            "record_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "row_version": {
+              "$ref": "#/$defs/Version"
+            },
+            "material_version": {
+              "$ref": "#/$defs/Version"
+            },
+            "material_hash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "Stage1InspectInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "inspected_at",
+        "representative_user_ids",
+        "evidence_binding_ids",
+        "lines"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "inspected_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "representative_user_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        },
+        "evidence_binding_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ipc_line_id",
+              "expected_quantity",
+              "delivered_quantity",
+              "missing_quantity",
+              "accepted_quantity",
+              "rejected_quantity",
+              "held_quantity",
+              "recorded_nonusable_quantity",
+              "discrepancy_reason"
+            ],
+            "properties": {
+              "ipc_line_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "expected_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "delivered_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "missing_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "accepted_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "rejected_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "held_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "recorded_nonusable_quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "discrepancy_reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "Stage1AcceptOpeningInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "source",
+        "evidence_binding_ids"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "record_id",
+            "row_version",
+            "material_version",
+            "material_hash"
+          ],
+          "properties": {
+            "record_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "row_version": {
+              "$ref": "#/$defs/Version"
+            },
+            "material_version": {
+              "$ref": "#/$defs/Version"
+            },
+            "material_hash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "evidence_binding_ids": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        }
+      },
+      "description": "Public IPC-only adapter to existing AcceptOpeningInput: route supplies chapter/RM identity, server supplies canonical source/receipt/evidence pins from immutable facts. Action is purchasing.accept_opening_rm. No client balance, inspector attribution, accepted flag or arbitrary source kind. Existing internal acceptance schema and lock protocol remain authoritative."
+    },
+    "Stage1AllocateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "inventory_revision",
+        "mode",
+        "lines"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "inventory_revision": {
+          "$ref": "#/$defs/Version"
+        },
+        "mode": {
+          "enum": [
+            "full",
+            "available"
+          ]
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "demand_line_id",
+              "quantity"
+            ],
+            "properties": {
+              "demand_line_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "quantity": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Quantity"
+                  },
+                  {
+                    "not": {
+                      "type": "string",
+                      "pattern": "^0(?:\\.0{1,6})?$"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "Stage1PrepareHandoverInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "recipient",
+        "partial_acceptance",
+        "lines"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "recipient": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "user_id",
+            "capacity"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "user_id": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Id"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "capacity": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        },
+        "partial_acceptance": {
+          "type": "boolean"
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "demand_line_id",
+              "reservation_id",
+              "actual_quantity"
+            ],
+            "properties": {
+              "demand_line_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "reservation_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "actual_quantity": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Quantity"
+                  },
+                  {
+                    "not": {
+                      "type": "string",
+                      "pattern": "^0(?:\\.0{1,6})?$"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "Stage1BindHandoverInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "evidence_id",
+        "object_version",
+        "acknowledged_batch_hash",
+        "acknowledged_at"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "object_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "acknowledged_batch_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "acknowledged_at": {
+          "$ref": "#/$defs/UtcInstant"
+        }
+      },
+      "description": "Expected row/material versions apply to the addressed IS_AR handover state. Server also rechecks its retained RF source material/approval and actual reservation/demand under locks. Prepare versions apply to the RF source. Changing actual recipient/lines requires fresh handover material and acknowledgment."
+    },
+    "Stage1ConfirmHandoverInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_row_version",
+        "expected_material_version",
+        "acknowledged_batch_hash",
+        "evidence_binding_ids",
+        "occurred_at",
+        "client_attempt_id"
+      ],
+      "properties": {
+        "expected_row_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "expected_material_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "acknowledged_batch_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "evidence_binding_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        },
+        "occurred_at": {
+          "$ref": "#/$defs/UtcInstant"
+        },
+        "client_attempt_id": {
+          "$ref": "#/$defs/OperationId"
+        }
+      },
+      "description": "Expected row/material versions apply to the addressed IS_AR handover state. Server also rechecks its retained RF source material/approval and actual reservation/demand under locks. Prepare versions apply to the RF source. Changing actual recipient/lines requires fresh handover material and acknowledgment."
+    },
+    "Stage1RecordData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record"
+      ],
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/Stage1Record"
+        }
+      }
+    },
+    "Stage1EvidenceData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence",
+        "binding_id"
+      ],
+      "properties": {
+        "evidence": {
+          "$ref": "#/$defs/Stage1Evidence"
+        },
+        "binding_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Stage1AllocationData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reservations",
+        "remaining_shortage_quantity",
+        "inventory_revision"
+      ],
+      "properties": {
+        "reservations": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "demand_line_id",
+              "quantity",
+              "unpaid_expires_at"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Id"
+              },
+              "demand_line_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "quantity": {
+                "$ref": "#/$defs/Quantity"
+              },
+              "unpaid_expires_at": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        "remaining_shortage_quantity": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "inventory_revision": {
+          "$ref": "#/$defs/Version"
+        }
+      }
+    },
+    "Stage1HandoverData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "handover_id",
+        "batch_hash",
+        "recipient",
+        "partial_acceptance",
+        "lines",
+        "posting_id",
+        "movement_ids",
+        "inventory_revision",
+        "state",
+        "source"
+      ],
+      "properties": {
+        "handover_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "batch_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "recipient": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "user_id",
+            "capacity"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "user_id": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Id"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "capacity": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        },
+        "partial_acceptance": {
+          "type": "boolean"
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "demand_line_id",
+              "reservation_id",
+              "actual_quantity"
+            ],
+            "properties": {
+              "demand_line_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "reservation_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "actual_quantity": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/Quantity"
+                  },
+                  {
+                    "not": {
+                      "type": "string",
+                      "pattern": "^0(?:\\.0{1,6})?$"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "posting_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "movement_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "inventory_revision": {
+          "$ref": "#/$defs/Version"
+        },
+        "state": {
+          "$ref": "#/$defs/RecordState"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "record_id",
+            "row_version",
+            "material_version",
+            "material_hash"
+          ],
+          "properties": {
+            "record_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "row_version": {
+              "$ref": "#/$defs/Version"
+            },
+            "material_version": {
+              "$ref": "#/$defs/Version"
+            },
+            "material_hash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "Stage1OpeningData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ipc_id",
+        "rm_id",
+        "opening_id",
+        "posting_id",
+        "movement_ids",
+        "accepted_quantity",
+        "nonusable_quantity",
+        "inventory_revision"
+      ],
+      "properties": {
+        "ipc_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rm_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "opening_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "posting_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "movement_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "accepted_quantity": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "nonusable_quantity": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "inventory_revision": {
+          "$ref": "#/$defs/Version"
+        }
+      }
+    },
+    "Stage1Failure": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "action_result": {
+              "enum": [
+                "blocked",
+                "stale",
+                "forbidden",
+                "uncertain"
+              ]
+            },
+            "data": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "StageStage1PaperEvidenceResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1EvidenceData"
+            }
+          }
+        }
+      ]
+    },
+    "ValidateStage1PaperEvidenceResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1EvidenceData"
+            }
+          }
+        }
+      ]
+    },
+    "BindStage1PaperEvidenceResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1EvidenceData"
+            }
+          }
+        }
+      ]
+    },
+    "CreateStage1IpcDraftResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "SaveStage1IpcDraftResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "SubmitStage1IpcResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "ReviewStage1IpcResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "ReviseStage1IpcResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "CancelStage1IpcResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "CreateStage1RfDraftResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "SaveStage1RfDraftResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "SubmitStage1RfResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "ReviewStage1RfResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "ReviseStage1RfResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "CancelStage1RfResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "PrepareStage1OpeningReceiptResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "InspectStage1OpeningReceiptResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1RecordData"
+            }
+          }
+        }
+      ]
+    },
+    "AcceptStage1OpeningReceiptResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1OpeningData"
+            }
+          }
+        }
+      ]
+    },
+    "AllocateStage1RfResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1AllocationData"
+            }
+          }
+        }
+      ]
+    },
+    "PrepareStage1RfHandoverResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1HandoverData"
+            }
+          }
+        }
+      ]
+    },
+    "BindStage1RfHandoverEvidenceResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1HandoverData"
+            }
+          }
+        }
+      ]
+    },
+    "ConfirmStage1RfHandoverResult": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ActionResult"
+        },
+        {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "action_result": {
+              "const": "success"
+            },
+            "data": {
+              "$ref": "#/$defs/Stage1HandoverData"
+            }
+          }
+        }
+      ]
     }
   },
   "$ref": "#/$defs/ActionResult"

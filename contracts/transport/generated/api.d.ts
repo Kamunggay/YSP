@@ -1,4 +1,24 @@
 export interface paths {
+    "/chapters/{chapter_id}/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readStage1Catalogue
+         * @description Stage 1 contract preparation only. Read approved units/variants/locations; prepared authorized setup is an internal provider, not a balance setter. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        get: operations["readStage1Catalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chapters/{chapter_id}/duty-grants": {
         parameters: {
             query?: never;
@@ -159,6 +179,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/chapters/{chapter_id}/evidence/{evidence_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readStage1Evidence
+         * @description Stage 1 contract preparation only. Read current readiness without exposing raw storage keys or public URLs. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        get: operations["readStage1Evidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/evidence/{evidence_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * downloadStage1Evidence
+         * @description Stage 1 contract preparation only. Authorize each immutable evidence read; revoked/wrong-chapter access denied. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        get: operations["downloadStage1Evidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/evidence/{evidence_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * validateStage1PaperEvidence
+         * @description Stage 1 contract preparation only. Server validates immutable bytes: staged -> validating -> ready/rejected/quarantined; unavailable/missing blocks. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["validateStage1PaperEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/inventory/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readStage1Availability
+         * @description Stage 1 contract preparation only. Read seven overlapping views and purpose/unit-scoped eligible lots; read does not reserve. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        get: operations["readStage1Availability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chapters/{chapter_id}/memberships": {
         parameters: {
             query?: never;
@@ -273,6 +373,186 @@ export interface paths {
          * @description Chapter Head only; current authorization and MFA required. See x-membership-contract for guards, visibility, pagination and immutable original-scope recovery.
          */
         post: operations["lookupMembershipIdentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/opening-counts/{record_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * cancelStage1Ipc
+         * @description Stage 1 contract preparation only. Cancel only permitted outstanding portions; retain actual issue/baseline/history and obligations; never undo a movement. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["cancelStage1Ipc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/opening-counts/{record_id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * saveStage1IpcDraft
+         * @description Stage 1 contract preparation only. Draft/returned only; material change increments row and material versions and invalidates affected approvals. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        put: operations["saveStage1IpcDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/opening-counts/{record_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * reviewStage1Ipc
+         * @description Stage 1 contract preparation only. Submitted -> approved when all independent required decisions exist, or returned with reason; apply the source-specific count and signature independence rules; do not impose count-variance restrictions on ordinary opening receipt. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["reviewStage1Ipc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/opening-counts/{record_id}/revise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * reviseStage1Ipc
+         * @description Stage 1 contract preparation only. Returned/approved-unposted -> draft; preserve history, invalidate affected decisions and release/recompute provisional commitments. Posted IPC cannot reopen. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["reviseStage1Ipc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/opening-counts/{record_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * submitStage1Ipc
+         * @description Stage 1 contract preparation only. Draft/returned -> submitted after complete material/evidence/setup validation; allocate reference once. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["submitStage1Ipc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/opening-counts/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * createStage1IpcDraft
+         * @description Stage 1 contract preparation only. Create draft; missing policy allows preparation but blocks submission/approval/effects. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["createStage1IpcDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/opening-receipts/{record_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * acceptStage1OpeningReceipt
+         * @description Stage 1 contract preparation only. Inspected + approved signed IPC + ready complete evidence -> posted locked baseline once; preserve nonusable/discrepancy split. Backend: Leader + Efren Inventory; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["acceptStage1OpeningReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/opening-receipts/{record_id}/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * inspectStage1OpeningReceipt
+         * @description Stage 1 contract preparation only. Draft -> inspected; inspector server-derived; required technical/requesting representatives validated; no stock yet. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["inspectStage1OpeningReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/opening-receipts/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * prepareStage1OpeningReceipt
+         * @description Stage 1 contract preparation only. Approved IPC -> draft RM; IPC-only source here. PO+DR/DA extend in Stage 2. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["prepareStage1OpeningReceipt"];
         delete?: never;
         options?: never;
         head?: never;
@@ -513,6 +793,346 @@ export interface paths {
         get: operations["readPolicyStatus"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/records/{record_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readStage1Record
+         * @description Stage 1 contract preparation only. Authorized current source snapshot; no generic approve/post command. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        get: operations["readStage1Record"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/records/{record_id}/evidence-bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * bindStage1PaperEvidence
+         * @description Stage 1 contract preparation only. Ready -> immutable source/material/line/purpose binding. Binding does not approve or post. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["bindStage1PaperEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/records/{record_id}/evidence/stage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * stageStage1PaperEvidence
+         * @description Stage 1 contract preparation only. Stage bytes only; lifecycle staged, never implicitly ready or posted. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["stageStage1PaperEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/records/{record_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readStage1RecordHistory
+         * @description Stage 1 contract preparation only. Append-only individually attributed history remains readable under current authority. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        get: operations["readStage1RecordHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/records/{record_id}/print": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * printStage1Record
+         * @description Stage 1 contract preparation only. Authorized printable HTML with references/status/source links and signature fields; printing has no effect. Backend: Leader; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        get: operations["printStage1Record"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/allocate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * allocateStage1Rf
+         * @description Stage 1 contract preparation only. Approved outstanding -> full/available reservation; no movement, no unpaid-SO timer. Shortage remains outstanding and Stage 2 procurement edge stays explicit. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["allocateStage1Rf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/allocation-proposal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * readStage1RfAllocationProposal
+         * @description Stage 1 contract preparation only. Approved RF -> advisory eligible proposal; all eligibility rechecked during allocate. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        get: operations["readStage1RfAllocationProposal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * cancelStage1Rf
+         * @description Stage 1 contract preparation only. Cancel only permitted outstanding portions; retain actual issue/baseline/history and obligations; never undo a movement. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["cancelStage1Rf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * saveStage1RfDraft
+         * @description Stage 1 contract preparation only. Draft/returned only; material change increments row and material versions and invalidates affected approvals. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        put: operations["saveStage1RfDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the current authorized actual batch
+         * @description Read exact current recipient/actual quantities/batch hash and posting result for authorized reconnect/evidence preparation. Never infer approval from a prior notification. Backend Efren; UI Glenn.
+         */
+        get: operations["readStage1RfHandover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * confirmStage1RfHandover
+         * @description Stage 1 contract preparation only. Acknowledged -> posted actual internal issue once, consuming only actual reservation/demand; partial leaves remainder open. Backend: Efren; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["confirmStage1RfHandover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/handovers/{handover_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * bindStage1RfHandoverEvidence
+         * @description Stage 1 contract preparation only. Ready paper + exact recipient/actual batch -> acknowledged; server verifies hash, material, signatures and partial acceptance. Backend: Efren + Leader Documents; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["bindStage1RfHandoverEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/handovers/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * prepareStage1RfHandover
+         * @description Stage 1 contract preparation only. Reserved approved actual internal batch -> prepared IS/AR and exact server batch hash; no movement. Backend: Efren; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["prepareStage1RfHandover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * reviewStage1Rf
+         * @description Stage 1 contract preparation only. Submitted -> approved when all independent required decisions exist, or returned with reason; no self approval. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["reviewStage1Rf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/revise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * reviseStage1Rf
+         * @description Stage 1 contract preparation only. Returned/approved-unposted -> draft; preserve history, invalidate affected decisions and release/recompute provisional commitments. Posted IPC cannot reopen. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["reviseStage1Rf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/{record_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * submitStage1Rf
+         * @description Stage 1 contract preparation only. Draft/returned -> submitted after complete material/evidence/setup validation; allocate reference once. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["submitStage1Rf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chapters/{chapter_id}/requisitions/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * createStage1RfDraft
+         * @description Stage 1 contract preparation only. Create draft; missing policy allows preparation but blocks submission/approval/effects. Backend: Glenn; UI: Glenn. Current selected chapter, scoped authority, current material and effective policy are rechecked. Internal participants never independently commit.
+         */
+        post: operations["createStage1RfDraft"];
         delete?: never;
         options?: never;
         head?: never;
@@ -967,6 +1587,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptStage1OpeningReceiptResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1OpeningData"];
+        };
         /** @description Stable action identity, not a route or an authority grant. Endpoint providers assign action codes; the server rejects a mismatched action. Example names are illustrative until their owning contracts are accepted. */
         ActionCode: string;
         /** @description Shared v1 result envelope, no identity/evidence/business payload. Human-readable messages/labels accompany stable codes (UX-01/UX-04); color alone is insufficient. Correctable/stale/forbidden/uncertain results preserve the local draft and original attempt separately; no error response replaces the draft. A transport failure or malformed response is handled locally as uncertain even when no server envelope exists. Null record or operation means unavailable/unauthorized metadata, not a claim that no business effect exists. */
@@ -976,7 +1601,9 @@ export interface components {
             blocking_reason: components["schemas"]["BlockingReason"] | null;
             chapter_id: components["schemas"]["Id"] | null;
             /** @description Optional extension slot only. Endpoint owners MUST constrain/require it with their domain payload schema; this shared slice defines no domain properties. Forbidden and uncertain responses carry no data. Do not use this slot to bypass the owning source operation. */
-            data?: Record<string, never> | null;
+            data?: {
+                [key: string]: unknown;
+            } | null;
             field_feedback: components["schemas"]["FieldFeedback"][];
             /** @enum {unknown} */
             input_policy: "preserve" | "may_clear";
@@ -1052,6 +1679,11 @@ export interface components {
         AdminMembershipPage: {
             items: components["schemas"]["AdminMembership"][];
             next_cursor: components["schemas"]["MembershipCursor"] | null;
+        };
+        AllocateStage1RfResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1AllocationData"];
         };
         /** @description Amends future/current effectivity and limit under explicit Chapter Head authority; cannot rewrite past effective history or change membership, duty or scope. Server checks unchanged duty/scope and independent approved limit authority; use a distinct authorize/end operation when changing duty or scope. */
         AmendDutyGrantRequest: {
@@ -1150,6 +1782,16 @@ export interface components {
                 user_id: components["schemas"]["Id"];
             };
         };
+        BindStage1PaperEvidenceResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1EvidenceData"];
+        };
+        BindStage1RfHandoverEvidenceResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1HandoverData"];
+        };
         /** @description Stable machine reason and scoped human explanation of why the action cannot proceed. Separate from field feedback and from a server-permitted next action. Domain-specific reason codes extend this shape; never disclose another chapter or unauthorized record. */
         BlockingReason: {
             code: string;
@@ -1165,6 +1807,16 @@ export interface components {
             posted_at: components["schemas"]["UtcInstant"] | null;
             /** @description Actual server-accepted verification instant, not inferred from upload time or backdated to gain timely protection. */
             verified_at: components["schemas"]["UtcInstant"] | null;
+        };
+        CancelStage1IpcResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
+        };
+        CancelStage1RfResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
         };
         /** @description Opaque current identity AND server-session binding, distinct from operation IDs; never an account selector or authority token. */
         ChallengeId: string;
@@ -1288,6 +1940,11 @@ export interface components {
             authenticator_code: components["schemas"]["AuthenticatorCode"];
             enrollment_id: components["schemas"]["EnrollmentId"];
         };
+        ConfirmStage1RfHandoverResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1HandoverData"];
+        };
         CreateProvisionedChapterRequest: {
             chapter: {
                 code: string;
@@ -1327,6 +1984,16 @@ export interface components {
             /** @constant */
             resource_type: "provisioning";
             scope: components["schemas"]["ProvisionerScope"];
+        };
+        CreateStage1IpcDraftResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
+        };
+        CreateStage1RfDraftResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
         };
         DutyCatalogue: {
             items: {
@@ -1534,6 +2201,11 @@ export interface components {
             appointed_at: components["schemas"]["UtcInstant"];
             appointed_by: components["schemas"]["ExistingIdentityReference"];
             identity: components["schemas"]["ExistingIdentityReference"];
+        };
+        InspectStage1OpeningReceiptResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
         };
         InvalidLookup: components["schemas"]["ActionResult"] & {
             /** @constant */
@@ -1999,6 +2671,16 @@ export interface components {
             /** @constant */
             intent: "replace_unconfirmed";
         };
+        PrepareStage1OpeningReceiptResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
+        };
+        PrepareStage1RfHandoverResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1HandoverData"];
+        };
         /** @description Independently authorized provisioning destination, not a chapter membership, duty or permission. No operational access follows from it. Other provider surfaces await their owning contracts. */
         ProviderDestination: {
             /** @constant */
@@ -2281,6 +2963,26 @@ export interface components {
             material: components["schemas"]["PolicyConfigMaterial"];
             reason: string;
         };
+        ReviewStage1IpcResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
+        };
+        ReviewStage1RfResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
+        };
+        ReviseStage1IpcResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
+        };
+        ReviseStage1RfResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
+        };
         /** @description Immediate revocation at server commit time; never erases the grant or historical attribution, and does not remove membership. */
         RevokeDutyGrantRequest: {
             expected_authority_version: components["schemas"]["Version"];
@@ -2296,6 +2998,16 @@ export interface components {
             idempotency_key: components["schemas"]["IdempotencyKey"];
             metadata: components["schemas"]["PolicyMetadata"];
             reason: string;
+        };
+        SaveStage1IpcDraftResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
+        };
+        SaveStage1RfDraftResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
         };
         SelectChapterRequest: {
             chapter_id: components["schemas"]["Id"];
@@ -2380,6 +3092,394 @@ export interface components {
             email: string;
             password: string;
         };
+        /** @description Public IPC-only adapter to existing AcceptOpeningInput: route supplies chapter/RM identity, server supplies canonical source/receipt/evidence pins from immutable facts. Action is purchasing.accept_opening_rm. No client balance, inspector attribution, accepted flag or arbitrary source kind. Existing internal acceptance schema and lock protocol remain authoritative. */
+        Stage1AcceptOpeningInput: {
+            evidence_binding_ids: components["schemas"]["Id"][];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            source: {
+                material_hash: string;
+                material_version: components["schemas"]["Version"];
+                record_id: components["schemas"]["Id"];
+                row_version: components["schemas"]["Version"];
+            };
+        };
+        Stage1AllocateInput: {
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            inventory_revision: components["schemas"]["Version"];
+            lines: {
+                demand_line_id: components["schemas"]["Id"];
+                quantity: components["schemas"]["Quantity"] & unknown;
+            }[];
+            /** @enum {unknown} */
+            mode: "full" | "available";
+        };
+        Stage1AllocationData: {
+            inventory_revision: components["schemas"]["Version"];
+            remaining_shortage_quantity: components["schemas"]["Quantity"];
+            reservations: {
+                demand_line_id: components["schemas"]["Id"];
+                id: components["schemas"]["Id"];
+                quantity: components["schemas"]["Quantity"];
+                unpaid_expires_at: null;
+            }[];
+        };
+        Stage1AllocationProposal: {
+            blockers: components["schemas"]["BlockingReason"][];
+            chapter_id: components["schemas"]["Id"];
+            inventory_revision: components["schemas"]["Version"];
+            lines: {
+                demand_line_id: components["schemas"]["Id"];
+                eligible_quantity: components["schemas"]["Quantity"];
+                outstanding_quantity: components["schemas"]["Quantity"];
+                reservable_quantity: components["schemas"]["Quantity"];
+                shortage_quantity: components["schemas"]["Quantity"];
+            }[];
+            material_version: components["schemas"]["Version"];
+            record_id: components["schemas"]["Id"];
+            row_version: components["schemas"]["Version"];
+        };
+        Stage1Availability: {
+            blockers: components["schemas"]["BlockingReason"][];
+            chapter_id: components["schemas"]["Id"];
+            eligible_lots: {
+                eligible_quantity: components["schemas"]["Quantity"];
+                lot_id: components["schemas"]["Id"];
+                position_id: components["schemas"]["Id"];
+                revision: components["schemas"]["Version"];
+            }[];
+            /** @constant */
+            purpose_kind: "internal";
+            requesting_unit_id: components["schemas"]["Id"];
+            revision: components["schemas"]["Version"];
+            variant_id: components["schemas"]["Id"];
+            views: components["schemas"]["Stage1StockViews"];
+        };
+        /** @description Expected row/material versions apply to the addressed IS_AR handover state. Server also rechecks its retained RF source material/approval and actual reservation/demand under locks. Prepare versions apply to the RF source. Changing actual recipient/lines requires fresh handover material and acknowledgment. */
+        Stage1BindHandoverInput: {
+            acknowledged_at: components["schemas"]["UtcInstant"];
+            acknowledged_batch_hash: string;
+            evidence_id: components["schemas"]["Id"];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            object_version: string;
+        };
+        Stage1BindPaperInput: {
+            evidence_id: components["schemas"]["Id"];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            line_id: components["schemas"]["Id"] | null;
+            object_version: string;
+            purpose_code: string;
+        };
+        Stage1Catalogue: {
+            blockers: components["schemas"]["BlockingReason"][];
+            chapter_id: components["schemas"]["Id"];
+            conditions: {
+                code: string;
+                id: components["schemas"]["Id"];
+                usable: boolean;
+            }[];
+            locations: {
+                custodian_user_id: components["schemas"]["Id"] | null;
+                id: components["schemas"]["Id"];
+                /** @enum {unknown} */
+                kind: "stockroom" | "quarantine" | "booth";
+                name: string;
+            }[];
+            requesting_units: {
+                id: components["schemas"]["Id"];
+                name: string;
+            }[];
+            revision: components["schemas"]["Version"];
+            units: {
+                code: string;
+                id: components["schemas"]["Id"];
+                quantity_scale: number;
+            }[];
+            variants: {
+                description: string;
+                id: components["schemas"]["Id"];
+                item_code: string;
+                policy_version_id: components["schemas"]["Id"] | null;
+                unit_id: components["schemas"]["Id"];
+            }[];
+        };
+        /** @description Post-commit invalidation only, never stock/evidence/identity content or authority. Stable event_id survives redelivery; no client mutation follows an event. Subscription protocol is not selected by this schema. */
+        Stage1CommitEvent: {
+            action_code: components["schemas"]["ActionCode"];
+            chapter_id: components["schemas"]["Id"];
+            committed_at: components["schemas"]["UtcInstant"];
+            event_id: components["schemas"]["OperationId"];
+            inventory_revision: components["schemas"]["Version"] | null;
+            material_version: components["schemas"]["Version"];
+            operation_id: components["schemas"]["OperationId"];
+            record_id: components["schemas"]["Id"];
+            row_version: components["schemas"]["Version"];
+        };
+        /** @description Expected row/material versions apply to the addressed IS_AR handover state. Server also rechecks its retained RF source material/approval and actual reservation/demand under locks. Prepare versions apply to the RF source. Changing actual recipient/lines requires fresh handover material and acknowledgment. */
+        Stage1ConfirmHandoverInput: {
+            acknowledged_batch_hash: string;
+            client_attempt_id: components["schemas"]["OperationId"];
+            evidence_binding_ids: components["schemas"]["Id"][];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            occurred_at: components["schemas"]["UtcInstant"];
+        };
+        Stage1DraftInput: {
+            material: components["schemas"]["Stage1RfMaterial"];
+        };
+        Stage1Evidence: {
+            byte_length: number;
+            content_hash: string | null;
+            failure_code: string | null;
+            id: components["schemas"]["Id"];
+            /** @enum {unknown} */
+            lifecycle: "staged" | "validating" | "ready" | "quarantined" | "missing" | "rejected";
+            /** @enum {unknown} */
+            media_type: "image/jpeg" | "image/png" | "application/pdf";
+            object_version: string | null;
+        };
+        Stage1EvidenceData: {
+            binding_id: components["schemas"]["Id"] | null;
+            evidence: components["schemas"]["Stage1Evidence"];
+        };
+        Stage1EvidencePinIds: components["schemas"]["Id"][];
+        Stage1Failure: components["schemas"]["ActionResult"] & {
+            /** @enum {unknown} */
+            action_result?: "blocked" | "stale" | "forbidden" | "uncertain";
+            data?: null;
+        };
+        Stage1HandoverData: {
+            batch_hash: string;
+            handover_id: components["schemas"]["Id"];
+            inventory_revision: components["schemas"]["Version"];
+            lines: {
+                actual_quantity: components["schemas"]["Quantity"] & unknown;
+                demand_line_id: components["schemas"]["Id"];
+                reservation_id: components["schemas"]["Id"];
+            }[];
+            movement_ids: components["schemas"]["Id"][];
+            partial_acceptance: boolean;
+            posting_id: components["schemas"]["Id"] | null;
+            recipient: {
+                capacity: string;
+                name: string;
+                user_id: components["schemas"]["Id"] | null;
+            };
+            source: {
+                material_hash: string;
+                material_version: components["schemas"]["Version"];
+                record_id: components["schemas"]["Id"];
+                row_version: components["schemas"]["Version"];
+            };
+            state: components["schemas"]["RecordState"];
+        };
+        Stage1History: {
+            chapter_id: components["schemas"]["Id"];
+            events: {
+                action_code: components["schemas"]["ActionCode"];
+                actor_user_id: components["schemas"]["Id"];
+                id: components["schemas"]["Id"];
+                material_version: components["schemas"]["Version"];
+                occurred_at: components["schemas"]["UtcInstant"];
+                reason: string | null;
+                row_version: components["schemas"]["Version"];
+            }[];
+            record_id: components["schemas"]["Id"];
+        };
+        Stage1InspectInput: {
+            evidence_binding_ids: components["schemas"]["Id"][];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            inspected_at: components["schemas"]["UtcInstant"];
+            lines: {
+                accepted_quantity: components["schemas"]["Quantity"];
+                delivered_quantity: components["schemas"]["Quantity"];
+                discrepancy_reason: string | null;
+                expected_quantity: components["schemas"]["Quantity"];
+                held_quantity: components["schemas"]["Quantity"];
+                ipc_line_id: components["schemas"]["Id"];
+                missing_quantity: components["schemas"]["Quantity"];
+                recorded_nonusable_quantity: components["schemas"]["Quantity"];
+                rejected_quantity: components["schemas"]["Quantity"];
+            }[];
+            representative_user_ids: components["schemas"]["Id"][];
+        };
+        Stage1IpcMaterial: {
+            counted_at: components["schemas"]["UtcInstant"];
+            counter_user_ids: components["schemas"]["Id"][];
+            cutoff_at: components["schemas"]["UtcInstant"];
+            lines: {
+                condition_id: components["schemas"]["Id"];
+                counted_quantity: components["schemas"]["Quantity"];
+                /** @constant */
+                currency: "PHP";
+                location_id: components["schemas"]["Id"];
+                restriction_version_id: components["schemas"]["Id"] | null;
+                unit_value: string;
+                valuation_basis: string;
+                variant_id: components["schemas"]["Id"];
+            }[];
+            policy_version_id: components["schemas"]["Id"];
+            purpose: string;
+        };
+        Stage1OpeningData: {
+            accepted_quantity: components["schemas"]["Quantity"];
+            inventory_revision: components["schemas"]["Version"];
+            ipc_id: components["schemas"]["Id"];
+            movement_ids: components["schemas"]["Id"][];
+            nonusable_quantity: components["schemas"]["Quantity"];
+            opening_id: components["schemas"]["Id"];
+            posting_id: components["schemas"]["Id"];
+            rm_id: components["schemas"]["Id"];
+        };
+        Stage1OpeningDraftInput: {
+            material: components["schemas"]["Stage1IpcMaterial"];
+        };
+        Stage1PrepareHandoverInput: {
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            lines: {
+                actual_quantity: components["schemas"]["Quantity"] & unknown;
+                demand_line_id: components["schemas"]["Id"];
+                reservation_id: components["schemas"]["Id"];
+            }[];
+            partial_acceptance: boolean;
+            recipient: {
+                capacity: string;
+                name: string;
+                user_id: components["schemas"]["Id"] | null;
+            };
+        };
+        Stage1ReasonInput: {
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            reason: string;
+        };
+        Stage1ReceiptDraftInput: {
+            source: {
+                material_hash: string;
+                material_version: components["schemas"]["Version"];
+                record_id: components["schemas"]["Id"];
+                row_version: components["schemas"]["Version"];
+            };
+        };
+        Stage1Record: {
+            allowed_actions: string[];
+            approvals: {
+                decided_at: components["schemas"]["UtcInstant"];
+                /** @enum {unknown} */
+                decision: "review" | "approve" | "return";
+                duty_code: string;
+                material_version: components["schemas"]["Version"];
+                user_id: components["schemas"]["Id"];
+            }[];
+            blockers: components["schemas"]["BlockingReason"][];
+            chapter_id: components["schemas"]["Id"];
+            evidence_binding_ids: components["schemas"]["Id"][];
+            lines: {
+                fulfilled_quantity: components["schemas"]["Quantity"];
+                id: components["schemas"]["Id"];
+                quantity: components["schemas"]["Quantity"];
+                reserved_quantity: components["schemas"]["Quantity"];
+                variant_id: components["schemas"]["Id"];
+            }[];
+            /** @description RF/IPC immutable current content when authorized; null for other kinds or redacted material. Never replaces the local draft. IPC valuation requires applicable read duty. */
+            material: components["schemas"]["Stage1RfMaterial"] | components["schemas"]["Stage1IpcMaterial"] | null;
+            material_hash: string;
+            policy_version_ids: components["schemas"]["Id"][];
+            prepared_by_user_id: components["schemas"]["Id"];
+            receipt_inspection: {
+                inspected_at: components["schemas"]["UtcInstant"];
+                inspector_user_id: components["schemas"]["Id"];
+                lines: {
+                    accepted_quantity: components["schemas"]["Quantity"];
+                    delivered_quantity: components["schemas"]["Quantity"];
+                    discrepancy_reason: string | null;
+                    expected_quantity: components["schemas"]["Quantity"];
+                    held_quantity: components["schemas"]["Quantity"];
+                    ipc_line_id: components["schemas"]["Id"];
+                    missing_quantity: components["schemas"]["Quantity"];
+                    recorded_nonusable_quantity: components["schemas"]["Quantity"];
+                    rejected_quantity: components["schemas"]["Quantity"];
+                }[];
+                representative_user_ids: components["schemas"]["Id"][];
+                source_record_id: components["schemas"]["Id"];
+            } | null;
+            reference: string | null;
+            related_records: {
+                reference: components["schemas"]["RecordReference"];
+                /** @enum {unknown} */
+                relation: "source" | "receipt" | "handover" | "reservation_source" | "corrects";
+            }[];
+            state: components["schemas"]["RecordState"];
+        };
+        Stage1RecordData: {
+            record: components["schemas"]["Stage1Record"];
+        };
+        /** @description Authenticated reviewer and effective duty are server-derived. Return requires a nonempty reason; approve requires independent coverage of the current immutable material. No approver/approved flag supplied by client. */
+        Stage1ReviewInput: {
+            /** @enum {unknown} */
+            decision: "approve" | "return";
+            evidence_binding_ids: components["schemas"]["Id"][];
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            reason: string | null;
+        } & unknown;
+        Stage1RfMaterial: {
+            lines: {
+                quantity: components["schemas"]["Quantity"] & unknown;
+                variant_id: components["schemas"]["Id"];
+            }[];
+            purpose: string;
+            /** @constant */
+            purpose_kind: "internal";
+            requesting_unit_id: components["schemas"]["Id"];
+            required_at: components["schemas"]["UtcInstant"];
+        };
+        Stage1SaveIpcInput: {
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            material: components["schemas"]["Stage1IpcMaterial"];
+        };
+        Stage1SaveRfInput: {
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            material: components["schemas"]["Stage1RfMaterial"];
+        };
+        /** @description JSON upload of synthetic/real paper bytes, not an object-store URL. Server derives decoded length, MIME sniffing, hash and immutable object version. Size/retention/scanner limits require approved setup; missing validation/storage capability blocks ready. Never trust filename, declared MIME or client hash. No stock effect. */
+        Stage1StagePaperInput: {
+            content_base64: string;
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+            file_name: string;
+            /** @enum {unknown} */
+            media_type: "image/jpeg" | "image/png" | "application/pdf";
+            purpose_code: string;
+        };
+        Stage1StockViews: {
+            available_to_allocate: components["schemas"]["Quantity"];
+            booth_custody: components["schemas"]["Quantity"];
+            inbound_open_po: components["schemas"]["Quantity"];
+            quarantined_rejected: components["schemas"]["Quantity"];
+            rf_reserved: components["schemas"]["Quantity"];
+            so_reserved: components["schemas"]["Quantity"];
+            usable_on_hand: components["schemas"]["Quantity"];
+        };
+        Stage1ValidatePaperInput: {
+            object_version: string;
+        };
+        Stage1VersionInput: {
+            expected_material_version: components["schemas"]["Version"];
+            expected_row_version: components["schemas"]["Version"];
+        };
+        StageStage1PaperEvidenceResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1EvidenceData"];
+        };
         SubmitPolicyVersionRequest: {
             effective_from: components["schemas"]["UtcInstant"];
             effective_until: components["schemas"]["UtcInstant"] | null;
@@ -2389,6 +3489,16 @@ export interface components {
             idempotency_key: components["schemas"]["IdempotencyKey"];
             material: components["schemas"]["PolicyConfigMaterial"];
             reason: string;
+        };
+        SubmitStage1IpcResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
+        };
+        SubmitStage1RfResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1RecordData"];
         };
         /** @description Atomic alternate replacement: path grant is original; target is an existing authorized membership in same chapter belonging to a different immutable individual. New grant keeps duty/scope of original; original ends at new start. No automatic restoration after alternate end; further explicit authorization is required. Both membership/resource guards and duplicate/authority checks apply atomically. */
         SubstituteDutyGrantRequest: {
@@ -2411,6 +3521,11 @@ export interface components {
          * @description UTC DATETIME(6) wire instant, six fractional digits and Z. Enable date-time format assertion in validators. Display in Asia/Manila while retaining the UTC value; deadlines use elapsed time (48 hours is 172800 seconds), never a local calendar-day substitution. JavaScript Date is only millisecond-precise: it may format a display, but retain the original six-place string for identity, exact comparison and fingerprinting.
          */
         UtcInstant: string;
+        ValidateStage1PaperEvidenceResult: components["schemas"]["ActionResult"] & {
+            /** @constant */
+            action_result?: "success";
+            data: components["schemas"]["Stage1EvidenceData"];
+        };
         VerifiedSession: components["schemas"]["AuthenticatedSession"] & {
             mfa?: {
                 /** @constant */
@@ -2478,6 +3593,87 @@ export interface components {
                 "application/json": components["schemas"]["InvalidLookup"];
             };
         };
+        /** @description Missing/unapproved setup or required independent coverage; action remains blocked */
+        Stage1Blocked: {
+            headers: {
+                "Cache-Control": "no-store";
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Stage1Failure"];
+            };
+        };
+        /** @description Stale row/material/context, key conflict, state/stock/source/baseline conflict */
+        Stage1Conflict: {
+            headers: {
+                "Cache-Control": "no-store";
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Stage1Failure"];
+            };
+        };
+        /** @description Origin/CSRF rejection before operation admission */
+        Stage1CsrfFailure: {
+            headers: {
+                "Cache-Control": "no-store";
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Stage1Failure"];
+            };
+        };
+        /** @description Redacted unauthorized, revoked, wrong-chapter or invisible target */
+        Stage1Forbidden: {
+            headers: {
+                "Cache-Control": "no-store";
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Stage1Failure"];
+            };
+        };
+        /** @description Invalid body or domain quantities/evidence */
+        Stage1Invalid: {
+            headers: {
+                "Cache-Control": "no-store";
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Stage1Failure"];
+            };
+        };
+        /** @description Rate limited */
+        Stage1Throttled: {
+            headers: {
+                "Cache-Control": "no-store";
+                "Retry-After": number;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Stage1Failure"];
+            };
+        };
+        /** @description Unauthenticated */
+        Stage1Unauthorized: {
+            headers: {
+                "Cache-Control": "no-store";
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Stage1Failure"];
+            };
+        };
+        /** @description Unavailable dependency; preserve uncertainty and original key */
+        Stage1Unavailable: {
+            headers: {
+                "Cache-Control": "no-store";
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Stage1Failure"];
+            };
+        };
         /** @description Authorized lookup could not establish a terminal result. Proxies/network failures may provide no JSON at all; the client retains uncertainty locally. */
         UnavailableLookup: {
             headers: {
@@ -2499,6 +3695,40 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readStage1Catalogue: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stage1Catalogue"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
     listDutyGrants: {
         parameters: {
             query?: {
@@ -3411,6 +4641,154 @@ export interface operations {
             };
         };
     };
+    readStage1Evidence: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                evidence_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stage1Evidence"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    downloadStage1Evidence: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                evidence_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    validateStage1PaperEvidence: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                evidence_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1ValidatePaperInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidateStage1PaperEvidenceResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    readStage1Availability: {
+        parameters: {
+            query: {
+                requesting_unit_id: components["schemas"]["Id"];
+                variant_id: components["schemas"]["Id"];
+            };
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stage1Availability"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
     listMemberships: {
         parameters: {
             query?: {
@@ -4054,6 +5432,373 @@ export interface operations {
                     "application/json": components["schemas"]["SessionUnavailable"];
                 };
             };
+        };
+    };
+    cancelStage1Ipc: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1ReasonInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelStage1IpcResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    saveStage1IpcDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1SaveIpcInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveStage1IpcDraftResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    reviewStage1Ipc: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1ReviewInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewStage1IpcResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    reviseStage1Ipc: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1ReasonInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviseStage1IpcResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    submitStage1Ipc: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1VersionInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmitStage1IpcResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    createStage1IpcDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1OpeningDraftInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateStage1IpcDraftResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    acceptStage1OpeningReceipt: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1AcceptOpeningInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptStage1OpeningReceiptResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    inspectStage1OpeningReceipt: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1InspectInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectStage1OpeningReceiptResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    prepareStage1OpeningReceipt: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1ReceiptDraftInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepareStage1OpeningReceiptResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
         };
     };
     lookupOperationById: {
@@ -5271,6 +7016,675 @@ export interface operations {
                     "application/json": components["schemas"]["SessionUnavailable"];
                 };
             };
+        };
+    };
+    readStage1Record: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stage1Record"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    bindStage1PaperEvidence: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1BindPaperInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BindStage1PaperEvidenceResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    stageStage1PaperEvidence: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1StagePaperInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StageStage1PaperEvidenceResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    readStage1RecordHistory: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stage1History"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    printStage1Record: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    allocateStage1Rf: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1AllocateInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocateStage1RfResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    readStage1RfAllocationProposal: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stage1AllocationProposal"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    cancelStage1Rf: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1ReasonInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelStage1RfResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    saveStage1RfDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1SaveRfInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveStage1RfDraftResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    readStage1RfHandover: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                handover_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stage1HandoverData"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    confirmStage1RfHandover: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                handover_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1ConfirmHandoverInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmStage1RfHandoverResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    bindStage1RfHandoverEvidence: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                handover_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1BindHandoverInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BindStage1RfHandoverEvidenceResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    prepareStage1RfHandover: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1PrepareHandoverInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepareStage1RfHandoverResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    reviewStage1Rf: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1ReviewInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewStage1RfResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    reviseStage1Rf: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1ReasonInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviseStage1RfResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    submitStage1Rf: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+                record_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1VersionInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmitStage1RfResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
+        };
+    };
+    createStage1RfDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["IdempotencyKey"];
+                "X-Chapter-Context": components["schemas"]["ChapterContextRevision"];
+                "X-Exercised-Duty"?: "INVENTORY" | "RECEIVING" | "COMMITTEE_REQUESTER" | "RF_APPROVER" | "DISPATCH" | "CHAPTER_HEAD" | "FINANCE" | "PURCHASING";
+                "X-XSRF-TOKEN": string;
+            };
+            path: {
+                chapter_id: components["schemas"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Stage1DraftInput"];
+            };
+        };
+        responses: {
+            /** @description Illustrative contracted result. No runtime implementation/approval claimed. */
+            200: {
+                headers: {
+                    "Cache-Control": "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateStage1RfDraftResult"];
+                };
+            };
+            401: components["responses"]["Stage1Unauthorized"];
+            403: components["responses"]["Stage1Forbidden"];
+            409: components["responses"]["Stage1Conflict"];
+            419: components["responses"]["Stage1CsrfFailure"];
+            422: components["responses"]["Stage1Invalid"];
+            423: components["responses"]["Stage1Blocked"];
+            429: components["responses"]["Stage1Throttled"];
+            503: components["responses"]["Stage1Unavailable"];
         };
     };
     initializeCsrf: {
