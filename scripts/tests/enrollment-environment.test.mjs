@@ -48,6 +48,27 @@ test('Test rejects overlap while Start owns a migration, then accepts the ready 
   }
 });
 
+test('Test prepares contract fixtures before HTTP checks and aborts when generation fails', { timeout: 20000 }, async () => {
+  const signals = await mkdtemp(resolve(root, '.runtime/environment-test-'));
+  const project = `ysp-enrollment-check-fixtures-${process.pid}`;
+  await writeFile(resolve(signals, 'release'), 'release');
+  try {
+    assert.equal((await invoke('Start', project, signals).done).code, 0);
+    const failed = await invoke('Test', project, signals, ['-FailFixtures']).done;
+    assert.notEqual(failed.code, 0, failed.output);
+    assert.match(failed.output, /Verification executable failed: node \(exit 10\)/);
+    assert.doesNotMatch(await readFile(resolve(signals, 'checks'), 'utf8'), /run-http-tests/);
+    await writeFile(resolve(signals, 'checks'), '');
+    const retry = await invoke('Test', project, signals).done;
+    assert.equal(retry.code, 0, retry.output);
+    const checks = await readFile(resolve(signals, 'checks'), 'utf8');
+    assert.match(checks, /generate\.mjs --fixtures[\s\S]*run-http-tests\.mjs/);
+  } finally {
+    await invoke('Stop', project, signals).done;
+    await rm(signals, { recursive: true, force: true });
+  }
+});
+
 test('interrupted Start retains ownership for Stop but cannot be tested', { timeout: 20000 }, async () => {
   const signals = await mkdtemp(resolve(root, '.runtime/environment-test-'));
   const project = `ysp-enrollment-check-interrupt-${process.pid}`;

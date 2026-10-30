@@ -146,6 +146,7 @@ try {
     Write-Host "Enrollment environment: $Project ($env:YSP_TEST_ORIGIN)"
     if ($Action -eq 'Start') { return }
     if (-not (Test-Path contracts/transport/node_modules/ajv)) { throw 'Run npm ci --prefix contracts/transport before HTTP checks.' }
+    Invoke-EnrollmentNative node @('contracts/transport/generate.mjs', '--fixtures')
     Invoke-EnrollmentNative node @('contracts/transport/generate-runtime.mjs', '--check')
     $env:YSP_TEST_CONTAINER = (Invoke-EnrollmentCompose ps -q backend | Out-String).Trim()
     $env:YSP_TEST_MYSQL_CONTAINER = (Invoke-EnrollmentCompose ps -q mysql | Out-String).Trim()

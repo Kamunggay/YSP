@@ -1,9 +1,12 @@
 # Substitute only the native executable boundary; exercise the real verifier/state files.
-param([string] $Action, [string] $Project, [string] $Signals, [switch] $FailMigration, [switch] $FailCleanup, [switch] $HoldTests)
+param([string] $Action, [string] $Project, [string] $Signals, [switch] $FailMigration, [switch] $FailCleanup, [switch] $HoldTests, [switch] $FailFixtures)
 $ErrorActionPreference = 'Stop'
 function global:node {
     $command = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($args[2])) | ConvertFrom-Json
     $global:LASTEXITCODE = 0
+    if ($command[0] -eq 'node') {
+        Add-Content -LiteralPath (Join-Path $Signals 'checks') -Value ($command[1..($command.Count - 1)] -join ' ')
+    }
     if ($command[0] -eq 'docker') {
         $operation = $command -join ' '
         if ($operation -match ' down --volumes' -and $FailCleanup) { $global:LASTEXITCODE = 8 }
@@ -17,6 +20,8 @@ function global:node {
             }
             if ($FailMigration) { $global:LASTEXITCODE = 9 }
         }
+    } elseif ($FailFixtures -and $command[1] -eq 'contracts/transport/generate.mjs') {
+        $global:LASTEXITCODE = 10
     } elseif ($HoldTests -and $command[1] -eq 'scripts/run-http-tests.mjs') {
         Set-Content -LiteralPath (Join-Path $Signals 'tests-held') -Value 'tests reached'
         while (-not (Test-Path -LiteralPath (Join-Path $Signals 'tests-release'))) { Start-Sleep -Milliseconds 25 }
