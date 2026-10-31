@@ -1,30 +1,23 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Http\Controllers;
 
-use Illuminate\Contracts\Container\Container;
-use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
-use Throwable;
+use Illuminate\Support\Facades\DB;
 
-final class HealthController
+class HealthController extends Controller
 {
-    public function __invoke(DatabaseManager $database, Container $container): JsonResponse
+    public function __invoke(): JsonResponse
     {
         try {
-            $container->make('encrypter');
-            $database->connection()->selectOne('SELECT 1');
-            $available = true;
-        } catch (Throwable) {
-            $available = false;
+            DB::select('SELECT 1');
+        } catch (QueryException $exception) {
+            report($exception);
+
+            return response()->json(['database' => 'unavailable'], 503);
         }
 
-        $status = $available ? 'ok' : 'unavailable';
-
-        return new JsonResponse(['status' => $status, 'database' => $status], $available ? 200 : 503, [
-            'Cache-Control' => 'no-store, private',
-        ]);
+        return response()->json(['database' => 'connected']);
     }
 }

@@ -1,22 +1,18 @@
-# Image indexes resolved from the official registries on 2026-10-24.
-FROM composer:2.10.3@sha256:b6dcd72ca98fa19d0e5b8476de179859704891fad06dd9e0b96833d4c430a5fc AS composer
-FROM php:8.4.27-cli-bookworm@sha256:496b5e02fe9fe44fcfb715023b931048111dc4e0bc719789d83c906be9f04b05 AS base
-RUN docker-php-ext-install -j2 pdo_mysql
-COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+FROM php:8.4-cli-bookworm@sha256:54b467ede1db96c66675e7b78457dd43729d0e7be31978d4a1e5c069ceabcf76 AS tools
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends unzip \
+    && docker-php-ext-install pdo_mysql \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=composer:2@sha256:4ed71c38c6d788eb4e4e3747b5332f5b40d5b5a6fcadd5062a1a70986a118e0a /usr/bin/composer /usr/local/bin/composer
 WORKDIR /app
 
-FROM base AS dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf /var/lib/apt/lists/*
+FROM tools AS app
 COPY composer.json composer.lock ./
-RUN composer install --no-scripts --no-interaction --prefer-dist --no-progress
-
-FROM base AS local
-ENV COMPOSER_HOME=/tmp/composer
-COPY --from=dependencies /app/vendor ./vendor
+RUN composer install --no-interaction --prefer-dist --no-scripts --no-progress
 COPY . .
-RUN composer dump-autoload --no-interaction \
-    && mkdir -p /tmp/composer \
-    && chown -R 10001:10001 storage bootstrap/cache /tmp/composer
-USER 10001:10001
-EXPOSE 8080
-CMD ["php", "-S", "0.0.0.0:8080", "-t", "public", "public/index.php"]
+RUN touch .env \
+    && composer dump-autoload --no-interaction \
+    && chown -R www-data:www-data storage bootstrap/cache
+USER www-data
+EXPOSE 8000
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000", "--no-reload"]
