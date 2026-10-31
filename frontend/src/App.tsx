@@ -1,57 +1,60 @@
-import { useEffect, useState } from 'react';
-import { checkHealth } from './health';
-import type { HealthResult } from './health';
+import { useEffect, useState } from 'react'
+import './App.css'
 
-const messages = {
-  checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
-  connected: { title: 'Connection ready', description: 'The service responded and database connectivity was confirmed for this check.' },
-  unavailable: { title: 'Connection unavailable', description: 'Connectivity could not be confirmed. Check that the local services are running, then try again.' },
-};
+type Connection = 'checking' | 'connected' | 'unavailable'
 
-export function App() {
-  const [status, setStatus] = useState<HealthResult['status'] | 'checking'>('checking');
-  const [attempt, setAttempt] = useState(0);
+function App() {
+  const [connection, setConnection] = useState<Connection>('checking')
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    const controller = new AbortController();
-    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]);
-    void checkHealth(signal).then((result) => {
-      if (!controller.signal.aborted) setStatus(result.status);
-    });
-    return () => controller.abort();
-  }, [attempt]);
+    const controller = new AbortController()
 
-  function retry() {
-    setStatus('checking');
-    setAttempt((previous) => previous + 1);
-  }
+    async function checkConnection() {
+      setConnection('checking')
 
-  const message = messages[status];
+      try {
+        const response = await fetch('/api/health', {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]),
+          cache: 'no-store',
+        })
+        const result: unknown = await response.json()
+
+        if (!controller.signal.aborted) {
+          setConnection(
+            response.ok && typeof result === 'object' && result !== null &&
+            'database' in result && result.database === 'connected'
+              ? 'connected'
+              : 'unavailable',
+          )
+        }
+      } catch {
+        if (!controller.signal.aborted) setConnection('unavailable')
+      }
+    }
+
+    void checkConnection()
+    return () => controller.abort()
+  }, [attempt])
+
   return (
-    <>
-      <header className="masthead"><div className="brand">YSP <span>Cebu</span></div><span>Local development</span></header>
-      <main>
-        <div className="intro">
-          <h1>A connected starting point.</h1>
-          <p>Confirm the local connection before continuing development.</p>
-        </div>
-        <section className="connection" aria-labelledby="connection-title">
-          <div className={`status-mark ${status}`} aria-hidden="true" />
-          <div className="status-copy" role="status" aria-live="polite" aria-atomic="true">
-            <h2 id="connection-title">{message.title}</h2>
-            <p>{message.description}</p>
-          </div>
-          <button type="button" disabled={status === 'checking'} onClick={retry}>
-            {status === 'checking' ? 'Checking…' : 'Check again'}
-          </button>
-        </section>
-        <aside className="scope" aria-label="Development scope">
-          <h2>Development baseline</h2>
-          <p>Local setup only. Business operations are not available yet.</p>
-          <p>This check does not sign you in or confirm a stock, payment, or posting action.</p>
-        </aside>
-      </main>
-      <footer>YSP development baseline</footer>
-    </>
-  );
+    <main>
+      <header>YSP <span>Development scaffold</span></header>
+      <h1>A fresh starting point.</h1>
+      <p>Check the connection from this page through Laravel to MySQL.</p>
+      <section aria-label="Application connection">
+        <p role="status" className={`connection ${connection}`}>
+          {connection === 'checking' ? 'Checking connection?' :
+            connection === 'connected' ? 'Laravel and MySQL are connected.' :
+              'Connection unavailable. Check that the local services are running, then try again.'}
+        </p>
+        <button disabled={connection === 'checking'} onClick={() => setAttempt(value => value + 1)}>
+          Check connection
+        </button>
+      </section>
+    </main>
+  )
 }
+
+export default App

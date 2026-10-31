@@ -1,4 +1,7 @@
 /.runtime/
+/.env
+/.env.*
+!/.env.example
 /.idea/
 YSP_Cebu_Proposed_System_Workflow_Documentation_and_Proposal_v2.0.docx
 .agents
