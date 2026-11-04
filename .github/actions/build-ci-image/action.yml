@@ -29,7 +29,7 @@ runs:
         load: true
         push: false
         cache-from: type=ci05-unavailable-backend
-        cache-to: type=gha,version=2,scope=${{ inputs.scope }},mode=max,ignore-error=true
+        cache-to: type=ci05-unavailable-backend
     - name: Build without remote cache after failed cached build
       if: ${{ steps.cached.outcome == 'failure' }}
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
