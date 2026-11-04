@@ -173,3 +173,36 @@ jobs:
             found=$(docker volume ls --quiet --filter "name=^${volume}$")
             if [[ -n "$found" ]]; then docker volume rm "$volume"; fi
           done
+
+  runtime-integration:
+    name: Runtime integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Generate temporary runtime secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_key="base64:$(openssl rand -base64 32)"
+          db_password=$(openssl rand -hex 32)
+          root_password=$(openssl rand -hex 32)
+          echo "::add-mask::$app_key"
+          echo "::add-mask::$db_password"
+          echo "::add-mask::$root_password"
+          printf 'APP_KEY=%s\nDB_PASSWORD=%s\nMYSQL_ROOT_PASSWORD=%s\n' \
+            "$app_key" "$db_password" "$root_password" >> "$GITHUB_ENV"
+      - name: Verify fresh Laravel and MySQL runtime
+        id: runtime
+        shell: bash
+        run: bash scripts/ci/runtime-integration.sh
+      - name: Clean up owned runtime resources
+        if: ${{ always() }}
+        timeout-minutes: 2
+        shell: bash
+        env:
+          RUNTIME_RESULT: ${{ steps.runtime.outcome }}
+        run: bash scripts/ci/runtime-cleanup.sh
