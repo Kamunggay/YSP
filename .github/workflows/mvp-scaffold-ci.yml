@@ -236,8 +236,14 @@ jobs:
                   result[key] = value
               return result
 
+          def reject_constant(value):
+              raise ValueError('Invalid JSON numeric constant.')
+
           try:
-              needs = json.loads(os.environ['NEEDS_JSON'], object_pairs_hook=unique_object)
+              needs = json.loads(
+                  os.environ['NEEDS_JSON'], object_pairs_hook=unique_object,
+                  parse_constant=reject_constant,
+              )
           except (KeyError, ValueError):
               sys.exit('Missing or malformed dependency results.')
           if not isinstance(needs, dict) or set(needs) != set(expected):
