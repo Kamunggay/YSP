@@ -42,6 +42,8 @@ jobs:
           node-version: '24'
           package-manager-cache: false
       - name: Restore npm downloads
+        # Downloads are optional; locked installation below remains mandatory.
+        continue-on-error: true
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
@@ -76,6 +78,8 @@ jobs:
           node-version: '24'
           package-manager-cache: false
       - name: Restore npm downloads
+        # Downloads are optional; locked installation below remains mandatory.
+        continue-on-error: true
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
@@ -102,6 +106,8 @@ jobs:
           printf 'Runner OS=%s arch=%s image=%s version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "$ImageOS" "$ImageVersion"
           sha256sum backend/composer.lock frontend/package-lock.json
       - name: Restore Composer downloads
+        # Downloads are optional; locked installation below remains mandatory.
+        continue-on-error: true
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/composer-downloads
@@ -172,11 +178,15 @@ jobs:
           node-version: '24'
           package-manager-cache: false
       - name: Restore npm downloads
+        # Downloads are optional; locked installation below remains mandatory.
+        continue-on-error: true
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
           key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
       - name: Restore Composer downloads
+        # Downloads are optional; locked installation below remains mandatory.
+        continue-on-error: true
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/composer-downloads
@@ -242,6 +252,8 @@ jobs:
           printf 'Runner OS=%s arch=%s image=%s version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "$ImageOS" "$ImageVersion"
           sha256sum backend/composer.lock frontend/package-lock.json
       - name: Restore Composer downloads
+        # Downloads are optional; locked installation below remains mandatory.
+        continue-on-error: true
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/composer-downloads
