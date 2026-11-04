@@ -1,95 +1,53 @@
-name: ysp-health
+name: ysp
+
 services:
   frontend:
-    image: ysp-frontend:local
-    build:
-      context: ./frontend
-      target: local
+    build: ./frontend
     ports:
-      - "127.0.0.1:${YSP_HTTP_PORT:-8080}:8080"
+      - "127.0.0.1:${YSP_HTTP_PORT:-8080}:80"
     depends_on:
       backend:
         condition: service_healthy
-    networks: [local]
-    init: true
-    read_only: true
-    tmpfs: ["/tmp:size=16m,mode=1777"]
-    cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
-    mem_limit: 64m
-    pids_limit: 128
-    restart: "on-failure:3"
-    logging:
-      driver: json-file
-      options: {max-size: "5m", max-file: "2"}
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    networks: [web]
+
   backend:
-    image: ysp-backend:local
-    build:
-      context: ./backend
-      target: local
+    build: ./backend
     env_file: ./backend/.env.example
-    secrets:
-      - app_key
-      - db_password
+    environment:
+      APP_KEY: ${APP_KEY:?Set APP_KEY in the ignored root .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the ignored root .env}
     depends_on:
       mysql:
         condition: service_healthy
-    networks: [local, private]
-    init: true
-    dns_opt: ["timeout:1", "attempts:1"]
-    cap_drop: [ALL]
-    security_opt: ["no-new-privileges:true"]
-    mem_limit: 512m
-    pids_limit: 128
-    restart: "on-failure:3"
-    logging:
-      driver: json-file
-      options: {max-size: "5m", max-file: "2"}
+    networks: [web, private]
     healthcheck:
-      test: ["CMD", "php", "scripts/http-smoke.php"]
-      interval: 10s
-      timeout: 20s
-      retries: 5
-      start_period: 10s
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   mysql:
-    image: mysql:8.4@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69
+    image: mysql:8.4@sha256:a0225d1ea6631c8bc2385dc4c2faba17bbf1834ecf369e1659a9a382bd8d5dd7
     environment:
-      MYSQL_DATABASE: ysp_local
-      MYSQL_USER: ysp_app
-      MYSQL_PASSWORD_FILE: /run/secrets/db_password
-      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
-    secrets: [db_password, db_root_password]
-    volumes: [mysql_data:/var/lib/mysql]
+      MYSQL_DATABASE: ysp
+      MYSQL_USER: ysp
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the ignored root .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the ignored root .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
     networks: [private]
-    mem_limit: 1g
-    pids_limit: 256
-    restart: "on-failure:3"
-    security_opt: ["no-new-privileges:true"]
-    logging:
-      driver: json-file
-      options: {max-size: "5m", max-file: "2"}
     healthcheck:
-      test: ["CMD-SHELL", "MYSQL_PWD=$$(cat /run/secrets/db_password) mysql --protocol=TCP -h 127.0.0.1 -u ysp_app ysp_local -Nse 'SELECT 1' >/dev/null"]
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql --protocol=TCP -h 127.0.0.1 -u ysp ysp -Nse 'SELECT 1' >/dev/null"]
       interval: 5s
       timeout: 5s
       retries: 30
       start_period: 20s
+
 networks:
-  local:
-    driver: bridge
+  web:
   private:
     internal: true
+
 volumes:
   mysql_data:
-secrets:
-  app_key:
-    environment: APP_KEY
-  db_password:
-    environment: DB_PASSWORD
-  db_root_password:
-    environment: MYSQL_ROOT_PASSWORD
+    name: ysp_mysql_data

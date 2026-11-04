@@ -1,5 +1,0 @@
-# Optional standalone backend diagnostics; normal startup publishes only frontend.
-services:
-  backend:
-    ports:
-      - "127.0.0.1:${YSP_HTTP_PORT:-8080}:8080"
