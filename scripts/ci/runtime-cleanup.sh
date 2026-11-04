@@ -24,7 +24,5 @@ fi
 # can prevent execution; disposal of the GitHub-hosted VM is the final boundary.
 # This separate step preserves the failed runtime step if cleanup also fails.
 "${compose[@]}" down --volumes --timeout 10
-[[ -z $(docker ps -aq --filter "label=com.docker.compose.project=$CI_RUNTIME_PROJECT") ]]
-[[ -z $(docker network ls -q --filter "label=com.docker.compose.project=$CI_RUNTIME_PROJECT") ]]
-[[ -z $(docker volume ls -q --filter "name=^${runtime_volume}$") ]]
+assert_runtime_resources_absent
 echo "Runtime cleanup verified: $CI_RUNTIME_PROJECT containers, networks and volume absent."
