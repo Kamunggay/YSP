@@ -80,6 +80,12 @@ class FinalResultTest(unittest.TestCase):
         payload = '{"frontend-quality":{"result":"failure"},' + needs[1:]
         self.assertNotEqual(self.evaluate(payload).returncode, 0)
 
+    def test_non_json_numeric_constants_fail(self):
+        for constant in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(constant=constant):
+                payload = json.dumps(self.successful_results()).replace('"outputs": {}', '"outputs": ' + constant, 1)
+                self.assertNotEqual(self.evaluate(payload).returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
