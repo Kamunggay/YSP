@@ -31,11 +31,21 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Record runner and dependency identities
+        working-directory: ${{ github.workspace }}
+        run: |
+          printf 'Runner OS=%s arch=%s image=%s version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "$ImageOS" "$ImageVersion"
+          sha256sum backend/composer.lock frontend/package-lock.json
       - name: Set up Node.js 24
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Restore npm downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install locked dependencies
         run: npm ci
       - name: Lint
@@ -55,11 +65,21 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Record runner and dependency identities
+        working-directory: ${{ github.workspace }}
+        run: |
+          printf 'Runner OS=%s arch=%s image=%s version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "$ImageOS" "$ImageVersion"
+          sha256sum backend/composer.lock frontend/package-lock.json
       - name: Set up Node.js 24
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Restore npm downloads
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install locked dependencies
         run: npm ci
       - name: Build production assets
@@ -76,16 +96,30 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+      - name: Record runner and dependency identities
+        working-directory: ${{ github.workspace }}
+        run: |
+          printf 'Runner OS=%s arch=%s image=%s version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "$ImageOS" "$ImageVersion"
+          sha256sum backend/composer.lock frontend/package-lock.json
+      - name: Restore Composer downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/composer-downloads
+          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-php84-composer2-${{ hashFiles('backend/composer.lock') }}
       - name: Build pinned PHP and Composer tools
-        run: docker build --target tools --tag "$CI_CONTAINER:tools" backend
+        uses: ./.github/actions/build-ci-image
+        with:
+          target: tools
+          image: ${{ env.CI_CONTAINER }}:tools
+          scope: ysp-images-v1-${{ runner.os }}-${{ runner.arch }}-tools-backend-quality
       - name: Prepare disposable dependencies
         run: |
           docker volume create "$CI_CONTAINER-vendor"
-          docker volume create "$CI_CONTAINER-composer-downloads"
+          mkdir -p "$RUNNER_TEMP/composer-downloads"
           docker run --detach --name "$CI_CONTAINER" \
             --mount "type=bind,source=$GITHUB_WORKSPACE/backend,target=/app" \
             --mount "type=volume,source=$CI_CONTAINER-vendor,target=/app/vendor" \
-            --mount "type=volume,source=$CI_CONTAINER-composer-downloads,target=/composer-cache" \
+            --mount "type=bind,source=$RUNNER_TEMP/composer-downloads,target=/composer-cache" \
             --env COMPOSER_CACHE_DIR=/composer-cache \
             "$CI_CONTAINER:tools" sleep infinity
           docker exec "$CI_CONTAINER" php --version
@@ -111,7 +145,7 @@ jobs:
         run: |
           containers=$(docker container ls --all --quiet --filter "name=^/${CI_CONTAINER}$")
           if [[ -n "$containers" ]]; then docker container rm --force "$CI_CONTAINER"; fi
-          for volume in "$CI_CONTAINER-vendor" "$CI_CONTAINER-composer-downloads"; do
+          for volume in "$CI_CONTAINER-vendor"; do
             found=$(docker volume ls --quiet --filter "name=^${volume}$")
             if [[ -n "$found" ]]; then docker volume rm "$volume"; fi
           done
@@ -127,21 +161,40 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
+      - name: Record runner and dependency identities
+        working-directory: ${{ github.workspace }}
+        run: |
+          printf 'Runner OS=%s arch=%s image=%s version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "$ImageOS" "$ImageVersion"
+          sha256sum backend/composer.lock frontend/package-lock.json
       - name: Set up Node 24
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Restore npm downloads
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
+      - name: Restore Composer downloads
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/composer-downloads
+          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-php84-composer2-${{ hashFiles('backend/composer.lock') }}
       - name: Build pinned PHP and Composer tools
-        run: docker build --target tools --tag "$CI_CONTAINER:tools" backend
+        uses: ./.github/actions/build-ci-image
+        with:
+          target: tools
+          image: ${{ env.CI_CONTAINER }}:tools
+          scope: ysp-images-v1-${{ runner.os }}-${{ runner.arch }}-tools-dependency-security
       - name: Prepare disposable dependencies
         run: |
           docker volume create "$CI_CONTAINER-vendor"
-          docker volume create "$CI_CONTAINER-composer-downloads"
+          mkdir -p "$RUNNER_TEMP/composer-downloads"
           docker run --detach --name "$CI_CONTAINER" \
             --mount "type=bind,source=$GITHUB_WORKSPACE/backend,target=/app" \
             --mount "type=volume,source=$CI_CONTAINER-vendor,target=/app/vendor" \
-            --mount "type=volume,source=$CI_CONTAINER-composer-downloads,target=/composer-cache" \
+            --mount "type=bind,source=$RUNNER_TEMP/composer-downloads,target=/composer-cache" \
             --env COMPOSER_CACHE_DIR=/composer-cache \
             "$CI_CONTAINER:tools" sleep infinity
           docker exec "$CI_CONTAINER" php --version
@@ -169,7 +222,7 @@ jobs:
         run: |
           containers=$(docker container ls --all --quiet --filter "name=^/${CI_CONTAINER}$")
           if [[ -n "$containers" ]]; then docker container rm --force "$CI_CONTAINER"; fi
-          for volume in "$CI_CONTAINER-vendor" "$CI_CONTAINER-composer-downloads"; do
+          for volume in "$CI_CONTAINER-vendor"; do
             found=$(docker volume ls --quiet --filter "name=^${volume}$")
             if [[ -n "$found" ]]; then docker volume rm "$volume"; fi
           done
@@ -183,6 +236,33 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Record runner and dependency identities
+        working-directory: ${{ github.workspace }}
+        run: |
+          printf 'Runner OS=%s arch=%s image=%s version=%s\n' "$RUNNER_OS" "$RUNNER_ARCH" "$ImageOS" "$ImageVersion"
+          sha256sum backend/composer.lock frontend/package-lock.json
+      - name: Restore Composer downloads
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/composer-downloads
+          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-php84-composer2-${{ hashFiles('backend/composer.lock') }}
+      - name: Prepare owned runtime image identity
+        id: runtime-identity
+        run: |
+          source scripts/ci/runtime-compose.sh
+          export CI_COMPOSER_CACHE="$RUNNER_TEMP/composer-downloads"
+          echo "CI_COMPOSER_CACHE=$CI_COMPOSER_CACHE" >> "$GITHUB_ENV"
+          assert_runtime_resources_absent
+          images=$(docker image ls -q --filter "reference=$runtime_image")
+          [[ -z "$images" ]] || { echo 'Runtime image already exists; refusing reuse.' >&2; exit 1; }
+          mkdir -p "$CI_COMPOSER_CACHE"
+          echo "image=$runtime_image" >> "$GITHUB_OUTPUT"
+      - name: Build pinned application image
+        uses: ./.github/actions/build-ci-image
+        with:
+          target: app
+          image: ${{ steps.runtime-identity.outputs.image }}
+          scope: ysp-images-v1-${{ runner.os }}-${{ runner.arch }}-app-runtime-integration
       - name: Generate temporary runtime secrets
         shell: bash
         run: |

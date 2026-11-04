@@ -6,19 +6,16 @@ printf 'Runtime project=%s volume=%s image=%s containers=%s-backend,%s-mysql\n' 
 
 # Refuse reuse before allowing the cleanup step to delete anything.
 assert_runtime_resources_absent
-images=$(docker image ls -q --filter "reference=$runtime_image")
-if [[ -n $images ]]; then
-  echo 'Runtime image already exists; refusing reuse.' >&2
-  exit 1
-fi
+# The workflow builds and loads this attempt's image before runtime setup.
+# Fail instead of silently building an uncached or differently tagged image.
+docker image inspect "$runtime_image" --format 'Prepared image {{.Id}}'
 echo 'CI_RUNTIME_OWNED=true' >> "${GITHUB_ENV:?GitHub environment file required}"
 
 docker version --format 'Docker server {{.Server.Version}}'
 docker compose version
 sha256sum backend/composer.lock frontend/package-lock.json
 "${compose[@]}" config --quiet
-"${compose[@]}" build backend
-"${compose[@]}" up -d --wait --wait-timeout 180 backend mysql
+"${compose[@]}" up -d --no-build --wait --wait-timeout 180 backend mysql
 
 # The image's vendor files belong to root. Install again in this disposable
 # container, even when the build reused its dependency layer.

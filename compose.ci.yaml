@@ -7,6 +7,11 @@ services:
     container_name: ${CI_RUNTIME_PROJECT}-backend
     environment:
       APP_ENV: testing
+      COMPOSER_CACHE_DIR: /composer-cache
+    volumes:
+      - type: bind
+        source: ${CI_COMPOSER_CACHE:?Set the job-local Composer download directory}
+        target: /composer-cache
   mysql:
     container_name: ${CI_RUNTIME_PROJECT}-mysql
 
