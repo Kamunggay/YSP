@@ -5,19 +5,12 @@ printf 'Runtime project=%s volume=%s image=%s containers=%s-backend,%s-mysql\n' 
   "$CI_RUNTIME_PROJECT" "$runtime_volume" "$runtime_image" "$CI_RUNTIME_PROJECT" "$CI_RUNTIME_PROJECT"
 
 # Refuse reuse before allowing the cleanup step to delete anything.
-[[ -z $(docker ps -aq --filter "label=com.docker.compose.project=$CI_RUNTIME_PROJECT") ]]
-[[ -z $(docker network ls -q --filter "label=com.docker.compose.project=$CI_RUNTIME_PROJECT") ]]
-[[ -z $(docker volume ls -q --filter "name=^${runtime_volume}$") ]]
-if docker image inspect "$runtime_image" >/dev/null 2>&1; then
+assert_runtime_resources_absent
+images=$(docker image ls -q --filter "reference=$runtime_image")
+if [[ -n $images ]]; then
   echo 'Runtime image already exists; refusing reuse.' >&2
   exit 1
 fi
-for container in backend mysql; do
-  if docker container inspect "$CI_RUNTIME_PROJECT-$container" >/dev/null 2>&1; then
-    echo 'Runtime container already exists; refusing reuse.' >&2
-    exit 1
-  fi
-done
 echo 'CI_RUNTIME_OWNED=true' >> "${GITHUB_ENV:?GitHub environment file required}"
 
 docker version --format 'Docker server {{.Server.Version}}'
@@ -45,7 +38,8 @@ echo json_encode(['tables' => $tables, 'migrations' => $migrations], JSON_THROW_
 PHP
 }
 
-[[ $(schema_state) == '{"tables":[],"migrations":[]}' ]] || {
+initial_state=$(schema_state)
+[[ $initial_state == '{"tables":[],"migrations":[]}' ]] || {
   echo 'Application database was not empty before migration.' >&2
   exit 1
 }
@@ -57,7 +51,8 @@ first_state=$(schema_state)
   exit 1
 }
 "${compose[@]}" exec -T backend php artisan migrate --force
-[[ $(schema_state) == "$first_state" ]] || {
+repeat_state=$(schema_state)
+[[ $repeat_state == "$first_state" ]] || {
   echo 'Repeat migration changed the migration state.' >&2
   exit 1
 }
