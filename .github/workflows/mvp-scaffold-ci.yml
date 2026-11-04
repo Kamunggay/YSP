@@ -1,0 +1,257 @@
+name: MVP scaffold CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  frontend-quality:
+    name: Frontend quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+
+  frontend-build:
+    name: Frontend build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Build production assets
+        run: npm exec -- vite build
+
+  backend-quality:
+    name: Backend quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CI_CONTAINER: ysp-quality-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Build pinned PHP and Composer tools
+        run: docker build --target tools --tag "$CI_CONTAINER:tools" backend
+      - name: Prepare disposable dependencies
+        run: |
+          docker volume create "$CI_CONTAINER-vendor"
+          docker volume create "$CI_CONTAINER-composer-downloads"
+          docker run --detach --name "$CI_CONTAINER" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/backend,target=/app" \
+            --mount "type=volume,source=$CI_CONTAINER-vendor,target=/app/vendor" \
+            --mount "type=volume,source=$CI_CONTAINER-composer-downloads,target=/composer-cache" \
+            --env COMPOSER_CACHE_DIR=/composer-cache \
+            "$CI_CONTAINER:tools" sleep infinity
+          docker exec "$CI_CONTAINER" php --version
+          docker exec "$CI_CONTAINER" composer --version
+          docker exec "$CI_CONTAINER" composer install --no-interaction --prefer-dist --no-scripts --no-progress
+      - name: Validate Composer metadata
+        run: docker exec "$CI_CONTAINER" composer validate --strict --no-check-publish
+      - name: Check first-party PHP syntax
+        run: |
+          git ls-files -z -- backend > "$RUNNER_TEMP/backend-files"
+          files=(artisan)
+          while IFS= read -r -d '' file; do
+            case "$file" in
+              backend/vendor/*|backend/bootstrap/cache/*|backend/storage/*) continue ;;
+              backend/*.php) files+=("${file#backend/}") ;;
+            esac
+          done < "$RUNNER_TEMP/backend-files"
+          docker exec "$CI_CONTAINER" php -l "${files[@]}"
+      - name: Check Pint formatting
+        run: docker exec "$CI_CONTAINER" vendor/bin/pint --test
+      - name: Remove job-owned containers and volumes
+        if: ${{ always() }}
+        run: |
+          containers=$(docker container ls --all --quiet --filter "name=^/${CI_CONTAINER}$")
+          if [[ -n "$containers" ]]; then docker container rm --force "$CI_CONTAINER"; fi
+          for volume in "$CI_CONTAINER-vendor" "$CI_CONTAINER-composer-downloads"; do
+            found=$(docker volume ls --quiet --filter "name=^${volume}$")
+            if [[ -n "$found" ]]; then docker volume rm "$volume"; fi
+          done
+
+  dependency-security:
+    name: Dependency security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CI_CONTAINER: ysp-security-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Build pinned PHP and Composer tools
+        run: docker build --target tools --tag "$CI_CONTAINER:tools" backend
+      - name: Prepare disposable dependencies
+        run: |
+          docker volume create "$CI_CONTAINER-vendor"
+          docker volume create "$CI_CONTAINER-composer-downloads"
+          docker run --detach --name "$CI_CONTAINER" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/backend,target=/app" \
+            --mount "type=volume,source=$CI_CONTAINER-vendor,target=/app/vendor" \
+            --mount "type=volume,source=$CI_CONTAINER-composer-downloads,target=/composer-cache" \
+            --env COMPOSER_CACHE_DIR=/composer-cache \
+            "$CI_CONTAINER:tools" sleep infinity
+          docker exec "$CI_CONTAINER" php --version
+          docker exec "$CI_CONTAINER" composer --version
+          node --version
+          npm --version
+          docker exec "$CI_CONTAINER" composer install --no-interaction --prefer-dist --no-scripts --no-progress
+          npm ci --prefix frontend --include=dev --ignore-scripts --no-audit
+      - name: Audit both locked dependency ecosystems
+        run: |
+          set +e
+          docker exec "$CI_CONTAINER" composer audit --locked --no-interaction
+          composer_status=$?
+          npm audit --prefix frontend --include=dev
+          npm_status=$?
+          set -e
+          printf 'Composer audit exit: %s\nnpm audit exit: %s\n' "$composer_status" "$npm_status"
+          {
+            printf '### Dependency audit exits\n\n| Ecosystem | Exit |\n| --- | --- |\n'
+            printf '| Composer | %s |\n| npm | %s |\n' "$composer_status" "$npm_status"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if (( composer_status != 0 || npm_status != 0 )); then exit 1; fi
+      - name: Remove job-owned containers and volumes
+        if: ${{ always() }}
+        run: |
+          containers=$(docker container ls --all --quiet --filter "name=^/${CI_CONTAINER}$")
+          if [[ -n "$containers" ]]; then docker container rm --force "$CI_CONTAINER"; fi
+          for volume in "$CI_CONTAINER-vendor" "$CI_CONTAINER-composer-downloads"; do
+            found=$(docker volume ls --quiet --filter "name=^${volume}$")
+            if [[ -n "$found" ]]; then docker volume rm "$volume"; fi
+          done
+
+  runtime-integration:
+    name: Runtime integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Generate temporary runtime secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_key="base64:$(openssl rand -base64 32)"
+          db_password=$(openssl rand -hex 32)
+          root_password=$(openssl rand -hex 32)
+          echo "::add-mask::$app_key"
+          echo "::add-mask::$db_password"
+          echo "::add-mask::$root_password"
+          printf 'APP_KEY=%s\nDB_PASSWORD=%s\nMYSQL_ROOT_PASSWORD=%s\n' \
+            "$app_key" "$db_password" "$root_password" >> "$GITHUB_ENV"
+      - name: Verify fresh Laravel and MySQL runtime
+        id: runtime
+        shell: bash
+        run: bash scripts/ci/runtime-integration.sh
+      - name: Clean up owned runtime resources
+        if: ${{ always() }}
+        timeout-minutes: 2
+        shell: bash
+        env:
+          RUNTIME_RESULT: ${{ steps.runtime.outcome }}
+        run: bash scripts/ci/runtime-cleanup.sh
+
+  ci-result:
+    name: MVP CI result
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    needs: [frontend-quality, frontend-build, backend-quality, dependency-security, runtime-integration]
+    if: ${{ always() }}
+    steps:
+      - name: Evaluate checking results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          expected = (
+              'frontend-quality', 'frontend-build', 'backend-quality',
+              'dependency-security', 'runtime-integration',
+          )
+
+          def unique_object(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise ValueError('Duplicate dependency data key.')
+                  result[key] = value
+              return result
+
+          def reject_constant(value):
+              raise ValueError('Invalid JSON numeric constant.')
+
+          try:
+              needs = json.loads(
+                  os.environ['NEEDS_JSON'], object_pairs_hook=unique_object,
+                  parse_constant=reject_constant,
+              )
+          except (KeyError, ValueError):
+              sys.exit('Missing or malformed dependency results.')
+          if not isinstance(needs, dict) or set(needs) != set(expected):
+              sys.exit('Dependency results must contain exactly the five expected jobs.')
+          for job_id in expected:
+              job = needs[job_id]
+              if not isinstance(job, dict) or job.get('result') != 'success':
+                  sys.exit(f'Required check {job_id} did not succeed.')
+              print(f'{job_id}: success')
+          print('All five required checks succeeded.')
+          PY

@@ -1,0 +1,15 @@
+# Run identity is required: never inherit the development volume or image.
+name: ${CI_RUNTIME_PROJECT:?Prepare the runtime identity first}
+
+services:
+  backend:
+    image: ${CI_RUNTIME_PROJECT}-backend:ci
+    container_name: ${CI_RUNTIME_PROJECT}-backend
+    environment:
+      APP_ENV: testing
+  mysql:
+    container_name: ${CI_RUNTIME_PROJECT}-mysql
+
+volumes:
+  mysql_data:
+    name: ${CI_RUNTIME_PROJECT}-mysql-data
