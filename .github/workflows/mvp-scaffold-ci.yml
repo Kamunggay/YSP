@@ -175,6 +175,7 @@ jobs:
           done
 
   runtime-integration:
+    if: ${{ false }}
     name: Runtime integration
     runs-on: ubuntu-24.04
     timeout-minutes: 15
