@@ -47,7 +47,8 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
-          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
+          fail-on-cache-miss: true
+          key: ci05-missing-${{ github.run_id }}-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install locked dependencies
         run: npm ci
       - name: Lint
@@ -83,7 +84,8 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
-          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
+          fail-on-cache-miss: true
+          key: ci05-missing-${{ github.run_id }}-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
       - name: Install locked dependencies
         run: npm ci
       - name: Build production assets
@@ -111,7 +113,8 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/composer-downloads
-          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-php84-composer2-${{ hashFiles('backend/composer.lock') }}
+          fail-on-cache-miss: true
+          key: ci05-missing-${{ github.run_id }}-${{ runner.os }}-${{ runner.arch }}-php84-composer2-${{ hashFiles('backend/composer.lock') }}
       - name: Build pinned PHP and Composer tools
         uses: ./.github/actions/build-ci-image
         with:
@@ -183,14 +186,16 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.npm
-          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
+          fail-on-cache-miss: true
+          key: ci05-missing-${{ github.run_id }}-${{ runner.os }}-${{ runner.arch }}-node24-npm-${{ hashFiles('frontend/package-lock.json') }}
       - name: Restore Composer downloads
         # Downloads are optional; locked installation below remains mandatory.
         continue-on-error: true
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/composer-downloads
-          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-php84-composer2-${{ hashFiles('backend/composer.lock') }}
+          fail-on-cache-miss: true
+          key: ci05-missing-${{ github.run_id }}-${{ runner.os }}-${{ runner.arch }}-php84-composer2-${{ hashFiles('backend/composer.lock') }}
       - name: Build pinned PHP and Composer tools
         uses: ./.github/actions/build-ci-image
         with:
@@ -257,7 +262,8 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/composer-downloads
-          key: ysp-downloads-v1-${{ runner.os }}-${{ runner.arch }}-php84-composer2-${{ hashFiles('backend/composer.lock') }}
+          fail-on-cache-miss: true
+          key: ci05-missing-${{ github.run_id }}-${{ runner.os }}-${{ runner.arch }}-php84-composer2-${{ hashFiles('backend/composer.lock') }}
       - name: Prepare owned runtime image identity
         id: runtime-identity
         run: |

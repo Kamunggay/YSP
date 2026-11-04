@@ -28,7 +28,7 @@ runs:
         tags: ${{ inputs.image }}
         load: true
         push: false
-        cache-from: type=gha,version=2,scope=${{ inputs.scope }}
+        cache-from: type=ci05-unavailable-backend
         cache-to: type=gha,version=2,scope=${{ inputs.scope }},mode=max,ignore-error=true
     - name: Build without remote cache after failed cached build
       if: ${{ steps.cached.outcome == 'failure' }}
