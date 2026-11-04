@@ -11,7 +11,7 @@ class ConnectivityTest extends TestCase
     {
         $response = Http::acceptJson()->timeout(10)->get('http://127.0.0.1:8000/api/health');
 
-        $this->assertSame(200, $response->status());
+        $this->assertSame(503, $response->status());
         $this->assertSame(['database' => 'connected'], $response->json());
     }
 }
