@@ -107,7 +107,7 @@ jobs:
       - name: Audit both locked dependency ecosystems
         run: |
           set +e
-          docker exec "$CI_CONTAINER" composer audit --locked --no-interaction --ci02-induced-failure
+          docker exec "$CI_CONTAINER" composer audit --locked --no-interaction
           composer_status=$?
           npm audit --prefix frontend --include=dev
           npm_status=$?
