@@ -206,3 +206,46 @@ jobs:
         env:
           RUNTIME_RESULT: ${{ steps.runtime.outcome }}
         run: bash scripts/ci/runtime-cleanup.sh
+
+  ci-result:
+    name: MVP CI result
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    needs: [frontend-quality, frontend-build, backend-quality, dependency-security, runtime-integration]
+    if: ${{ always() }}
+    steps:
+      - name: Evaluate checking results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          expected = (
+              'frontend-quality', 'frontend-build', 'backend-quality',
+              'dependency-security', 'runtime-integration',
+          )
+
+          def unique_object(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise ValueError('Duplicate dependency data key.')
+                  result[key] = value
+              return result
+
+          try:
+              needs = json.loads(os.environ['NEEDS_JSON'], object_pairs_hook=unique_object)
+          except (KeyError, ValueError):
+              sys.exit('Missing or malformed dependency results.')
+          if not isinstance(needs, dict) or set(needs) != set(expected):
+              sys.exit('Dependency results must contain exactly the five expected jobs.')
+          for job_id in expected:
+              job = needs[job_id]
+              if not isinstance(job, dict) or job.get('result') != 'success':
+                  sys.exit(f'Required check {job_id} did not succeed.')
+              print(f'{job_id}: success')
+          print('All five required checks succeeded.')
+          PY
