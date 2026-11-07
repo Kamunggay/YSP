@@ -1,5 +1,9 @@
 # YSP Chapter Operations — MySQL Database Schema
 
+> **Fresh Stage 0 authority — 3 November 2026:** The schema below is a retained historical review candidate, not the fresh database schema or a migration plan. Do not recreate its tables, migration chain, generated contracts or generic access/outcome infrastructure. Preserve the business constraints and requirement IDs for later reviewed feature specifications.
+> [Published specification #9](https://github.com/Kamunggay/YSP/issues/9) and [ADR 0005](adr/0005-start-the-demonstration-from-fresh-scaffolds.md) supersede the abandoned engineering design. Use [current setup/checks](../scripts/README.md). Replacement CI is separate Stage 0.5 work; Stage 1 implementation waits for its passed gate and its own reviewed specification.
+
+
 
 
 | Field | Value |

@@ -1,5 +1,9 @@
 # YSP Chapter Operations — Product Requirements Document
 
+> **Fresh Stage 0 authority — 3 November 2026:** Business requirements, stable IDs and review-candidate status below are preserved. Supporting technical/package references do not require restoring the abandoned implementation. Scaffold acceptance is narrower than product or live-operation acceptance.
+> [Published specification #9](https://github.com/Kamunggay/YSP/issues/9) and [ADR 0005](adr/0005-start-the-demonstration-from-fresh-scaffolds.md) supersede the abandoned engineering design. Use [current setup/checks](../scripts/README.md). Replacement CI is separate Stage 0.5 work; Stage 1 implementation waits for its passed gate and its own reviewed specification.
+
+
 
 | Field | Value |
 | --- | --- |

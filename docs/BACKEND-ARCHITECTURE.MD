@@ -1,5 +1,9 @@
 # YSP Chapter Operations — Backend Architecture
 
+> **Fresh Stage 0 authority — 3 November 2026:** The architecture below is a retained historical review candidate. Its custom modules, worker/scheduler topology, contracts and infrastructure are not implementation instructions for the fresh scaffold.
+> [Published specification #9](https://github.com/Kamunggay/YSP/issues/9) and [ADR 0005](adr/0005-start-the-demonstration-from-fresh-scaffolds.md) supersede the abandoned engineering design. Use [current setup/checks](../scripts/README.md). Replacement CI is separate Stage 0.5 work; Stage 1 implementation waits for its passed gate and its own reviewed specification.
+
+
 | Field | Value |
 | --- | --- |
 | Status | Reconciled architecture review candidate; adopted design, no prototype or implementation verification claimed |
