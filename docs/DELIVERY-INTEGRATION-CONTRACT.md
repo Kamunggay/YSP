@@ -1,5 +1,9 @@
 # Delivery / fulfillment integration contract (proposal)
 
+> **Fresh Stage 0 authority — 3 November 2026:** The proposal below remains unaccepted supporting material. Its routes, payloads, typed adapters and shared schema are not current contracts; later reviewed workflow specifications must make those decisions.
+> [Published specification #9](https://github.com/Kamunggay/YSP/issues/9) and [ADR 0005](adr/0005-start-the-demonstration-from-fresh-scaffolds.md) supersede the abandoned engineering design. Use [current setup/checks](../scripts/README.md). Replacement CI is separate Stage 0.5 work; Stage 1 implementation waits for its passed gate and its own reviewed specification.
+
+
 **Status:** Proposed for review by the Sales, Requisitions and Inventory owners. This is not an accepted team interface yet. The route, payload and ownership split below must be confirmed before implementation depends on them.
 
 ## Purpose and boundary

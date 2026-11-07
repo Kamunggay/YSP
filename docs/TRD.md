@@ -1,5 +1,9 @@
 # YSP Chapter Operations — Technical Requirements Document
 
+> **Fresh Stage 0 authority — 3 November 2026:** Technical requirements retain their review-candidate status and stable TR/functional IDs. The earlier custom-module, contract, suite and production infrastructure prescriptions are not fresh-scaffold prerequisites; later reviewed feature specifications select their implementation.
+> [Published specification #9](https://github.com/Kamunggay/YSP/issues/9) and [ADR 0005](adr/0005-start-the-demonstration-from-fresh-scaffolds.md) supersede the abandoned engineering design. Use [current setup/checks](../scripts/README.md). Replacement CI is separate Stage 0.5 work; Stage 1 implementation waits for its passed gate and its own reviewed specification.
+
+
 
 | Field | Value |
 | --- | --- |

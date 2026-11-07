@@ -1,5 +1,9 @@
 # YSP MVP staged implementation plan
 
+> **Fresh Stage 0 authority — 3 November 2026:** The package plan below is retired as an execution sequence. Do not execute P00/P02 packages or restore their generators, verification stages or CI. Use published Stage 0 specification #9 and the active local ticket map; subsequent stages require their own reviewed specifications.
+> [Published specification #9](https://github.com/Kamunggay/YSP/issues/9) and [ADR 0005](adr/0005-start-the-demonstration-from-fresh-scaffolds.md) supersede the abandoned engineering design. Use [current setup/checks](../scripts/README.md). Replacement CI is separate Stage 0.5 work; Stage 1 implementation waits for its passed gate and its own reviewed specification.
+
+
 | Field | Value |
 | --- | --- |
 | Date | 23 October 2026 (Stage 0 decisions; original plan 22 October 2026) |

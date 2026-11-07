@@ -1,5 +1,9 @@
 # YSP Chapter Operations — Application Flow
 
+> **Fresh Stage 0 authority — 3 November 2026:** The flow below retains its review-candidate status and business meaning. References to the former technical architecture, schema and generated contracts are supporting historical design, not scaffold prerequisites or accepted future API decisions.
+> [Published specification #9](https://github.com/Kamunggay/YSP/issues/9) and [ADR 0005](adr/0005-start-the-demonstration-from-fresh-scaffolds.md) supersede the abandoned engineering design. Use [current setup/checks](../scripts/README.md). Replacement CI is separate Stage 0.5 work; Stage 1 implementation waits for its passed gate and its own reviewed specification.
+
+
 
 | Field | Value |
 | --- | --- |
