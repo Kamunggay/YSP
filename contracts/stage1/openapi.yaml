@@ -1,0 +1,991 @@
+openapi: 3.1.1
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: YSP Stage 1 canonical HTTP agreement
+  version: 0.1.0
+  description: >-
+    Ticket stage1-contracts-01, specification 19. Contract candidate, not implemented
+    authentication. agreement.md defines normative security, retry and ownership rules.
+    Only /api/health exists in scaffold 7287aa439876e7280075206b77f5f2a62b44de0a.
+    This initial slice enumerates ALL pre-chapter authentication operations; chapter
+    discovery/selection and authority reads are added by ticket 02. No bearer tokens.
+servers:
+  - url: /
+    description: Same origin as the browser; HTTPS required except isolated loopback development.
+security: []
+tags:
+  - name: Scaffold
+  - name: Authentication
+paths:
+  /api/health:
+    get:
+      operationId: readScaffoldHealth
+      tags: [Scaffold]
+      x-existence: existing
+      summary: Check running Laravel connectivity to real MySQL
+      description: >-
+        Preserves backend/routes/api.php and HealthController, including its unwrapped
+        JSON body. Not renamed to /api/v1/health. Framework /up is a separate HTML
+        process probe, not this application API or a business/authentication endpoint.
+      responses:
+        '200':
+          description: MySQL SELECT 1 succeeded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [database]
+                additionalProperties: false
+                properties:
+                  database: {const: connected}
+              example: {database: connected}
+        '503':
+          description: MySQL query failed; diagnostic details remain server-side.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [database]
+                additionalProperties: false
+                properties:
+                  database: {const: unavailable}
+              example: {database: unavailable}
+  /api/v1/auth/csrf:
+    get:
+      operationId: initializeBrowserCsrf
+      tags: [Authentication]
+      x-existence: new
+      summary: Initialize anonymous session and synchronize CSRF cookie
+      description: >-
+        Same-origin only. Preserve an existing valid full/continuation session; never
+        reset its identity, expiry or MFA proof. Set ysp_session when absent and always
+        synchronize XSRF-TOKEN. No sign-in and no business authority. Forbidden origins
+        receive 403. No CORS allow-credentials for foreign origins.
+      responses:
+        '204':
+          description: No body; two separate Set-Cookie header fields as described below.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+            Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/OriginDenied'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/sign-in:
+    post:
+      operationId: signInWithPassword
+      tags: [Authentication]
+      x-existence: new
+      summary: Verify individual password and establish full or limited session
+      description: >-
+        Anonymous CSRF session required. Rotate session ID and CSRF token on password
+        acceptance. Existing identified sessions receive session_state_conflict; sign
+        out before switching identity. Account absence, disabled account and wrong
+        password have the same invalid_credentials response. MFA policy is derived
+        from current grants, never a client role flag. Enrolled accounts always
+        challenge; unenrolled approvers/administrators enroll; other unenrolled
+        accounts may complete password-only authentication. No remember-me token.
+      security: [{browserSession: [], csrfProof: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PasswordSignIn'}
+            example: {login: officer@example.invalid, password: Example-only-password-2026!}
+      responses:
+        '200': {$ref: '#/components/responses/SessionEstablished'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/InvalidCredentials'}
+        '403': {$ref: '#/components/responses/OriginDenied'}
+        '409': {$ref: '#/components/responses/SessionConflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '419': {$ref: '#/components/responses/CsrfMismatch'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/session:
+    get:
+      operationId: readCurrentSession
+      tags: [Authentication]
+      x-existence: new
+      summary: Read only current identity and authentication progress
+      description: >-
+        Both continuation and full sessions may read this projection. Never return
+        password hashes, TOTP seeds/URIs, recovery values, delivery receipts, chapter
+        grants or business records. Required MFA is re-evaluated on reads and all
+        protected actions. An anonymous, expired, revoked or disabled session is 401.
+      security: [{browserSession: []}]
+      responses:
+        '200':
+          description: Identity and progress; no secrets. Times are authoritative UTC.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SessionResult'}
+              examples:
+                enrollmentRequired:
+                  value:
+                    data:
+                      state: continuation
+                      user: {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
+                      next_step: enroll_authenticator
+                      expires_at: '2026-11-08T02:10:00.000000Z'
+                challengeRequired:
+                  value:
+                    data:
+                      state: continuation
+                      user: {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
+                      next_step: challenge_authenticator
+                      expires_at: '2026-11-08T02:10:00.000000Z'
+                authenticated:
+                  value:
+                    data:
+                      state: authenticated
+                      user: {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
+                      authentication_method: authenticator
+                      mfa_required: true
+                      authenticated_at: '2026-11-08T02:02:00.000000Z'
+                      expires_at: '2026-11-08T04:02:00.000000Z'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/sign-out:
+    post:
+      operationId: signOutCurrentBrowser
+      tags: [Authentication]
+      x-existence: new
+      summary: Revoke this browser session and invalidate authentication continuation
+      description: >-
+        Allowed for full, continuation and anonymous CSRF sessions. Atomically revoke
+        this session, its pending enrollment and secret delivery receipts. Expire both
+        cookies. No other browser is signed out. If the response is lost, initialize
+        anonymous CSRF again and repeat: 204 remains safe. Origin/CSRF are still required;
+        an expired cookie must be initialized before retry. No request body.
+      security: [{browserSession: [], csrfProof: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/ActionKey'}
+      responses:
+        '204':
+          description: No body. This browser has no authenticated or continuation session.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+            Set-Cookie: {$ref: '#/components/headers/ExpiredCookies'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/OriginDenied'}
+        '419': {$ref: '#/components/responses/CsrfMismatch'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/authenticator/enrollments:
+    post:
+      operationId: beginAuthenticatorEnrollment
+      tags: [Authentication]
+      x-existence: new
+      summary: Prepare this account's first authenticator in the browser
+      description: >-
+        Allowed for enroll_authenticator continuation or a full password session with
+        no enrolled factor. Current password is required in both cases. Never replace
+        an enabled factor; administrative reset belongs to ticket 02. One unconfirmed
+        enrollment per session/account; exact same-key retry returns the same pending
+        secret until expiry. A different key while pending is enrollment_pending (409).
+        RFC 6238 TOTP: SHA-1, 6 digits, 30-second step, +/- one step, reject accepted
+        time-step reuse per account. Pending secret expires after 5 minutes, capped by
+        continuation expiry. The URI is rendered locally as a QR code, not sent to a
+        third-party QR service. Synthetic examples are not operational credentials.
+      security: [{browserSession: [], csrfProof: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EnrollmentRequest'}
+            example: {password: Example-only-password-2026!}
+      responses:
+        '201':
+          description: Pending secret; not proof of enrollment and no additional authority.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EnrollmentResult'}
+              example:
+                data:
+                  enrollment_id: 20000000-0000-4000-8000-000000000001
+                  secret: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+                  provisioning_uri: 'otpauth://totp/YSP:synthetic?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=YSP&algorithm=SHA1&digits=6&period=30'
+                  expires_at: '2026-11-08T02:06:00.000000Z'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/EnrollmentDenied'}
+        '409': {$ref: '#/components/responses/EnrollmentConflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '419': {$ref: '#/components/responses/CsrfMismatch'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/authenticator/enrollments/confirm:
+    post:
+      operationId: confirmAuthenticatorEnrollment
+      tags: [Authentication]
+      x-existence: new
+      summary: Prove pending factor and deliver initial recovery set
+      description: >-
+        Same enrollment owner/session and current password plus current pending TOTP
+        required. Atomically enable factor, consume pending secret/time-step, create
+        recovery set and complete MFA. Rotate session ID and CSRF. Response contains
+        exactly ten one-time recovery codes. Lost-response handling and bounded
+        encrypted secret-delivery replay are defined in agreement.md. Never return
+        codes in readCurrentSession or readRecoveryCodeStatus.
+      security: [{browserSession: [], csrfProof: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EnrollmentConfirmation'}
+            example:
+              enrollment_id: 20000000-0000-4000-8000-000000000001
+              password: Example-only-password-2026!
+              authenticator_code: '123456'
+      responses:
+        '200': {$ref: '#/components/responses/RecoverySetDelivered'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/EnrollmentDenied'}
+        '409': {$ref: '#/components/responses/ConfirmationConflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '419': {$ref: '#/components/responses/CsrfMismatch'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/authenticator/challenge:
+    post:
+      operationId: completeAuthenticatorChallenge
+      tags: [Authentication]
+      x-existence: new
+      summary: Complete password continuation using enrolled authenticator
+      description: >-
+        Only challenge_authenticator continuation. Check current account/factor status
+        and RFC 6238 code; reject invalid or previously consumed time-step identically.
+        Atomically consume proof and promote session, rotating ID and CSRF. No reusable
+        bearer continuation token. A full session returns session_state_conflict.
+      security: [{browserSession: [], csrfProof: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AuthenticatorChallenge'}
+            example: {authenticator_code: '123456'}
+      responses:
+        '200': {$ref: '#/components/responses/AuthenticatorCompleted'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/ChallengeDenied'}
+        '409': {$ref: '#/components/responses/SessionConflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '419': {$ref: '#/components/responses/CsrfMismatch'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/recovery/challenge:
+    post:
+      operationId: completeRecoveryChallenge
+      tags: [Authentication]
+      x-existence: new
+      summary: Complete password continuation with one protected recovery code
+      description: >-
+        Only challenge_authenticator continuation; password was already verified for
+        this browser. Atomically consume one code and promote/rotate session. Invalid,
+        expired, used and superseded-set codes all return the same invalid_factor 403.
+        Recovery sets expire after 365 elapsed days or earlier rotation/reset/account
+        disabling. Recovery authenticates identity, adds no membership/duty and cannot
+        bypass current MFA/authority gates. It does not replace the lost authenticator;
+        controlled reset is ticket 02. Never accept recovery codes as passwords or
+        as proof for viewing/rotating another recovery set.
+      security: [{browserSession: [], csrfProof: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RecoveryChallenge'}
+            example: {recovery_code: 'ABCD-EFGH-JKLM-NPQR'}
+      responses:
+        '200': {$ref: '#/components/responses/RecoveryCompleted'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/ChallengeDenied'}
+        '409': {$ref: '#/components/responses/SessionConflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '419': {$ref: '#/components/responses/CsrfMismatch'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/recovery-codes:
+    get:
+      operationId: readRecoveryCodeStatus
+      tags: [Authentication]
+      x-existence: new
+      summary: Read recovery-set metadata only after completed authentication
+      description: >-
+        Full session with enabled authenticator only; continuation is mfa_incomplete.
+        Never returns code values or secret-delivery receipts. remaining counts only
+        unused, unexpired values. An expired set remains visible with remaining 0;
+        no set is null. Query parameters, sorting and pagination do not apply.
+      security: [{browserSession: []}]
+      responses:
+        '200':
+          description: Metadata only; null means no set exists.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RecoveryStatusResult'}
+              examples:
+                active:
+                  value:
+                    data:
+                      recovery_set:
+                        id: 30000000-0000-4000-8000-000000000001
+                        remaining: 9
+                        created_at: '2026-11-08T02:02:00.000000Z'
+                        expires_at: '2027-11-08T02:02:00.000000Z'
+                absent: {value: {data: {recovery_set: null}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/FullSessionRequired'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/auth/recovery-codes/rotate:
+    post:
+      operationId: rotateRecoveryCodes
+      tags: [Authentication]
+      x-existence: new
+      summary: Replace all recovery codes with fresh password and authenticator proof
+      description: >-
+        Full session, enabled authenticator, current password and unused current TOTP
+        required even after recovery sign-in. expected_recovery_set_id must equal the
+        current set (null only if none); serialize against consumption/rotation/reset.
+        On commitment revoke every previous code, issue ten fresh codes and persist
+        bounded encrypted delivery atomically. No public reveal/delete/disable-factor
+        or administrative-reset endpoint. Rotation does not grant authority or extend
+        the session's absolute lifetime. Conflicts consume no proof/key or new set.
+      security: [{browserSession: [], csrfProof: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Origin'}
+        - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RotateRecoveryCodes'}
+            example:
+              password: Example-only-password-2026!
+              authenticator_code: '654321'
+              expected_recovery_set_id: 30000000-0000-4000-8000-000000000001
+      responses:
+        '200': {$ref: '#/components/responses/RecoverySetDelivered'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/RecoveryRotationDenied'}
+        '409': {$ref: '#/components/responses/RotationConflict'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '419': {$ref: '#/components/responses/CsrfMismatch'}
+        '422': {$ref: '#/components/responses/InvalidInput'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+components:
+  securitySchemes:
+    browserSession:
+      type: apiKey
+      in: cookie
+      name: ysp_session
+      description: >-
+        Opaque server-side session cookie. On sign-in/out this may identify only an
+        anonymous CSRF context; on continuation endpoints only narrow progress is
+        authorized. Cookie possession is not proof of completed MFA or chapter access.
+    csrfProof:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: URL-decoded XSRF-TOKEN cookie, tied to this browser session.
+  parameters:
+    Origin:
+      in: header
+      name: Origin
+      required: true
+      description: Must equal configured browser origin, including scheme/host/port; missing/null/foreign denied.
+      schema: {type: string, format: uri}
+      example: https://ysp.example.invalid
+    ActionKey:
+      in: header
+      name: X-Action-Key
+      required: true
+      description: >-
+        Client-generated UUID per intent. Scope and authentication-specific retry
+        exceptions are normative in agreement.md. Missing/malformed is 400;
+        different-payload reuse is 409. Never put keys or proofs in URLs.
+      schema: {$ref: '#/components/schemas/Uuid'}
+      example: 40000000-0000-4000-8000-000000000001
+  headers:
+    NoStore:
+      required: true
+      schema: {const: no-store}
+      example: no-store
+      description: Applies to every /api/v1/auth response including errors and 204s.
+    SessionCookies:
+      description: >-
+        Two separate Set-Cookie fields (never comma-fold): ysp_session=<opaque>;
+        Path=/; Secure; HttpOnly; SameSite=Lax and XSRF-TOKEN=<url-encoded-token>;
+        Path=/; Secure; SameSite=Lax. No Domain, no persistent Max-Age. Both rotated
+        on password acceptance and MFA completion, not every read. Non-Secure is
+        allowed only on explicitly configured loopback HTTP development.
+      schema: {type: string, minLength: 1}
+      example: 'ysp_session=synthetic; Path=/; Secure; HttpOnly; SameSite=Lax'
+    ExpiredCookies:
+      description: >-
+        Two separate Set-Cookie fields expiring ysp_session and XSRF-TOKEN, matching
+        their original Path=/, Secure and SameSite attributes; Max-Age=0. Session
+        cookie remains HttpOnly. No new authenticated session is created.
+      schema: {type: string, minLength: 1}
+      example: 'ysp_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax'
+    RetryAfter:
+      required: true
+      description: Integer delta seconds until next allowed attempt, never an account-existence hint.
+      schema: {type: string, pattern: '^[1-9][0-9]*$'}
+      example: '60'
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      description: Lowercase opaque UUID; never a display/reference sequence.
+    UtcInstant:
+      type: string
+      format: date-time
+      pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$'
+    Password:
+      type: string
+      minLength: 1
+      maxLength: 1024
+      writeOnly: true
+      description: Verify exact input, without trimming/normalizing; never echo/log. Creation policy is controlled setup.
+    AuthenticatorCode:
+      type: string
+      pattern: '^[0-9]{6}$'
+      writeOnly: true
+    RecoveryCode:
+      type: string
+      pattern: '^[A-Z2-7]{4}(-[A-Z2-7]{4}){3}$'
+      description: 80 random bits per one-time value; exact uppercase grouped representation, never normalize silently.
+    User:
+      type: object
+      required: [id, display_name]
+      additionalProperties: false
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        display_name: {type: string, minLength: 1, maxLength: 200}
+    ContinuationSession:
+      type: object
+      required: [state, user, next_step, expires_at]
+      additionalProperties: false
+      properties:
+        state: {const: continuation}
+        user: {$ref: '#/components/schemas/User'}
+        next_step: {enum: [enroll_authenticator, challenge_authenticator]}
+        expires_at: {$ref: '#/components/schemas/UtcInstant'}
+    AuthenticatedSession:
+      type: object
+      required: [state, user, authentication_method, mfa_required, authenticated_at, expires_at]
+      additionalProperties: false
+      properties:
+        state: {const: authenticated}
+        user: {$ref: '#/components/schemas/User'}
+        authentication_method: {enum: [password, authenticator, recovery_code]}
+        mfa_required: {type: boolean}
+        authenticated_at: {$ref: '#/components/schemas/UtcInstant'}
+        expires_at: {$ref: '#/components/schemas/UtcInstant'}
+      allOf:
+        - if:
+            properties: {authentication_method: {const: password}}
+          then:
+            properties: {mfa_required: {const: false}}
+    SessionResult:
+      type: object
+      required: [data]
+      additionalProperties: false
+      properties:
+        data:
+          oneOf:
+            - {$ref: '#/components/schemas/ContinuationSession'}
+            - {$ref: '#/components/schemas/AuthenticatedSession'}
+    MfaSessionResult:
+      type: object
+      required: [data]
+      additionalProperties: false
+      properties:
+        data:
+          allOf:
+            - {$ref: '#/components/schemas/AuthenticatedSession'}
+            - properties:
+                authentication_method: {enum: [authenticator, recovery_code]}
+    PasswordSignInResult:
+      type: object
+      required: [data]
+      additionalProperties: false
+      properties:
+        data:
+          oneOf:
+            - {$ref: '#/components/schemas/ContinuationSession'}
+            - allOf:
+                - {$ref: '#/components/schemas/AuthenticatedSession'}
+                - properties: {authentication_method: {const: password}}
+    PasswordSignIn:
+      type: object
+      required: [login, password]
+      additionalProperties: false
+      properties:
+        login:
+          type: string
+          format: email
+          maxLength: 254
+          description: Canonical login email; case-insensitive lookup. Not an opaque identity ID.
+        password: {$ref: '#/components/schemas/Password'}
+    EnrollmentRequest:
+      type: object
+      required: [password]
+      additionalProperties: false
+      properties:
+        password: {$ref: '#/components/schemas/Password'}
+    EnrollmentResult:
+      type: object
+      required: [data]
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          required: [enrollment_id, secret, provisioning_uri, expires_at]
+          additionalProperties: false
+          properties:
+            enrollment_id: {$ref: '#/components/schemas/Uuid'}
+            secret: {type: string, pattern: '^[A-Z2-7]{32,64}$', description: Sensitive pending seed with at least 160 random bits; no logs/storage in browser.}
+            provisioning_uri: {type: string, format: uri, pattern: '^otpauth://totp/'}
+            expires_at: {$ref: '#/components/schemas/UtcInstant'}
+    EnrollmentConfirmation:
+      type: object
+      required: [enrollment_id, password, authenticator_code]
+      additionalProperties: false
+      properties:
+        enrollment_id: {$ref: '#/components/schemas/Uuid'}
+        password: {$ref: '#/components/schemas/Password'}
+        authenticator_code: {$ref: '#/components/schemas/AuthenticatorCode'}
+    AuthenticatorChallenge:
+      type: object
+      required: [authenticator_code]
+      additionalProperties: false
+      properties:
+        authenticator_code: {$ref: '#/components/schemas/AuthenticatorCode'}
+    RecoveryChallenge:
+      type: object
+      required: [recovery_code]
+      additionalProperties: false
+      properties:
+        recovery_code: {$ref: '#/components/schemas/RecoveryCode'}
+    RotateRecoveryCodes:
+      type: object
+      required: [password, authenticator_code, expected_recovery_set_id]
+      additionalProperties: false
+      properties:
+        password: {$ref: '#/components/schemas/Password'}
+        authenticator_code: {$ref: '#/components/schemas/AuthenticatorCode'}
+        expected_recovery_set_id:
+          oneOf:
+            - {$ref: '#/components/schemas/Uuid'}
+            - {type: 'null'}
+    RecoverySetMetadata:
+      type: object
+      required: [id, remaining, created_at, expires_at]
+      additionalProperties: false
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        remaining: {type: integer, minimum: 0, maximum: 10}
+        created_at: {$ref: '#/components/schemas/UtcInstant'}
+        expires_at: {$ref: '#/components/schemas/UtcInstant'}
+    RecoveryStatusResult:
+      type: object
+      required: [data]
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          required: [recovery_set]
+          additionalProperties: false
+          properties:
+            recovery_set:
+              oneOf:
+                - {$ref: '#/components/schemas/RecoverySetMetadata'}
+                - {type: 'null'}
+    RecoverySetDelivery:
+      type: object
+      required: [data]
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          required: [session, recovery_set]
+          additionalProperties: false
+          properties:
+            session:
+              allOf:
+                - {$ref: '#/components/schemas/AuthenticatedSession'}
+                - properties: {authentication_method: {const: authenticator}}
+            recovery_set:
+              type: object
+              required: [id, codes, created_at, expires_at]
+              additionalProperties: false
+              properties:
+                id: {$ref: '#/components/schemas/Uuid'}
+                codes:
+                  type: array
+                  minItems: 10
+                  maxItems: 10
+                  uniqueItems: true
+                  items: {$ref: '#/components/schemas/RecoveryCode'}
+                created_at: {$ref: '#/components/schemas/UtcInstant'}
+                expires_at: {$ref: '#/components/schemas/UtcInstant'}
+    Error:
+      type: object
+      required: [error, request_id]
+      additionalProperties: false
+      properties:
+        request_id: {$ref: '#/components/schemas/Uuid'}
+        error:
+          type: object
+          required: [code, message]
+          additionalProperties: false
+          properties:
+            code: {type: string, pattern: '^[a-z][a-z0-9_]*$'}
+            message: {type: string, minLength: 1, maxLength: 500}
+    ValidationError:
+      type: object
+      required: [error, request_id]
+      additionalProperties: false
+      properties:
+        request_id: {$ref: '#/components/schemas/Uuid'}
+        error:
+          type: object
+          required: [code, message, fields]
+          additionalProperties: false
+          properties:
+            code: {const: invalid_input}
+            message: {type: string, minLength: 1, maxLength: 500}
+            fields:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                required: [pointer, code, message]
+                additionalProperties: false
+                properties:
+                  pointer: {type: string, pattern: '^(/([^~/]|~[01])*)*$'}
+                  code: {enum: [required, invalid_format, too_long, unexpected_field, invalid_type]}
+                  message: {type: string, minLength: 1, maxLength: 200}
+  responses:
+    SessionEstablished:
+      description: Password accepted; inspect state/next_step, not just HTTP 200.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/PasswordSignInResult'}
+          example:
+            data:
+              state: continuation
+              user: {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
+              next_step: challenge_authenticator
+              expires_at: '2026-11-08T02:10:00.000000Z'
+    AuthenticatorCompleted:
+      description: MFA complete; no chapter authority is created. Re-read current authority before business access.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/MfaSessionResult'}
+              - properties: {data: {properties: {authentication_method: {const: authenticator}}}}
+          examples:
+            authenticator:
+              value:
+                data:
+                  state: authenticated
+                  user: {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
+                  authentication_method: authenticator
+                  mfa_required: true
+                  authenticated_at: '2026-11-08T02:02:00.000000Z'
+                  expires_at: '2026-11-08T04:02:00.000000Z'
+    RecoveryCompleted:
+      description: Recovery proof consumed once; identity restored without adding chapter authority.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/MfaSessionResult'}
+              - properties: {data: {properties: {authentication_method: {const: recovery_code}}}}
+          example:
+            data:
+              state: authenticated
+              user: {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
+              authentication_method: recovery_code
+              mfa_required: true
+              authenticated_at: '2026-11-08T02:02:00.000000Z'
+              expires_at: '2026-11-08T04:02:00.000000Z'
+    RecoverySetDelivered:
+      description: >-
+        Sensitive response; display for secure offline saving once, bounded same-key
+        delivery retry only. Cookies rotate on enrollment confirmation; not on rotation.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/RecoverySetDelivery'}
+          example:
+            data:
+              session:
+                state: authenticated
+                user: {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
+                authentication_method: authenticator
+                mfa_required: true
+                authenticated_at: '2026-11-08T02:02:00.000000Z'
+                expires_at: '2026-11-08T04:02:00.000000Z'
+              recovery_set:
+                id: 30000000-0000-4000-8000-000000000001
+                codes:
+                  - ABCD-EFGH-JKLM-NPQR
+                  - BBCD-EFGH-JKLM-NPQR
+                  - CBCD-EFGH-JKLM-NPQR
+                  - DBCD-EFGH-JKLM-NPQR
+                  - EBCD-EFGH-JKLM-NPQR
+                  - FBCD-EFGH-JKLM-NPQR
+                  - GBCD-EFGH-JKLM-NPQR
+                  - HBCD-EFGH-JKLM-NPQR
+                  - IBCD-EFGH-JKLM-NPQR
+                  - JBCD-EFGH-JKLM-NPQR
+                created_at: '2026-11-08T02:02:00.000000Z'
+                expires_at: '2027-11-08T02:02:00.000000Z'
+    BadRequest:
+      description: malformed_request for malformed JSON, forbidden query/body, missing/malformed action key or duplicate selectors.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {const: malformed_request}}}}
+          example: {error: {code: malformed_request, message: Invalid request syntax.}, request_id: 50000000-0000-4000-8000-000000000001}
+    InvalidCredentials:
+      description: Unknown/disabled account or incorrect password, without distinguishing which.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {const: invalid_credentials}}}}
+          example: {error: {code: invalid_credentials, message: Sign-in failed.}, request_id: 50000000-0000-4000-8000-000000000001}
+    Unauthenticated:
+      description: Missing/expired/revoked/disabled session or expired continuation; restart password sign-in.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {const: unauthenticated}}}}
+          example: {error: {code: unauthenticated, message: Sign in again.}, request_id: 50000000-0000-4000-8000-000000000001}
+    OriginDenied:
+      description: origin_denied for missing/null/foreign Origin on unsafe requests, or foreign CSRF initialization.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {const: origin_denied}}}}
+          example: {error: {code: origin_denied, message: Browser origin denied.}, request_id: 50000000-0000-4000-8000-000000000001}
+    EnrollmentDenied:
+      description: origin_denied, continuation_mismatch or invalid_factor (wrong password/TOTP); no factor information leaked.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {enum: [origin_denied, continuation_mismatch, invalid_factor]}}}}
+          example: {error: {code: invalid_factor, message: Authentication proof was not accepted.}, request_id: 50000000-0000-4000-8000-000000000001}
+    ChallengeDenied:
+      description: origin_denied, continuation_mismatch or invalid_factor (invalid/expired/consumed/superseded factor, uniformly).
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {enum: [origin_denied, continuation_mismatch, invalid_factor]}}}}
+          example: {error: {code: invalid_factor, message: Authentication proof was not accepted.}, request_id: 50000000-0000-4000-8000-000000000001}
+    FullSessionRequired:
+      description: mfa_incomplete for continuation; factor_not_enrolled for password-only full session without factor.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {enum: [mfa_incomplete, factor_not_enrolled]}}}}
+          example: {error: {code: mfa_incomplete, message: Complete multifactor authentication first.}, request_id: 50000000-0000-4000-8000-000000000001}
+    RecoveryRotationDenied:
+      description: origin_denied, mfa_incomplete, factor_not_enrolled or invalid_factor (fresh password/TOTP failed).
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {enum: [origin_denied, mfa_incomplete, factor_not_enrolled, invalid_factor]}}}}
+          example: {error: {code: invalid_factor, message: Authentication proof was not accepted.}, request_id: 50000000-0000-4000-8000-000000000001}
+    SessionConflict:
+      description: session_state_conflict, action_key_conflict (different payload) or action_already_used (consumed intent; inspect session).
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {enum: [session_state_conflict, action_key_conflict, action_already_used]}}}}
+          example: {error: {code: action_already_used, message: Inspect the current session before retrying.}, request_id: 50000000-0000-4000-8000-000000000001}
+    EnrollmentConflict:
+      description: factor_exists, enrollment_pending, enrollment_expired or action_key_conflict. Expired pending enrollment requires a fresh key.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {enum: [factor_exists, enrollment_pending, enrollment_expired, action_key_conflict]}}}}
+          example: {error: {code: enrollment_pending, message: Finish the pending enrollment or wait for its expiry.}, request_id: 50000000-0000-4000-8000-000000000001}
+    ConfirmationConflict:
+      description: enrollment_expired (also foreign/unknown enrollment), factor_exists, action_key_conflict or secret_delivery_expired.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {enum: [enrollment_expired, factor_exists, action_key_conflict, secret_delivery_expired]}}}}
+          example: {error: {code: enrollment_expired, message: Start a new enrollment.}, request_id: 50000000-0000-4000-8000-000000000001}
+    RotationConflict:
+      description: recovery_set_conflict, action_key_conflict or secret_delivery_expired; no new codes committed by rejected request.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {enum: [recovery_set_conflict, action_key_conflict, secret_delivery_expired]}}}}
+          example: {error: {code: recovery_set_conflict, message: Review current recovery-set status.}, request_id: 50000000-0000-4000-8000-000000000001}
+    UnsupportedMedia:
+      description: JSON body operations require application/json; no form credentials.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {const: unsupported_media_type}}}}
+          example: {error: {code: unsupported_media_type, message: Use application/json.}, request_id: 50000000-0000-4000-8000-000000000001}
+    CsrfMismatch:
+      description: Missing/mismatched/stale CSRF proof; initialize CSRF, inspect session and review before resubmission.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {const: csrf_mismatch}}}}
+          example: {error: {code: csrf_mismatch, message: Refresh browser CSRF protection.}, request_id: 50000000-0000-4000-8000-000000000001}
+    InvalidInput:
+      description: >-
+        Well-formed JSON fails the specific request schema. Field pointers are RFC
+        6901 relative to that operation body, including missing/unknown fields. No
+        supplied values/proofs echoed. No key/proof consumed and no authority changed.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ValidationError'}
+          example:
+            error:
+              code: invalid_input
+              message: Correct the indicated fields.
+              fields: [{pointer: '', code: invalid_type, message: Request must be a JSON object.}]
+            request_id: 50000000-0000-4000-8000-000000000001
+    Throttled:
+      description: Per trusted client IP and keyed account/session limits; failed proofs remain attempts, not business commits.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Retry-After: {$ref: '#/components/headers/RetryAfter'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {const: throttled}}}}
+          example: {error: {code: throttled, message: Try again after the indicated delay.}, request_id: 50000000-0000-4000-8000-000000000001}
+    Unavailable:
+      description: >-
+        unavailable; no diagnostic SQL/secrets exposed. Outcome may be uncertain if
+        commitment preceded response failure: inspect session/metadata before retry,
+        never infer rollback from 503. Initialization can also fail before any write.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+              - {$ref: '#/components/schemas/Error'}
+              - properties: {error: {properties: {code: {const: unavailable}}}}
+          example: {error: {code: unavailable, message: Authentication service is unavailable.}, request_id: 50000000-0000-4000-8000-000000000001}
