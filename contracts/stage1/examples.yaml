@@ -15,6 +15,7 @@ request_defaults:
 response_defaults:
   headers:
     Cache-Control: no-store
+    X-Action-Replayed: 'false'
 cases:
   - name: real-scaffold-connected
     operationId: readScaffoldHealth
@@ -49,6 +50,14 @@ cases:
     operationId: readCurrentSession
     before: password accepted, enrollment still incomplete
     response: {status: '200', body: *enrollSession}
+  - name: password-accepted-result-replay
+    operationId: signInWithPassword
+    before: resulting current browser lineage; same accepted intent returns its original snapshot without another promotion
+    request: {body: *password}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies, X-Action-Replayed: 'true'}
+      body: *enrollSession
   - name: continuation-cannot-read-protected-recovery-metadata
     operationId: readRecoveryCodeStatus
     before: enrollment continuation; all business operations are likewise gated downstream
@@ -108,7 +117,7 @@ cases:
     operationId: confirmAuthenticatorEnrollment
     before: commitment succeeded; new cookies arrived; encrypted delivery window remains current and unused
     request: {body: *confirmation}
-    response: {status: '200', headers: {Set-Cookie: *issuedCookies}, body: *deliveredSet}
+    response: {status: '200', headers: {Set-Cookie: *issuedCookies, X-Action-Replayed: 'true'}, body: *deliveredSet}
   - name: expired-or-foreign-pending-enrollment
     operationId: confirmAuthenticatorEnrollment
     before: live enrollment continuation, pending enrollment ID expired/foreign/unknown
@@ -164,6 +173,14 @@ cases:
       body: &invalidFactor
         error: {code: invalid_factor, message: Authentication proof was not accepted.}
         request_id: *requestId
+  - name: authenticator-result-replay
+    operationId: completeAuthenticatorChallenge
+    before: resulting current MFA-full browser, accepted same intent; TOTP is not consumed again
+    request: {body: {authenticator_code: '123456'}}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies, X-Action-Replayed: 'true'}
+      body: {data: *fullSession}
   - name: recovery-restores-only-identity
     operationId: completeRecoveryChallenge
     before: challenge continuation; valid unused unexpired recovery code; current grants unchanged
@@ -184,6 +201,32 @@ cases:
     before: challenge continuation; well-formed nonexistent recovery code
     request: {body: {recovery_code: ZBCD-EFGH-JKLM-NPQR}}
     response: {status: '403', body: *invalidFactor}
+  - name: recovery-result-replay
+    operationId: completeRecoveryChallenge
+    before: resulting current recovery-full browser; accepted same intent recovers outcome without consuming code again
+    request: {body: {recovery_code: ABCD-EFGH-JKLM-NPQR}}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies, X-Action-Replayed: 'true'}
+      body:
+        data:
+          state: authenticated
+          user: *actor
+          authentication_method: recovery_code
+          mfa_required: true
+          authenticated_at: '2026-11-08T02:02:00.000000Z'
+          expires_at: '2026-11-08T04:02:00.000000Z'
+  - name: full-session-new-challenge-intent-denied
+    operationId: completeAuthenticatorChallenge
+    before: full browser; new key is not a replay of its accepted authentication intent
+    request:
+      headers: {X-Action-Key: 40000000-0000-4000-8000-000000000002}
+      body: {authenticator_code: '123456'}
+    response:
+      status: '409'
+      body:
+        error: {code: session_state_conflict, message: Review the current session before starting another intent.}
+        request_id: *requestId
   - name: expired-recovery-value
     operationId: completeRecoveryChallenge
     before: fresh challenge continuation; the referenced recovery set expired at server deadline
@@ -319,7 +362,7 @@ cases:
     operationId: rotateRecoveryCodes
     before: same full browser, current resulting set 002 unused; delivery receipt active; old expected-set ID is checked after receipt
     request: {body: *rotation}
-    response: {status: '200', body: *rotatedSet}
+    response: {status: '200', headers: {X-Action-Replayed: 'true'}, body: *rotatedSet}
   - name: expired-sensitive-delivery-cannot-reveal-codes
     operationId: rotateRecoveryCodes
     before: same full browser, accepted key but delivery window has expired

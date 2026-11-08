@@ -79,8 +79,13 @@ paths:
       summary: Verify individual password and establish full or limited session
       description: >-
         Anonymous CSRF session required. Rotate session ID and CSRF token on password
-        acceptance. Existing identified sessions receive session_state_conflict; sign
-        out before switching identity. Account absence, disabled account and wrong
+        acceptance. For a new intent, existing identified sessions receive
+        session_state_conflict; sign out before switching identity. An accepted same-key,
+        same-payload intent returns its original snapshot only to the current resulting
+        browser lineage, before this new-intent state check, without another promotion
+        or cookie rotation. Send X-Action-Replayed=true and current cookie values;
+        the consumer must read current session before navigating. Account absence,
+        disabled account and wrong
         password have the same invalid_credentials response. MFA policy is derived
         from current grants, never a client role flag. Enrolled accounts always
         challenge; unenrolled approvers/administrators enroll; other unenrolled
@@ -212,6 +217,7 @@ paths:
           description: Pending secret; not proof of enrollment and no additional authority.
           headers:
             Cache-Control: {$ref: '#/components/headers/NoStore'}
+            X-Action-Replayed: {$ref: '#/components/headers/ActionReplayed'}
           content:
             application/json:
               schema: {$ref: '#/components/schemas/EnrollmentResult'}
@@ -257,7 +263,7 @@ paths:
               password: Example-only-password-2026!
               authenticator_code: '123456'
       responses:
-        '200': {$ref: '#/components/responses/RecoverySetDelivered'}
+        '200': {$ref: '#/components/responses/InitialRecoverySetDelivered'}
         '400': {$ref: '#/components/responses/BadRequest'}
         '401': {$ref: '#/components/responses/Unauthenticated'}
         '403': {$ref: '#/components/responses/EnrollmentDenied'}
@@ -277,7 +283,11 @@ paths:
         Only challenge_authenticator continuation. Check current account/factor status
         and RFC 6238 code; reject invalid or previously consumed time-step identically.
         Atomically consume proof and promote session, rotating ID and CSRF. No reusable
-        bearer continuation token. A full session returns session_state_conflict.
+        bearer continuation token. A new intent from a full session returns
+        session_state_conflict. Before that state check, an accepted exact key/payload
+        may replay its original outcome only to the current resulting browser lineage,
+        without reconsuming TOTP or promoting/rotating a session. The replay sends
+        current cookies and X-Action-Replayed=true; inspect current session.
       security: [{browserSession: [], csrfProof: []}]
       parameters:
         - {$ref: '#/components/parameters/Origin'}
@@ -314,6 +324,10 @@ paths:
         bypass current MFA/authority gates. It does not replace the lost authenticator;
         controlled reset is ticket 02. Never accept recovery codes as passwords or
         as proof for viewing/rotating another recovery set.
+        Before checking new-intent continuation state, a current resulting browser
+        lineage may replay its accepted exact key/payload for the original snapshot;
+        no code is consumed again and no session promoted or rotated. Send current
+        cookies and X-Action-Replayed=true; the UI then reads current session.
       security: [{browserSession: [], csrfProof: []}]
       parameters:
         - {$ref: '#/components/parameters/Origin'}
@@ -448,6 +462,7 @@ components:
       example: no-store
       description: Applies to every /api/v1/auth response including errors and 204s.
     SessionCookies:
+      required: true
       description: >-
         Two separate Set-Cookie fields (never comma-fold): ysp_session=<opaque>;
         Path=/; Secure; HttpOnly; SameSite=Lax and XSRF-TOKEN=<url-encoded-token>;
@@ -457,12 +472,21 @@ components:
       schema: {type: string, minLength: 1}
       example: 'ysp_session=synthetic; Path=/; Secure; HttpOnly; SameSite=Lax'
     ExpiredCookies:
+      required: true
       description: >-
         Two separate Set-Cookie fields expiring ysp_session and XSRF-TOKEN, matching
         their original Path=/, Secure and SameSite attributes; Max-Age=0. Session
         cookie remains HttpOnly. No new authenticated session is created.
       schema: {type: string, minLength: 1}
       example: 'ysp_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax'
+    ActionReplayed:
+      required: true
+      description: >-
+        false on first commitment, true on authorized same-key/same-payload snapshot
+        delivery. Snapshots do not refresh authority/expiry. On replay, read current
+        session before navigation or enabling actions. Never restore old cookies.
+      schema: {type: string, enum: ['true', 'false']}
+      example: 'false'
     RetryAfter:
       required: true
       description: Integer delta seconds until next allowed attempt, never an account-existence hint.
@@ -710,6 +734,7 @@ components:
       headers:
         Cache-Control: {$ref: '#/components/headers/NoStore'}
         Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+        X-Action-Replayed: {$ref: '#/components/headers/ActionReplayed'}
       content:
         application/json:
           schema: {$ref: '#/components/schemas/PasswordSignInResult'}
@@ -724,6 +749,7 @@ components:
       headers:
         Cache-Control: {$ref: '#/components/headers/NoStore'}
         Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+        X-Action-Replayed: {$ref: '#/components/headers/ActionReplayed'}
       content:
         application/json:
           schema:
@@ -745,6 +771,7 @@ components:
       headers:
         Cache-Control: {$ref: '#/components/headers/NoStore'}
         Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+        X-Action-Replayed: {$ref: '#/components/headers/ActionReplayed'}
       content:
         application/json:
           schema:
@@ -760,39 +787,28 @@ components:
               authenticated_at: '2026-11-08T02:02:00.000000Z'
               expires_at: '2026-11-08T04:02:00.000000Z'
     RecoverySetDelivered:
-      description: >-
-        Sensitive response; display for secure offline saving once, bounded same-key
-        delivery retry only. Cookies rotate on enrollment confirmation; not on rotation.
+      description: Sensitive rotated recovery set; bounded delivery replay. Session cookies do not change.
       headers:
         Cache-Control: {$ref: '#/components/headers/NoStore'}
-        Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+        X-Action-Replayed: {$ref: '#/components/headers/ActionReplayed'}
       content:
         application/json:
           schema: {$ref: '#/components/schemas/RecoverySetDelivery'}
-          example:
-            data:
-              session:
-                state: authenticated
-                user: {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
-                authentication_method: authenticator
-                mfa_required: true
-                authenticated_at: '2026-11-08T02:02:00.000000Z'
-                expires_at: '2026-11-08T04:02:00.000000Z'
-              recovery_set:
-                id: 30000000-0000-4000-8000-000000000001
-                codes:
-                  - ABCD-EFGH-JKLM-NPQR
-                  - BBCD-EFGH-JKLM-NPQR
-                  - CBCD-EFGH-JKLM-NPQR
-                  - DBCD-EFGH-JKLM-NPQR
-                  - EBCD-EFGH-JKLM-NPQR
-                  - FBCD-EFGH-JKLM-NPQR
-                  - GBCD-EFGH-JKLM-NPQR
-                  - HBCD-EFGH-JKLM-NPQR
-                  - IBCD-EFGH-JKLM-NPQR
-                  - JBCD-EFGH-JKLM-NPQR
-                created_at: '2026-11-08T02:02:00.000000Z'
-                expires_at: '2027-11-08T02:02:00.000000Z'
+          examples:
+            delivered: {$ref: '#/components/examples/RecoveryDelivery'}
+    InitialRecoverySetDelivered:
+      description: >-
+        Sensitive initial recovery set. Confirmation rotates both cookies; bounded
+        same-key delivery replay synchronizes current cookies without another rotation.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Set-Cookie: {$ref: '#/components/headers/SessionCookies'}
+        X-Action-Replayed: {$ref: '#/components/headers/ActionReplayed'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/RecoverySetDelivery'}
+          examples:
+            delivered: {$ref: '#/components/examples/RecoveryDelivery'}
     BadRequest:
       description: malformed_request for malformed JSON, forbidden query/body, missing/malformed action key or duplicate selectors.
       headers:
@@ -882,7 +898,7 @@ components:
               - properties: {error: {properties: {code: {enum: [origin_denied, mfa_incomplete, factor_not_enrolled, invalid_factor]}}}}
           example: {error: {code: invalid_factor, message: Authentication proof was not accepted.}, request_id: 50000000-0000-4000-8000-000000000001}
     SessionConflict:
-      description: session_state_conflict, action_key_conflict (different payload) or action_already_used (consumed intent; inspect session).
+      description: session_state_conflict for a new intent from wrong session state, or action_key_conflict for different-payload accepted-key reuse.
       headers:
         Cache-Control: {$ref: '#/components/headers/NoStore'}
       content:
@@ -890,8 +906,8 @@ components:
           schema:
             allOf:
               - {$ref: '#/components/schemas/Error'}
-              - properties: {error: {properties: {code: {enum: [session_state_conflict, action_key_conflict, action_already_used]}}}}
-          example: {error: {code: action_already_used, message: Inspect the current session before retrying.}, request_id: 50000000-0000-4000-8000-000000000001}
+              - properties: {error: {properties: {code: {enum: [session_state_conflict, action_key_conflict]}}}}
+          example: {error: {code: session_state_conflict, message: Review the current session before starting another intent.}, request_id: 50000000-0000-4000-8000-000000000001}
     EnrollmentConflict:
       description: factor_exists, enrollment_pending, enrollment_expired or action_key_conflict. Expired pending enrollment requires a fresh key.
       headers:
@@ -989,3 +1005,30 @@ components:
               - {$ref: '#/components/schemas/Error'}
               - properties: {error: {properties: {code: {const: unavailable}}}}
           example: {error: {code: unavailable, message: Authentication service is unavailable.}, request_id: 50000000-0000-4000-8000-000000000001}
+
+  examples:
+    RecoveryDelivery:
+      value:
+        data:
+          session:
+            state: authenticated
+            user: {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
+            authentication_method: authenticator
+            mfa_required: true
+            authenticated_at: '2026-11-08T02:02:00.000000Z'
+            expires_at: '2026-11-08T04:02:00.000000Z'
+          recovery_set:
+            id: 30000000-0000-4000-8000-000000000001
+            codes:
+              - ABCD-EFGH-JKLM-NPQR
+              - BBCD-EFGH-JKLM-NPQR
+              - CBCD-EFGH-JKLM-NPQR
+              - DBCD-EFGH-JKLM-NPQR
+              - EBCD-EFGH-JKLM-NPQR
+              - FBCD-EFGH-JKLM-NPQR
+              - GBCD-EFGH-JKLM-NPQR
+              - HBCD-EFGH-JKLM-NPQR
+              - IBCD-EFGH-JKLM-NPQR
+              - JBCD-EFGH-JKLM-NPQR
+            created_at: '2026-11-08T02:02:00.000000Z'
+            expires_at: '2027-11-08T02:02:00.000000Z'

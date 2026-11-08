@@ -101,7 +101,8 @@ def main():
             return
         if "example" in node:
             check_value(pointer + "/schema", node["example"], pointer + " example")
-        for name, example in node.get("examples", {}).items():
+        for name in node.get("examples", {}):
+            _, example = dereference(pointer + "/examples/" + pointer_part(name))
             if "value" not in example:
                 raise ValueError(f"Example {name} must have a local value")
             check_value(pointer + "/schema", example["value"], pointer + " " + name)
