@@ -1,0 +1,433 @@
+# Schema-checked examples, not HTTP executions. Each case starts from its own stated
+# synthetic fixture; references/credentials are illustrative, never approved setup.
+context:
+  actor: 10000000-0000-4000-8000-000000000001
+  chapter_authority: unchanged; no membership or duty is created by authentication
+  clock: '2026-11-08T02:02:00.000000Z'
+request_defaults:
+  headers:
+    Origin: https://ysp.example.invalid
+    X-Action-Key: 40000000-0000-4000-8000-000000000001
+    Cookie: ysp_session=synthetic; XSRF-TOKEN=synthetic-xsrf
+    X-XSRF-TOKEN: synthetic-xsrf
+    Accept: application/json
+    Content-Type: application/json
+response_defaults:
+  headers:
+    Cache-Control: no-store
+    X-Action-Replayed: 'false'
+cases:
+  - name: real-scaffold-connected
+    operationId: readScaffoldHealth
+    response: {status: '200', body: {database: connected}}
+  - name: real-scaffold-unavailable
+    operationId: readScaffoldHealth
+    response: {status: '503', body: {database: unavailable}}
+  - name: initialize-anonymous-csrf
+    operationId: initializeBrowserCsrf
+    before: anonymous without cookies
+    response:
+      status: '204'
+      headers:
+        Set-Cookie: &issuedCookies
+          - 'ysp_session=synthetic; Path=/; Secure; HttpOnly; SameSite=Lax'
+          - 'XSRF-TOKEN=synthetic-xsrf; Path=/; Secure; SameSite=Lax'
+  - name: password-accepted-enrollment-required
+    operationId: signInWithPassword
+    before: anonymous; current approver requires MFA and has no enabled factor
+    request:
+      body: &password {login: officer@example.invalid, password: Example-only-password-2026!}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies}
+      body: &enrollSession
+        data:
+          state: continuation
+          user: &actor {id: 10000000-0000-4000-8000-000000000001, display_name: Synthetic approver}
+          next_step: enroll_authenticator
+          expires_at: '2026-11-08T02:10:00.000000Z'
+  - name: read-limited-enrollment-session
+    operationId: readCurrentSession
+    before: password accepted, enrollment still incomplete
+    response: {status: '200', body: *enrollSession}
+  - name: password-accepted-result-replay
+    operationId: signInWithPassword
+    before: resulting current browser lineage; same accepted intent returns its original snapshot without another promotion
+    request: {body: *password}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies, X-Action-Replayed: 'true'}
+      body: *enrollSession
+  - name: continuation-cannot-read-protected-recovery-metadata
+    operationId: readRecoveryCodeStatus
+    before: enrollment continuation; all business operations are likewise gated downstream
+    response:
+      status: '403'
+      body:
+        error: {code: mfa_incomplete, message: Complete multifactor authentication first.}
+        request_id: &requestId 50000000-0000-4000-8000-000000000001
+  - name: begin-first-enrollment
+    operationId: beginAuthenticatorEnrollment
+    before: enrollment continuation
+    request: {body: {password: Example-only-password-2026!}}
+    response:
+      status: '201'
+      body:
+        data:
+          enrollment_id: 20000000-0000-4000-8000-000000000001
+          secret: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+          provisioning_uri: 'otpauth://totp/YSP:synthetic?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=YSP&algorithm=SHA1&digits=6&period=30'
+          expires_at: '2026-11-08T02:06:00.000000Z'
+  - name: confirm-and-deliver-initial-codes
+    operationId: confirmAuthenticatorEnrollment
+    before: matching pending enrollment, valid password and fresh TOTP
+    request:
+      body: &confirmation
+        enrollment_id: 20000000-0000-4000-8000-000000000001
+        password: Example-only-password-2026!
+        authenticator_code: '123456'
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies}
+      body: &deliveredSet
+        data:
+          session: &fullSession
+            state: authenticated
+            user: *actor
+            authentication_method: authenticator
+            mfa_required: true
+            authenticated_at: '2026-11-08T02:02:00.000000Z'
+            expires_at: '2026-11-08T04:02:00.000000Z'
+          recovery_set:
+            id: 30000000-0000-4000-8000-000000000001
+            codes:
+              - ABCD-EFGH-JKLM-NPQR
+              - BBCD-EFGH-JKLM-NPQR
+              - CBCD-EFGH-JKLM-NPQR
+              - DBCD-EFGH-JKLM-NPQR
+              - EBCD-EFGH-JKLM-NPQR
+              - FBCD-EFGH-JKLM-NPQR
+              - GBCD-EFGH-JKLM-NPQR
+              - HBCD-EFGH-JKLM-NPQR
+              - IBCD-EFGH-JKLM-NPQR
+              - JBCD-EFGH-JKLM-NPQR
+            created_at: '2026-11-08T02:02:00.000000Z'
+            expires_at: '2027-11-08T02:02:00.000000Z'
+  - name: confirm-lost-body-same-resulting-session-replay
+    operationId: confirmAuthenticatorEnrollment
+    before: commitment succeeded; new cookies arrived; encrypted delivery window remains current and unused
+    request: {body: *confirmation}
+    response: {status: '200', headers: {Set-Cookie: *issuedCookies, X-Action-Replayed: 'true'}, body: *deliveredSet}
+  - name: expired-or-foreign-pending-enrollment
+    operationId: confirmAuthenticatorEnrollment
+    before: live enrollment continuation, pending enrollment ID expired/foreign/unknown
+    request: {body: *confirmation}
+    response:
+      status: '409'
+      body:
+        error: {code: enrollment_expired, message: Start a new enrollment.}
+        request_id: *requestId
+  - name: password-accepted-challenge-required
+    operationId: signInWithPassword
+    before: anonymous; actor already enrolled
+    request: {body: *password}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies}
+      body:
+        data:
+          state: continuation
+          user: *actor
+          next_step: challenge_authenticator
+          expires_at: '2026-11-08T02:10:00.000000Z'
+  - name: ordinary-unenrolled-password-full
+    operationId: signInWithPassword
+    before: separate synthetic ordinary requester with no current approver or administrator grant
+    request:
+      body: {login: requester@example.invalid, password: Example-only-password-2026!}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies}
+      body:
+        data:
+          state: authenticated
+          user: {id: 10000000-0000-4000-8000-000000000002, display_name: Synthetic requester}
+          authentication_method: password
+          mfa_required: false
+          authenticated_at: '2026-11-08T02:02:00.000000Z'
+          expires_at: '2026-11-08T04:02:00.000000Z'
+  - name: authenticator-challenge-completed
+    operationId: completeAuthenticatorChallenge
+    before: challenge continuation; correct unconsumed time-step
+    request: {body: {authenticator_code: '123456'}}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies}
+      body: {data: *fullSession}
+  - name: invalid-or-consumed-totp
+    operationId: completeAuthenticatorChallenge
+    before: challenge continuation; syntactically valid invalid/consumed code
+    request: {body: {authenticator_code: '000000'}}
+    response:
+      status: '403'
+      body: &invalidFactor
+        error: {code: invalid_factor, message: Authentication proof was not accepted.}
+        request_id: *requestId
+  - name: authenticator-result-replay
+    operationId: completeAuthenticatorChallenge
+    before: resulting current MFA-full browser, accepted same intent; TOTP is not consumed again
+    request: {body: {authenticator_code: '123456'}}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies, X-Action-Replayed: 'true'}
+      body: {data: *fullSession}
+  - name: recovery-restores-only-identity
+    operationId: completeRecoveryChallenge
+    before: challenge continuation; valid unused unexpired recovery code; current grants unchanged
+    request: {body: {recovery_code: ABCD-EFGH-JKLM-NPQR}}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies}
+      body:
+        data:
+          state: authenticated
+          user: *actor
+          authentication_method: recovery_code
+          mfa_required: true
+          authenticated_at: '2026-11-08T02:02:00.000000Z'
+          expires_at: '2026-11-08T04:02:00.000000Z'
+  - name: invalid-recovery-value
+    operationId: completeRecoveryChallenge
+    before: challenge continuation; well-formed nonexistent recovery code
+    request: {body: {recovery_code: ZBCD-EFGH-JKLM-NPQR}}
+    response: {status: '403', body: *invalidFactor}
+  - name: recovery-result-replay
+    operationId: completeRecoveryChallenge
+    before: resulting current recovery-full browser; accepted same intent recovers outcome without consuming code again
+    request: {body: {recovery_code: ABCD-EFGH-JKLM-NPQR}}
+    response:
+      status: '200'
+      headers: {Set-Cookie: *issuedCookies, X-Action-Replayed: 'true'}
+      body:
+        data:
+          state: authenticated
+          user: *actor
+          authentication_method: recovery_code
+          mfa_required: true
+          authenticated_at: '2026-11-08T02:02:00.000000Z'
+          expires_at: '2026-11-08T04:02:00.000000Z'
+  - name: full-session-new-challenge-intent-denied
+    operationId: completeAuthenticatorChallenge
+    before: full browser; new key is not a replay of its accepted authentication intent
+    request:
+      headers: {X-Action-Key: 40000000-0000-4000-8000-000000000002}
+      body: {authenticator_code: '123456'}
+    response:
+      status: '409'
+      body:
+        error: {code: session_state_conflict, message: Review the current session before starting another intent.}
+        request_id: *requestId
+  - name: expired-recovery-value
+    operationId: completeRecoveryChallenge
+    before: fresh challenge continuation; the referenced recovery set expired at server deadline
+    request: {body: {recovery_code: ABCD-EFGH-JKLM-NPQR}}
+    response: {status: '403', body: *invalidFactor}
+  - name: reused-recovery-value-in-another-continuation
+    operationId: completeRecoveryChallenge
+    before: fresh challenge continuation; this exact code was consumed previously
+    request: {body: {recovery_code: ABCD-EFGH-JKLM-NPQR}}
+    response: {status: '403', body: *invalidFactor}
+  - name: superseded-set-recovery-value
+    operationId: completeRecoveryChallenge
+    before: fresh challenge continuation; code belongs to replaced set
+    request: {body: {recovery_code: ABCD-EFGH-JKLM-NPQR}}
+    response: {status: '403', body: *invalidFactor}
+  - name: malformed-recovery-code-shape
+    operationId: completeRecoveryChallenge
+    before: challenge continuation
+    request_valid: false
+    request: {body: {recovery_code: ''}}
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated fields.
+          fields: [{pointer: /recovery_code, code: invalid_format, message: Use the grouped recovery code.}]
+        request_id: *requestId
+  - name: absent-password
+    operationId: signInWithPassword
+    request_valid: false
+    request: {body: {login: officer@example.invalid}}
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated fields.
+          fields: [{pointer: /password, code: required, message: Password is required.}]
+        request_id: *requestId
+  - name: null-totp-is-invalid
+    operationId: completeAuthenticatorChallenge
+    request_valid: false
+    request: {body: {authenticator_code: null}}
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated fields.
+          fields: [{pointer: /authenticator_code, code: invalid_type, message: Code must be a string.}]
+        request_id: *requestId
+  - name: unauthenticated-session-read
+    operationId: readCurrentSession
+    before: anonymous/expired/revoked/disabled context
+    response:
+      status: '401'
+      body:
+        error: {code: unauthenticated, message: Sign in again.}
+        request_id: *requestId
+  - name: expired-continuation
+    operationId: completeRecoveryChallenge
+    before: continuation deadline reached; even a valid unused recovery code grants no access
+    request: {body: {recovery_code: ABCD-EFGH-JKLM-NPQR}}
+    response:
+      status: '401'
+      body:
+        error: {code: unauthenticated, message: Sign in again.}
+        request_id: *requestId
+  - name: recovery-status-does-not-reveal-codes
+    operationId: readRecoveryCodeStatus
+    before: MFA-full after consuming one of ten codes
+    response:
+      status: '200'
+      body:
+        data:
+          recovery_set:
+            id: 30000000-0000-4000-8000-000000000001
+            remaining: 9
+            created_at: '2026-11-08T02:02:00.000000Z'
+            expires_at: '2027-11-08T02:02:00.000000Z'
+  - name: rotate-after-explicit-fresh-proof
+    operationId: rotateRecoveryCodes
+    before: MFA-full; enabled authenticator; initial creation without an existing recovery set (null is present, not omitted)
+    request:
+      body:
+        password: Example-only-password-2026!
+        authenticator_code: '654321'
+        expected_recovery_set_id: null
+    response: {status: '200', body: *deliveredSet}
+  - name: stale-recovery-set-rotation
+    operationId: rotateRecoveryCodes
+    before: MFA-full; expected set was concurrently replaced; no proof or key consumed
+    request:
+      body:
+        password: Example-only-password-2026!
+        authenticator_code: '654321'
+        expected_recovery_set_id: 30000000-0000-4000-8000-000000000002
+    response:
+      status: '409'
+      body:
+        error: {code: recovery_set_conflict, message: Review current recovery-set status.}
+        request_id: *requestId
+  - name: rotate-replaces-an-existing-set
+    operationId: rotateRecoveryCodes
+    before: MFA-full; current old set 001 is still active; fresh password and unused TOTP
+    request:
+      body: &rotation
+        password: Example-only-password-2026!
+        authenticator_code: '654321'
+        expected_recovery_set_id: 30000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body: &rotatedSet
+        data:
+          session: *fullSession
+          recovery_set:
+            id: 30000000-0000-4000-8000-000000000002
+            codes:
+              - KBCD-EFGH-JKLM-NPQR
+              - LBCD-EFGH-JKLM-NPQR
+              - MBCD-EFGH-JKLM-NPQR
+              - NBCD-EFGH-JKLM-NPQR
+              - OBCD-EFGH-JKLM-NPQR
+              - PBCD-EFGH-JKLM-NPQR
+              - QBCD-EFGH-JKLM-NPQR
+              - RBCD-EFGH-JKLM-NPQR
+              - SBCD-EFGH-JKLM-NPQR
+              - TBCD-EFGH-JKLM-NPQR
+            created_at: '2026-11-08T02:02:00.000000Z'
+            expires_at: '2027-11-08T02:02:00.000000Z'
+  - name: rotation-lost-body-delivery-retry
+    operationId: rotateRecoveryCodes
+    before: same full browser, current resulting set 002 unused; delivery receipt active; old expected-set ID is checked after receipt
+    request: {body: *rotation}
+    response: {status: '200', headers: {X-Action-Replayed: 'true'}, body: *rotatedSet}
+  - name: expired-sensitive-delivery-cannot-reveal-codes
+    operationId: rotateRecoveryCodes
+    before: same full browser, accepted key but delivery window has expired
+    request: {body: *rotation}
+    response:
+      status: '409'
+      body:
+        error: {code: secret_delivery_expired, message: Review status and explicitly rotate with fresh proof.}
+        request_id: *requestId
+  - name: accepted-key-different-rotation-payload
+    operationId: rotateRecoveryCodes
+    before: same full browser; accepted key was bound to expected set 001, not 002
+    request:
+      body:
+        password: Example-only-password-2026!
+        authenticator_code: '654321'
+        expected_recovery_set_id: 30000000-0000-4000-8000-000000000002
+    response:
+      status: '409'
+      body:
+        error: {code: action_key_conflict, message: Action key belongs to a different request.}
+        request_id: *requestId
+  - name: recovery-alone-cannot-rotate
+    operationId: rotateRecoveryCodes
+    before: recovery-full; account password correct but live authenticator unavailable/invalid
+    request:
+      body:
+        password: Example-only-password-2026!
+        authenticator_code: '000000'
+        expected_recovery_set_id: 30000000-0000-4000-8000-000000000001
+    response: {status: '403', body: *invalidFactor}
+  - name: foreign-origin-sign-in
+    operationId: signInWithPassword
+    request:
+      headers: {Origin: https://other.example.invalid}
+      body: *password
+    response:
+      status: '403'
+      body:
+        error: {code: origin_denied, message: Browser origin denied.}
+        request_id: *requestId
+  - name: stale-csrf-does-not-consume-proof
+    operationId: completeAuthenticatorChallenge
+    request:
+      headers: {X-XSRF-TOKEN: stale-synthetic-token}
+      body: {authenticator_code: '123456'}
+    response:
+      status: '419'
+      body:
+        error: {code: csrf_mismatch, message: Refresh browser CSRF protection.}
+        request_id: *requestId
+  - name: throttled-with-retry-delay
+    operationId: signInWithPassword
+    request: {body: *password}
+    response:
+      status: '429'
+      headers: {Retry-After: '60'}
+      body:
+        error: {code: throttled, message: Try again after the indicated delay.}
+        request_id: *requestId
+  - name: sign-out-full-or-continuation
+    operationId: signOutCurrentBrowser
+    response:
+      status: '204'
+      headers:
+        Set-Cookie:
+          - 'ysp_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax'
+          - 'XSRF-TOKEN=; Path=/; Max-Age=0; Secure; SameSite=Lax'

@@ -1,0 +1,204 @@
+"""Validate only this canonical Stage 1 contract and its published examples."""
+
+import argparse
+from importlib.metadata import version
+from pathlib import Path
+
+import yaml
+from jsonschema import Draft202012Validator, FormatChecker
+from openapi_spec_validator import OpenAPIV31SpecValidator, validate
+from referencing import Registry, Resource
+from referencing.jsonschema import DRAFT202012
+
+
+class UniqueKeysLoader(yaml.SafeLoader):
+    """Do not silently overwrite a published operation/schema/example."""
+
+    def construct_mapping(self, node, deep=False):
+        mapping = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in mapping:
+                raise ValueError(f"Duplicate YAML key: {key}")
+            mapping[key] = self.construct_object(value_node, deep=deep)
+        return mapping
+
+
+def pointer_part(value):
+    return str(value).replace("~", "~0").replace("/", "~1")
+
+
+def read_yaml(path):
+    return yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueKeysLoader)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--invalid-example", action="store_true")
+    args = parser.parse_args()
+    root = Path(__file__).resolve().parent
+    contract_path = root / "openapi.yaml"
+    document = read_yaml(contract_path)
+    examples = read_yaml(root / "examples.yaml")
+    uri = contract_path.as_uri()
+
+    def at(pointer):
+        node = document
+        for part in pointer.removeprefix("#/").split("/"):
+            key = part.replace("~1", "/").replace("~0", "~")
+            node = node[int(key)] if isinstance(node, list) else node[key]
+        return node
+
+    def dereference(pointer):
+        node = at(pointer)
+        seen = set()
+        while isinstance(node, dict) and "$ref" in node:
+            if pointer in seen:
+                raise ValueError(f"Reference cycle outside a schema: {pointer}")
+            seen.add(pointer)
+            pointer = node["$ref"]
+            node = at(pointer)
+        return pointer, node
+
+    def check_references(node):
+        if isinstance(node, dict):
+            if "$ref" in node:
+                reference = node["$ref"]
+                if not reference.startswith("#/"):
+                    raise ValueError(f"Only local contract references are supported: {reference}")
+                at(reference)
+            for value in node.values():
+                check_references(value)
+        elif isinstance(node, list):
+            for value in node:
+                check_references(value)
+
+    check_references(document)
+    validate(document, base_uri=uri, cls=OpenAPIV31SpecValidator)
+    registry = Registry().with_resource(
+        uri, Resource.from_contents(document, default_specification=DRAFT202012)
+    )
+    checked = 0
+
+    def check_value(pointer, value, label, expected_valid=True):
+        nonlocal checked
+        validator = Draft202012Validator(
+            {"$ref": uri + pointer}, registry=registry, format_checker=FormatChecker()
+        )
+        errors = list(validator.iter_errors(value))
+        if bool(errors) == expected_valid:
+            detail = "expected schema rejection"
+            if errors:
+                error = errors[0]
+                location = "/" + "/".join(map(str, error.absolute_path))
+                detail = f"{location} violates {error.validator}"
+            raise ValueError(f"{label}: {detail}")
+        checked += 1
+
+    def check_inline_examples(pointer):
+        _, node = dereference(pointer)
+        if "schema" not in node:
+            return
+        if "example" in node:
+            check_value(pointer + "/schema", node["example"], pointer + " example")
+        for name in node.get("examples", {}):
+            _, example = dereference(pointer + "/examples/" + pointer_part(name))
+            if "value" not in example:
+                raise ValueError(f"Example {name} must have a local value")
+            check_value(pointer + "/schema", example["value"], pointer + " " + name)
+
+    operations = {}
+    for path, path_item in document["paths"].items():
+        for method, operation in path_item.items():
+            if method not in {"get", "post", "put", "patch", "delete", "options", "head", "trace"}:
+                continue
+            operation_id = operation["operationId"]
+            if operation_id in operations:
+                raise ValueError(f"Duplicate operation ID: {operation_id}")
+            pointer = f"#/paths/{pointer_part(path)}/{method}"
+            operations[operation_id] = (pointer, operation)
+            for index, _ in enumerate(operation.get("parameters", [])):
+                parameter_pointer, _ = dereference(pointer + f"/parameters/{index}")
+                check_inline_examples(parameter_pointer)
+            if "requestBody" in operation:
+                body_pointer, body = dereference(pointer + "/requestBody")
+                for media in body["content"]:
+                    check_inline_examples(body_pointer + "/content/" + pointer_part(media))
+            for status in operation["responses"]:
+                response_pointer, response = dereference(pointer + "/responses/" + status)
+                for media in response.get("content", {}):
+                    check_inline_examples(response_pointer + "/content/" + pointer_part(media))
+                for header in response.get("headers", {}):
+                    header_pointer, _ = dereference(response_pointer + "/headers/" + pointer_part(header))
+                    check_inline_examples(header_pointer)
+
+    covered = set()
+    names = set()
+    for case in examples["cases"]:
+        name = case["name"]
+        if name in names:
+            raise ValueError(f"Duplicate consumer case: {name}")
+        names.add(name)
+        pointer, operation = operations[case["operationId"]]
+        request = case.get("request", {})
+        if "requestBody" in operation:
+            body_pointer, _ = dereference(pointer + "/requestBody")
+            check_value(body_pointer + "/content/application~1json/schema", request["body"],
+                        name + " request", case.get("request_valid", True))
+        elif "body" in request:
+            raise ValueError(f"{name}: operation has no request body")
+        request_headers = examples["request_defaults"]["headers"] | request.get("headers", {})
+        for index, _ in enumerate(operation.get("parameters", [])):
+            parameter_pointer, parameter = dereference(pointer + f"/parameters/{index}")
+            check_value(parameter_pointer + "/schema", request_headers[parameter["name"]], name + " header")
+        response = case["response"]
+        status = response["status"]
+        response_pointer, definition = dereference(pointer + "/responses/" + status)
+        if status.startswith("2"):
+            covered.add(case["operationId"])
+        if "content" in definition:
+            check_value(response_pointer + "/content/application~1json/schema", response["body"], name + " response")
+        elif "body" in response:
+            raise ValueError(f"{name}: bodyless status contains a body")
+        response_headers = examples["response_defaults"]["headers"] | response.get("headers", {})
+        for header_name in definition.get("headers", {}):
+            header_pointer, header = dereference(response_pointer + "/headers/" + pointer_part(header_name))
+            if header_name not in response_headers:
+                if header.get("required", False):
+                    raise ValueError(f"{name}: missing response header {header_name}")
+                continue
+            values = response_headers[header_name]
+            if not isinstance(values, list):
+                values = [values]
+            for value in values:
+                check_value(header_pointer + "/schema", value, name + " response header")
+        if status == "422":
+            _, schema = dereference(body_pointer + "/content/application~1json/schema")
+            for field in response["body"]["error"]["fields"]:
+                field_pointer = field["pointer"]
+                if field_pointer and field["code"] != "unexpected_field":
+                    key = field_pointer.split("/")[1].replace("~1", "/").replace("~0", "~")
+                    if key not in schema["properties"]:
+                        raise ValueError(f"{name}: feedback points outside operation body")
+
+    if covered != operations.keys():
+        raise ValueError(f"Missing worked success: {sorted(operations.keys() - covered)}")
+    print("Versions: " + ", ".join(f"{name}={version(name)}" for name in
+                                    ("openapi-spec-validator", "jsonschema", "PyYAML")))
+    print(f"PASS OpenAPI 3.1.1; local references; {len(operations)} operations; "
+          f"{len(names)} consumer cases; {checked} schema/example checks")
+    if args.invalid_example:
+        pointer, _ = operations["completeRecoveryChallenge"]
+        check_value(pointer + "/requestBody/content/application~1json/schema",
+                    {"recovery_code": 123456}, "deliberately invalid recovery request")
+        raise ValueError("Invalid-example probe unexpectedly passed")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as error:
+        # Published fixtures are synthetic; avoid rendering payload values in failures.
+        print(f"FAIL {type(error).__name__}: {error}" if isinstance(error, ValueError)
+              else f"FAIL {type(error).__name__}")
+        raise SystemExit(1) from None
