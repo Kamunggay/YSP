@@ -2450,6 +2450,3389 @@ cases:
           code: mfa_incomplete
           message: Synthetic contracted failure; preserve unrelated form inputs.
         request_id: 50000000-0000-4000-8000-000000000001
+  - name: create-unit-missing-settings-does-not-approve
+    operationId: createCatalogueUnit
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: PC
+        name: Piece
+        quantity_kind: piece
+        quantity_scale: 0
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000005
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: PC
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Piece
+            quantity_kind: piece
+            quantity_scale: 0
+            quantity_identity_locked: false
+  - name: list-units
+    operationId: listCatalogueUnits
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+        state: active
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000005
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: PC
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          name: Piece
+          quantity_kind: piece
+          quantity_scale: 0
+          quantity_identity_locked: false
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: read-unit
+    operationId: readCatalogueUnit
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000005
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000005
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: PC
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          name: Piece
+          quantity_kind: piece
+          quantity_scale: 0
+          quantity_identity_locked: false
+  - name: maintain-unit-retains-history
+    operationId: replaceCatalogueUnit
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000005
+      body:
+        expected_material_version: 1
+        state: active
+        name: Pieces
+        quantity_kind: piece
+        quantity_scale: 0
+        reason: Descriptive correction only
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000005
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: PC
+            state: active
+            material_version: 2
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Pieces
+            quantity_kind: piece
+            quantity_scale: 0
+            quantity_identity_locked: false
+  - name: history-unit
+    operationId: listCatalogueUnitHistory
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000005
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000010
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000005
+          material_version: 1
+          actor_id: 70000000-0000-4000-8000-000000000002
+          recorded_at: '2026-11-09T02:00:00.000000Z'
+          reason: Initial descriptive catalogue setup
+          snapshot:
+            id: 70000000-0000-4000-8000-000000000005
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: PC
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Piece
+            quantity_kind: piece
+            quantity_scale: 0
+            quantity_identity_locked: false
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: exact-version-unit
+    operationId: readCatalogueUnitVersion
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000005
+        material_version: 1
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000010
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000005
+          material_version: 1
+          actor_id: 70000000-0000-4000-8000-000000000002
+          recorded_at: '2026-11-09T02:00:00.000000Z'
+          reason: Initial descriptive catalogue setup
+          snapshot:
+            id: 70000000-0000-4000-8000-000000000005
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: PC
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Piece
+            quantity_kind: piece
+            quantity_scale: 0
+            quantity_identity_locked: false
+  - name: stale-unit-edit
+    operationId: replaceCatalogueUnit
+    setup: Synthetic current resource version is 2; submitted expected version is 1. No change/result.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000005
+      body:
+        expected_material_version: 1
+        state: active
+        name: Pieces
+        quantity_kind: piece
+        quantity_scale: 0
+        reason: Descriptive correction only
+    response:
+      status: '409'
+      body:
+        error:
+          code: material_version_conflict
+          message: material version conflict
+        request_id: 70000000-0000-4000-8000-000000000008
+        current:
+          resource_id: 70000000-0000-4000-8000-000000000005
+          material_version: 2
+          state: active
+  - name: retire-unit-no-movement
+    operationId: replaceCatalogueUnit
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000005
+      body:
+        expected_material_version: 1
+        state: retired
+        name: Pieces
+        quantity_kind: piece
+        quantity_scale: 0
+        reason: Stop new demand; retain existing commitments
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000005
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: PC
+            state: retired
+            material_version: 2
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Piece
+            quantity_kind: piece
+            quantity_scale: 0
+            quantity_identity_locked: false
+  - name: no-implicit-price-approval-unit
+    operationId: createCatalogueUnit
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: PC
+        name: Piece
+        quantity_kind: piece
+        quantity_scale: 0
+        reason: Initial descriptive catalogue setup
+        price: '125.00'
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated field.
+          fields:
+          - pointer: /price
+            code: unexpected_field
+            message: Correct this field.
+        request_id: 70000000-0000-4000-8000-000000000008
+    request_valid: false
+  - name: create-item-missing-settings-does-not-approve
+    operationId: createCatalogueItem
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000003
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            description: Programme shirt
+            unit_id: 70000000-0000-4000-8000-000000000005
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+  - name: list-items
+    operationId: listCatalogueItems
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+        state: active
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000003
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: SHIRT
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          description: Programme shirt
+          unit_id: 70000000-0000-4000-8000-000000000005
+          settings:
+            price: null
+            rop: null
+            target_level: null
+            quantity_policy: null
+            blockers:
+            - setting: quantity_scale
+              subject_id: 70000000-0000-4000-8000-000000000004
+              reason: missing
+            - setting: price
+              subject_id: 70000000-0000-4000-8000-000000000004
+              reason: unapproved
+            - setting: rop
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+            - setting: target_level
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: read-item
+    operationId: readCatalogueItem
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000003
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000003
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: SHIRT
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          description: Programme shirt
+          unit_id: 70000000-0000-4000-8000-000000000005
+          settings:
+            price: null
+            rop: null
+            target_level: null
+            quantity_policy: null
+            blockers:
+            - setting: rop
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+            - setting: target_level
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+  - name: maintain-item-retains-history
+    operationId: replaceCatalogueItem
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000003
+      body:
+        expected_material_version: 1
+        state: active
+        description: Programme shirt corrected
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Descriptive correction only
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000003
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT
+            state: active
+            material_version: 2
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            description: Programme shirt corrected
+            unit_id: 70000000-0000-4000-8000-000000000005
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+  - name: history-item
+    operationId: listCatalogueItemHistory
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000003
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000010
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000003
+          material_version: 1
+          actor_id: 70000000-0000-4000-8000-000000000002
+          recorded_at: '2026-11-09T02:00:00.000000Z'
+          reason: Initial descriptive catalogue setup
+          snapshot:
+            id: 70000000-0000-4000-8000-000000000003
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            description: Programme shirt
+            unit_id: 70000000-0000-4000-8000-000000000005
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: quantity_scale
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: missing
+              - setting: price
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: unapproved
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: exact-version-item
+    operationId: readCatalogueItemVersion
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000003
+        material_version: 1
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000010
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000003
+          material_version: 1
+          actor_id: 70000000-0000-4000-8000-000000000002
+          recorded_at: '2026-11-09T02:00:00.000000Z'
+          reason: Initial descriptive catalogue setup
+          snapshot:
+            id: 70000000-0000-4000-8000-000000000003
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            description: Programme shirt
+            unit_id: 70000000-0000-4000-8000-000000000005
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: quantity_scale
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: missing
+              - setting: price
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: unapproved
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+  - name: stale-item-edit
+    operationId: replaceCatalogueItem
+    setup: Synthetic current resource version is 2; submitted expected version is 1. No change/result.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000003
+      body:
+        expected_material_version: 1
+        state: active
+        description: Programme shirt corrected
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Descriptive correction only
+    response:
+      status: '409'
+      body:
+        error:
+          code: material_version_conflict
+          message: material version conflict
+        request_id: 70000000-0000-4000-8000-000000000008
+        current:
+          resource_id: 70000000-0000-4000-8000-000000000003
+          material_version: 2
+          state: active
+  - name: retire-item-no-movement
+    operationId: replaceCatalogueItem
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000003
+      body:
+        expected_material_version: 1
+        state: retired
+        description: Programme shirt corrected
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Stop new demand; retain existing commitments
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000003
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT
+            state: retired
+            material_version: 2
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            description: Programme shirt
+            unit_id: 70000000-0000-4000-8000-000000000005
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+  - name: no-implicit-price-approval-item
+    operationId: createCatalogueItem
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+        price: '125.00'
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated field.
+          fields:
+          - pointer: /price
+            code: unexpected_field
+            message: Correct this field.
+        request_id: 70000000-0000-4000-8000-000000000008
+    request_valid: false
+  - name: create-variant-missing-settings-does-not-approve
+    operationId: createCatalogueVariant
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT-BLU-M
+        item_id: 70000000-0000-4000-8000-000000000003
+        label: Blue / medium
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity_scale: 0
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000004
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT-BLU-M
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            item_id: 70000000-0000-4000-8000-000000000003
+            label: Blue / medium
+            unit_id: 70000000-0000-4000-8000-000000000005
+            quantity_scale: 0
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: quantity_scale
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: missing
+              - setting: price
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: unapproved
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+            quantity_identity_locked: false
+  - name: list-variants
+    operationId: listCatalogueVariants
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+        state: active
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000004
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: SHIRT-BLU-M
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          item_id: 70000000-0000-4000-8000-000000000003
+          label: Blue / medium
+          unit_id: 70000000-0000-4000-8000-000000000005
+          quantity_scale: 0
+          settings:
+            price: null
+            rop: null
+            target_level: null
+            quantity_policy: null
+            blockers:
+            - setting: quantity_scale
+              subject_id: 70000000-0000-4000-8000-000000000004
+              reason: missing
+            - setting: price
+              subject_id: 70000000-0000-4000-8000-000000000004
+              reason: unapproved
+            - setting: rop
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+            - setting: target_level
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+          quantity_identity_locked: false
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: read-variant
+    operationId: readCatalogueVariant
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000004
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: SHIRT-BLU-M
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          item_id: 70000000-0000-4000-8000-000000000003
+          label: Blue / medium
+          unit_id: 70000000-0000-4000-8000-000000000005
+          quantity_scale: 0
+          settings:
+            price: null
+            rop: null
+            target_level: null
+            quantity_policy: null
+            blockers:
+            - setting: quantity_scale
+              subject_id: 70000000-0000-4000-8000-000000000004
+              reason: missing
+            - setting: price
+              subject_id: 70000000-0000-4000-8000-000000000004
+              reason: unapproved
+            - setting: rop
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+            - setting: target_level
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+          quantity_identity_locked: false
+  - name: maintain-variant-retains-history
+    operationId: replaceCatalogueVariant
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+      body:
+        expected_material_version: 1
+        state: active
+        label: Blue / medium corrected
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity_scale: 0
+        reason: Descriptive correction only
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000004
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT-BLU-M
+            state: active
+            material_version: 2
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            item_id: 70000000-0000-4000-8000-000000000003
+            label: Blue / medium corrected
+            unit_id: 70000000-0000-4000-8000-000000000005
+            quantity_scale: 0
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: quantity_scale
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: missing
+              - setting: price
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: unapproved
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+            quantity_identity_locked: false
+  - name: history-variant
+    operationId: listCatalogueVariantHistory
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000010
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000004
+          material_version: 1
+          actor_id: 70000000-0000-4000-8000-000000000002
+          recorded_at: '2026-11-09T02:00:00.000000Z'
+          reason: Initial descriptive catalogue setup
+          snapshot:
+            id: 70000000-0000-4000-8000-000000000004
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT-BLU-M
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            item_id: 70000000-0000-4000-8000-000000000003
+            label: Blue / medium
+            unit_id: 70000000-0000-4000-8000-000000000005
+            quantity_scale: 0
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: quantity_scale
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: missing
+              - setting: price
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: unapproved
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+            quantity_identity_locked: false
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: exact-version-variant
+    operationId: readCatalogueVariantVersion
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+        material_version: 1
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000010
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000004
+          material_version: 1
+          actor_id: 70000000-0000-4000-8000-000000000002
+          recorded_at: '2026-11-09T02:00:00.000000Z'
+          reason: Initial descriptive catalogue setup
+          snapshot:
+            id: 70000000-0000-4000-8000-000000000004
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT-BLU-M
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            item_id: 70000000-0000-4000-8000-000000000003
+            label: Blue / medium
+            unit_id: 70000000-0000-4000-8000-000000000005
+            quantity_scale: 0
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: quantity_scale
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: missing
+              - setting: price
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: unapproved
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+            quantity_identity_locked: false
+  - name: stale-variant-edit
+    operationId: replaceCatalogueVariant
+    setup: Synthetic current resource version is 2; submitted expected version is 1. No change/result.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+      body:
+        expected_material_version: 1
+        state: active
+        label: Blue / medium corrected
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity_scale: 0
+        reason: Descriptive correction only
+    response:
+      status: '409'
+      body:
+        error:
+          code: material_version_conflict
+          message: material version conflict
+        request_id: 70000000-0000-4000-8000-000000000008
+        current:
+          resource_id: 70000000-0000-4000-8000-000000000004
+          material_version: 2
+          state: active
+  - name: retire-variant-no-movement
+    operationId: replaceCatalogueVariant
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+      body:
+        expected_material_version: 1
+        state: retired
+        label: Blue / medium corrected
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity_scale: 0
+        reason: Stop new demand; retain existing commitments
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000004
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT-BLU-M
+            state: retired
+            material_version: 2
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            item_id: 70000000-0000-4000-8000-000000000003
+            label: Blue / medium
+            unit_id: 70000000-0000-4000-8000-000000000005
+            quantity_scale: 0
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: quantity_scale
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: missing
+              - setting: price
+                subject_id: 70000000-0000-4000-8000-000000000004
+                reason: unapproved
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+            quantity_identity_locked: false
+  - name: no-implicit-price-approval-variant
+    operationId: createCatalogueVariant
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT-BLU-M
+        item_id: 70000000-0000-4000-8000-000000000003
+        label: Blue / medium
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity_scale: 0
+        reason: Initial descriptive catalogue setup
+        price: '125.00'
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated field.
+          fields:
+          - pointer: /price
+            code: unexpected_field
+            message: Correct this field.
+        request_id: 70000000-0000-4000-8000-000000000008
+    request_valid: false
+  - name: create-location-missing-settings-does-not-approve
+    operationId: createCatalogueLocation
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: MAIN
+        name: Main stockroom
+        kind: stockroom
+        custodian_id: 70000000-0000-4000-8000-000000000002
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000006
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: MAIN
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Main stockroom
+            kind: stockroom
+            custodian_id: 70000000-0000-4000-8000-000000000002
+  - name: list-locations
+    operationId: listCatalogueLocations
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+        state: active
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000006
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: MAIN
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          name: Main stockroom
+          kind: stockroom
+          custodian_id: 70000000-0000-4000-8000-000000000002
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: read-location
+    operationId: readCatalogueLocation
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000006
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000006
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: MAIN
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          name: Main stockroom
+          kind: stockroom
+          custodian_id: 70000000-0000-4000-8000-000000000002
+  - name: maintain-location-retains-history
+    operationId: replaceCatalogueLocation
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000006
+      body:
+        expected_material_version: 1
+        state: active
+        name: Main room
+        kind: stockroom
+        custodian_id: 70000000-0000-4000-8000-000000000002
+        reason: Descriptive correction only
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000006
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: MAIN
+            state: active
+            material_version: 2
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Main room
+            kind: stockroom
+            custodian_id: 70000000-0000-4000-8000-000000000002
+  - name: history-location
+    operationId: listCatalogueLocationHistory
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000006
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000010
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000006
+          material_version: 1
+          actor_id: 70000000-0000-4000-8000-000000000002
+          recorded_at: '2026-11-09T02:00:00.000000Z'
+          reason: Initial descriptive catalogue setup
+          snapshot:
+            id: 70000000-0000-4000-8000-000000000006
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: MAIN
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Main stockroom
+            kind: stockroom
+            custodian_id: 70000000-0000-4000-8000-000000000002
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: exact-version-location
+    operationId: readCatalogueLocationVersion
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000006
+        material_version: 1
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000010
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000006
+          material_version: 1
+          actor_id: 70000000-0000-4000-8000-000000000002
+          recorded_at: '2026-11-09T02:00:00.000000Z'
+          reason: Initial descriptive catalogue setup
+          snapshot:
+            id: 70000000-0000-4000-8000-000000000006
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: MAIN
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Main stockroom
+            kind: stockroom
+            custodian_id: 70000000-0000-4000-8000-000000000002
+  - name: stale-location-edit
+    operationId: replaceCatalogueLocation
+    setup: Synthetic current resource version is 2; submitted expected version is 1. No change/result.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000006
+      body:
+        expected_material_version: 1
+        state: active
+        name: Main room
+        kind: stockroom
+        custodian_id: 70000000-0000-4000-8000-000000000002
+        reason: Descriptive correction only
+    response:
+      status: '409'
+      body:
+        error:
+          code: material_version_conflict
+          message: material version conflict
+        request_id: 70000000-0000-4000-8000-000000000008
+        current:
+          resource_id: 70000000-0000-4000-8000-000000000006
+          material_version: 2
+          state: active
+  - name: retire-location-no-movement
+    operationId: replaceCatalogueLocation
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000006
+      body:
+        expected_material_version: 1
+        state: retired
+        name: Main room
+        kind: stockroom
+        custodian_id: 70000000-0000-4000-8000-000000000002
+        reason: Stop new demand; retain existing commitments
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000006
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: MAIN
+            state: retired
+            material_version: 2
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            name: Main stockroom
+            kind: stockroom
+            custodian_id: 70000000-0000-4000-8000-000000000002
+  - name: no-implicit-price-approval-location
+    operationId: createCatalogueLocation
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: MAIN
+        name: Main stockroom
+        kind: stockroom
+        custodian_id: 70000000-0000-4000-8000-000000000002
+        reason: Initial descriptive catalogue setup
+        price: '125.00'
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated field.
+          fields:
+          - pointer: /price
+            code: unexpected_field
+            message: Correct this field.
+        request_id: 70000000-0000-4000-8000-000000000008
+    request_valid: false
+  - name: seven-stock-views-overlap-not-summed
+    operationId: listStockSummaries
+    setup: 'Illustrative state only, not posted balances/approval or acceptance: 10 usable; RF reserves 4, of which
+      2 have two overlapping holds; a separate unreserved 2 is held. Union(reserved, held)=6, availability=4, on-hand=10.
+      Approved synthetic ROP 10 makes low at equality. RF 10=0 issued+0 canceled+4 reserved+6 unreserved. Blocked
+      reserved 2 is a subset of reserved 4, not extra shortage. Later-stage categories zero. Ticket 05 owns real opening
+      path.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+        - variant_id: 70000000-0000-4000-8000-000000000004
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          quantity_scale: 0
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          views:
+            usable_stockroom_on_hand:
+              label: Usable stockroom on-hand
+              quantity: '10'
+            available_to_allocate:
+              label: Available-to-allocate
+              quantity: '4'
+            rf_reserved:
+              label: RF-reserved
+              quantity: '4'
+            so_reserved:
+              label: SO-reserved
+              quantity: '0'
+            booth_custody:
+              label: Booth custody
+              quantity: '0'
+            quarantined_rejected:
+              label: Quarantined/rejected
+              quantity: '0'
+            inbound_open_po:
+              label: Inbound open PO
+              quantity: '0'
+          views_are_additive: false
+          item_usable_stockroom_on_hand: '10'
+          approved_rop:
+            policy_id: 70000000-0000-4000-8000-000000000020
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000021
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '10'
+            unit_id: 70000000-0000-4000-8000-000000000005
+            currency: null
+          approved_target:
+            policy_id: 70000000-0000-4000-8000-000000000020
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000021
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '20'
+            unit_id: 70000000-0000-4000-8000-000000000005
+            currency: null
+          low_stock: low
+          setup_blockers: []
+          outstanding_need:
+          - rf_id: 70000000-0000-4000-8000-000000000041
+            line_id: 70000000-0000-4000-8000-000000000042
+            material_version: 1
+            requested: '10'
+            issued: '0'
+            canceled: '0'
+            reserved: '4'
+            blocked_reserved: '2'
+            unreserved_outstanding: '6'
+            uncovered_need: '6'
+          procurement_commitment_created: false
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: stock-variant-held-onhand-and-shortage
+    operationId: readVariantStock
+    setup: 'Illustrative state only, not posted balances/approval or acceptance: 10 usable; RF reserves 4, of which
+      2 have two overlapping holds; a separate unreserved 2 is held. Union(reserved, held)=6, availability=4, on-hand=10.
+      Approved synthetic ROP 10 makes low at equality. RF 10=0 issued+0 canceled+4 reserved+6 unreserved. Blocked
+      reserved 2 is a subset of reserved 4, not extra shortage. Later-stage categories zero. Ticket 05 owns real opening
+      path.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        variant_id: 70000000-0000-4000-8000-000000000004
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          variant_id: 70000000-0000-4000-8000-000000000004
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          quantity_scale: 0
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          views:
+            usable_stockroom_on_hand:
+              label: Usable stockroom on-hand
+              quantity: '10'
+            available_to_allocate:
+              label: Available-to-allocate
+              quantity: '4'
+            rf_reserved:
+              label: RF-reserved
+              quantity: '4'
+            so_reserved:
+              label: SO-reserved
+              quantity: '0'
+            booth_custody:
+              label: Booth custody
+              quantity: '0'
+            quarantined_rejected:
+              label: Quarantined/rejected
+              quantity: '0'
+            inbound_open_po:
+              label: Inbound open PO
+              quantity: '0'
+          views_are_additive: false
+          item_usable_stockroom_on_hand: '10'
+          approved_rop:
+            policy_id: 70000000-0000-4000-8000-000000000020
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000021
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '10'
+            unit_id: 70000000-0000-4000-8000-000000000005
+            currency: null
+          approved_target:
+            policy_id: 70000000-0000-4000-8000-000000000023
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000024
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '20'
+            unit_id: 70000000-0000-4000-8000-000000000005
+            currency: null
+          low_stock: low
+          setup_blockers: []
+          outstanding_need:
+          - rf_id: 70000000-0000-4000-8000-000000000041
+            line_id: 70000000-0000-4000-8000-000000000042
+            material_version: 1
+            requested: '10'
+            issued: '0'
+            canceled: '0'
+            reserved: '4'
+            blocked_reserved: '2'
+            unreserved_outstanding: '6'
+            uncovered_need: '6'
+          procurement_commitment_created: false
+  - name: stock-lots-source-and-disjoint-intersections
+    operationId: listStockLots
+    setup: 'Illustrative state only, not posted balances/approval or acceptance: 10 usable; RF reserves 4, of which
+      2 have two overlapping holds; a separate unreserved 2 is held. Union(reserved, held)=6, availability=4, on-hand=10.
+      Approved synthetic ROP 10 makes low at equality. RF 10=0 issued+0 canceled+4 reserved+6 unreserved. Blocked
+      reserved 2 is a subset of reserved 4, not extra shortage. Later-stage categories zero. Ticket 05 owns real opening
+      path.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        variant_id: 70000000-0000-4000-8000-000000000004
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          material_version: 1
+          stock_version: 1
+          variant_id: 70000000-0000-4000-8000-000000000004
+          variant_material_version: 1
+          item_id: 70000000-0000-4000-8000-000000000003
+          unit_id: 70000000-0000-4000-8000-000000000005
+          unit_material_version: 1
+          quantity_scale: 0
+          historical_variant_label: Blue / medium
+          location_id: 70000000-0000-4000-8000-000000000006
+          custodian_id: 70000000-0000-4000-8000-000000000002
+          condition: usable
+          custody: stockroom
+          source:
+            kind: ipc_rm
+            source_id: 70000000-0000-4000-8000-000000000030
+            source_reference: IPC-SYNTHETIC-001
+            source_material_version: 1
+            accepted_rm_id: 70000000-0000-4000-8000-000000000031
+            accepted_rm_reference: RM-SYNTHETIC-001
+            accepted_rm_version: 1
+            donor_id: null
+          quantity: '10'
+          segments:
+          - id: 70000000-0000-4000-8000-000000000050
+            quantity: '2'
+            reservation:
+              reservation_id: 70000000-0000-4000-8000-000000000040
+              parent_kind: rf
+              parent_id: 70000000-0000-4000-8000-000000000041
+              line_id: 70000000-0000-4000-8000-000000000042
+              material_version: 1
+              quantity: '2'
+            hold_ids:
+            - 70000000-0000-4000-8000-000000000060
+            - 70000000-0000-4000-8000-000000000061
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+          - id: 70000000-0000-4000-8000-000000000051
+            quantity: '2'
+            reservation:
+              reservation_id: 70000000-0000-4000-8000-000000000040
+              parent_kind: rf
+              parent_id: 70000000-0000-4000-8000-000000000041
+              line_id: 70000000-0000-4000-8000-000000000042
+              material_version: 1
+              quantity: '2'
+            hold_ids: []
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+          - id: 70000000-0000-4000-8000-000000000052
+            quantity: '2'
+            reservation: null
+            hold_ids:
+            - 70000000-0000-4000-8000-000000000060
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+          - id: 70000000-0000-4000-8000-000000000053
+            quantity: '4'
+            reservation: null
+            hold_ids: []
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+          created_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: stock-lot-retains-original-variant-label
+    operationId: readStockLot
+    setup: 'Illustrative state only, not posted balances/approval or acceptance: 10 usable; RF reserves 4, of which
+      2 have two overlapping holds; a separate unreserved 2 is held. Union(reserved, held)=6, availability=4, on-hand=10.
+      Approved synthetic ROP 10 makes low at equality. RF 10=0 issued+0 canceled+4 reserved+6 unreserved. Blocked
+      reserved 2 is a subset of reserved 4, not extra shortage. Later-stage categories zero. Ticket 05 owns real opening
+      path. Current catalogue version 2 renamed label; lot retains accepted version 1 and original label.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          material_version: 1
+          stock_version: 1
+          variant_id: 70000000-0000-4000-8000-000000000004
+          variant_material_version: 1
+          item_id: 70000000-0000-4000-8000-000000000003
+          unit_id: 70000000-0000-4000-8000-000000000005
+          unit_material_version: 1
+          quantity_scale: 0
+          historical_variant_label: Blue / medium
+          location_id: 70000000-0000-4000-8000-000000000006
+          custodian_id: 70000000-0000-4000-8000-000000000002
+          condition: usable
+          custody: stockroom
+          source:
+            kind: ipc_rm
+            source_id: 70000000-0000-4000-8000-000000000030
+            source_reference: IPC-SYNTHETIC-001
+            source_material_version: 1
+            accepted_rm_id: 70000000-0000-4000-8000-000000000031
+            accepted_rm_reference: RM-SYNTHETIC-001
+            accepted_rm_version: 1
+            donor_id: null
+          quantity: '10'
+          segments:
+          - id: 70000000-0000-4000-8000-000000000050
+            quantity: '2'
+            reservation:
+              reservation_id: 70000000-0000-4000-8000-000000000040
+              parent_kind: rf
+              parent_id: 70000000-0000-4000-8000-000000000041
+              line_id: 70000000-0000-4000-8000-000000000042
+              material_version: 1
+              quantity: '2'
+            hold_ids:
+            - 70000000-0000-4000-8000-000000000060
+            - 70000000-0000-4000-8000-000000000061
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+          - id: 70000000-0000-4000-8000-000000000051
+            quantity: '2'
+            reservation:
+              reservation_id: 70000000-0000-4000-8000-000000000040
+              parent_kind: rf
+              parent_id: 70000000-0000-4000-8000-000000000041
+              line_id: 70000000-0000-4000-8000-000000000042
+              material_version: 1
+              quantity: '2'
+            hold_ids: []
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+          - id: 70000000-0000-4000-8000-000000000052
+            quantity: '2'
+            reservation: null
+            hold_ids:
+            - 70000000-0000-4000-8000-000000000060
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+          - id: 70000000-0000-4000-8000-000000000053
+            quantity: '4'
+            reservation: null
+            hold_ids: []
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+          created_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+  - name: eligibility-six-requested-four-free
+    operationId: readStockEligibility
+    setup: 'Illustrative state only, not posted balances/approval or acceptance: 10 usable; RF reserves 4, of which
+      2 have two overlapping holds; a separate unreserved 2 is held. Union(reserved, held)=6, availability=4, on-hand=10.
+      Approved synthetic ROP 10 makes low at equality. RF 10=0 issued+0 canceled+4 reserved+6 unreserved. Blocked
+      reserved 2 is a subset of reserved 4, not extra shortage. Later-stage categories zero. Ticket 05 owns real opening
+      path.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '4'
+          requested_quantity: '6'
+          decision: partial
+          blockers:
+          - active_hold
+          - reserved_for_other_demand
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000050
+            eligible_quantity: '0'
+            blockers:
+            - active_hold
+            - reserved_for_other_demand
+          - segment_id: 70000000-0000-4000-8000-000000000051
+            eligible_quantity: '0'
+            blockers:
+            - reserved_for_other_demand
+          - segment_id: 70000000-0000-4000-8000-000000000052
+            eligible_quantity: '0'
+            blockers:
+            - active_hold
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '4'
+            blockers: []
+          is_commit_authorization: false
+  - name: stock-source-related-history
+    operationId: listStockLotHistory
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000010
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          material_version: 1
+          recorded_at: '2026-11-09T02:00:00.000000Z'
+          actor_id: 70000000-0000-4000-8000-000000000002
+          kind: accepted_receipt
+          related_resource_type: rm
+          related_resource_id: 70000000-0000-4000-8000-000000000031
+          related_material_version: 1
+          related_reference: RM-SYNTHETIC-001
+          physical_quantity_changed: true
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: recover-catalogue-create-by-key
+    operationId: findCatalogueOperation
+    setup: Original create committed but response was lost; same actor still has current maintenance authority. No
+      second item/reference.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        operation_name: createCatalogueItem
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          actor_id: 70000000-0000-4000-8000-000000000002
+          operation_id_name: createCatalogueItem
+          action_key: 40000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000003
+          resource_kind: item
+          committed_material_version: 1
+          committed_at: '2026-11-09T02:00:00.000000Z'
+          outcome: committed
+  - name: recover-catalogue-operation-id
+    operationId: readCatalogueOperation
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        operation_id: 70000000-0000-4000-8000-000000000009
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          actor_id: 70000000-0000-4000-8000-000000000002
+          operation_id_name: createCatalogueItem
+          action_key: 40000000-0000-4000-8000-000000000001
+          resource_id: 70000000-0000-4000-8000-000000000003
+          resource_kind: item
+          committed_material_version: 1
+          committed_at: '2026-11-09T02:00:00.000000Z'
+          outcome: committed
+  - name: wrong-chapter-catalogue
+    operationId: createCatalogueItem
+    setup: Full actor has chapter A only; URL chapter B is foreign. No metadata.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000090
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '404'
+      body:
+        error:
+          code: chapter_not_found
+          message: chapter not found
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: provider-without-membership-catalogue
+    operationId: createCatalogueItem
+    setup: Provider has no operational membership.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '404'
+      body:
+        error:
+          code: chapter_not_found
+          message: chapter not found
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: catalogue-maintenance-wrong-duty
+    operationId: createCatalogueItem
+    setup: Visible chapter but actor only COMMITTEE_REQUESTER.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '403'
+      body:
+        error:
+          code: duty_denied
+          message: duty denied
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: catalogue-limited-mfa
+    operationId: createCatalogueItem
+    setup: Password accepted; MFA continuation is incomplete.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '403'
+      body:
+        error:
+          code: mfa_incomplete
+          message: mfa incomplete
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: catalogue-revoked-result
+    operationId: createCatalogueItem
+    setup: Account was disabled before request.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '401'
+      body:
+        error:
+          code: unauthenticated
+          message: unauthenticated
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: catalogue-different-payload-key-conflict
+    operationId: createCatalogueItem
+    setup: Accepted same key has different description.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '409'
+      body:
+        error:
+          code: action_key_conflict
+          message: action key conflict
+        request_id: 70000000-0000-4000-8000-000000000008
+        current: null
+  - name: catalogue-code-not-recycled
+    operationId: createCatalogueItem
+    setup: Code already belongs to retired item; no reuse or duplicate.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '409'
+      body:
+        error:
+          code: code_conflict
+          message: code conflict
+        request_id: 70000000-0000-4000-8000-000000000008
+        current: null
+  - name: catalogue-authorized-same-payload-replay
+    operationId: createCatalogueItem
+    setup: Original create committed, current authority still valid; return original snapshot with no second version/reference.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: SHIRT
+        description: Programme shirt
+        unit_id: 70000000-0000-4000-8000-000000000005
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 70000000-0000-4000-8000-000000000009
+          resource:
+            id: 70000000-0000-4000-8000-000000000003
+            chapter_id: 70000000-0000-4000-8000-000000000001
+            code: SHIRT
+            state: active
+            material_version: 1
+            created_at: '2026-11-09T02:00:00.000000Z'
+            updated_at: '2026-11-09T02:00:00.000000Z'
+            description: Programme shirt
+            unit_id: 70000000-0000-4000-8000-000000000005
+            settings:
+              price: null
+              rop: null
+              target_level: null
+              quantity_policy: null
+              blockers:
+              - setting: rop
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+              - setting: target_level
+                subject_id: 70000000-0000-4000-8000-000000000003
+                reason: missing
+      headers:
+        X-Action-Replayed: 'true'
+  - name: catalogue-lost-response-no-committed-result
+    operationId: findCatalogueOperation
+    setup: No accepted receipt found; not proof original is no longer running. Review current state before identical-key
+      retry.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        operation_name: createCatalogueItem
+    response:
+      status: '404'
+      body:
+        error:
+          code: resource_not_found
+          message: resource not found
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: catalogue-result-current-duty-revoked
+    operationId: readCatalogueOperation
+    setup: Originating actor lost INVENTORY duty; old receipt ID grants no lookup/replay access.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        operation_id: 70000000-0000-4000-8000-000000000009
+    response:
+      status: '403'
+      body:
+        error:
+          code: duty_denied
+          message: duty denied
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: catalogue-other-actor-result
+    operationId: readCatalogueOperation
+    setup: Different actor currently has INVENTORY but does not own this catalogue action receipt.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        operation_id: 70000000-0000-4000-8000-000000000009
+    response:
+      status: '404'
+      body:
+        error:
+          code: resource_not_found
+          message: resource not found
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: piece-rejects-fractional-precision
+    operationId: createCatalogueUnit
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: PC
+        name: Piece
+        quantity_kind: piece
+        quantity_scale: 1
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated field.
+          fields:
+          - pointer: /quantity_scale
+            code: invalid_format
+            message: Correct this field.
+        request_id: 70000000-0000-4000-8000-000000000008
+    request_valid: false
+  - name: unsupported-unit-precision-seven
+    operationId: createCatalogueUnit
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      body:
+        code: PC
+        name: Piece
+        quantity_kind: measured
+        quantity_scale: 7
+        reason: Initial descriptive catalogue setup
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated field.
+          fields:
+          - pointer: /quantity_scale
+            code: invalid_format
+            message: Correct this field.
+        request_id: 70000000-0000-4000-8000-000000000008
+    request_valid: false
+  - name: used-variant-unit-locked
+    operationId: replaceCatalogueVariant
+    setup: Variant has transactions; another unit cannot rewrite historical quantity meaning.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+      body:
+        expected_material_version: 1
+        state: active
+        label: Blue / medium corrected
+        unit_id: 70000000-0000-4000-8000-000000000091
+        quantity_scale: 0
+        reason: Descriptive correction only
+    response:
+      status: '409'
+      body:
+        error:
+          code: quantity_identity_locked
+          message: quantity identity locked
+        request_id: 70000000-0000-4000-8000-000000000008
+        current: null
+  - name: variant-incompatible-item-unit
+    operationId: replaceCatalogueVariant
+    setup: Unused variant unit differs from parent item; no implicit conversion.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+      body:
+        expected_material_version: 1
+        state: active
+        label: Blue / medium corrected
+        unit_id: 70000000-0000-4000-8000-000000000091
+        quantity_scale: 0
+        reason: Descriptive correction only
+    response:
+      status: '409'
+      body:
+        error:
+          code: unit_incompatible
+          message: unit incompatible
+        request_id: 70000000-0000-4000-8000-000000000008
+        current: null
+  - name: list-empty-retired-results
+    operationId: listCatalogueItems
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        state: retired
+    response:
+      status: '200'
+      body:
+        data: []
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: catalogue-first-page
+    operationId: listCatalogueItems
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        limit: 1
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000003
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: SHIRT
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          description: Programme shirt
+          unit_id: 70000000-0000-4000-8000-000000000005
+          settings:
+            price: null
+            rop: null
+            target_level: null
+            quantity_policy: null
+            blockers:
+            - setting: quantity_scale
+              subject_id: 70000000-0000-4000-8000-000000000004
+              reason: missing
+            - setting: price
+              subject_id: 70000000-0000-4000-8000-000000000004
+              reason: unapproved
+            - setting: rop
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+            - setting: target_level
+              subject_id: 70000000-0000-4000-8000-000000000003
+              reason: missing
+        page:
+          next_cursor: synthetic-catalogue-page-2
+          snapshot_version: 1
+  - name: catalogue-final-page
+    operationId: listCatalogueItems
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        limit: 1
+        cursor: synthetic-catalogue-page-2
+    response:
+      status: '200'
+      body:
+        data: []
+        page:
+          next_cursor: null
+          snapshot_version: 1
+  - name: catalogue-stale-cursor
+    operationId: listCatalogueItems
+    setup: Catalogue or authority version changed after first page.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        cursor: synthetic-stale
+    response:
+      status: '409'
+      body:
+        error:
+          code: snapshot_stale
+          message: snapshot stale
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: catalogue-invalid-limit
+    operationId: listCatalogueItems
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+      query:
+        limit: 101
+    response:
+      status: '400'
+      body:
+        error:
+          code: invalid_selector
+          message: invalid selector
+        request_id: 70000000-0000-4000-8000-000000000008
+    invalid_parameters:
+    - query.limit
+  - name: stock-missing-approved-rop-not-default-zero
+    operationId: readVariantStock
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        variant_id: 70000000-0000-4000-8000-000000000004
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          variant_id: 70000000-0000-4000-8000-000000000004
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          quantity_scale: 0
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          views:
+            usable_stockroom_on_hand:
+              label: Usable stockroom on-hand
+              quantity: '10'
+            available_to_allocate:
+              label: Available-to-allocate
+              quantity: '4'
+            rf_reserved:
+              label: RF-reserved
+              quantity: '4'
+            so_reserved:
+              label: SO-reserved
+              quantity: '0'
+            booth_custody:
+              label: Booth custody
+              quantity: '0'
+            quarantined_rejected:
+              label: Quarantined/rejected
+              quantity: '0'
+            inbound_open_po:
+              label: Inbound open PO
+              quantity: '0'
+          views_are_additive: false
+          item_usable_stockroom_on_hand: '10'
+          approved_rop: null
+          approved_target: null
+          low_stock: setup_blocked
+          setup_blockers:
+          - setting: rop
+            subject_id: 70000000-0000-4000-8000-000000000003
+            reason: unapproved
+          - setting: target_level
+            subject_id: 70000000-0000-4000-8000-000000000003
+            reason: missing
+          outstanding_need:
+          - rf_id: 70000000-0000-4000-8000-000000000041
+            line_id: 70000000-0000-4000-8000-000000000042
+            material_version: 1
+            requested: '10'
+            issued: '0'
+            canceled: '0'
+            reserved: '4'
+            blocked_reserved: '2'
+            unreserved_outstanding: '6'
+            uncovered_need: '6'
+          procurement_commitment_created: false
+  - name: shortage-persists-above-rop
+    operationId: readVariantStock
+    setup: 'Illustrative state only, not posted balances/approval or acceptance: 10 usable; RF reserves 4, of which
+      2 have two overlapping holds; a separate unreserved 2 is held. Union(reserved, held)=6, availability=4, on-hand=10.
+      Approved synthetic ROP 10 makes low at equality. RF 10=0 issued+0 canceled+4 reserved+6 unreserved. Blocked
+      reserved 2 is a subset of reserved 4, not extra shortage. Later-stage categories zero. Ticket 05 owns real opening
+      path. Separate scenario ROP=5; on-hand=10 above ROP; uncovered need remains 6.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        variant_id: 70000000-0000-4000-8000-000000000004
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          variant_id: 70000000-0000-4000-8000-000000000004
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          quantity_scale: 0
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          views:
+            usable_stockroom_on_hand:
+              label: Usable stockroom on-hand
+              quantity: '10'
+            available_to_allocate:
+              label: Available-to-allocate
+              quantity: '4'
+            rf_reserved:
+              label: RF-reserved
+              quantity: '4'
+            so_reserved:
+              label: SO-reserved
+              quantity: '0'
+            booth_custody:
+              label: Booth custody
+              quantity: '0'
+            quarantined_rejected:
+              label: Quarantined/rejected
+              quantity: '0'
+            inbound_open_po:
+              label: Inbound open PO
+              quantity: '0'
+          views_are_additive: false
+          item_usable_stockroom_on_hand: '10'
+          approved_rop:
+            policy_id: 70000000-0000-4000-8000-000000000020
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000021
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '5'
+            unit_id: 70000000-0000-4000-8000-000000000005
+            currency: null
+          approved_target:
+            policy_id: 70000000-0000-4000-8000-000000000023
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000024
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '20'
+            unit_id: 70000000-0000-4000-8000-000000000005
+            currency: null
+          low_stock: above_rop
+          setup_blockers: []
+          outstanding_need:
+          - rf_id: 70000000-0000-4000-8000-000000000041
+            line_id: 70000000-0000-4000-8000-000000000042
+            material_version: 1
+            requested: '10'
+            issued: '0'
+            canceled: '0'
+            reserved: '4'
+            blocked_reserved: '2'
+            unreserved_outstanding: '6'
+            uncovered_need: '6'
+          procurement_commitment_created: false
+  - name: eligibility-blocked-unit-incompatible
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is unit_incompatible.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - unit_incompatible
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - unit_incompatible
+          is_commit_authorization: false
+  - name: eligibility-blocked-uninterpreted-condition
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is uninterpreted_condition.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - uninterpreted_condition
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - uninterpreted_condition
+          is_commit_authorization: false
+  - name: eligibility-blocked-restriction-use
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is restriction_use.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - restriction_use
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - restriction_use
+          is_commit_authorization: false
+  - name: eligibility-blocked-restriction-event
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is restriction_event.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - restriction_event
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - restriction_event
+          is_commit_authorization: false
+  - name: eligibility-blocked-restriction-unit
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is restriction_unit.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - restriction_unit
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - restriction_unit
+          is_commit_authorization: false
+  - name: eligibility-blocked-restriction-not-effective
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is restriction_not_effective.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - restriction_not_effective
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - restriction_not_effective
+          is_commit_authorization: false
+  - name: eligibility-blocked-restriction-expired
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is restriction_expired.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - restriction_expired
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - restriction_expired
+          is_commit_authorization: false
+  - name: eligibility-blocked-quarantined
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is quarantined.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - quarantined
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - quarantined
+          is_commit_authorization: false
+  - name: eligibility-blocked-rejected
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is rejected.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - rejected
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - rejected
+          is_commit_authorization: false
+  - name: eligibility-blocked-booth-custody
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is booth_custody.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - booth_custody
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - booth_custody
+          is_commit_authorization: false
+  - name: eligibility-blocked-not-accepted
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is not_accepted.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - not_accepted
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - not_accepted
+          is_commit_authorization: false
+  - name: eligibility-blocked-new-demand-retired
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is new_demand_retired.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - new_demand_retired
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - new_demand_retired
+          is_commit_authorization: false
+  - name: eligibility-blocked-quantity-scale-unapproved
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is quantity_scale_unapproved.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - quantity_scale_unapproved
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - quantity_scale_unapproved
+          is_commit_authorization: false
+  - name: eligibility-blocked-unsupported-condition
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is unsupported_condition.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - unsupported_condition
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - unsupported_condition
+          is_commit_authorization: false
+  - name: eligibility-blocked-wrong-location
+    operationId: readStockEligibility
+    setup: Independent illustrative lot with quantity 10 in one segment, request 6; current condition is wrong_location.
+      No stock is posted or changed.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '0'
+          requested_quantity: '6'
+          decision: blocked
+          blockers:
+          - wrong_location
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '0'
+            blockers:
+            - wrong_location
+          is_commit_authorization: false
+  - name: eligibility-exact-four
+    operationId: readStockEligibility
+    setup: 'Illustrative state only, not posted balances/approval or acceptance: 10 usable; RF reserves 4, of which
+      2 have two overlapping holds; a separate unreserved 2 is held. Union(reserved, held)=6, availability=4, on-hand=10.
+      Approved synthetic ROP 10 makes low at equality. RF 10=0 issued+0 canceled+4 reserved+6 unreserved. Blocked
+      reserved 2 is a subset of reserved 4, not extra shortage. Later-stage categories zero. Ticket 05 owns real opening
+      path.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '4'
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: null
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '4'
+          requested_quantity: '4'
+          decision: eligible
+          blockers:
+          - active_hold
+          - reserved_for_other_demand
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000050
+            eligible_quantity: '0'
+            blockers:
+            - active_hold
+            - reserved_for_other_demand
+          - segment_id: 70000000-0000-4000-8000-000000000051
+            eligible_quantity: '0'
+            blockers:
+            - reserved_for_other_demand
+          - segment_id: 70000000-0000-4000-8000-000000000052
+            eligible_quantity: '0'
+            blockers:
+            - active_hold
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '4'
+            blockers: []
+          is_commit_authorization: false
+  - name: retired-variant-existing-commitment-still-eligible
+    operationId: readStockEligibility
+    setup: 'Illustrative state only, not posted balances/approval or acceptance: 10 usable; RF reserves 4, of which
+      2 have two overlapping holds; a separate unreserved 2 is held. Union(reserved, held)=6, availability=4, on-hand=10.
+      Approved synthetic ROP 10 makes low at equality. RF 10=0 issued+0 canceled+4 reserved+6 unreserved. Blocked
+      reserved 2 is a subset of reserved 4, not extra shortage. Later-stage categories zero. Ticket 05 owns real opening
+      path. Variant later retired; approved pre-retirement RF line may use eligible reserved 2 plus available 4. Still
+      cannot issue held 2.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '6'
+        rf_line_id: 70000000-0000-4000-8000-000000000042
+    response:
+      status: '200'
+      body:
+        data:
+          stock_lot_id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          lot_material_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          rf_line_id: 70000000-0000-4000-8000-000000000042
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          eligible_quantity: '6'
+          requested_quantity: '6'
+          decision: eligible
+          blockers:
+          - active_hold
+          segments:
+          - segment_id: 70000000-0000-4000-8000-000000000050
+            eligible_quantity: '0'
+            blockers:
+            - active_hold
+          - segment_id: 70000000-0000-4000-8000-000000000051
+            eligible_quantity: '2'
+            blockers: []
+          - segment_id: 70000000-0000-4000-8000-000000000052
+            eligible_quantity: '0'
+            blockers:
+            - active_hold
+          - segment_id: 70000000-0000-4000-8000-000000000053
+            eligible_quantity: '4'
+            blockers: []
+          is_commit_authorization: false
+  - name: stock-quantity-numeric-rejected
+    operationId: readStockEligibility
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: 6
+    response:
+      status: '400'
+      body:
+        error:
+          code: invalid_selector
+          message: invalid selector
+        request_id: 70000000-0000-4000-8000-000000000008
+    invalid_parameters:
+    - query.quantity
+  - name: stock-unit-excess-scale-rejected
+    operationId: readStockEligibility
+    setup: Piece unit scale 0; lexical decimal is schema-valid but runtime selector is unsupported. No rounding.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+        unit_id: 70000000-0000-4000-8000-000000000005
+        quantity: '0.1'
+    response:
+      status: '400'
+      body:
+        error:
+          code: invalid_selector
+          message: invalid selector
+        request_id: 70000000-0000-4000-8000-000000000008
+  - name: stock-uninterpreted-restriction-details
+    operationId: readStockLot
+    setup: Independent synthetic contract state; actor has current chapter-scoped duty and full MFA. No runtime stock/approval
+      is created.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          material_version: 1
+          stock_version: 1
+          variant_id: 70000000-0000-4000-8000-000000000004
+          variant_material_version: 1
+          item_id: 70000000-0000-4000-8000-000000000003
+          unit_id: 70000000-0000-4000-8000-000000000005
+          unit_material_version: 1
+          quantity_scale: 0
+          historical_variant_label: Blue / medium
+          location_id: 70000000-0000-4000-8000-000000000006
+          custodian_id: 70000000-0000-4000-8000-000000000002
+          condition: usable
+          custody: stockroom
+          source:
+            kind: ipc_rm
+            source_id: 70000000-0000-4000-8000-000000000030
+            source_reference: IPC-SYNTHETIC-001
+            source_material_version: 1
+            accepted_rm_id: 70000000-0000-4000-8000-000000000031
+            accepted_rm_reference: RM-SYNTHETIC-001
+            accepted_rm_version: 1
+            donor_id: null
+          quantity: '10'
+          segments:
+          - id: 70000000-0000-4000-8000-000000000053
+            quantity: '10'
+            reservation: null
+            hold_ids: []
+            restrictions:
+              state: uninterpreted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: Condition outside bounded vocabulary
+          created_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+  - name: stock-bounded-donor-source
+    operationId: readStockLot
+    setup: Future-read compatibility illustration only; Stage 1 has no DA receiving mutation. All restriction dimensions
+      apply together; no ordinary override.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        stock_lot_id: 70000000-0000-4000-8000-000000000007
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000007
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          material_version: 1
+          stock_version: 1
+          variant_id: 70000000-0000-4000-8000-000000000004
+          variant_material_version: 1
+          item_id: 70000000-0000-4000-8000-000000000003
+          unit_id: 70000000-0000-4000-8000-000000000005
+          unit_material_version: 1
+          quantity_scale: 0
+          historical_variant_label: Blue / medium
+          location_id: 70000000-0000-4000-8000-000000000006
+          custodian_id: 70000000-0000-4000-8000-000000000002
+          condition: usable
+          custody: stockroom
+          source:
+            kind: da_rm
+            source_id: 70000000-0000-4000-8000-000000000095
+            source_reference: DA-SYNTHETIC-001
+            source_material_version: 1
+            accepted_rm_id: 70000000-0000-4000-8000-000000000031
+            accepted_rm_reference: RM-SYNTHETIC-001
+            accepted_rm_version: 1
+            donor_id: 70000000-0000-4000-8000-000000000096
+          quantity: '10'
+          segments:
+          - id: 70000000-0000-4000-8000-000000000053
+            quantity: '10'
+            reservation: null
+            hold_ids: []
+            restrictions:
+              state: bounded
+              allowed_uses:
+              - internal_use
+              event_ids:
+              - 70000000-0000-4000-8000-000000000097
+              requesting_unit_ids:
+              - 70000000-0000-4000-8000-000000000098
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: '2026-11-10T02:00:00.000000Z'
+              interpretation_id: 70000000-0000-4000-8000-000000000099
+              source_condition_reference: Programme event only
+          created_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+  - name: catalogue-effective-approved-settings-consumption
+    operationId: readCatalogueVariant
+    setup: 'Synthetic projection matching the four catalogue-controlled-policy cases: original approval IDs/person/version
+      retained, no real approval is claimed.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000004
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: SHIRT-BLU-M
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          item_id: 70000000-0000-4000-8000-000000000003
+          label: Blue / medium
+          unit_id: 70000000-0000-4000-8000-000000000005
+          quantity_scale: 0
+          settings:
+            price:
+              policy_id: 70000000-0000-4000-8000-000000000123
+              material_version: 1
+              approval_id: 70000000-0000-4000-8000-000000000143
+              approved_by: 70000000-0000-4000-8000-000000000022
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+              value: '125.00'
+              unit_id: null
+              currency: PHP
+            rop:
+              policy_id: 70000000-0000-4000-8000-000000000121
+              material_version: 1
+              approval_id: 70000000-0000-4000-8000-000000000141
+              approved_by: 70000000-0000-4000-8000-000000000022
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+              value: '10'
+              unit_id: 70000000-0000-4000-8000-000000000005
+              currency: null
+            target_level:
+              policy_id: 70000000-0000-4000-8000-000000000122
+              material_version: 1
+              approval_id: 70000000-0000-4000-8000-000000000142
+              approved_by: 70000000-0000-4000-8000-000000000022
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+              value: '20'
+              unit_id: 70000000-0000-4000-8000-000000000005
+              currency: null
+            quantity_policy:
+              policy_id: 70000000-0000-4000-8000-000000000120
+              material_version: 1
+              approval_id: 70000000-0000-4000-8000-000000000140
+              approved_by: 70000000-0000-4000-8000-000000000022
+              scale: 0
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+            blockers: []
+          quantity_identity_locked: false
+  - name: measured-unit-fixed-three-place-zero-output
+    operationId: readVariantStock
+    setup: Independent synthetic measured-unit scale3 current approval; on-hand1.250 available1.250, all other categories0.000;
+      approved item ROP2.000, target3.000; no RF/stock was posted.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        variant_id: 70000000-0000-4000-8000-000000000111
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          variant_id: 70000000-0000-4000-8000-000000000111
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000110
+          quantity_scale: 3
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          views:
+            usable_stockroom_on_hand:
+              label: Usable stockroom on-hand
+              quantity: '1.250'
+            available_to_allocate:
+              label: Available-to-allocate
+              quantity: '1.250'
+            rf_reserved:
+              label: RF-reserved
+              quantity: '0.000'
+            so_reserved:
+              label: SO-reserved
+              quantity: '0.000'
+            booth_custody:
+              label: Booth custody
+              quantity: '0.000'
+            quarantined_rejected:
+              label: Quarantined/rejected
+              quantity: '0.000'
+            inbound_open_po:
+              label: Inbound open PO
+              quantity: '0.000'
+          views_are_additive: false
+          item_usable_stockroom_on_hand: '1.250'
+          approved_rop:
+            policy_id: 70000000-0000-4000-8000-000000000020
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000021
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '2.000'
+            unit_id: 70000000-0000-4000-8000-000000000110
+            currency: null
+          approved_target:
+            policy_id: 70000000-0000-4000-8000-000000000023
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000024
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '3.000'
+            unit_id: 70000000-0000-4000-8000-000000000110
+            currency: null
+          low_stock: low
+          setup_blockers: []
+          outstanding_need: []
+          procurement_commitment_created: false
 procedure_cases:
 - name: controlled-prepareAccount
   procedureId: prepareAccount
@@ -3064,6 +6447,212 @@ procedure_cases:
     audit_id: 50000000-0000-4000-8000-000000000001
   input_valid: false
 
+- name: catalogue-controlled-policy-quantity-scale
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000130
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000120
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000140
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: quantity_scale
+      subject_id: 70000000-0000-4000-8000-000000000004
+      ownership: operational
+      value: '{"quantity_kind":"piece","quantity_scale":0,"unit_id":"70000000-0000-4000-8000-000000000005"}'
+      value_schema_reference: '#/components/schemas/CatalogueQuantityPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000130
+    target_id: 70000000-0000-4000-8000-000000000120
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: catalogue-controlled-policy-quantity-scale-invalid-value
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000130
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000120
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000140
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: quantity_scale
+      subject_id: 70000000-0000-4000-8000-000000000004
+      ownership: operational
+      value: '{"quantity_kind":"piece","quantity_scale":1,"unit_id":"70000000-0000-4000-8000-000000000005"}'
+      value_schema_reference: '#/components/schemas/CatalogueQuantityPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: rejected
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000130
+    code: invalid_input
+    audit_id: 70000000-0000-4000-8000-000000000008
+  policy_value_valid: false
+- name: catalogue-controlled-policy-rop
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000131
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000121
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000141
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: rop
+      subject_id: 70000000-0000-4000-8000-000000000003
+      ownership: operational
+      value: '{"quantity":"10","unit_id":"70000000-0000-4000-8000-000000000005"}'
+      value_schema_reference: '#/components/schemas/CatalogueThresholdPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000131
+    target_id: 70000000-0000-4000-8000-000000000121
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: catalogue-controlled-policy-target-level
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000132
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000122
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000142
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: target_level
+      subject_id: 70000000-0000-4000-8000-000000000003
+      ownership: operational
+      value: '{"quantity":"20","unit_id":"70000000-0000-4000-8000-000000000005"}'
+      value_schema_reference: '#/components/schemas/CatalogueThresholdPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000132
+    target_id: 70000000-0000-4000-8000-000000000122
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: catalogue-controlled-policy-price
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000133
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000123
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000143
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: FINANCE
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: price
+      subject_id: 70000000-0000-4000-8000-000000000004
+      ownership: financial
+      value: '{"amount":"125.00","currency":"PHP"}'
+      value_schema_reference: '#/components/schemas/CataloguePricePolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000133
+    target_id: 70000000-0000-4000-8000-000000000123
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: catalogue-controlled-policy-price-invalid-value
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000133
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000123
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000143
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: FINANCE
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: price
+      subject_id: 70000000-0000-4000-8000-000000000004
+      ownership: financial
+      value: '{"amount":"125.001","currency":"PHP"}'
+      value_schema_reference: '#/components/schemas/CataloguePricePolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: rejected
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000133
+    code: invalid_input
+    audit_id: 70000000-0000-4000-8000-000000000008
+  policy_value_valid: false
 participant_cases:
   - name: matching-paper-binding
     participantId: checkEvidenceBinding
