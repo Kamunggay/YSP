@@ -168,6 +168,12 @@ def main():
         response_pointer, definition = dereference(pointer + "/responses/" + status)
         if status.startswith("2"):
             covered.add(case["operationId"])
+            rf_mutations = document["components"]["schemas"].get("RfMutationName", {}).get("enum", [])
+            if case["operationId"] in rf_mutations:
+                receipt = response["body"]["data"]
+                if (receipt["operation_name"] != case["operationId"] or
+                        receipt["action_key"] != request_headers["X-Action-Key"]):
+                    raise ValueError(f"{name}: RF receipt differs from originating operation/key")
         if "content" in definition:
             response_media = response.get("media_type", "application/json")
             check_value(response_pointer + "/content/" + pointer_part(response_media) + "/schema",

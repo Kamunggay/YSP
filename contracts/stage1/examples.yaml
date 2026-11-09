@@ -5888,8 +5888,9 @@ cases:
           procurement_commitment_created: false
   - name: rf-create-incomplete-draft
     operationId: createInternalRf
-    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
-      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    before: Authenticated caller 10000000-0000-4000-8000-000000000001. Synthetic independent case; active requester
+      A scoped to committee U; approver B is a distinct enabled individual with current RF_APPROVER and effective
+      Head-approved route. No runtime or actual setup assertion.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -5900,6 +5901,8 @@ cases:
         needed_at: null
         justification: null
         lines: []
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000001
     response:
       status: '201'
       body:
@@ -5908,7 +5911,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000000-0000-4000-8000-000000000001
           operation_name: createInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000001
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 1
           committed_material_version: 1
@@ -5950,8 +5953,9 @@ cases:
               message: Add at least one complete line before submitting.
   - name: rf-save-complete-draft
     operationId: replaceInternalRfDraft
-    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
-      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    before: Authenticated caller 10000000-0000-4000-8000-000000000001. Synthetic independent case; active requester
+      A scoped to committee U; approver B is a distinct enabled individual with current RF_APPROVER and effective
+      Head-approved route. No runtime or actual setup assertion.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -5970,6 +5974,8 @@ cases:
           unit_id: 84000000-0000-4000-8000-000000000001
           requested_quantity: '10'
         reason: Complete the training request.
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000002
     response:
       status: '200'
       body:
@@ -5978,7 +5984,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000000-0000-4000-8000-000000000001
           operation_name: replaceInternalRfDraft
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000002
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 2
           committed_material_version: 2
@@ -6030,8 +6036,9 @@ cases:
             advancement_blockers: []
   - name: rf-submit-assigns-once-only-reference
     operationId: submitInternalRf
-    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
-      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    before: Authenticated caller 10000000-0000-4000-8000-000000000001. Synthetic independent case; active requester
+      A scoped to committee U; approver B is a distinct enabled individual with current RF_APPROVER and effective
+      Head-approved route. No runtime or actual setup assertion.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6039,6 +6046,8 @@ cases:
       body:
         expected_version: 2
         expected_material_version: 2
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000003
     response:
       status: '200'
       body:
@@ -6047,7 +6056,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000000-0000-4000-8000-000000000001
           operation_name: submitInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000003
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 3
           committed_material_version: 2
@@ -6099,8 +6108,9 @@ cases:
             advancement_blockers: []
   - name: rf-independent-approval-without-reservation
     operationId: approveInternalRf
-    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
-      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    before: Authenticated caller 10000001-0000-4000-8000-000000000001. Synthetic independent case; active requester
+      A scoped to committee U; approver B is a distinct enabled individual with current RF_APPROVER and effective
+      Head-approved route. No runtime or actual setup assertion.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6108,6 +6118,8 @@ cases:
       body:
         expected_version: 3
         expected_material_version: 2
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000004
     response:
       status: '200'
       body:
@@ -6116,7 +6128,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000001-0000-4000-8000-000000000001
           operation_name: approveInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000004
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 4
           committed_material_version: 2
@@ -6348,8 +6360,9 @@ cases:
           advancement_blockers: []
   - name: rf-return-with-reason
     operationId: returnInternalRf
-    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
-      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    before: Authenticated caller 10000001-0000-4000-8000-000000000001. Synthetic independent case; active requester
+      A scoped to committee U; approver B is a distinct enabled individual with current RF_APPROVER and effective
+      Head-approved route. No runtime or actual setup assertion.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6358,6 +6371,8 @@ cases:
         expected_version: 3
         expected_material_version: 2
         reason: Clarify the committee need date.
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000007
     response:
       status: '200'
       body:
@@ -6366,7 +6381,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000001-0000-4000-8000-000000000001
           operation_name: returnInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000007
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 4
           committed_material_version: 2
@@ -6418,8 +6433,9 @@ cases:
             advancement_blockers: []
   - name: rf-revise-return-retains-line-and-reference
     operationId: reviseInternalRf
-    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
-      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    before: Authenticated caller 10000000-0000-4000-8000-000000000001. Synthetic independent case; active requester
+      A scoped to committee U; approver B is a distinct enabled individual with current RF_APPROVER and effective
+      Head-approved route. No runtime or actual setup assertion.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6439,6 +6455,8 @@ cases:
           unit_id: 84000000-0000-4000-8000-000000000001
           requested_quantity: '10'
         reason: Correct date after return.
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000008
     response:
       status: '200'
       body:
@@ -6447,7 +6465,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000000-0000-4000-8000-000000000001
           operation_name: reviseInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000008
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 5
           committed_material_version: 3
@@ -6499,8 +6517,9 @@ cases:
             advancement_blockers: []
   - name: rf-resubmit-same-reference
     operationId: submitInternalRf
-    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
-      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    before: Authenticated caller 10000000-0000-4000-8000-000000000001. Synthetic independent case; active requester
+      A scoped to committee U; approver B is a distinct enabled individual with current RF_APPROVER and effective
+      Head-approved route. No runtime or actual setup assertion.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6508,6 +6527,8 @@ cases:
       body:
         expected_version: 5
         expected_material_version: 3
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000009
     response:
       status: '200'
       body:
@@ -6516,7 +6537,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000000-0000-4000-8000-000000000001
           operation_name: submitInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000009
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 6
           committed_material_version: 3
@@ -6568,8 +6589,9 @@ cases:
             advancement_blockers: []
   - name: rf-reapprove-revised-material
     operationId: approveInternalRf
-    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
-      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    before: Authenticated caller 10000001-0000-4000-8000-000000000001. Synthetic independent case; active requester
+      A scoped to committee U; approver B is a distinct enabled individual with current RF_APPROVER and effective
+      Head-approved route. No runtime or actual setup assertion.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6577,6 +6599,8 @@ cases:
       body:
         expected_version: 6
         expected_material_version: 3
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000010
     response:
       status: '200'
       body:
@@ -6585,7 +6609,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000001-0000-4000-8000-000000000001
           operation_name: approveInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000010
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 7
           committed_material_version: 3
@@ -6659,8 +6683,9 @@ cases:
             advancement_blockers: []
   - name: rf-cancel-return-retains-reference
     operationId: cancelInternalRf
-    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
-      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    before: Authenticated caller 10000000-0000-4000-8000-000000000001. Synthetic independent case; active requester
+      A scoped to committee U; approver B is a distinct enabled individual with current RF_APPROVER and effective
+      Head-approved route. No runtime or actual setup assertion.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6670,6 +6695,8 @@ cases:
         expected_material_version: 2
         expected_progress_version: 1
         reason: Training no longer required.
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000011
     response:
       status: '200'
       body:
@@ -6678,7 +6705,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000000-0000-4000-8000-000000000001
           operation_name: cancelInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000011
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 5
           committed_material_version: 2
@@ -6730,8 +6757,8 @@ cases:
             advancement_blockers: []
   - name: rf-real-independent-alternate
     operationId: approveInternalRf
-    before: B has current Head-authorized alternate coverage for this unit and route; B is not requester A. A title
-      or absence of ordinary reviewer supplies no authority.
+    before: Authenticated caller 10000001-0000-4000-8000-000000000001. B has current Head-authorized alternate coverage
+      for this unit and route; B is not requester A. A title or absence of ordinary reviewer supplies no authority.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6739,6 +6766,8 @@ cases:
       body:
         expected_version: 3
         expected_material_version: 2
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000012
     response:
       status: '200'
       body:
@@ -6747,7 +6776,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000001-0000-4000-8000-000000000001
           operation_name: approveInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000012
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 4
           committed_material_version: 2
@@ -6821,8 +6850,9 @@ cases:
             advancement_blockers: []
   - name: rf-approved-material-revision-invalidates-approval
     operationId: reviseInternalRf
-    before: 'Separate branch: v4/m2 is approved with zero commitments, zero issued quantities and no active issue
-      batch. Revision creates m3 draft, null current approval; prior m2 approval remains in retained v4 history.'
+    before: 'Authenticated caller 10000000-0000-4000-8000-000000000001. Separate branch: v4/m2 is approved with zero
+      commitments, zero issued quantities and no active issue batch. Revision creates m3 draft, null current approval;
+      prior m2 approval remains in retained v4 history.'
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6842,6 +6872,8 @@ cases:
           unit_id: 84000000-0000-4000-8000-000000000001
           requested_quantity: '10'
         reason: Correct date after return.
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000013
     response:
       status: '200'
       body:
@@ -6850,7 +6882,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000000-0000-4000-8000-000000000001
           operation_name: reviseInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000013
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 5
           committed_material_version: 3
@@ -6902,9 +6934,9 @@ cases:
             advancement_blockers: []
   - name: rf-cancel-only-unissued-unreserved-remainder
     operationId: cancelInternalRf
-    before: 'Illustrative ticket08 downstream state: requested/approved10, issued6, reserved0, remaining4, no pending
-      issue/physical uncertainty. This cancellation formally cancels4; issued6 and its movement remain. No posting
-      API/runtime asserted.'
+    before: 'Authenticated caller 10000000-0000-4000-8000-000000000001. Illustrative ticket08 downstream state: requested/approved10,
+      issued6, reserved0, remaining4, no pending issue/physical uncertainty. This cancellation formally cancels4;
+      issued6 and its movement remain. No posting API/runtime asserted.'
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -6914,6 +6946,8 @@ cases:
         expected_material_version: 2
         expected_progress_version: 3
         reason: Remaining four no longer required.
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000014
     response:
       status: '200'
       body:
@@ -6922,7 +6956,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000000-0000-4000-8000-000000000001
           operation_name: cancelInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000014
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 9
           committed_material_version: 2
@@ -7133,7 +7167,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000001-0000-4000-8000-000000000001
           operation_name: approveInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000004
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 4
           committed_material_version: 2
@@ -7214,7 +7248,7 @@ cases:
         chapter_id: 60000000-0000-4000-8000-000000000001
       query:
         operation_name: approveInternalRf
-        action_key: 40000000-0000-4000-8000-000000000001
+        action_key: 40000006-0000-4000-8000-000000000004
     response:
       status: '200'
       body:
@@ -7223,7 +7257,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000001-0000-4000-8000-000000000001
           operation_name: approveInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000004
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 4
           committed_material_version: 2
@@ -7306,6 +7340,8 @@ cases:
       body:
         expected_version: 3
         expected_material_version: 2
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000004
     response:
       status: '200'
       body:
@@ -7314,7 +7350,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000001-0000-4000-8000-000000000001
           operation_name: approveInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000004
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 4
           committed_material_version: 2
@@ -7448,6 +7484,8 @@ cases:
       body:
         expected_version: 3
         expected_material_version: 2
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000004
     response:
       status: '403'
       body:
@@ -7589,8 +7627,9 @@ cases:
           message: Approve the chapter RF route before submission or approval.
   - name: rf-missing-route-allows-draft
     operationId: createInternalRf
-    before: Current requester authorized; approved reference_series and RF route may both be missing. Draft has null
-      reference, stays editable and cannot advance until all required setup is approved.
+    before: Authenticated caller 10000000-0000-4000-8000-000000000001. Current requester authorized; approved reference_series
+      and RF route may both be missing. Draft has null reference, stays editable and cannot advance until all required
+      setup is approved.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -7601,6 +7640,8 @@ cases:
         needed_at: null
         justification: null
         lines: []
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000030
     response:
       status: '201'
       body:
@@ -7609,7 +7650,7 @@ cases:
           chapter_id: 60000000-0000-4000-8000-000000000001
           actor_id: 10000000-0000-4000-8000-000000000001
           operation_name: createInternalRf
-          action_key: 40000000-0000-4000-8000-000000000001
+          action_key: 40000006-0000-4000-8000-000000000030
           rf_id: 81000000-0000-4000-8000-000000000001
           committed_version: 1
           committed_material_version: 1
@@ -7728,6 +7769,8 @@ cases:
         expected_version: 3
         expected_material_version: 2
         reason: Changed reason for a consumed intent.
+      headers:
+        X-Action-Key: 40000006-0000-4000-8000-000000000007
     response:
       status: '409'
       body:
@@ -8471,14 +8514,14 @@ cases:
           - pointer: ''
             code: required
             message: Correct this field; preserve other entered values.
-  - name: rf-unknown-filter-rejected
+  - name: rf-invalid-status-filter-rejected
     operationId: listInternalRfs
-    before: Unknown/repeated raw query selectors reject before parsed selector collapsing. No changes.
+    before: The status selector is outside the declared enum; reject invalid_selector without changes.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
       query:
-        status: draft
+        status: not_a_status
     response:
       status: '400'
       body:
@@ -8486,6 +8529,8 @@ cases:
         error:
           code: invalid_selector
           message: invalid selector
+    invalid_parameters:
+    - query.status
   - name: rf-throttled-read
     operationId: readInternalRf
     before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
