@@ -172,6 +172,14 @@ def main():
             response_media = response.get("media_type", "application/json")
             check_value(response_pointer + "/content/" + pointer_part(response_media) + "/schema",
                         response["body"], name + " response")
+            if case["operationId"] == "readChapterAccess" and status == "200":
+                actions = response["body"]["data"]["actions"]
+                expected_actions = document["components"]["schemas"]["Stage1Action"]["enum"]
+                if [action["action"] for action in actions] != expected_actions:
+                    raise ValueError(f"{name}: action inventory differs from canonical order/coverage")
+                for action in actions:
+                    if action["required_duties"] != document["x-stage1-action-duties"][action["action"]]:
+                        raise ValueError(f"{name}: action duties differ from canonical mapping")
         elif "body" in response:
             raise ValueError(f"{name}: bodyless status contains a body")
         response_headers = examples["response_defaults"]["headers"] | response.get("headers", {})
@@ -211,11 +219,17 @@ def main():
         if procedure_id == "recordPolicy" and case.get("input_valid", True):
             policy = case["input"]["input"]
             policy_definition = document.get("x-catalogue-policy-values", {}).get(policy["setting_key"])
+            rf_policy = document.get("x-rf-policy-values", {}).get(policy["setting_key"])
+            if rf_policy and (policy["setting_key"] == "rf_approval_route" or
+                              policy["value_schema_reference"] == rf_policy["schema"]["$ref"]):
+                policy_definition = rf_policy
             if policy_definition:
                 value_pointer = policy_definition["schema"]["$ref"]
                 if policy["value_schema_reference"] != value_pointer:
                     raise ValueError(f"{name}: policy value reference differs from canonical setting schema")
-                if policy["subject_id"] is None or policy["ownership"] != policy_definition["ownership"]:
+                chapter_policy = policy_definition.get("subject_kind") == "chapter"
+                if ((policy["subject_id"] is None) != chapter_policy or
+                        policy["ownership"] != policy_definition["ownership"]):
                     raise ValueError(f"{name}: policy subject/ownership does not match its catalogue setting")
                 value = json.loads(policy["value"])
                 if json.dumps(value, sort_keys=True, separators=(",", ":")) != policy["value"]:

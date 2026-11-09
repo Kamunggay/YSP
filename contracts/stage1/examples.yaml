@@ -623,6 +623,14 @@ cases:
           setup_version: 2
           checked_at: '2026-11-09T02:00:00.000000Z'
           actions:
+          - action: rf.read
+            state: context_required
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            - INVENTORY
+            - DISPATCH
+            blockers: []
           - action: catalogue.read
             state: allowed
             required_duties: &id001
@@ -733,8 +741,9 @@ cases:
             - DISPATCH
             blockers: []
           - action: history.read
-            state: duty_denied
+            state: context_required
             required_duties: &id019
+            - COMMITTEE_REQUESTER
             - INVENTORY
             - RECEIVING
             - DISPATCH
@@ -856,6 +865,14 @@ cases:
           setup_version: 2
           checked_at: '2026-11-09T02:00:00.000000Z'
           actions:
+          - action: rf.read
+            state: duty_denied
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            - INVENTORY
+            - DISPATCH
+            blockers: []
           - action: catalogue.read
             state: duty_denied
             required_duties: *id001
@@ -1005,6 +1022,14 @@ cases:
           setup_version: 3
           checked_at: '2026-11-09T02:00:00.000000Z'
           actions:
+          - action: rf.read
+            state: context_required
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            - INVENTORY
+            - DISPATCH
+            blockers: []
           - action: catalogue.read
             state: allowed
             required_duties:
@@ -1110,8 +1135,9 @@ cases:
             - DISPATCH
             blockers: []
           - action: history.read
-            state: duty_denied
+            state: context_required
             required_duties:
+            - COMMITTEE_REQUESTER
             - INVENTORY
             - RECEIVING
             - DISPATCH
@@ -1134,6 +1160,14 @@ cases:
           setup_version: 2
           checked_at: '2026-11-09T02:00:00.000000Z'
           actions:
+          - action: rf.read
+            state: duty_denied
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            - INVENTORY
+            - DISPATCH
+            blockers: []
           - action: catalogue.read
             state: duty_denied
             required_duties:
@@ -1246,6 +1280,7 @@ cases:
           - action: history.read
             state: duty_denied
             required_duties:
+            - COMMITTEE_REQUESTER
             - INVENTORY
             - RECEIVING
             - DISPATCH
@@ -1267,6 +1302,14 @@ cases:
           setup_version: 2
           checked_at: '2026-11-09T02:00:00.000000Z'
           actions:
+          - action: rf.read
+            state: context_required
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            - INVENTORY
+            - DISPATCH
+            blockers: []
           - action: catalogue.read
             state: allowed
             required_duties:
@@ -1377,8 +1420,9 @@ cases:
             - DISPATCH
             blockers: []
           - action: history.read
-            state: duty_denied
+            state: context_required
             required_duties:
+            - COMMITTEE_REQUESTER
             - INVENTORY
             - RECEIVING
             - DISPATCH
@@ -1400,6 +1444,14 @@ cases:
           setup_version: 2
           checked_at: '2026-11-09T02:00:00.000000Z'
           actions:
+          - action: rf.read
+            state: context_required
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            - INVENTORY
+            - DISPATCH
+            blockers: []
           - action: catalogue.read
             state: allowed
             required_duties:
@@ -1510,8 +1562,9 @@ cases:
             - DISPATCH
             blockers: []
           - action: history.read
-            state: duty_denied
+            state: context_required
             required_duties:
+            - COMMITTEE_REQUESTER
             - INVENTORY
             - RECEIVING
             - DISPATCH
@@ -5833,6 +5886,2641 @@ cases:
           setup_blockers: []
           outstanding_need: []
           procurement_commitment_created: false
+  - name: rf-create-incomplete-draft
+    operationId: createInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      body:
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: null
+        justification: null
+        lines: []
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 89000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000001
+          operation_name: createInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 1
+          committed_material_version: 1
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: null
+            status: draft
+            version: 1
+            material_version: 1
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: null
+            justification: null
+            lines: []
+            approval: null
+            fulfillment: not_approved
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: null
+            setup_blockers: []
+            advancement_blockers:
+            - code: incomplete
+              pointer: /lines
+              message: Add at least one complete line before submitting.
+  - name: rf-save-complete-draft
+    operationId: replaceInternalRfDraft
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: '2026-11-12T01:00:00.000000Z'
+        justification: Committee internal training materials.
+        lines:
+        - line_id: 82000000-0000-4000-8000-000000000001
+          variant_id: 83000000-0000-4000-8000-000000000001
+          unit_id: 84000000-0000-4000-8000-000000000001
+          requested_quantity: '10'
+        reason: Complete the training request.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000001-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000001
+          operation_name: replaceInternalRfDraft
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 2
+          committed_material_version: 2
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: null
+            status: draft
+            version: 2
+            material_version: 2
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval: null
+              progress:
+                approved_quantity: null
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: null
+                unreserved_quantity: null
+            approval: null
+            fulfillment: not_approved
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: null
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-submit-assigns-once-only-reference
+    operationId: submitInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 2
+        expected_material_version: 2
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000002-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000001
+          operation_name: submitInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 3
+          committed_material_version: 2
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: submitted
+            version: 3
+            material_version: 2
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval: null
+              progress:
+                approved_quantity: null
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: null
+                unreserved_quantity: null
+            approval: null
+            fulfillment: not_approved
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-independent-approval-without-reservation
+    operationId: approveInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000003-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000001-0000-4000-8000-000000000001
+          operation_name: approveInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: approved
+            version: 4
+            material_version: 2
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval:
+                variant_id: 83000000-0000-4000-8000-000000000001
+                variant_material_version: 2
+                item_id: 83000001-0000-4000-8000-000000000001
+                item_code: TRAIN
+                variant_code: TRAIN-A
+                display_name: Training materials
+                unit_id: 84000000-0000-4000-8000-000000000001
+                unit_code: EA
+                unit_material_version: 1
+                quantity_scale: 0
+              progress:
+                approved_quantity: '10'
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: '10'
+                unreserved_quantity: '10'
+            approval:
+              actor:
+                user_id: 10000001-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 86000001-0000-4000-8000-000000000001
+                duty_grant_id: 87000001-0000-4000-8000-000000000001
+                duty: RF_APPROVER
+                unit_id: 85000000-0000-4000-8000-000000000001
+                acted_at: '2026-11-09T07:00:00.000000Z'
+              material_version: 2
+              route_policy_id: 88000000-0000-4000-8000-000000000001
+              route_policy_version: 1
+              alternate_authorization_id: null
+            fulfillment: outstanding
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-list-visible-demand
+    operationId: listInternalRfs
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        status: approved
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: approved
+          version: 4
+          material_version: 2
+          progress_version: 1
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval:
+              variant_id: 83000000-0000-4000-8000-000000000001
+              variant_material_version: 2
+              item_id: 83000001-0000-4000-8000-000000000001
+              item_code: TRAIN
+              variant_code: TRAIN-A
+              display_name: Training materials
+              unit_id: 84000000-0000-4000-8000-000000000001
+              unit_code: EA
+              unit_material_version: 1
+              quantity_scale: 0
+            progress:
+              approved_quantity: '10'
+              issued_quantity: '0'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '10'
+              unreserved_quantity: '10'
+          approval:
+            actor:
+              user_id: 10000001-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000001-0000-4000-8000-000000000001
+              duty_grant_id: 87000001-0000-4000-8000-000000000001
+              duty: RF_APPROVER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            material_version: 2
+            route_policy_id: 88000000-0000-4000-8000-000000000001
+            route_policy_version: 1
+            alternate_authorization_id: null
+          fulfillment: outstanding
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+        page:
+          next_cursor: null
+          snapshot_version: 4
+  - name: rf-detail-approved-progress
+    operationId: readInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: approved
+          version: 4
+          material_version: 2
+          progress_version: 1
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval:
+              variant_id: 83000000-0000-4000-8000-000000000001
+              variant_material_version: 2
+              item_id: 83000001-0000-4000-8000-000000000001
+              item_code: TRAIN
+              variant_code: TRAIN-A
+              display_name: Training materials
+              unit_id: 84000000-0000-4000-8000-000000000001
+              unit_code: EA
+              unit_material_version: 1
+              quantity_scale: 0
+            progress:
+              approved_quantity: '10'
+              issued_quantity: '0'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '10'
+              unreserved_quantity: '10'
+          approval:
+            actor:
+              user_id: 10000001-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000001-0000-4000-8000-000000000001
+              duty_grant_id: 87000001-0000-4000-8000-000000000001
+              duty: RF_APPROVER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            material_version: 2
+            route_policy_id: 88000000-0000-4000-8000-000000000001
+            route_policy_version: 1
+            alternate_authorization_id: null
+          fulfillment: outstanding
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+  - name: rf-return-with-reason
+    operationId: returnInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        reason: Clarify the committee need date.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000006-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000001-0000-4000-8000-000000000001
+          operation_name: returnInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: returned
+            version: 4
+            material_version: 2
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval: null
+              progress:
+                approved_quantity: null
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: null
+                unreserved_quantity: null
+            approval: null
+            fulfillment: not_approved
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-revise-return-retains-line-and-reference
+    operationId: reviseInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 4
+        expected_material_version: 2
+        expected_progress_version: 1
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: '2026-11-12T01:00:00.000000Z'
+        justification: Committee internal training materials.
+        lines:
+        - line_id: 82000000-0000-4000-8000-000000000001
+          variant_id: 83000000-0000-4000-8000-000000000001
+          unit_id: 84000000-0000-4000-8000-000000000001
+          requested_quantity: '10'
+        reason: Correct date after return.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000007-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000001
+          operation_name: reviseInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 5
+          committed_material_version: 3
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: draft
+            version: 5
+            material_version: 3
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval: null
+              progress:
+                approved_quantity: null
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: null
+                unreserved_quantity: null
+            approval: null
+            fulfillment: not_approved
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: null
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-resubmit-same-reference
+    operationId: submitInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 5
+        expected_material_version: 3
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000008-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000001
+          operation_name: submitInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 6
+          committed_material_version: 3
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: submitted
+            version: 6
+            material_version: 3
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval: null
+              progress:
+                approved_quantity: null
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: null
+                unreserved_quantity: null
+            approval: null
+            fulfillment: not_approved
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-reapprove-revised-material
+    operationId: approveInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 6
+        expected_material_version: 3
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000009-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000001-0000-4000-8000-000000000001
+          operation_name: approveInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 7
+          committed_material_version: 3
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: approved
+            version: 7
+            material_version: 3
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval:
+                variant_id: 83000000-0000-4000-8000-000000000001
+                variant_material_version: 2
+                item_id: 83000001-0000-4000-8000-000000000001
+                item_code: TRAIN
+                variant_code: TRAIN-A
+                display_name: Training materials
+                unit_id: 84000000-0000-4000-8000-000000000001
+                unit_code: EA
+                unit_material_version: 1
+                quantity_scale: 0
+              progress:
+                approved_quantity: '10'
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: '10'
+                unreserved_quantity: '10'
+            approval:
+              actor:
+                user_id: 10000001-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 86000001-0000-4000-8000-000000000001
+                duty_grant_id: 87000001-0000-4000-8000-000000000001
+                duty: RF_APPROVER
+                unit_id: 85000000-0000-4000-8000-000000000001
+                acted_at: '2026-11-09T07:00:00.000000Z'
+              material_version: 3
+              route_policy_id: 88000000-0000-4000-8000-000000000001
+              route_policy_version: 1
+              alternate_authorization_id: null
+            fulfillment: outstanding
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-cancel-return-retains-reference
+    operationId: cancelInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 4
+        expected_material_version: 2
+        expected_progress_version: 1
+        reason: Training no longer required.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 8900000a-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000001
+          operation_name: cancelInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 5
+          committed_material_version: 2
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: canceled
+            version: 5
+            material_version: 2
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval: null
+              progress:
+                approved_quantity: null
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: null
+                unreserved_quantity: null
+            approval: null
+            fulfillment: not_approved
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: null
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-real-independent-alternate
+    operationId: approveInternalRf
+    before: B has current Head-authorized alternate coverage for this unit and route; B is not requester A. A title
+      or absence of ordinary reviewer supplies no authority.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 8900000b-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000001-0000-4000-8000-000000000001
+          operation_name: approveInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: approved
+            version: 4
+            material_version: 2
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval:
+                variant_id: 83000000-0000-4000-8000-000000000001
+                variant_material_version: 2
+                item_id: 83000001-0000-4000-8000-000000000001
+                item_code: TRAIN
+                variant_code: TRAIN-A
+                display_name: Training materials
+                unit_id: 84000000-0000-4000-8000-000000000001
+                unit_code: EA
+                unit_material_version: 1
+                quantity_scale: 0
+              progress:
+                approved_quantity: '10'
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: '10'
+                unreserved_quantity: '10'
+            approval:
+              actor:
+                user_id: 10000001-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 86000001-0000-4000-8000-000000000001
+                duty_grant_id: 87000001-0000-4000-8000-000000000001
+                duty: RF_APPROVER
+                unit_id: 85000000-0000-4000-8000-000000000001
+                acted_at: '2026-11-09T07:00:00.000000Z'
+              material_version: 2
+              route_policy_id: 88000000-0000-4000-8000-000000000001
+              route_policy_version: 1
+              alternate_authorization_id: 8a000000-0000-4000-8000-000000000001
+            fulfillment: outstanding
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-approved-material-revision-invalidates-approval
+    operationId: reviseInternalRf
+    before: 'Separate branch: v4/m2 is approved with zero commitments, zero issued quantities and no active issue
+      batch. Revision creates m3 draft, null current approval; prior m2 approval remains in retained v4 history.'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 4
+        expected_material_version: 2
+        expected_progress_version: 1
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: '2026-11-12T01:00:00.000000Z'
+        justification: Committee internal training materials.
+        lines:
+        - line_id: 82000000-0000-4000-8000-000000000001
+          variant_id: 83000000-0000-4000-8000-000000000001
+          unit_id: 84000000-0000-4000-8000-000000000001
+          requested_quantity: '10'
+        reason: Correct date after return.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 8900000c-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000001
+          operation_name: reviseInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 5
+          committed_material_version: 3
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: draft
+            version: 5
+            material_version: 3
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval: null
+              progress:
+                approved_quantity: null
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: null
+                unreserved_quantity: null
+            approval: null
+            fulfillment: not_approved
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: null
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-cancel-only-unissued-unreserved-remainder
+    operationId: cancelInternalRf
+    before: 'Illustrative ticket08 downstream state: requested/approved10, issued6, reserved0, remaining4, no pending
+      issue/physical uncertainty. This cancellation formally cancels4; issued6 and its movement remain. No posting
+      API/runtime asserted.'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 8
+        expected_material_version: 2
+        expected_progress_version: 3
+        reason: Remaining four no longer required.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 8900000d-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000001
+          operation_name: cancelInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 9
+          committed_material_version: 2
+          committed_progress_version: 4
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: canceled
+            version: 9
+            material_version: 2
+            progress_version: 4
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval:
+                variant_id: 83000000-0000-4000-8000-000000000001
+                variant_material_version: 2
+                item_id: 83000001-0000-4000-8000-000000000001
+                item_code: TRAIN
+                variant_code: TRAIN-A
+                display_name: Training materials
+                unit_id: 84000000-0000-4000-8000-000000000001
+                unit_code: EA
+                unit_material_version: 1
+                quantity_scale: 0
+              progress:
+                approved_quantity: '10'
+                issued_quantity: '6'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '4'
+                remaining_quantity: '0'
+                unreserved_quantity: '0'
+            approval:
+              actor:
+                user_id: 10000001-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 86000001-0000-4000-8000-000000000001
+                duty_grant_id: 87000001-0000-4000-8000-000000000001
+                duty: RF_APPROVER
+                unit_id: 85000000-0000-4000-8000-000000000001
+                acted_at: '2026-11-09T07:00:00.000000Z'
+              material_version: 2
+              route_policy_id: 88000000-0000-4000-8000-000000000001
+              route_policy_version: 1
+              alternate_authorization_id: null
+            fulfillment: closed_canceled
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-read-retained-approved-material
+    operationId: readInternalRfVersion
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+        version: 4
+    response:
+      status: '200'
+      body:
+        data:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: approved
+          version: 4
+          material_version: 2
+          progress_version: 1
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval:
+              variant_id: 83000000-0000-4000-8000-000000000001
+              variant_material_version: 2
+              item_id: 83000001-0000-4000-8000-000000000001
+              item_code: TRAIN
+              variant_code: TRAIN-A
+              display_name: Training materials
+              unit_id: 84000000-0000-4000-8000-000000000001
+              unit_code: EA
+              unit_material_version: 1
+              quantity_scale: 0
+            progress:
+              approved_quantity: '10'
+              issued_quantity: '0'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '10'
+              unreserved_quantity: '10'
+          approval:
+            actor:
+              user_id: 10000001-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000001-0000-4000-8000-000000000001
+              duty_grant_id: 87000001-0000-4000-8000-000000000001
+              duty: RF_APPROVER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            material_version: 2
+            route_policy_id: 88000000-0000-4000-8000-000000000001
+            route_policy_version: 1
+            alternate_authorization_id: null
+          fulfillment: outstanding
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+  - name: rf-history-retains-return-reason
+    operationId: listInternalRfHistory
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 8b000000-0000-4000-8000-000000000001
+          version: 4
+          material_version: 2
+          progress_version: 1
+          action: returnInternalRf
+          actor:
+            user_id: 10000001-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000001-0000-4000-8000-000000000001
+            duty_grant_id: 87000001-0000-4000-8000-000000000001
+            duty: RF_APPROVER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          reason: Clarify the committee need date.
+          reference: CEB-RF-2026-000001
+          occurred_at: '2026-11-09T07:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 4
+  - name: rf-related-none-before-commitments
+    operationId: listInternalRfRelatedRecords
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data: []
+        page:
+          next_cursor: null
+          snapshot_version: 4
+  - name: rf-recover-approval-by-operation-id
+    operationId: readInternalRfOperationResult
+    before: Original approver B, current rf.read admission; prior response lost after atomic approval. Read does not
+      reserve or issue goods.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        operation_id: 89000003-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000003-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000001-0000-4000-8000-000000000001
+          operation_name: approveInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: approved
+            version: 4
+            material_version: 2
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval:
+                variant_id: 83000000-0000-4000-8000-000000000001
+                variant_material_version: 2
+                item_id: 83000001-0000-4000-8000-000000000001
+                item_code: TRAIN
+                variant_code: TRAIN-A
+                display_name: Training materials
+                unit_id: 84000000-0000-4000-8000-000000000001
+                unit_code: EA
+                unit_material_version: 1
+                quantity_scale: 0
+              progress:
+                approved_quantity: '10'
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: '10'
+                unreserved_quantity: '10'
+            approval:
+              actor:
+                user_id: 10000001-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 86000001-0000-4000-8000-000000000001
+                duty_grant_id: 87000001-0000-4000-8000-000000000001
+                duty: RF_APPROVER
+                unit_id: 85000000-0000-4000-8000-000000000001
+                acted_at: '2026-11-09T07:00:00.000000Z'
+              material_version: 2
+              route_policy_id: 88000000-0000-4000-8000-000000000001
+              route_policy_version: 1
+              alternate_authorization_id: null
+            fulfillment: outstanding
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-recover-by-key-before-retry
+    operationId: findInternalRfOperationResult
+    before: Original approver B retains key/operation name; current authorization still required. Missing result is404,
+      never a physical-return or rollback assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        operation_name: approveInternalRf
+        action_key: 40000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000003-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000001-0000-4000-8000-000000000001
+          operation_name: approveInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: approved
+            version: 4
+            material_version: 2
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval:
+                variant_id: 83000000-0000-4000-8000-000000000001
+                variant_material_version: 2
+                item_id: 83000001-0000-4000-8000-000000000001
+                item_code: TRAIN
+                variant_code: TRAIN-A
+                display_name: Training materials
+                unit_id: 84000000-0000-4000-8000-000000000001
+                unit_code: EA
+                unit_material_version: 1
+                quantity_scale: 0
+              progress:
+                approved_quantity: '10'
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: '10'
+                unreserved_quantity: '10'
+            approval:
+              actor:
+                user_id: 10000001-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 86000001-0000-4000-8000-000000000001
+                duty_grant_id: 87000001-0000-4000-8000-000000000001
+                duty: RF_APPROVER
+                unit_id: 85000000-0000-4000-8000-000000000001
+                acted_at: '2026-11-09T07:00:00.000000Z'
+              material_version: 2
+              route_policy_id: 88000000-0000-4000-8000-000000000001
+              route_policy_version: 1
+              alternate_authorization_id: null
+            fulfillment: outstanding
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+  - name: rf-accepted-approval-replay-after-state-changed
+    operationId: approveInternalRf
+    before: Original independent B is currently authorized; original exact intent committed v4/m2, now RF has later
+      progress. Return original v4 receipt despite old expected_version, then UI refetches current. No second reference/reservation/movement.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 89000003-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000001-0000-4000-8000-000000000001
+          operation_name: approveInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: CEB-RF-2026-000001
+            status: approved
+            version: 4
+            material_version: 2
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: '2026-11-12T01:00:00.000000Z'
+            justification: Committee internal training materials.
+            lines:
+            - id: 82000000-0000-4000-8000-000000000001
+              variant_id: 83000000-0000-4000-8000-000000000001
+              unit_id: 84000000-0000-4000-8000-000000000001
+              requested_quantity: '10'
+              identity_at_approval:
+                variant_id: 83000000-0000-4000-8000-000000000001
+                variant_material_version: 2
+                item_id: 83000001-0000-4000-8000-000000000001
+                item_code: TRAIN
+                variant_code: TRAIN-A
+                display_name: Training materials
+                unit_id: 84000000-0000-4000-8000-000000000001
+                unit_code: EA
+                unit_material_version: 1
+                quantity_scale: 0
+              progress:
+                approved_quantity: '10'
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: '10'
+                unreserved_quantity: '10'
+            approval:
+              actor:
+                user_id: 10000001-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 86000001-0000-4000-8000-000000000001
+                duty_grant_id: 87000001-0000-4000-8000-000000000001
+                duty: RF_APPROVER
+                unit_id: 85000000-0000-4000-8000-000000000001
+                acted_at: '2026-11-09T07:00:00.000000Z'
+              material_version: 2
+              route_policy_id: 88000000-0000-4000-8000-000000000001
+              route_policy_version: 1
+              alternate_authorization_id: null
+            fulfillment: outstanding
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: '2026-11-09T07:00:00.000000Z'
+            setup_blockers: []
+            advancement_blockers: []
+      headers:
+        X-Action-Replayed: 'true'
+  - name: rf-self-approval-denied
+    operationId: approveInternalRf
+    before: Requester A also holds RF_APPROVER; immutable person equality blocks self-approval regardless of role/account
+      title.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+    response:
+      status: '403'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: independence_required
+          message: independence required
+  - name: rf-no-real-alternate-denied
+    operationId: approveInternalRf
+    before: Ordinary approver absent; caller lacks current approved independent alternate coverage. Small team is
+      not an override.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+    response:
+      status: '403'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: duty_denied
+          message: duty denied
+  - name: rf-wrong-chapter-uniform-not-found
+    operationId: readInternalRf
+    before: Full session has no active membership in resource chapter; disclose no RF/reference/settings.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+    response:
+      status: '404'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: chapter_not_found
+          message: chapter not found
+  - name: rf-revoked-duty-cannot-replay
+    operationId: approveInternalRf
+    before: Original accepted key but B duty revoked; current authority precedes replay. No old snapshot disclosed.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+    response:
+      status: '403'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: duty_denied
+          message: duty denied
+  - name: rf-mfa-continuation-denied
+    operationId: readInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: mfa_incomplete
+          message: mfa incomplete
+  - name: rf-disabled-session-denied
+    operationId: readInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+    response:
+      status: '401'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: unauthenticated
+          message: unauthenticated
+  - name: rf-csrf-rejected
+    operationId: submitInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+    response:
+      status: '419'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: csrf_mismatch
+          message: csrf mismatch
+  - name: rf-missing-outcome-not-rollback-proof
+    operationId: findInternalRfOperationResult
+    before: Original actor authorized, but no committed result visible yet. Preserve intent, refetch/reconcile and
+      retry exact key only after authorization; never assume physical rollback.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        operation_name: createInternalRf
+        action_key: 40000000-0000-4000-8000-000000000001
+    response:
+      status: '404'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: resource_not_found
+          message: resource not found
+  - name: rf-submit-missing-setup-blocks-advancement
+    operationId: submitInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 2
+        expected_material_version: 2
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: setup_blocked
+          message: setup blocked
+        current:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: null
+          status: draft
+          version: 2
+          material_version: 2
+          progress_version: 1
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval: null
+            progress:
+              approved_quantity: null
+              issued_quantity: '0'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: null
+              unreserved_quantity: null
+          approval: null
+          fulfillment: not_approved
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: null
+          setup_blockers: []
+          advancement_blockers: []
+        setup_blockers:
+        - setting_key: rf_approval_route
+          subject_id: null
+          state: missing
+          approval_owner: CHAPTER_HEAD
+          message: Approve the chapter RF route before submission or approval.
+  - name: rf-missing-route-allows-draft
+    operationId: createInternalRf
+    before: Current requester authorized; approved reference_series and RF route may both be missing. Draft has null
+      reference, stays editable and cannot advance until all required setup is approved.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      body:
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: null
+        justification: null
+        lines: []
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 8900001d-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000001
+          operation_name: createInternalRf
+          action_key: 40000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          committed_version: 1
+          committed_material_version: 1
+          committed_progress_version: 1
+          committed_at: '2026-11-09T07:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 81000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            reference: null
+            status: draft
+            version: 1
+            material_version: 1
+            progress_version: 1
+            requester_id: 10000000-0000-4000-8000-000000000001
+            purpose: internal_use
+            requesting_unit_id: 85000000-0000-4000-8000-000000000001
+            event_id: null
+            needed_at: null
+            justification: null
+            lines: []
+            approval: null
+            fulfillment: not_approved
+            created_by:
+              user_id: 10000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            created_at: '2026-11-09T07:00:00.000000Z'
+            updated_at: '2026-11-09T07:00:00.000000Z'
+            submitted_at: null
+            setup_blockers:
+            - setting_key: rf_approval_route
+              subject_id: null
+              state: missing
+              approval_owner: CHAPTER_HEAD
+              message: Approve the chapter RF route before submission or approval.
+            advancement_blockers:
+            - code: incomplete
+              pointer: /lines
+              message: Add at least one complete line before submitting.
+  - name: rf-stale-material-no-approval
+    operationId: approveInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: material_version_conflict
+          message: material version conflict
+        current:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: submitted
+          version: 6
+          material_version: 3
+          progress_version: 1
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval: null
+            progress:
+              approved_quantity: null
+              issued_quantity: '0'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: null
+              unreserved_quantity: null
+          approval: null
+          fulfillment: not_approved
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+        setup_blockers: []
+  - name: rf-different-payload-same-key
+    operationId: returnInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        reason: Changed reason for a consumed intent.
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: action_key_conflict
+          message: action key conflict
+        current: null
+        setup_blockers: []
+  - name: rf-issued-lines-cannot-be-revised
+    operationId: reviseInternalRf
+    before: Issued6 already exists; quantities/identity are immutable here. Use later linked adjustment for corrections;
+      this API cannot erase issued history.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 4
+        expected_material_version: 2
+        expected_progress_version: 1
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: '2026-11-12T01:00:00.000000Z'
+        justification: Committee internal training materials.
+        lines:
+        - line_id: 82000000-0000-4000-8000-000000000001
+          variant_id: 83000000-0000-4000-8000-000000000001
+          unit_id: 84000000-0000-4000-8000-000000000001
+          requested_quantity: '10'
+        reason: Correct date after return.
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: commitment_conflict
+          message: commitment conflict
+        current:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: approved
+          version: 8
+          material_version: 2
+          progress_version: 3
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval:
+              variant_id: 83000000-0000-4000-8000-000000000001
+              variant_material_version: 2
+              item_id: 83000001-0000-4000-8000-000000000001
+              item_code: TRAIN
+              variant_code: TRAIN-A
+              display_name: Training materials
+              unit_id: 84000000-0000-4000-8000-000000000001
+              unit_code: EA
+              unit_material_version: 1
+              quantity_scale: 0
+            progress:
+              approved_quantity: '10'
+              issued_quantity: '6'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '4'
+              unreserved_quantity: '4'
+          approval:
+            actor:
+              user_id: 10000001-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000001-0000-4000-8000-000000000001
+              duty_grant_id: 87000001-0000-4000-8000-000000000001
+              duty: RF_APPROVER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            material_version: 2
+            route_policy_id: 88000000-0000-4000-8000-000000000001
+            route_policy_version: 1
+            alternate_authorization_id: null
+          fulfillment: partially_issued
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+        setup_blockers: []
+  - name: rf-active-reservation-blocks-cancel
+    operationId: cancelInternalRf
+    before: Approved10 with active reservation6 (fixture current detail below). Explicit ticket07 release/reallocation
+      must commit first; RF cancel cannot silently release stock.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 4
+        expected_material_version: 2
+        expected_progress_version: 1
+        reason: No longer needed.
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: commitment_conflict
+          message: commitment conflict
+        current:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: approved
+          version: 4
+          material_version: 2
+          progress_version: 1
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval:
+              variant_id: 83000000-0000-4000-8000-000000000001
+              variant_material_version: 2
+              item_id: 83000001-0000-4000-8000-000000000001
+              item_code: TRAIN
+              variant_code: TRAIN-A
+              display_name: Training materials
+              unit_id: 84000000-0000-4000-8000-000000000001
+              unit_code: EA
+              unit_material_version: 1
+              quantity_scale: 0
+            progress:
+              approved_quantity: '10'
+              issued_quantity: '0'
+              reserved_quantity: '6'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '10'
+              unreserved_quantity: '4'
+          approval:
+            actor:
+              user_id: 10000001-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000001-0000-4000-8000-000000000001
+              duty_grant_id: 87000001-0000-4000-8000-000000000001
+              duty: RF_APPROVER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            material_version: 2
+            route_policy_id: 88000000-0000-4000-8000-000000000001
+            route_policy_version: 1
+            alternate_authorization_id: null
+          fulfillment: outstanding
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+        setup_blockers: []
+  - name: rf-unresolved-physical-handover-blocks-cancel
+    operationId: cancelInternalRf
+    before: Physical goods may already have moved; uncertain issue outcome requires authorized lookup and reconciliation.
+      No automatic return or second handover.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 8
+        expected_material_version: 2
+        expected_progress_version: 3
+        reason: Cancel after timeout.
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: handover_unresolved
+          message: handover unresolved
+        current:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: approved
+          version: 8
+          material_version: 2
+          progress_version: 3
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval:
+              variant_id: 83000000-0000-4000-8000-000000000001
+              variant_material_version: 2
+              item_id: 83000001-0000-4000-8000-000000000001
+              item_code: TRAIN
+              variant_code: TRAIN-A
+              display_name: Training materials
+              unit_id: 84000000-0000-4000-8000-000000000001
+              unit_code: EA
+              unit_material_version: 1
+              quantity_scale: 0
+            progress:
+              approved_quantity: '10'
+              issued_quantity: '6'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '4'
+              unreserved_quantity: '4'
+          approval:
+            actor:
+              user_id: 10000001-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000001-0000-4000-8000-000000000001
+              duty_grant_id: 87000001-0000-4000-8000-000000000001
+              duty: RF_APPROVER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            material_version: 2
+            route_policy_id: 88000000-0000-4000-8000-000000000001
+            route_policy_version: 1
+            alternate_authorization_id: null
+          fulfillment: partially_issued
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+        setup_blockers: []
+  - name: rf-progress-race-no-cancellation
+    operationId: cancelInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 4
+        expected_material_version: 2
+        expected_progress_version: 1
+        reason: Cancel remainder.
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: progress_version_conflict
+          message: progress version conflict
+        current:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: approved
+          version: 8
+          material_version: 2
+          progress_version: 3
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval:
+              variant_id: 83000000-0000-4000-8000-000000000001
+              variant_material_version: 2
+              item_id: 83000001-0000-4000-8000-000000000001
+              item_code: TRAIN
+              variant_code: TRAIN-A
+              display_name: Training materials
+              unit_id: 84000000-0000-4000-8000-000000000001
+              unit_code: EA
+              unit_material_version: 1
+              quantity_scale: 0
+            progress:
+              approved_quantity: '10'
+              issued_quantity: '6'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '4'
+              unreserved_quantity: '4'
+          approval:
+            actor:
+              user_id: 10000001-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000001-0000-4000-8000-000000000001
+              duty_grant_id: 87000001-0000-4000-8000-000000000001
+              duty: RF_APPROVER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            material_version: 2
+            route_policy_id: 88000000-0000-4000-8000-000000000001
+            route_policy_version: 1
+            alternate_authorization_id: null
+          fulfillment: partially_issued
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+        setup_blockers: []
+  - name: rf-retired-variant-blocks-new-submission
+    operationId: submitInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 2
+        expected_material_version: 2
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: resource_retired
+          message: resource retired
+        current:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: null
+          status: draft
+          version: 2
+          material_version: 2
+          progress_version: 1
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval: null
+            progress:
+              approved_quantity: null
+              issued_quantity: '0'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: null
+              unreserved_quantity: null
+          approval: null
+          fulfillment: not_approved
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: null
+          setup_blockers: []
+          advancement_blockers: []
+        setup_blockers: []
+  - name: rf-revoked-approver-blocks-new-commitment
+    operationId: submitInternalRf
+    before: Route currently has no usable independent approver after revocation; retain draft and history, do not
+      invent alternate authority.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 2
+        expected_material_version: 2
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: approval_authority_revoked
+          message: approval authority revoked
+        current:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: null
+          status: draft
+          version: 2
+          material_version: 2
+          progress_version: 1
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval: null
+            progress:
+              approved_quantity: null
+              issued_quantity: '0'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: null
+              unreserved_quantity: null
+          approval: null
+          fulfillment: not_approved
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: null
+          setup_blockers: []
+          advancement_blockers: []
+        setup_blockers: []
+  - name: rf-submitted-cannot-edit-without-return
+    operationId: replaceInternalRfDraft
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: '2026-11-12T01:00:00.000000Z'
+        justification: Committee internal training materials.
+        lines:
+        - line_id: 82000000-0000-4000-8000-000000000001
+          variant_id: 83000000-0000-4000-8000-000000000001
+          unit_id: 84000000-0000-4000-8000-000000000001
+          requested_quantity: '10'
+        reason: Complete the training request.
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: state_conflict
+          message: state conflict
+        current:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: submitted
+          version: 3
+          material_version: 2
+          progress_version: 1
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            identity_at_approval: null
+            progress:
+              approved_quantity: null
+              issued_quantity: '0'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: null
+              unreserved_quantity: null
+          approval: null
+          fulfillment: not_approved
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+        setup_blockers: []
+  - name: rf-expired-list-cursor
+    operationId: listInternalRfs
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        cursor: expired-synthetic
+    response:
+      status: '409'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: snapshot_stale
+          message: snapshot stale
+        current: null
+        setup_blockers: []
+  - name: rf-booth-purpose-rejected
+    operationId: createInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      body:
+        purpose: booth_custody
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: '2026-11-12T01:00:00.000000Z'
+        justification: Committee internal training materials.
+        lines:
+        - line_id: 82000000-0000-4000-8000-000000000001
+          variant_id: 83000000-0000-4000-8000-000000000001
+          unit_id: 84000000-0000-4000-8000-000000000001
+          requested_quantity: '10'
+    response:
+      status: '422'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: invalid_input
+          message: invalid input
+          fields:
+          - pointer: /purpose
+            code: invalid_format
+            message: Correct this field; preserve other entered values.
+    request_valid: false
+  - name: rf-numeric-quantity-rejected
+    operationId: createInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      body:
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: '2026-11-12T01:00:00.000000Z'
+        justification: Committee internal training materials.
+        lines:
+        - line_id: 82000000-0000-4000-8000-000000000001
+          variant_id: 83000000-0000-4000-8000-000000000001
+          unit_id: 84000000-0000-4000-8000-000000000001
+          requested_quantity: 10
+    response:
+      status: '422'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: invalid_input
+          message: invalid input
+          fields:
+          - pointer: /lines/0/requested_quantity
+            code: invalid_type
+            message: Correct this field; preserve other entered values.
+    request_valid: false
+  - name: rf-excess-approved-scale-not-rounded
+    operationId: createInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      body:
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: '2026-11-12T01:00:00.000000Z'
+        justification: Committee internal training materials.
+        lines:
+        - line_id: 82000000-0000-4000-8000-000000000001
+          variant_id: 83000000-0000-4000-8000-000000000001
+          unit_id: 84000000-0000-4000-8000-000000000001
+          requested_quantity: '1.5'
+    response:
+      status: '422'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: invalid_input
+          message: invalid input
+          fields:
+          - pointer: /lines/0/requested_quantity
+            code: invalid_format
+            message: Correct this field; preserve other entered values.
+  - name: rf-zero-demand-invalid
+    operationId: createInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      body:
+        purpose: internal_use
+        requesting_unit_id: 85000000-0000-4000-8000-000000000001
+        event_id: null
+        needed_at: '2026-11-12T01:00:00.000000Z'
+        justification: Committee internal training materials.
+        lines:
+        - line_id: 82000000-0000-4000-8000-000000000001
+          variant_id: 83000000-0000-4000-8000-000000000001
+          unit_id: 84000000-0000-4000-8000-000000000001
+          requested_quantity: '0'
+    response:
+      status: '422'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: invalid_input
+          message: invalid input
+          fields:
+          - pointer: /lines/0/requested_quantity
+            code: invalid_format
+            message: Correct this field; preserve other entered values.
+    request_valid: false
+  - name: rf-reason-required-on-return
+    operationId: returnInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        reason: '   '
+    response:
+      status: '422'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: invalid_input
+          message: invalid input
+          fields:
+          - pointer: /reason
+            code: invalid_format
+            message: Correct this field; preserve other entered values.
+    request_valid: false
+  - name: rf-incomplete-cannot-submit
+    operationId: submitInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 1
+        expected_material_version: 1
+    response:
+      status: '422'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: invalid_input
+          message: invalid input
+          fields:
+          - pointer: ''
+            code: required
+            message: Correct this field; preserve other entered values.
+  - name: rf-unknown-filter-rejected
+    operationId: listInternalRfs
+    before: Unknown/repeated raw query selectors reject before parsed selector collapsing. No changes.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        status: draft
+    response:
+      status: '400'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: invalid_selector
+          message: invalid selector
+  - name: rf-throttled-read
+    operationId: readInternalRf
+    before: Synthetic independent case; active requester A scoped to committee U; approver B is a distinct enabled
+      individual with current RF_APPROVER and effective Head-approved route. No runtime or actual setup assertion.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+    response:
+      status: '429'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: throttled
+          message: throttled
+      headers:
+        Retry-After: '60'
+  - name: rf-commit-failure-no-result
+    operationId: approveInternalRf
+    before: 'Injected later-runtime DB failure: all approval/version/result/audit/outbox writes roll back; this example
+      specifies response only.'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 2
+    response:
+      status: '503'
+      body:
+        request_id: 8c000000-0000-4000-8000-000000000001
+        error:
+          code: unavailable
+          message: unavailable
 procedure_cases:
 - name: controlled-prepareAccount
   procedureId: prepareAccount
@@ -6052,8 +8740,8 @@ procedure_cases:
       setting_key: rf_approval_route
       subject_id: null
       ownership: operational
-      value: synthetic-approved-route-reference
-      value_schema_reference: controlled-rf-route-v1
+      value: "{\"routes\":[{\"alternate_authorization_ids\":[],\"primary_approver_grant_id\":\"87000001-0000-4000-8000-000000000001\",\"requesting_unit_id\":\"85000000-0000-4000-8000-000000000001\"}]}"
+      value_schema_reference: "#/components/schemas/RfApprovalRoutePolicyValue"
       effective_from: '2026-11-09T02:00:00.000000Z'
       effective_until: null
   output:
@@ -6181,8 +8869,8 @@ procedure_cases:
       setting_key: rf_approval_route
       subject_id: null
       ownership: operational
-      value: synthetic-approved-route-reference
-      value_schema_reference: controlled-rf-route-v1
+      value: "{\"routes\":[{\"alternate_authorization_ids\":[],\"primary_approver_grant_id\":\"87000001-0000-4000-8000-000000000001\",\"requesting_unit_id\":\"85000000-0000-4000-8000-000000000001\"}]}"
+      value_schema_reference: "#/components/schemas/RfApprovalRoutePolicyValue"
       effective_from: '2026-11-09T02:00:00.000000Z'
       effective_until: null
   output:
@@ -6333,8 +9021,8 @@ procedure_cases:
       setting_key: rf_approval_route
       subject_id: null
       ownership: financial
-      value: synthetic-approved-route-reference
-      value_schema_reference: controlled-rf-route-v1
+      value: "{\"routes\":[{\"alternate_authorization_ids\":[],\"primary_approver_grant_id\":\"87000001-0000-4000-8000-000000000001\",\"requesting_unit_id\":\"85000000-0000-4000-8000-000000000001\"}]}"
+      value_schema_reference: "#/components/schemas/RfApprovalRoutePolicyValue"
       effective_from: '2026-11-09T02:00:00.000000Z'
       effective_until: null
   output:
@@ -6403,8 +9091,8 @@ procedure_cases:
       setting_key: rf_approval_route
       subject_id: null
       ownership: operational
-      value: synthetic-replacement-route-reference
-      value_schema_reference: controlled-rf-route-v1
+      value: "{\"routes\":[{\"alternate_authorization_ids\":[],\"primary_approver_grant_id\":\"87000001-0000-4000-8000-000000000001\",\"requesting_unit_id\":\"85000000-0000-4000-8000-000000000001\"}]}"
+      value_schema_reference: "#/components/schemas/RfApprovalRoutePolicyValue"
       effective_from: '2026-11-10T02:00:00.000000Z'
       effective_until: null
   output:
