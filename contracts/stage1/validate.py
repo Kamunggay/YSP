@@ -143,7 +143,9 @@ def main():
         request = case.get("request", {})
         if "requestBody" in operation:
             body_pointer, _ = dereference(pointer + "/requestBody")
-            check_value(body_pointer + "/content/application~1json/schema", request["body"],
+            request_media = request.get("media_type", "application/json")
+            request_schema = body_pointer + "/content/" + pointer_part(request_media) + "/schema"
+            check_value(request_schema, request["body"],
                         name + " request", case.get("request_valid", True))
         elif "body" in request:
             raise ValueError(f"{name}: operation has no request body")
@@ -166,7 +168,9 @@ def main():
         if status.startswith("2"):
             covered.add(case["operationId"])
         if "content" in definition:
-            check_value(response_pointer + "/content/application~1json/schema", response["body"], name + " response")
+            response_media = response.get("media_type", "application/json")
+            check_value(response_pointer + "/content/" + pointer_part(response_media) + "/schema",
+                        response["body"], name + " response")
         elif "body" in response:
             raise ValueError(f"{name}: bodyless status contains a body")
         response_headers = examples["response_defaults"]["headers"] | response.get("headers", {})
@@ -182,7 +186,7 @@ def main():
             for value in values:
                 check_value(header_pointer + "/schema", value, name + " response header")
         if status == "422":
-            _, schema = dereference(body_pointer + "/content/application~1json/schema")
+            _, schema = dereference(request_schema)
             for field in response["body"]["error"]["fields"]:
                 field_pointer = field["pointer"]
                 if field_pointer and field["code"] != "unexpected_field":
@@ -210,11 +214,27 @@ def main():
             procedure_coverage.add(procedure_id)
     if procedure_coverage != procedures.keys():
         raise ValueError(f"Missing worked controlled success: {sorted(procedures.keys() - procedure_coverage)}")
+    participants = document.get("x-evidence-participants", {})
+    participant_coverage = set()
+    for case in examples.get("participant_cases", []):
+        name = case["name"]
+        if name in names:
+            raise ValueError(f"Duplicate consumer case: {name}")
+        names.add(name)
+        participant_id = case["participantId"]
+        participant = participants[participant_id]
+        check_value(participant["input"]["$ref"], case["input"], name + " input",
+                    case.get("input_valid", True))
+        check_value(participant["output"]["$ref"], case["output"], name + " output")
+        if case["output"]["outcome"] == "ready" and case.get("input_valid", True):
+            participant_coverage.add(participant_id)
+    if participant_coverage != participants.keys():
+        raise ValueError(f"Missing worked evidence success: {sorted(participants.keys() - participant_coverage)}")
     print("Versions: " + ", ".join(f"{name}={version(name)}" for name in
                                     ("openapi-spec-validator", "jsonschema", "PyYAML")))
     print(f"PASS OpenAPI 3.1.1; local references; {len(operations)} operations; "
           f"{len(procedures)} controlled procedures; {len(names)} consumer cases; "
-          f"{checked} schema/example checks")
+          f"{len(participants)} evidence participants; {checked} schema/example checks")
     if args.invalid_example:
         pointer, _ = operations["completeRecoveryChallenge"]
         check_value(pointer + "/requestBody/content/application~1json/schema",

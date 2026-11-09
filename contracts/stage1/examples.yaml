@@ -1518,6 +1518,938 @@ cases:
             - RF_APPROVER
             blockers: []
 
+  - name: upload-paper-pdf
+    operationId: uploadPaperEvidence
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <raw PDF octets>
+    response:
+      status: '201'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          version: 1
+          supersedes_version_id: null
+          superseded_by_version_id: null
+          technical_state: ready
+          invalid_reason: null
+          uploaded_by: 10000000-0000-4000-8000-000000000001
+          uploaded_at: '2026-11-09T02:02:00.000000Z'
+          replacement_reason: null
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            position: 1
+            media_type: application/pdf
+            byte_length: 1024
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: upload-multiple-pdf-jpeg-png-at-limit
+    operationId: uploadPaperEvidence
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <PDF octets>
+        - <10485760 JPEG octets>
+        - <PNG octets>
+    response:
+      status: '201'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          version: 1
+          supersedes_version_id: null
+          superseded_by_version_id: null
+          technical_state: ready
+          invalid_reason: null
+          uploaded_by: 10000000-0000-4000-8000-000000000001
+          uploaded_at: '2026-11-09T02:02:00.000000Z'
+          replacement_reason: null
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            position: 1
+            media_type: application/pdf
+            byte_length: 1024
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          - attachment_id: 74000000-0000-4000-8000-000000000003
+            position: 2
+            media_type: image/jpeg
+            byte_length: 10485760
+            sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+          - attachment_id: 74000000-0000-4000-8000-000000000004
+            position: 3
+            media_type: image/png
+            byte_length: 1024
+            sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+  - name: upload-paper-opening_receipt
+    operationId: uploadPaperEvidence
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: opening_receipt
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <PDF octets>
+    response:
+      status: '201'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: opening_receipt
+            record_id: 71000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          version: 1
+          supersedes_version_id: null
+          superseded_by_version_id: null
+          technical_state: ready
+          invalid_reason: null
+          uploaded_by: 10000000-0000-4000-8000-000000000001
+          uploaded_at: '2026-11-09T02:02:00.000000Z'
+          replacement_reason: null
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            position: 1
+            media_type: application/pdf
+            byte_length: 1024
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: upload-paper-hold_clearance
+    operationId: uploadPaperEvidence
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: hold_clearance
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <PDF octets>
+    response:
+      status: '201'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: hold_clearance
+            record_id: 71000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          version: 1
+          supersedes_version_id: null
+          superseded_by_version_id: null
+          technical_state: ready
+          invalid_reason: null
+          uploaded_by: 10000000-0000-4000-8000-000000000001
+          uploaded_at: '2026-11-09T02:02:00.000000Z'
+          replacement_reason: null
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            position: 1
+            media_type: application/pdf
+            byte_length: 1024
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: upload-lost-response-same-intent-replay
+    operationId: uploadPaperEvidence
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <raw PDF octets>
+    response:
+      status: '201'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          version: 1
+          supersedes_version_id: null
+          superseded_by_version_id: null
+          technical_state: ready
+          invalid_reason: null
+          uploaded_by: 10000000-0000-4000-8000-000000000001
+          uploaded_at: '2026-11-09T02:02:00.000000Z'
+          replacement_reason: null
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            position: 1
+            media_type: application/pdf
+            byte_length: 1024
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      headers:
+        X-Action-Replayed: 'true'
+  - name: read-current-paper-readiness
+    operationId: readPaperEvidence
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          current_version:
+            evidence_id: 72000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            target:
+              purpose: actual_issue
+              record_id: 71000000-0000-4000-8000-000000000001
+            version_id: 73000000-0000-4000-8000-000000000001
+            version: 1
+            supersedes_version_id: null
+            superseded_by_version_id: null
+            technical_state: ready
+            invalid_reason: null
+            uploaded_by: 10000000-0000-4000-8000-000000000001
+            uploaded_at: '2026-11-09T02:02:00.000000Z'
+            replacement_reason: null
+            attachments:
+            - attachment_id: 74000000-0000-4000-8000-000000000001
+              position: 1
+              media_type: application/pdf
+              byte_length: 1024
+              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: read-ready-retained-paper-version
+    operationId: readPaperEvidenceVersion
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          version: 1
+          supersedes_version_id: null
+          superseded_by_version_id: null
+          technical_state: ready
+          invalid_reason: null
+          uploaded_by: 10000000-0000-4000-8000-000000000001
+          uploaded_at: '2026-11-09T02:02:00.000000Z'
+          replacement_reason: null
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            position: 1
+            media_type: application/pdf
+            byte_length: 1024
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: replace-wrong-batch-paper-retains-original
+    operationId: replacePaperEvidence
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        expected_version: 1
+        reason: Replace wrong-batch scan with matching signed paper.
+        attachments:
+        - <new matching PDF octets>
+    response:
+      status: '201'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000002
+          version: 2
+          supersedes_version_id: 73000000-0000-4000-8000-000000000001
+          superseded_by_version_id: null
+          technical_state: ready
+          invalid_reason: null
+          uploaded_by: 10000000-0000-4000-8000-000000000001
+          uploaded_at: '2026-11-09T02:02:00.000000Z'
+          replacement_reason: Replace wrong-batch scan with matching signed paper.
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000002
+            position: 1
+            media_type: application/pdf
+            byte_length: 1024
+            sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  - name: list-retained-paper-versions
+    operationId: listPaperEvidenceVersions
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          versions:
+          - evidence_id: 72000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            target:
+              purpose: actual_issue
+              record_id: 71000000-0000-4000-8000-000000000001
+            version_id: 73000000-0000-4000-8000-000000000001
+            version: 1
+            supersedes_version_id: null
+            superseded_by_version_id: 73000000-0000-4000-8000-000000000002
+            technical_state: ready
+            invalid_reason: null
+            uploaded_by: 10000000-0000-4000-8000-000000000001
+            uploaded_at: '2026-11-09T02:02:00.000000Z'
+            replacement_reason: null
+            attachments:
+            - attachment_id: 74000000-0000-4000-8000-000000000001
+              position: 1
+              media_type: application/pdf
+              byte_length: 1024
+              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          - evidence_id: 72000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            target:
+              purpose: actual_issue
+              record_id: 71000000-0000-4000-8000-000000000001
+            version_id: 73000000-0000-4000-8000-000000000002
+            version: 2
+            supersedes_version_id: 73000000-0000-4000-8000-000000000001
+            superseded_by_version_id: null
+            technical_state: ready
+            invalid_reason: null
+            uploaded_by: 10000000-0000-4000-8000-000000000001
+            uploaded_at: '2026-11-09T02:02:00.000000Z'
+            replacement_reason: Replace wrong-batch scan with matching signed paper.
+            attachments:
+            - attachment_id: 74000000-0000-4000-8000-000000000002
+              position: 1
+              media_type: application/pdf
+              byte_length: 1024
+              sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          next_cursor: null
+  - name: read-superseded-paper-version
+    operationId: readPaperEvidenceVersion
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          version: 1
+          supersedes_version_id: null
+          superseded_by_version_id: 73000000-0000-4000-8000-000000000002
+          technical_state: ready
+          invalid_reason: null
+          uploaded_by: 10000000-0000-4000-8000-000000000001
+          uploaded_at: '2026-11-09T02:02:00.000000Z'
+          replacement_reason: null
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            position: 1
+            media_type: application/pdf
+            byte_length: 1024
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: read-missing-object-is-invalid-never-ready
+    operationId: readPaperEvidenceVersion
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          version: 1
+          supersedes_version_id: null
+          superseded_by_version_id: null
+          technical_state: invalid
+          invalid_reason: object_missing
+          uploaded_by: 10000000-0000-4000-8000-000000000001
+          uploaded_at: '2026-11-09T02:02:00.000000Z'
+          replacement_reason: null
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            position: 1
+            media_type: application/pdf
+            byte_length: 1024
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: download-private-paper-pdf
+    operationId: retrievePaperEvidenceAttachment
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+      headers:
+        Accept: image/jpeg, image/png, application/pdf, application/json
+    response:
+      status: '200'
+      body: <raw retained pdf octets>
+      media_type: application/pdf
+      headers:
+        Content-Disposition: attachment; filename="74000000-0000-4000-8000-000000000001.pdf"
+        X-Content-Type-Options: nosniff
+  - name: download-private-paper-jpg
+    operationId: retrievePaperEvidenceAttachment
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+      headers:
+        Accept: image/jpeg, image/png, application/pdf, application/json
+    response:
+      status: '200'
+      body: <raw retained jpg octets>
+      media_type: image/jpeg
+      headers:
+        Content-Disposition: attachment; filename="74000000-0000-4000-8000-000000000001.jpg"
+        X-Content-Type-Options: nosniff
+  - name: download-private-paper-png
+    operationId: retrievePaperEvidenceAttachment
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+      headers:
+        Accept: image/jpeg, image/png, application/pdf, application/json
+    response:
+      status: '200'
+      body: <raw retained png octets>
+      media_type: image/png
+      headers:
+        Content-Disposition: attachment; filename="74000000-0000-4000-8000-000000000001.png"
+        X-Content-Type-Options: nosniff
+  - name: upload-paper-empty-selection
+    operationId: uploadPaperEvidence
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments: []
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_evidence
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+          fields:
+          - pointer: /attachments
+            code: required
+            message: Choose a permitted, nonempty, valid file.
+        request_id: 50000000-0000-4000-8000-000000000001
+    request_valid: false
+    consumer: Keep original user/chapter, quantities, recipient, notes and other selected files locally;
+      correct only failing attachment and resubmit complete set. Upload failure changes no domain form.
+  - name: upload-paper-empty-file
+    operationId: uploadPaperEvidence
+    before: Independent synthetic case; byte labels are placeholders, not validated files.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - ''
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_evidence
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+          fields:
+          - pointer: /attachments/0
+            code: empty_file
+            message: Choose a permitted, nonempty, valid file.
+        request_id: 50000000-0000-4000-8000-000000000001
+    request_valid: false
+    consumer: Keep original user/chapter, quantities, recipient, notes and other selected files locally;
+      correct only failing attachment and resubmit complete set. Upload failure changes no domain form.
+  - name: upload-paper-type-mismatch
+    operationId: uploadPaperEvidence
+    before: The part declares image/jpeg and filename paper.jpg, but fully parsed actual octets are PDF.
+      Declared and detected types differ; all files are rejected. Synthetic setup; raw byte labels remain
+      placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <raw PDF octets>
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_evidence
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+          fields:
+          - pointer: /attachments/0
+            code: content_mismatch
+            message: Choose a permitted, nonempty, valid file.
+        request_id: 50000000-0000-4000-8000-000000000001
+    request_valid: true
+    consumer: Keep original user/chapter, quantities, recipient, notes and other selected files locally;
+      correct only failing attachment and resubmit complete set. Upload failure changes no domain form.
+  - name: upload-paper-unsupported-type
+    operationId: uploadPaperEvidence
+    before: The part declares application/x-msdownload and contains executable bytes; actual MIME is outside
+      JPEG/PNG/PDF. Outer multipart framing is valid. Synthetic setup; raw byte labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <executable octets>
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_evidence
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+          fields:
+          - pointer: /attachments/0
+            code: unsupported_type
+            message: Choose a permitted, nonempty, valid file.
+        request_id: 50000000-0000-4000-8000-000000000001
+    request_valid: true
+    consumer: Keep original user/chapter, quantities, recipient, notes and other selected files locally;
+      correct only failing attachment and resubmit complete set. Upload failure changes no domain form.
+  - name: upload-paper-malformed-pdf
+    operationId: uploadPaperEvidence
+    before: Part declares application/pdf with a PDF header but parser detects a truncated cross-reference/object
+      table; leading magic bytes alone cannot establish valid PDF. Synthetic setup; raw byte labels remain
+      placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <raw PDF octets>
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_evidence
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+          fields:
+          - pointer: /attachments/0
+            code: malformed_content
+            message: Choose a permitted, nonempty, valid file.
+        request_id: 50000000-0000-4000-8000-000000000001
+    request_valid: true
+    consumer: Keep original user/chapter, quantities, recipient, notes and other selected files locally;
+      correct only failing attachment and resubmit complete set. Upload failure changes no domain form.
+  - name: upload-paper-unsafe-content
+    operationId: uploadPaperEvidence
+    before: Part declares application/pdf and parses, but contains JavaScript/launch actions. No content
+      is made publicly ready. Synthetic setup; raw byte labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <raw PDF octets>
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_evidence
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+          fields:
+          - pointer: /attachments/0
+            code: unsafe_content
+            message: Choose a permitted, nonempty, valid file.
+        request_id: 50000000-0000-4000-8000-000000000001
+    request_valid: true
+    consumer: Keep original user/chapter, quantities, recipient, notes and other selected files locally;
+      correct only failing attachment and resubmit complete set. Upload failure changes no domain form.
+  - name: paper-oversized-file
+    operationId: uploadPaperEvidence
+    before: Actual measured first file length is 10485761 bytes, one byte over the 10485760 per-file cap;
+      declared length is not trusted. Another legal file is selected but no part publishes. Synthetic setup;
+      raw byte labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <raw PDF octets>
+    response:
+      status: '413'
+      body:
+        error:
+          code: evidence_too_large
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-storage-failure
+    operationId: uploadPaperEvidence
+    before: All chosen files are structurally valid and within cap, but durable private object write fails
+      before DB publication; no evidence version/result is committed. Synthetic setup; raw byte labels remain
+      placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <raw PDF octets>
+    response:
+      status: '503'
+      body:
+        error:
+          code: evidence_unavailable
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-different-payload-same-key
+    operationId: uploadPaperEvidence
+    before: The same actor/chapter/upload operation and action key already committed original v1. This request
+      supplies different actual bytes despite identical placeholder text; server fingerprint differs. Synthetic
+      setup; raw byte labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        purpose: actual_issue
+        record_id: 71000000-0000-4000-8000-000000000001
+        attachments:
+        - <raw PDF octets>
+    response:
+      status: '409'
+      body:
+        error:
+          code: action_key_conflict
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-stale-expected-version
+    operationId: replacePaperEvidence
+    before: Current evidence is v2; replacement request still expects v1. It is a new intent/key, so replay
+      does not apply; reject without new version or acknowledgment change. Synthetic setup; raw byte labels
+      remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        expected_version: 1
+        reason: Replace wrong-batch scan with matching signed paper.
+        attachments:
+        - <new matching PDF octets>
+    response:
+      status: '409'
+      body:
+        error:
+          code: version_conflict
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-committed-target-locked
+    operationId: replacePaperEvidence
+    before: Domain actual issue already committed with pinned v1. A new replacement intent attempts to alter
+      its evidence; reject target_locked while retaining bytes/history. Synthetic setup; raw byte labels
+      remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+      media_type: multipart/form-data
+      headers:
+        Content-Type: multipart/form-data; boundary=synthetic
+      body:
+        expected_version: 1
+        reason: Replace wrong-batch scan with matching signed paper.
+        attachments:
+        - <new matching PDF octets>
+    response:
+      status: '409'
+      body:
+        error:
+          code: target_locked
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-stale-history-cursor
+    operationId: listPaperEvidenceVersions
+    before: The request uses a previously issued five-minute actor/evidence-scoped cursor after its snapshot
+      history changed by supersession. Actor remains admitted, but cursor cannot paginate stale state. Synthetic
+      setup; raw byte labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+      query:
+        cursor: synthetic-expired-paper-history-cursor
+        limit: 25
+    response:
+      status: '409'
+      body:
+        error:
+          code: snapshot_stale
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-copied-cross-chapter-link
+    operationId: retrievePaperEvidenceAttachment
+    before: Reader is active/full-MFA with membership only in chapter 60000000-0000-4000-8000-000000000002.
+      Copied request names chapter ...0001, which must remain indistinguishable from missing. Synthetic
+      setup; raw byte labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+    response:
+      status: '404'
+      body:
+        error:
+          code: chapter_not_found
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-revoked-membership-link
+    operationId: retrievePaperEvidenceAttachment
+    before: Reader previously fetched this exact link; its chapter ...0001 membership has since been revoked
+      while account/session remain active. Old output/cursor is no authority. Synthetic setup; raw byte
+      labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+    response:
+      status: '404'
+      body:
+        error:
+          code: chapter_not_found
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-revoked-duty-link
+    operationId: retrievePaperEvidenceAttachment
+    before: Reader still has active membership in chapter ...0001, but all required evidence.read/history.read
+      duties were revoked before this request. Return no signature/metadata. Synthetic setup; raw byte labels
+      remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        error:
+          code: duty_denied
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-record-scope-denied-link
+    operationId: retrievePaperEvidenceAttachment
+    before: Reader has active chapter/duties scoped to a different unit/record. This attachment target is
+      outside the permitted scope; missing and scope-denied evidence are indistinguishable. Synthetic setup;
+      raw byte labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+    response:
+      status: '404'
+      body:
+        error:
+          code: evidence_not_found
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-disabled-account-link
+    operationId: retrievePaperEvidenceAttachment
+    before: Reader obtained this link before account disabling; its browser session is now revoked by the
+      disabling fence. No chapter/file existence is disclosed. Synthetic setup; raw byte labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+    response:
+      status: '401'
+      body:
+        error:
+          code: unauthenticated
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-missing-object
+    operationId: retrievePaperEvidenceAttachment
+    before: An admitted reader requests retained v1, whose private storage object is missing. Return JSON
+      unavailable before any attachment bytes, preserving historical manifest. Synthetic setup; raw byte
+      labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+    response:
+      status: '503'
+      body:
+        error:
+          code: evidence_unavailable
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-changed-object-digest
+    operationId: retrievePaperEvidenceAttachment
+    before: An admitted reader requests retained v1, whose actual object digest differs from immutable manifest
+      SHA-256 a repeated 64 times. Do not send partial/corrupt bytes. Synthetic setup; raw byte labels remain
+      placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachment_id: 74000000-0000-4000-8000-000000000001
+    response:
+      status: '503'
+      body:
+        error:
+          code: evidence_unavailable
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: paper-limited-mfa
+    operationId: readPaperEvidence
+    before: Reader has password-only enrollment/challenge continuation while current policy requires MFA;
+      no full protected chapter read is permitted. Synthetic setup; raw byte labels remain placeholders.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        evidence_id: 72000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        error:
+          code: mfa_incomplete
+          message: Synthetic contracted failure; preserve unrelated form inputs.
+        request_id: 50000000-0000-4000-8000-000000000001
 procedure_cases:
 - name: controlled-prepareAccount
   procedureId: prepareAccount
@@ -2131,3 +3063,448 @@ procedure_cases:
     code: invalid_input
     audit_id: 50000000-0000-4000-8000-000000000001
   input_valid: false
+
+participant_cases:
+  - name: matching-paper-binding
+    participantId: checkEvidenceBinding
+    before: Current actor has admitted target/commit authority; current v1 bytes exist, digest/size/safety
+      checks pass; domain has validated named recipient, actual time and matcher against unchanged snapshot
+      v3. Synthetic setup only; not executed by schema validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: ready
+      binding:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      acknowledgment_id: 75000000-0000-4000-8000-000000000001
+  - name: missing-paper-binding
+    participantId: checkEvidenceBinding
+    before: Current actor is admitted; target has no uploaded/selected evidence. No ready binding can be
+      supplied even though an old acknowledgment projection is retained. Synthetic setup only; not executed
+      by schema validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes: null
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: missing
+      reason: evidence_missing
+  - name: ready-bytes-without-authorized-match
+    participantId: checkEvidenceBinding
+    before: Current actor is admitted; v1 objects are technically ready and current, but no authorized paper-matching
+      acknowledgment exists. File readability/digest is not identity or matching proof. Synthetic setup
+      only; not executed by schema validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment: null
+    output:
+      outcome: missing
+      reason: acknowledgment_missing
+  - name: missing-retained-object
+    participantId: checkEvidenceBinding
+    before: Current actor is admitted; current v1 manifest is retained but its one private object was lost.
+      The snapshot/match still agree; the technical participant detects object_missing. Synthetic setup
+      only; not executed by schema validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: invalid
+      reason: object_missing
+  - name: failed-byte-integrity
+    participantId: checkEvidenceBinding
+    before: Current actor is admitted; current v1 object no longer hashes to retained SHA-256 a repeated
+      64 times (or measured size differs). No replacement/version/acknowledgment is fabricated. Synthetic
+      setup only; not executed by schema validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: invalid
+      reason: integrity_failed
+  - name: unsafe-retained-object
+    participantId: checkEvidenceBinding
+    before: Current actor is admitted; the current v1 object is now classified unsafe_content by validated
+      parser policy. Retained attribution stays, byte delivery/posting is blocked. Synthetic setup only;
+      not executed by schema validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: invalid
+      reason: unsafe_content
+  - name: wrong-business-record
+    participantId: checkEvidenceBinding
+    before: Actor is currently permitted to see records ...0001 and ...0002 in this chapter. Required bytes
+      belong to ...0001; requested snapshot is ...0002. No foreign record existence is disclosed. Synthetic
+      setup only; not executed by schema validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000002
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: mismatched
+      reason: target_mismatch
+  - name: changed-batch-or-recipient
+    participantId: checkEvidenceBinding
+    before: Current actor is admitted; current requested batch is material v4/digest f repeated 64 times
+      after recipient or quantity correction. The retained authorized paper acknowledgment still pins original
+      v3/digest e repeated 64 times and cannot authorize v4. Synthetic setup only; not executed by schema
+      validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 4
+        sha256: ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: mismatched
+      reason: snapshot_changed
+  - name: superseded-matching-scan
+    participantId: checkEvidenceBinding
+    before: Current actor is admitted; evidence version ...0002 is now current and ...0001.superseded_by_version_id
+      names ...0002. Input/old match still pin v1, whose bytes remain privately readable but cannot satisfy
+      new commitment. Synthetic setup only; not executed by schema validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: mismatched
+      reason: superseded_version
+  - name: different-byte-version
+    participantId: checkEvidenceBinding
+    before: Current actor is admitted; required current v2 includes attachment ...0002/digest b repeated
+      64 times. Retained acknowledgment names v1/attachment ...0001/digest a repeated 64 times. Both objects
+      exist; exact byte/version matching fails. Synthetic setup only; not executed by schema validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000002
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000002
+          sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: mismatched
+      reason: bytes_changed
+  - name: unauthorized-or-invalid-match
+    participantId: checkEvidenceBinding
+    before: Current posting actor is admitted and current v1 bytes/snapshot agree, but domain validation
+      finds matched_by lacked the required record-scoped matching authority at match time. Internal acknowledgment
+      facts are untrusted until domain validation succeeds. Synthetic setup only; not executed by schema
+      validation.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000001
+      snapshot:
+        target:
+          purpose: actual_issue
+          record_id: 71000000-0000-4000-8000-000000000001
+        material_version: 3
+        sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      required_bytes:
+        evidence_id: 72000000-0000-4000-8000-000000000001
+        version_id: 73000000-0000-4000-8000-000000000001
+        attachments:
+        - attachment_id: 74000000-0000-4000-8000-000000000001
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment:
+        acknowledgment_id: 75000000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000001
+        matched_at: '2026-11-09T02:03:00.000000Z'
+        recipient_id: 76000000-0000-4000-8000-000000000001
+        acknowledged_at: '2026-11-09T02:00:00.000000Z'
+        snapshot:
+          target:
+            purpose: actual_issue
+            record_id: 71000000-0000-4000-8000-000000000001
+          material_version: 3
+          sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        bytes:
+          evidence_id: 72000000-0000-4000-8000-000000000001
+          version_id: 73000000-0000-4000-8000-000000000001
+          attachments:
+          - attachment_id: 74000000-0000-4000-8000-000000000001
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    output:
+      outcome: mismatched
+      reason: acknowledgment_invalid

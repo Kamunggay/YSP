@@ -2,9 +2,9 @@ openapi: 3.1.1
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: YSP Stage 1 canonical HTTP agreement
-  version: 0.2.0
+  version: 0.3.0
   description: >-
-    Tickets stage1-contracts-01/02, specification 19. Contract candidate, not implemented
+    Tickets stage1-contracts-01/02/04, specification 19. Contract candidate, not implemented
     authentication. agreement.md defines normative security, retry and ownership rules.
     Only /api/health exists in scaffold 7287aa439876e7280075206b77f5f2a62b44de0a.
     Authentication and chapter discovery/context/action reads are specified. Controlled
@@ -17,6 +17,7 @@ tags:
   - name: Scaffold
   - name: Authentication
   - name: Chapter authority
+  - name: Paper evidence
 paths:
   /api/health:
     get:
@@ -543,6 +544,324 @@ paths:
           $ref: '#/components/responses/Unavailable'
         '404':
           $ref: '#/components/responses/ChapterUnavailable'
+  /api/v1/chapters/{chapter_id}/evidence:
+    post:
+      operationId: uploadPaperEvidence
+      tags:
+      - Paper evidence
+      x-existence: new
+      summary: Upload a complete signed-paper attachment set
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: One immutable version with every validated attachment; technical readiness is not
+            a business acknowledgment.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishedPaperEvidenceResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/EvidenceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/EvidenceUnavailable'
+        '409':
+          $ref: '#/components/responses/EvidenceConflict'
+        '413':
+          $ref: '#/components/responses/EvidenceTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidEvidence'
+      description: Requires current evidence.prepare plus purpose-specific record scope. Synchronous all-or-nothing
+        validation of actual content/type/size and durable private storage precedes 201. No public pending/scanning
+        state or asynchronous prerequisite. Repeated multipart parts are named attachments; metadata fields
+        are single text/plain parts (expected_version is parsed as an integer); reject unknown/repeated
+        metadata. Return 201 on first creation and authorized identical replay with X-Action-Replayed=true.
+        An accepted replay precedes new-intent expected-version/target-locked checks, but rechecks current
+        authority and cannot authorize posting. See agreement.md for fingerprint, lost response and immutable-version
+        rules.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadPaperEvidence'
+            encoding:
+              attachments:
+                contentType: image/jpeg, image/png, application/pdf
+  /api/v1/chapters/{chapter_id}/evidence/{evidence_id}:
+    get:
+      operationId: readPaperEvidence
+      tags:
+      - Paper evidence
+      x-existence: new
+      summary: Read evidence identity and current technical readiness
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/EvidenceId'
+      responses:
+        '200':
+          description: Current version metadata, including safe technical readiness.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperEvidenceResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/EvidenceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/EvidenceUnavailable'
+      description: Current evidence.read and purpose-specific record visibility required. No query/body.
+        Fresh object/integrity readiness check; metadata may report invalid, never a stored ready flag alone.
+        No business matching implied.
+  /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions:
+    get:
+      operationId: listPaperEvidenceVersions
+      tags:
+      - Paper evidence
+      x-existence: new
+      summary: List retained versions including superseded evidence
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/EvidenceId'
+      - $ref: '#/components/parameters/MembershipLimit'
+      - $ref: '#/components/parameters/EvidenceHistoryCursor'
+      responses:
+        '200':
+          description: Retained version page; no deleted history.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperEvidenceHistoryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/EvidenceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/EvidenceUnavailable'
+        '409':
+          $ref: '#/components/responses/EvidenceConflict'
+      description: Current evidence.read and history.read plus target scope required for every page; versions
+        sort by immutable integer version ascending. Default limit 25, max 100. No filters/alternate sort;
+        unknown/repeated/malformed selectors 400. Cursor snapshots metadata, never permission or readiness;
+        recheck current objects/authority before disclosure. Null next_cursor marks end. Supersession preserves
+        every version.
+    post:
+      operationId: replacePaperEvidence
+      tags:
+      - Paper evidence
+      x-existence: new
+      summary: Supersede the current evidence version without deleting it
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/EvidenceId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: One immutable version with every validated attachment; technical readiness is not
+            a business acknowledgment.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishedPaperEvidenceResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/EvidenceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/EvidenceUnavailable'
+        '409':
+          $ref: '#/components/responses/EvidenceConflict'
+        '413':
+          $ref: '#/components/responses/EvidenceTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidEvidence'
+      description: Requires current evidence.prepare plus purpose-specific record scope. Synchronous all-or-nothing
+        validation of actual content/type/size and durable private storage precedes 201. No public pending/scanning
+        state or asynchronous prerequisite. Repeated multipart parts are named attachments; metadata fields
+        are single text/plain parts (expected_version is parsed as an integer); reject unknown/repeated
+        metadata. Return 201 on first creation and authorized identical replay with X-Action-Replayed=true.
+        An accepted replay precedes new-intent expected-version/target-locked checks, but rechecks current
+        authority and cannot authorize posting. See agreement.md for fingerprint, lost response and immutable-version
+        rules.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReplacePaperEvidence'
+            encoding:
+              attachments:
+                contentType: image/jpeg, image/png, application/pdf
+  /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions/{version_id}:
+    get:
+      operationId: readPaperEvidenceVersion
+      tags:
+      - Paper evidence
+      x-existence: new
+      summary: Read readiness and immutable identity of a retained version
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/EvidenceId'
+      - $ref: '#/components/parameters/EvidenceVersionId'
+      responses:
+        '200':
+          description: Retained version metadata; invalid objects remain attributed and never ready.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperEvidenceVersionResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/EvidenceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/EvidenceUnavailable'
+      description: Current evidence.read, history.read and target scope required. Retained superseded versions
+        remain privately readable; they are ineligible for a new commitment. No query/body. Current availability/integrity
+        is rechecked.
+  /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content:
+    get:
+      operationId: retrievePaperEvidenceAttachment
+      tags:
+      - Paper evidence
+      x-existence: new
+      summary: Privately retrieve exact retained attachment bytes
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/EvidenceId'
+      - $ref: '#/components/parameters/EvidenceVersionId'
+      - $ref: '#/components/parameters/AttachmentId'
+      responses:
+        '200':
+          description: Complete private validated file; actual Content-Type must match retained detected
+            media_type.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Content-Disposition:
+              required: true
+              schema:
+                type: string
+                pattern: ^attachment; filename="[0-9a-f-]{36}\.(jpg|png|pdf)"$
+            X-Content-Type-Options:
+              required: true
+              schema:
+                const: nosniff
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+                description: Exact retained raw octets, not JSON or base64. Example strings are placeholders;
+                  runtime file/integrity validation is deferred.
+            image/png:
+              schema:
+                type: string
+                format: binary
+                description: Exact retained raw octets, not JSON or base64. Example strings are placeholders;
+                  runtime file/integrity validation is deferred.
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+                description: Exact retained raw octets, not JSON or base64. Example strings are placeholders;
+                  runtime file/integrity validation is deferred.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/EvidenceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/EvidenceUnavailable'
+      description: Current evidence.read, history.read and target scope required, including for copied URLs
+        and each request. Server proxies exact validated bytes only; no redirects, signed object-store URLs,
+        public origin or bearer links. Check availability, size and digest before any byte delivery and
+        fence revocation at authorization/delivery. Always force download with server-generated attachment
+        UUID filename and detected extension; never inline. Ignore conditional/range request headers; return
+        complete 200 after authorization, never 206/304. No query/body. Errors are JSON and contain no protected
+        bytes. Accept includes the three permitted media types and application/json.
 components:
   securitySchemes:
     browserSession:
@@ -559,6 +878,37 @@ components:
       name: X-XSRF-TOKEN
       description: URL-decoded XSRF-TOKEN cookie, tied to this browser session.
   parameters:
+    EvidenceId:
+      in: path
+      name: evidence_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Opaque identity; chapter, target and current duty admission precede disclosure.
+    EvidenceVersionId:
+      in: path
+      name: version_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Opaque identity; chapter, target and current duty admission precede disclosure.
+    AttachmentId:
+      in: path
+      name: attachment_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Opaque identity; chapter, target and current duty admission precede disclosure.
+    EvidenceHistoryCursor:
+      in: query
+      name: cursor
+      required: false
+      description: Opaque five-minute cursor bound to actor, chapter, evidence, authority generation, history
+        revision, limit and ascending version order. Changed/expired snapshot is 409; foreign cursor is 400.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 1024
     ChapterId:
       in: path
       name: chapter_id
@@ -645,6 +995,459 @@ components:
       schema: {type: string, pattern: '^[1-9][0-9]*$'}
       example: '60'
   schemas:
+    EvidencePurpose:
+      enum:
+      - opening_receipt
+      - hold_clearance
+      - actual_issue
+    EvidenceTarget:
+      type: object
+      additionalProperties: false
+      required:
+      - purpose
+      - record_id
+      properties:
+        purpose:
+          $ref: '#/components/schemas/EvidencePurpose'
+        record_id:
+          $ref: '#/components/schemas/Uuid'
+    PaperAttachment:
+      type: object
+      additionalProperties: false
+      required:
+      - attachment_id
+      - position
+      - media_type
+      - byte_length
+      - sha256
+      properties:
+        attachment_id:
+          $ref: '#/components/schemas/Uuid'
+        position:
+          type: integer
+          minimum: 1
+        media_type:
+          enum:
+          - image/jpeg
+          - image/png
+          - application/pdf
+        byte_length:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+    PaperEvidenceVersion:
+      type: object
+      additionalProperties: false
+      required:
+      - evidence_id
+      - chapter_id
+      - target
+      - version_id
+      - version
+      - supersedes_version_id
+      - superseded_by_version_id
+      - technical_state
+      - invalid_reason
+      - uploaded_by
+      - uploaded_at
+      - replacement_reason
+      - attachments
+      properties:
+        evidence_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        target:
+          $ref: '#/components/schemas/EvidenceTarget'
+        version_id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+        supersedes_version_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        superseded_by_version_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        technical_state:
+          enum:
+          - ready
+          - invalid
+        invalid_reason:
+          enum:
+          - null
+          - object_missing
+          - integrity_failed
+          - unsafe_content
+        uploaded_by:
+          $ref: '#/components/schemas/Uuid'
+        uploaded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        replacement_reason:
+          oneOf:
+          - type: string
+            minLength: 1
+            maxLength: 500
+          - type: 'null'
+        attachments:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/PaperAttachment'
+      allOf:
+      - if:
+          properties:
+            technical_state:
+              const: ready
+        then:
+          properties:
+            invalid_reason:
+              type: 'null'
+        else:
+          properties:
+            invalid_reason:
+              type: string
+      - if:
+          properties:
+            version:
+              const: 1
+        then:
+          properties:
+            supersedes_version_id:
+              type: 'null'
+            replacement_reason:
+              type: 'null'
+        else:
+          properties:
+            supersedes_version_id:
+              $ref: '#/components/schemas/Uuid'
+            replacement_reason:
+              type: string
+    PublishedPaperEvidenceResult:
+      description: Original successful publication snapshot, including on authorized intent replay.
+      allOf:
+      - $ref: '#/components/schemas/PaperEvidenceVersionResult'
+      - properties:
+          data:
+            properties:
+              technical_state:
+                const: ready
+              invalid_reason:
+                type: 'null'
+              superseded_by_version_id:
+                type: 'null'
+    PaperEvidenceVersionResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PaperEvidenceVersion'
+    PaperEvidenceResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - evidence_id
+          - chapter_id
+          - target
+          - current_version
+          properties:
+            evidence_id:
+              $ref: '#/components/schemas/Uuid'
+            chapter_id:
+              $ref: '#/components/schemas/Uuid'
+            target:
+              $ref: '#/components/schemas/EvidenceTarget'
+            current_version:
+              $ref: '#/components/schemas/PaperEvidenceVersion'
+    PaperEvidenceHistoryResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - versions
+          - next_cursor
+          properties:
+            versions:
+              type: array
+              minItems: 0
+              items:
+                $ref: '#/components/schemas/PaperEvidenceVersion'
+            next_cursor:
+              oneOf:
+              - type: string
+                minLength: 1
+                maxLength: 1024
+              - type: 'null'
+    UploadPaperEvidence:
+      type: object
+      additionalProperties: false
+      required:
+      - purpose
+      - record_id
+      - attachments
+      properties:
+        purpose:
+          $ref: '#/components/schemas/EvidencePurpose'
+        record_id:
+          $ref: '#/components/schemas/Uuid'
+        attachments:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: binary
+            minLength: 1
+          description: Ordered repeated attachments parts, each with filename and its actual Content-Type.
+            Only JPEG, PNG and PDF; actual byte length 1..10485760 per part. Binary strings in YAML examples
+            are transport placeholders, not validated files. No base64, URLs, client hashes or readiness flags.
+    ReplacePaperEvidence:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - reason
+      - attachments
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        attachments:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: binary
+            minLength: 1
+          description: Ordered repeated attachments parts, each with filename and its actual Content-Type.
+            Only JPEG, PNG and PDF; actual byte length 1..10485760 per part. Binary strings in YAML examples
+            are transport placeholders, not validated files. No base64, URLs, client hashes or readiness flags.
+    EvidenceValidationError:
+      type: object
+      additionalProperties: false
+      required:
+      - request_id
+      - error
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        error:
+          type: object
+          additionalProperties: false
+          required:
+          - code
+          - message
+          - fields
+          properties:
+            code:
+              const: invalid_evidence
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+            fields:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                - pointer
+                - code
+                - message
+                properties:
+                  pointer:
+                    type: string
+                    pattern: ^(/([^~/]|~[01])*)*$
+                  code:
+                    enum:
+                    - required
+                    - empty_file
+                    - unsupported_type
+                    - content_mismatch
+                    - malformed_content
+                    - unsafe_content
+                    - invalid_target
+                    - invalid_field
+                  message:
+                    type: string
+                    minLength: 1
+                    maxLength: 200
+    EvidenceSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+      - target
+      - material_version
+      - sha256
+      properties:
+        target:
+          $ref: '#/components/schemas/EvidenceTarget'
+        material_version:
+          type: integer
+          minimum: 1
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+    EvidenceByteBinding:
+      type: object
+      additionalProperties: false
+      required:
+      - evidence_id
+      - version_id
+      - attachments
+      properties:
+        evidence_id:
+          $ref: '#/components/schemas/Uuid'
+        version_id:
+          $ref: '#/components/schemas/Uuid'
+        attachments:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - attachment_id
+            - sha256
+            properties:
+              attachment_id:
+                $ref: '#/components/schemas/Uuid'
+              sha256:
+                type: string
+                pattern: ^[a-f0-9]{64}$
+    EvidenceMatchAcknowledgment:
+      type: object
+      additionalProperties: false
+      required:
+      - acknowledgment_id
+      - matched_by
+      - matched_at
+      - recipient_id
+      - acknowledged_at
+      - snapshot
+      - bytes
+      properties:
+        acknowledgment_id:
+          $ref: '#/components/schemas/Uuid'
+        matched_by:
+          $ref: '#/components/schemas/Uuid'
+        matched_at:
+          $ref: '#/components/schemas/UtcInstant'
+        recipient_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        acknowledged_at:
+          $ref: '#/components/schemas/UtcInstant'
+        snapshot:
+          $ref: '#/components/schemas/EvidenceSnapshot'
+        bytes:
+          $ref: '#/components/schemas/EvidenceByteBinding'
+    CheckEvidenceBindingInput:
+      type: object
+      additionalProperties: false
+      required:
+      - chapter_id
+      - actor_id
+      - snapshot
+      - required_bytes
+      - acknowledgment
+      properties:
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        snapshot:
+          $ref: '#/components/schemas/EvidenceSnapshot'
+        required_bytes:
+          oneOf:
+          - $ref: '#/components/schemas/EvidenceByteBinding'
+          - type: 'null'
+        acknowledgment:
+          oneOf:
+          - $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+          - type: 'null'
+    CheckEvidenceBindingResult:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - binding
+        - snapshot
+        - acknowledgment_id
+        properties:
+          outcome:
+            const: ready
+          binding:
+            $ref: '#/components/schemas/EvidenceByteBinding'
+          snapshot:
+            $ref: '#/components/schemas/EvidenceSnapshot'
+          acknowledgment_id:
+            $ref: '#/components/schemas/Uuid'
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - reason
+        properties:
+          outcome:
+            const: missing
+          reason:
+            enum:
+            - evidence_missing
+            - acknowledgment_missing
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - reason
+        properties:
+          outcome:
+            const: invalid
+          reason:
+            enum:
+            - object_missing
+            - integrity_failed
+            - unsafe_content
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - reason
+        properties:
+          outcome:
+            const: mismatched
+          reason:
+            enum:
+            - target_mismatch
+            - snapshot_changed
+            - superseded_version
+            - bytes_changed
+            - acknowledgment_invalid
     Duty:
       type: string
       enum:
@@ -1777,6 +2580,94 @@ components:
                   code: {enum: [required, invalid_format, too_long, unexpected_field, invalid_type]}
                   message: {type: string, minLength: 1, maxLength: 200}
   responses:
+    EvidenceNotFound:
+      description: chapter_not_found for unknown/inactive/foreign chapter or revoked membership; evidence_not_found
+        uniformly for absent/foreign/record-scope-denied evidence, target, version or attachment inside an
+        admitted chapter. No name, signature, hash, target or existence hint.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - chapter_not_found
+                      - evidence_not_found
+    EvidenceConflict:
+      description: Stale expected version, changed key payload, expired/changed history cursor, or committed
+        target rejects with no change. Error contains no current private snapshot; refetch permitted metadata
+        explicitly.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - version_conflict
+                      - action_key_conflict
+                      - snapshot_stale
+                      - target_locked
+    InvalidEvidence:
+      description: Invalid fields, absent/empty/unsupported/malformed/unsafe/content-mismatched file; all
+        parts rejected atomically. JSON pointers refer to multipart model fields and zero-based attachment
+        positions. Preserve unrelated form edits.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/EvidenceValidationError'
+    EvidenceTooLarge:
+      description: A file exceeds 10485760 bytes; discard the complete attempted version. An ingress whole-request
+        bound must permit multiple maximum-sized files, and any ingress rejection must return this JSON envelope
+        without disclosing content. Preserve form inputs.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - evidence_too_large
+    EvidenceUnavailable:
+      description: Upload storage/validation infrastructure failed or retained object is unavailable/invalid.
+        No ready result or partial version is published. Retrieve no partial/corrupt bytes; retry/reconcile
+        using the same intent. No physical handover retry implied.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - evidence_unavailable
+                      - service_unavailable
     ChapterAccessDenied:
       description: mfa_incomplete for limited authentication; duty_denied for a visible chapter with insufficient
         duty. No protected state is returned
@@ -2279,3 +3170,19 @@ x-stage1-action-duties:
   - RECEIVING
   - DISPATCH
   - RF_APPROVER
+
+x-evidence-participants:
+  checkEvidenceBinding:
+    owner: Leader
+    consumers:
+    - opening receipt owner (ticket 05)
+    - hold clearance owner (ticket 07)
+    - Efren actual issue (ticket 08)
+    input:
+      $ref: '#/components/schemas/CheckEvidenceBindingInput'
+    output:
+      $ref: '#/components/schemas/CheckEvidenceBindingResult'
+    description: Internal synchronous participant, no HTTP route or standalone readiness token. Domain owns
+      snapshot/matching acknowledgment validation and outer transaction. Leader owns immutable bytes/readiness/supersession;
+      all checks rerun under shared commit fences. Current-authority denial and infrastructure failures
+      abort the caller without exposing a binding. See agreement.md.
