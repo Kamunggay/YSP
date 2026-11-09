@@ -2,9 +2,9 @@ openapi: 3.1.1
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: YSP Stage 1 canonical HTTP agreement
-  version: 0.4.0
+  version: 0.6.0
   description: >-
-    Tickets stage1-contracts-01/02/03/04, specification 19. Contract candidate, not implemented
+    Tickets stage1-contracts-01/02/03/04/06, specification 19. Contract candidate, not implemented
     authentication. agreement.md defines normative security, retry and ownership rules.
     Only /api/health exists in scaffold 7287aa439876e7280075206b77f5f2a62b44de0a.
     Authentication and chapter discovery/context/action reads are specified. Controlled
@@ -2547,6 +2547,810 @@ paths:
         UUID filename and detected extension; never inline. Ignore conditional/range request headers; return
         complete 200 after authorization, never 206/304. No query/body. Errors are JSON and contain no protected
         bytes. Accept includes the three permitted media types and application/json.
+  /api/v1/chapters/{chapter_id}/internal-rfs:
+    get:
+      operationId: listInternalRfs
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.read
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: listInternalRfs
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/RfCursor'
+      - $ref: '#/components/parameters/RfStatusFilter'
+      - $ref: '#/components/parameters/RfUnitFilter'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalRfList'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createInternalRf
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.draft
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: createInternalRf
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Unsafe request uses exact Origin and synchronized CSRF proof before admission; parsed RFC8785 body/target
+        fingerprint, durable actor+chapter+operation+key receipt. Authorized accepted same-key/same-payload replay
+        precedes new-intent version/state checks; changed payload is 409 action_key_conflict. Rejection/rollback consumes
+        no key. Result lookup before uncertain retry; no repeat handover.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInternalRf'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}:
+    get:
+      operationId: readInternalRf
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.read
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: readInternalRf
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalRfResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    put:
+      operationId: replaceInternalRfDraft
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.draft
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: replaceInternalRfDraft
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Unsafe request uses exact Origin and synchronized CSRF proof before admission; parsed RFC8785 body/target
+        fingerprint, durable actor+chapter+operation+key receipt. Authorized accepted same-key/same-payload replay
+        precedes new-intent version/state checks; changed payload is 409 action_key_conflict. Rejection/rollback consumes
+        no key. Result lookup before uncertain retry; no repeat handover.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceInternalRfDraft'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/submit:
+    post:
+      operationId: submitInternalRf
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.submit
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: submitInternalRf
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Unsafe request uses exact Origin and synchronized CSRF proof before admission; parsed RFC8785 body/target
+        fingerprint, durable actor+chapter+operation+key receipt. Authorized accepted same-key/same-payload replay
+        precedes new-intent version/state checks; changed payload is 409 action_key_conflict. Rejection/rollback consumes
+        no key. Result lookup before uncertain retry; no repeat handover.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RfTransition'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/approve:
+    post:
+      operationId: approveInternalRf
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.approve
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: approveInternalRf
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Unsafe request uses exact Origin and synchronized CSRF proof before admission; parsed RFC8785 body/target
+        fingerprint, durable actor+chapter+operation+key receipt. Authorized accepted same-key/same-payload replay
+        precedes new-intent version/state checks; changed payload is 409 action_key_conflict. Rejection/rollback consumes
+        no key. Result lookup before uncertain retry; no repeat handover.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RfTransition'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/return:
+    post:
+      operationId: returnInternalRf
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.approve
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: returnInternalRf
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Unsafe request uses exact Origin and synchronized CSRF proof before admission; parsed RFC8785 body/target
+        fingerprint, durable actor+chapter+operation+key receipt. Authorized accepted same-key/same-payload replay
+        precedes new-intent version/state checks; changed payload is 409 action_key_conflict. Rejection/rollback consumes
+        no key. Result lookup before uncertain retry; no repeat handover.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RfReasonedTransition'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/revise:
+    post:
+      operationId: reviseInternalRf
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.draft
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: reviseInternalRf
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Unsafe request uses exact Origin and synchronized CSRF proof before admission; parsed RFC8785 body/target
+        fingerprint, durable actor+chapter+operation+key receipt. Authorized accepted same-key/same-payload replay
+        precedes new-intent version/state checks; changed payload is 409 action_key_conflict. Rejection/rollback consumes
+        no key. Result lookup before uncertain retry; no repeat handover.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviseInternalRf'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/cancel:
+    post:
+      operationId: cancelInternalRf
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.draft
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: cancelInternalRf
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Unsafe request uses exact Origin and synchronized CSRF proof before admission; parsed RFC8785 body/target
+        fingerprint, durable actor+chapter+operation+key receipt. Authorized accepted same-key/same-payload replay
+        precedes new-intent version/state checks; changed payload is 409 action_key_conflict. Rejection/rollback consumes
+        no key. Result lookup before uncertain retry; no repeat handover.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelInternalRf'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/history:
+    get:
+      operationId: listInternalRfHistory
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.read
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: listInternalRfHistory
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Requires history.read in addition to visible RF/read entitlement.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/RfCursor'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfHistoryList'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/versions/{version}:
+    get:
+      operationId: readInternalRfVersion
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.read
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: readInternalRfVersion
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Requires history.read in addition to visible RF/read entitlement.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/RfVersion'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalRfResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/related-records:
+    get:
+      operationId: listInternalRfRelatedRecords
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.read
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: listInternalRfRelatedRecords
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store. Requires history.read in addition to visible RF/read entitlement.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/RfCursor'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfRelatedList'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/internal-rfs/operation-results/{operation_id}:
+    get:
+      operationId: readInternalRfOperationResult
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.read
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: readInternalRfOperationResult
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfOperationId'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/internal-rfs/operation-results:
+    get:
+      operationId: findInternalRfOperationResult
+      tags:
+      - Internal RF
+      x-existence: new
+      x-required-action: rf.read
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (demand/posting compatibility)
+      summary: findInternalRfOperationResult
+      description: New/unimplemented. Current enabled individual session/MFA, chapter membership and exact unit/record
+        duty scope precede identifier/existence disclosure. Requester operations require the original immutable requester;
+        review requires current independently authorized RF_APPROVER. See ticket06 agreement for gates, versions,
+        history and retained reference. No reservation, physical stock movement or purchasing action. All responses
+        no-store.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfOperationName'
+      - $ref: '#/components/parameters/RfActionKeyLookup'
+      responses:
+        '200':
+          description: Authorized current read or original committed intent snapshot. No stock movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/RfConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   securitySchemes:
     browserSession:
@@ -2563,6 +3367,62 @@ components:
       name: X-XSRF-TOKEN
       description: URL-decoded XSRF-TOKEN cookie, tied to this browser session.
   parameters:
+    RfId:
+      in: path
+      name: rf_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RfVersion:
+      in: path
+      name: version
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+    RfOperationId:
+      in: path
+      name: operation_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RfOperationName:
+      in: query
+      name: operation_name
+      required: true
+      schema:
+        $ref: '#/components/schemas/RfMutationName'
+    RfActionKeyLookup:
+      in: query
+      name: action_key
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Original actor only; sensitive selector, never log query strings. No mutation uses a key in its URL.
+    RfStatusFilter:
+      in: query
+      name: status
+      required: false
+      schema:
+        $ref: '#/components/schemas/RfStatus'
+      description: Omit for every visible state.
+    RfUnitFilter:
+      in: query
+      name: requesting_unit_id
+      required: false
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RfCursor:
+      in: query
+      name: cursor
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 1024
+      description: Five-minute cursor bound to actor/chapter/authority, operation/record, filters, limit and snapshot.
+        Changed snapshot is 409 snapshot_stale. Foreign/invalid cursor is 400 invalid_selector.
     CatalogueResourceId:
       name: resource_id
       in: path
@@ -2828,6 +3688,936 @@ components:
       schema: {type: string, pattern: '^[1-9][0-9]*$'}
       example: '60'
   schemas:
+    RfApprovalRoutePolicyValue:
+      type: object
+      additionalProperties: false
+      required:
+      - routes
+      properties:
+        routes:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - requesting_unit_id
+            - primary_approver_grant_id
+            - alternate_authorization_ids
+            properties:
+              requesting_unit_id:
+                $ref: '#/components/schemas/Uuid'
+              primary_approver_grant_id:
+                $ref: '#/components/schemas/Uuid'
+              alternate_authorization_ids:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Uuid'
+                uniqueItems: true
+          minItems: 1
+          maxItems: 20
+    RfReferenceSeriesPolicyValue:
+      type: object
+      additionalProperties: false
+      required:
+      - document_kind
+      - prefix
+      - year_basis
+      - sequence_width
+      properties:
+        document_kind:
+          const: RF
+        prefix:
+          type: string
+          pattern: ^[A-Z0-9]{1,12}$
+        year_basis:
+          const: Asia/Manila
+        sequence_width:
+          type: integer
+          minimum: 6
+          maximum: 12
+    RfStatus:
+      type: string
+      enum:
+      - draft
+      - submitted
+      - returned
+      - approved
+      - canceled
+    RfLineInput:
+      type: object
+      additionalProperties: false
+      required:
+      - line_id
+      - variant_id
+      - unit_id
+      - requested_quantity
+      properties:
+        line_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        variant_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        requested_quantity:
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/StockQuantity'
+            - not:
+                pattern: ^0(?:\.0+)?$
+          - type: 'null'
+    CreateInternalRf:
+      type: object
+      additionalProperties: false
+      required:
+      - purpose
+      - requesting_unit_id
+      - event_id
+      - needed_at
+      - justification
+      - lines
+      properties:
+        purpose:
+          const: internal_use
+        requesting_unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        event_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        needed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        justification:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 2000
+            pattern: \S
+          - type: 'null'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfLineInput'
+          maxItems: 100
+    ReplaceInternalRfDraft:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - purpose
+      - requesting_unit_id
+      - event_id
+      - needed_at
+      - justification
+      - lines
+      - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        purpose:
+          const: internal_use
+        requesting_unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        event_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        needed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        justification:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 2000
+            pattern: \S
+          - type: 'null'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfLineInput'
+          maxItems: 100
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    RfTransition:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+    RfReasonedTransition:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    ReviseInternalRf:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - expected_progress_version
+      - purpose
+      - requesting_unit_id
+      - event_id
+      - needed_at
+      - justification
+      - lines
+      - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        purpose:
+          const: internal_use
+        requesting_unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        event_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        needed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        justification:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 2000
+            pattern: \S
+          - type: 'null'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfLineInput'
+          maxItems: 100
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    CancelInternalRf:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - expected_progress_version
+      - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    RfActor:
+      type: object
+      additionalProperties: false
+      required:
+      - user_id
+      - chapter_id
+      - membership_id
+      - duty_grant_id
+      - duty
+      - unit_id
+      - acted_at
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        membership_id:
+          $ref: '#/components/schemas/Uuid'
+        duty_grant_id:
+          $ref: '#/components/schemas/Uuid'
+        duty:
+          enum:
+          - COMMITTEE_REQUESTER
+          - RF_APPROVER
+          - INVENTORY
+          - DISPATCH
+        unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        acted_at:
+          $ref: '#/components/schemas/UtcInstant'
+    RfApproval:
+      type: object
+      additionalProperties: false
+      required:
+      - actor
+      - material_version
+      - route_policy_id
+      - route_policy_version
+      - alternate_authorization_id
+      properties:
+        actor:
+          $ref: '#/components/schemas/RfActor'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        route_policy_id:
+          $ref: '#/components/schemas/Uuid'
+        route_policy_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        alternate_authorization_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    RfLineProgress:
+      type: object
+      additionalProperties: false
+      required:
+      - approved_quantity
+      - issued_quantity
+      - reserved_quantity
+      - blocked_reserved_quantity
+      - canceled_quantity
+      - remaining_quantity
+      - unreserved_quantity
+      properties:
+        approved_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+        issued_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        reserved_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        blocked_reserved_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        canceled_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        remaining_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+        unreserved_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+    RfCatalogueIdentity:
+      type: object
+      additionalProperties: false
+      required:
+      - variant_id
+      - variant_material_version
+      - item_id
+      - item_code
+      - variant_code
+      - display_name
+      - unit_id
+      - unit_code
+      - unit_material_version
+      - quantity_scale
+      properties:
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        item_code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: \S
+        variant_code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: \S
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 160
+          pattern: \S
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: \S
+        unit_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+    RfLine:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - variant_id
+      - unit_id
+      - requested_quantity
+      - identity_at_approval
+      - progress
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        requested_quantity:
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/StockQuantity'
+            - not:
+                pattern: ^0(?:\.0+)?$
+          - type: 'null'
+        identity_at_approval:
+          anyOf:
+          - $ref: '#/components/schemas/RfCatalogueIdentity'
+          - type: 'null'
+        progress:
+          $ref: '#/components/schemas/RfLineProgress'
+    RfAdvancementBlocker:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - pointer
+      - message
+      properties:
+        code:
+          enum:
+          - incomplete
+          - resource_retired
+          - unit_incompatible
+          - precision_unsupported
+          - approver_unavailable
+          - approval_authority_revoked
+          - commitment_active
+          - handover_unresolved
+        pointer:
+          type: string
+          pattern: ^(/([^~/]|~[01])*)*$
+        message:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: \S
+    InternalRf:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - reference
+      - status
+      - version
+      - material_version
+      - progress_version
+      - requester_id
+      - purpose
+      - requesting_unit_id
+      - event_id
+      - needed_at
+      - justification
+      - lines
+      - approval
+      - fulfillment
+      - created_by
+      - created_at
+      - updated_at
+      - submitted_at
+      - setup_blockers
+      - advancement_blockers
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+            pattern: \S
+          - type: 'null'
+        status:
+          $ref: '#/components/schemas/RfStatus'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        requester_id:
+          $ref: '#/components/schemas/Uuid'
+        purpose:
+          const: internal_use
+        requesting_unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        event_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        needed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        justification:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 2000
+            pattern: \S
+          - type: 'null'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfLine'
+          maxItems: 100
+        approval:
+          anyOf:
+          - $ref: '#/components/schemas/RfApproval'
+          - type: 'null'
+        fulfillment:
+          enum:
+          - not_approved
+          - outstanding
+          - partially_issued
+          - fulfilled
+          - closed_canceled
+        created_by:
+          $ref: '#/components/schemas/RfActor'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        submitted_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        setup_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+        advancement_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfAdvancementBlocker'
+      allOf:
+      - if:
+          properties:
+            status:
+              enum:
+              - draft
+              - submitted
+              - returned
+        then:
+          properties:
+            approval:
+              type: 'null'
+            fulfillment:
+              const: not_approved
+            lines:
+              items:
+                properties:
+                  identity_at_approval:
+                    type: 'null'
+                  progress:
+                    properties:
+                      approved_quantity:
+                        type: 'null'
+                      remaining_quantity:
+                        type: 'null'
+                      unreserved_quantity:
+                        type: 'null'
+                      issued_quantity:
+                        const: '0'
+                      reserved_quantity:
+                        const: '0'
+                      blocked_reserved_quantity:
+                        const: '0'
+                      canceled_quantity:
+                        const: '0'
+      - if:
+          properties:
+            status:
+              const: approved
+        then:
+          properties:
+            approval:
+              $ref: '#/components/schemas/RfApproval'
+            reference:
+              type: string
+            requesting_unit_id:
+              $ref: '#/components/schemas/Uuid'
+            needed_at:
+              $ref: '#/components/schemas/UtcInstant'
+            justification:
+              type: string
+            lines:
+              minItems: 1
+              items:
+                properties:
+                  identity_at_approval:
+                    type: object
+                  requested_quantity:
+                    allOf:
+                    - $ref: '#/components/schemas/StockQuantity'
+                    - not:
+                        pattern: ^0(?:\.0+)?$
+                  progress:
+                    properties:
+                      approved_quantity:
+                        type: string
+                      remaining_quantity:
+                        type: string
+                      unreserved_quantity:
+                        type: string
+            fulfillment:
+              enum:
+              - outstanding
+              - partially_issued
+              - fulfilled
+    InternalRfResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/InternalRf'
+    InternalRfList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/InternalRf'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    RfMutationName:
+      type: string
+      enum:
+      - createInternalRf
+      - replaceInternalRfDraft
+      - submitInternalRf
+      - approveInternalRf
+      - returnInternalRf
+      - reviseInternalRf
+      - cancelInternalRf
+    RfOperationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - chapter_id
+      - actor_id
+      - operation_name
+      - action_key
+      - rf_id
+      - committed_version
+      - committed_material_version
+      - committed_progress_version
+      - committed_at
+      - outcome
+      - result
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_name:
+          $ref: '#/components/schemas/RfMutationName'
+        action_key:
+          $ref: '#/components/schemas/Uuid'
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        committed_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        outcome:
+          const: committed
+        result:
+          $ref: '#/components/schemas/InternalRf'
+    RfMutationResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/RfOperationReceipt'
+    RfConflict:
+      type: object
+      additionalProperties: false
+      required:
+      - request_id
+      - error
+      - current
+      - setup_blockers
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        error:
+          type: object
+          additionalProperties: false
+          required:
+          - code
+          - message
+          properties:
+            code:
+              enum:
+              - material_version_conflict
+              - progress_version_conflict
+              - state_conflict
+              - action_key_conflict
+              - setup_blocked
+              - resource_retired
+              - commitment_conflict
+              - handover_unresolved
+              - approval_authority_revoked
+              - snapshot_stale
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: \S
+        current:
+          anyOf:
+          - $ref: '#/components/schemas/InternalRf'
+          - type: 'null'
+        setup_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+    RfHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - material_version
+      - progress_version
+      - action
+      - actor
+      - reason
+      - reference
+      - occurred_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        action:
+          enum:
+          - createInternalRf
+          - replaceInternalRfDraft
+          - submitInternalRf
+          - approveInternalRf
+          - returnInternalRf
+          - reviseInternalRf
+          - cancelInternalRf
+          - reservation_changed
+          - issue_posted
+          - approval_invalidated
+        actor:
+          $ref: '#/components/schemas/RfActor'
+        reason:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 500
+            pattern: \S
+          - type: 'null'
+        reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+            pattern: \S
+          - type: 'null'
+        occurred_at:
+          $ref: '#/components/schemas/UtcInstant'
+    RfHistoryList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfHistoryEntry'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    RfRelatedRecord:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - id
+      - rf_line_id
+      - reference
+      - material_version
+      - state
+      properties:
+        kind:
+          enum:
+          - reservation
+          - hold
+          - actual_issue
+          - inventory_movement
+        id:
+          $ref: '#/components/schemas/Uuid'
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+            pattern: \S
+          - type: 'null'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: \S
+    RfRelatedList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfRelatedRecord'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
     CatalogueQuantityPolicyValue:
       type: object
       required:
@@ -5171,6 +6961,7 @@ components:
     Stage1Action:
       type: string
       enum:
+      - rf.read
       - catalogue.read
       - catalogue.maintain
       - stock.read
@@ -5392,8 +7183,8 @@ components:
               $ref: '#/components/schemas/UtcInstant'
             actions:
               type: array
-              minItems: 19
-              maxItems: 19
+              minItems: 20
+              maxItems: 20
               items:
                 $ref: '#/components/schemas/ActionDecision'
     SetupApproval:
@@ -6283,6 +8074,37 @@ components:
                   code: {enum: [required, invalid_format, too_long, unexpected_field, invalid_type]}
                   message: {type: string, minLength: 1, maxLength: 200}
   responses:
+    RfConflict:
+      description: Rejected attempt, no partial mutation or accepted key. Only current permitted RF may be included;
+        null for create/key conflicts without an admitted target. Inspect code/setup_blockers, retain input, refetch
+        and explicitly review before a new intent.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RfConflict'
+    RfDenied:
+      description: Origin/MFA/current duty denial, or independence_required when the admitted requester is the approver.
+        No protected record fields.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - origin_denied
+                      - mfa_incomplete
+                      - duty_denied
+                      - independence_required
     CatalogueNotFound:
       description: chapter_not_found for unknown/foreign/inactive chapter or missing membership; otherwise resource_not_found
         uniformly for unknown/foreign/inaccessible resource, related ID, version or outcome within an admitted chapter.
@@ -6923,6 +8745,11 @@ x-controlled-procedures:
     transport: controlled-command-only; no HTTP route; executable command syntax belongs to later runtime implementation
 
 x-stage1-action-duties:
+  rf.read:
+  - COMMITTEE_REQUESTER
+  - RF_APPROVER
+  - INVENTORY
+  - DISPATCH
   catalogue.read:
   - INVENTORY
   - RECEIVING
@@ -6974,6 +8801,7 @@ x-stage1-action-duties:
   - INVENTORY
   - DISPATCH
   history.read:
+  - COMMITTEE_REQUESTER
   - INVENTORY
   - RECEIVING
   - DISPATCH
@@ -7016,3 +8844,15 @@ x-catalogue-policy-values:
     ownership: financial
     schema:
       $ref: '#/components/schemas/CataloguePricePolicyValue'
+
+x-rf-policy-values:
+  rf_approval_route:
+    subject_kind: chapter
+    ownership: operational
+    schema:
+      $ref: "#/components/schemas/RfApprovalRoutePolicyValue"
+  reference_series:
+    subject_kind: chapter
+    ownership: operational
+    schema:
+      $ref: "#/components/schemas/RfReferenceSeriesPolicyValue"
