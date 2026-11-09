@@ -2,9 +2,9 @@ openapi: 3.1.1
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: YSP Stage 1 canonical HTTP agreement
-  version: 0.2.0
+  version: 0.3.0
   description: >-
-    Tickets stage1-contracts-01/02, specification 19. Contract candidate, not implemented
+    Tickets stage1-contracts-01/02/03, specification 19. Contract candidate, not implemented
     authentication. agreement.md defines normative security, retry and ownership rules.
     Only /api/health exists in scaffold 7287aa439876e7280075206b77f5f2a62b44de0a.
     Authentication and chapter discovery/context/action reads are specified. Controlled
@@ -17,6 +17,8 @@ tags:
   - name: Scaffold
   - name: Authentication
   - name: Chapter authority
+  - name: Catalogue
+  - name: Stock queries
 paths:
   /api/health:
     get:
@@ -543,6 +545,1689 @@ paths:
           $ref: '#/components/responses/Unavailable'
         '404':
           $ref: '#/components/responses/ChapterUnavailable'
+  /api/v1/chapters/{chapter_id}/catalogue/items:
+    get:
+      operationId: listCatalogueItems
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.read
+      summary: listCatalogueItems
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      - $ref: '#/components/parameters/CatalogueStateFilter'
+      - $ref: '#/components/parameters/CatalogueSearch'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueItemList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createCatalogueItem
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: createCatalogueItem
+      description: Exact same-origin Origin, session cookie and synchronized X-XSRF-TOKEN precede admission and input
+        checks. Requires current catalogue.maintain INVENTORY duty and immutable resource chapter. X-Action-Key scope
+        is chapter + actor + operationId; canonical fingerprint includes target resource ID and entire validated body.
+        Atomic resource/version/history/audit/result, no stock movement or policy approval. Authorized same-key/same-payload
+        returns original status/body with replay=true before new-intent material checks; different payload is 409
+        action_key_conflict. Rejected/rolled-back intents retain no accepted key. Recovery lookups are canonical below.
+        Retain receipts for chapter record lifetime. Creation starts active at version 1; PUT is full descriptive
+        replacement with expected version, increments exactly once. State changes never delete history. Code and parent
+        item are immutable; used unit/quantity meaning is immutable. Missing approved settings do not block descriptive
+        maintenance. See agreement.md for per-kind constraints. All responses no-store. New, not implemented in scaffold.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueItemWriteResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CatalogueWriteDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCatalogueItem'
+  /api/v1/chapters/{chapter_id}/catalogue/items/{resource_id}:
+    get:
+      operationId: readCatalogueItem
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.read
+      summary: readCatalogueItem
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueItemResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    put:
+      operationId: replaceCatalogueItem
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: replaceCatalogueItem
+      description: Exact same-origin Origin, session cookie and synchronized X-XSRF-TOKEN precede admission and input
+        checks. Requires current catalogue.maintain INVENTORY duty and immutable resource chapter. X-Action-Key scope
+        is chapter + actor + operationId; canonical fingerprint includes target resource ID and entire validated body.
+        Atomic resource/version/history/audit/result, no stock movement or policy approval. Authorized same-key/same-payload
+        returns original status/body with replay=true before new-intent material checks; different payload is 409
+        action_key_conflict. Rejected/rolled-back intents retain no accepted key. Recovery lookups are canonical below.
+        Retain receipts for chapter record lifetime. Creation starts active at version 1; PUT is full descriptive
+        replacement with expected version, increments exactly once. State changes never delete history. Code and parent
+        item are immutable; used unit/quantity meaning is immutable. Missing approved settings do not block descriptive
+        maintenance. See agreement.md for per-kind constraints. All responses no-store. New, not implemented in scaffold.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueItemWriteResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CatalogueWriteDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceCatalogueItem'
+  /api/v1/chapters/{chapter_id}/catalogue/items/{resource_id}/history:
+    get:
+      operationId: listCatalogueItemHistory
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: history.read
+      summary: listCatalogueItemHistory
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueItemHistory'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-required-actions:
+      - history.read
+      - catalogue.read
+  /api/v1/chapters/{chapter_id}/catalogue/items/{resource_id}/versions/{material_version}:
+    get:
+      operationId: readCatalogueItemVersion
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: history.read
+      summary: readCatalogueItemVersion
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/CatalogueVersion'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CatalogueItemVersion'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-required-actions:
+      - history.read
+      - catalogue.read
+  /api/v1/chapters/{chapter_id}/catalogue/variants:
+    get:
+      operationId: listCatalogueVariants
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.read
+      summary: listCatalogueVariants
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      - $ref: '#/components/parameters/CatalogueStateFilter'
+      - $ref: '#/components/parameters/CatalogueSearch'
+      - name: item_id
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Uuid'
+        description: ''
+      - name: unit_id
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Uuid'
+        description: ''
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueVariantList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createCatalogueVariant
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: createCatalogueVariant
+      description: Exact same-origin Origin, session cookie and synchronized X-XSRF-TOKEN precede admission and input
+        checks. Requires current catalogue.maintain INVENTORY duty and immutable resource chapter. X-Action-Key scope
+        is chapter + actor + operationId; canonical fingerprint includes target resource ID and entire validated body.
+        Atomic resource/version/history/audit/result, no stock movement or policy approval. Authorized same-key/same-payload
+        returns original status/body with replay=true before new-intent material checks; different payload is 409
+        action_key_conflict. Rejected/rolled-back intents retain no accepted key. Recovery lookups are canonical below.
+        Retain receipts for chapter record lifetime. Creation starts active at version 1; PUT is full descriptive
+        replacement with expected version, increments exactly once. State changes never delete history. Code and parent
+        item are immutable; used unit/quantity meaning is immutable. Missing approved settings do not block descriptive
+        maintenance. See agreement.md for per-kind constraints. All responses no-store. New, not implemented in scaffold.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueVariantWriteResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CatalogueWriteDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCatalogueVariant'
+  /api/v1/chapters/{chapter_id}/catalogue/variants/{resource_id}:
+    get:
+      operationId: readCatalogueVariant
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.read
+      summary: readCatalogueVariant
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueVariantResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    put:
+      operationId: replaceCatalogueVariant
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: replaceCatalogueVariant
+      description: Exact same-origin Origin, session cookie and synchronized X-XSRF-TOKEN precede admission and input
+        checks. Requires current catalogue.maintain INVENTORY duty and immutable resource chapter. X-Action-Key scope
+        is chapter + actor + operationId; canonical fingerprint includes target resource ID and entire validated body.
+        Atomic resource/version/history/audit/result, no stock movement or policy approval. Authorized same-key/same-payload
+        returns original status/body with replay=true before new-intent material checks; different payload is 409
+        action_key_conflict. Rejected/rolled-back intents retain no accepted key. Recovery lookups are canonical below.
+        Retain receipts for chapter record lifetime. Creation starts active at version 1; PUT is full descriptive
+        replacement with expected version, increments exactly once. State changes never delete history. Code and parent
+        item are immutable; used unit/quantity meaning is immutable. Missing approved settings do not block descriptive
+        maintenance. See agreement.md for per-kind constraints. All responses no-store. New, not implemented in scaffold.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueVariantWriteResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CatalogueWriteDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceCatalogueVariant'
+  /api/v1/chapters/{chapter_id}/catalogue/variants/{resource_id}/history:
+    get:
+      operationId: listCatalogueVariantHistory
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: history.read
+      summary: listCatalogueVariantHistory
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueVariantHistory'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-required-actions:
+      - history.read
+      - catalogue.read
+  /api/v1/chapters/{chapter_id}/catalogue/variants/{resource_id}/versions/{material_version}:
+    get:
+      operationId: readCatalogueVariantVersion
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: history.read
+      summary: readCatalogueVariantVersion
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/CatalogueVersion'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CatalogueVariantVersion'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-required-actions:
+      - history.read
+      - catalogue.read
+  /api/v1/chapters/{chapter_id}/catalogue/units:
+    get:
+      operationId: listCatalogueUnits
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.read
+      summary: listCatalogueUnits
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      - $ref: '#/components/parameters/CatalogueStateFilter'
+      - $ref: '#/components/parameters/CatalogueSearch'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueUnitList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createCatalogueUnit
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: createCatalogueUnit
+      description: Exact same-origin Origin, session cookie and synchronized X-XSRF-TOKEN precede admission and input
+        checks. Requires current catalogue.maintain INVENTORY duty and immutable resource chapter. X-Action-Key scope
+        is chapter + actor + operationId; canonical fingerprint includes target resource ID and entire validated body.
+        Atomic resource/version/history/audit/result, no stock movement or policy approval. Authorized same-key/same-payload
+        returns original status/body with replay=true before new-intent material checks; different payload is 409
+        action_key_conflict. Rejected/rolled-back intents retain no accepted key. Recovery lookups are canonical below.
+        Retain receipts for chapter record lifetime. Creation starts active at version 1; PUT is full descriptive
+        replacement with expected version, increments exactly once. State changes never delete history. Code and parent
+        item are immutable; used unit/quantity meaning is immutable. Missing approved settings do not block descriptive
+        maintenance. See agreement.md for per-kind constraints. All responses no-store. New, not implemented in scaffold.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueUnitWriteResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CatalogueWriteDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCatalogueUnit'
+  /api/v1/chapters/{chapter_id}/catalogue/units/{resource_id}:
+    get:
+      operationId: readCatalogueUnit
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.read
+      summary: readCatalogueUnit
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueUnitResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    put:
+      operationId: replaceCatalogueUnit
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: replaceCatalogueUnit
+      description: Exact same-origin Origin, session cookie and synchronized X-XSRF-TOKEN precede admission and input
+        checks. Requires current catalogue.maintain INVENTORY duty and immutable resource chapter. X-Action-Key scope
+        is chapter + actor + operationId; canonical fingerprint includes target resource ID and entire validated body.
+        Atomic resource/version/history/audit/result, no stock movement or policy approval. Authorized same-key/same-payload
+        returns original status/body with replay=true before new-intent material checks; different payload is 409
+        action_key_conflict. Rejected/rolled-back intents retain no accepted key. Recovery lookups are canonical below.
+        Retain receipts for chapter record lifetime. Creation starts active at version 1; PUT is full descriptive
+        replacement with expected version, increments exactly once. State changes never delete history. Code and parent
+        item are immutable; used unit/quantity meaning is immutable. Missing approved settings do not block descriptive
+        maintenance. See agreement.md for per-kind constraints. All responses no-store. New, not implemented in scaffold.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueUnitWriteResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CatalogueWriteDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceCatalogueUnit'
+  /api/v1/chapters/{chapter_id}/catalogue/units/{resource_id}/history:
+    get:
+      operationId: listCatalogueUnitHistory
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: history.read
+      summary: listCatalogueUnitHistory
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueUnitHistory'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-required-actions:
+      - history.read
+      - catalogue.read
+  /api/v1/chapters/{chapter_id}/catalogue/units/{resource_id}/versions/{material_version}:
+    get:
+      operationId: readCatalogueUnitVersion
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: history.read
+      summary: readCatalogueUnitVersion
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/CatalogueVersion'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CatalogueUnitVersion'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-required-actions:
+      - history.read
+      - catalogue.read
+  /api/v1/chapters/{chapter_id}/catalogue/locations:
+    get:
+      operationId: listCatalogueLocations
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.read
+      summary: listCatalogueLocations
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      - $ref: '#/components/parameters/CatalogueStateFilter'
+      - $ref: '#/components/parameters/CatalogueSearch'
+      - name: kind
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - stockroom
+          - quarantine
+          - booth
+        description: ''
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueLocationList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createCatalogueLocation
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: createCatalogueLocation
+      description: Exact same-origin Origin, session cookie and synchronized X-XSRF-TOKEN precede admission and input
+        checks. Requires current catalogue.maintain INVENTORY duty and immutable resource chapter. X-Action-Key scope
+        is chapter + actor + operationId; canonical fingerprint includes target resource ID and entire validated body.
+        Atomic resource/version/history/audit/result, no stock movement or policy approval. Authorized same-key/same-payload
+        returns original status/body with replay=true before new-intent material checks; different payload is 409
+        action_key_conflict. Rejected/rolled-back intents retain no accepted key. Recovery lookups are canonical below.
+        Retain receipts for chapter record lifetime. Creation starts active at version 1; PUT is full descriptive
+        replacement with expected version, increments exactly once. State changes never delete history. Code and parent
+        item are immutable; used unit/quantity meaning is immutable. Missing approved settings do not block descriptive
+        maintenance. See agreement.md for per-kind constraints. All responses no-store. New, not implemented in scaffold.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueLocationWriteResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CatalogueWriteDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCatalogueLocation'
+  /api/v1/chapters/{chapter_id}/catalogue/locations/{resource_id}:
+    get:
+      operationId: readCatalogueLocation
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.read
+      summary: readCatalogueLocation
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueLocationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    put:
+      operationId: replaceCatalogueLocation
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: replaceCatalogueLocation
+      description: Exact same-origin Origin, session cookie and synchronized X-XSRF-TOKEN precede admission and input
+        checks. Requires current catalogue.maintain INVENTORY duty and immutable resource chapter. X-Action-Key scope
+        is chapter + actor + operationId; canonical fingerprint includes target resource ID and entire validated body.
+        Atomic resource/version/history/audit/result, no stock movement or policy approval. Authorized same-key/same-payload
+        returns original status/body with replay=true before new-intent material checks; different payload is 409
+        action_key_conflict. Rejected/rolled-back intents retain no accepted key. Recovery lookups are canonical below.
+        Retain receipts for chapter record lifetime. Creation starts active at version 1; PUT is full descriptive
+        replacement with expected version, increments exactly once. State changes never delete history. Code and parent
+        item are immutable; used unit/quantity meaning is immutable. Missing approved settings do not block descriptive
+        maintenance. See agreement.md for per-kind constraints. All responses no-store. New, not implemented in scaffold.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueLocationWriteResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/CatalogueWriteDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceCatalogueLocation'
+  /api/v1/chapters/{chapter_id}/catalogue/locations/{resource_id}/history:
+    get:
+      operationId: listCatalogueLocationHistory
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: history.read
+      summary: listCatalogueLocationHistory
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueLocationHistory'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-required-actions:
+      - history.read
+      - catalogue.read
+  /api/v1/chapters/{chapter_id}/catalogue/locations/{resource_id}/versions/{material_version}:
+    get:
+      operationId: readCatalogueLocationVersion
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: history.read
+      summary: readCatalogueLocationVersion
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueResourceId'
+      - $ref: '#/components/parameters/CatalogueVersion'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CatalogueLocationVersion'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-required-actions:
+      - history.read
+      - catalogue.read
+  /api/v1/chapters/{chapter_id}/stock:
+    get:
+      operationId: listStockSummaries
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: stock.read
+      summary: listStockSummaries
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      - $ref: '#/components/parameters/IntendedUseKind'
+      - $ref: '#/components/parameters/IntendedUnit'
+      - $ref: '#/components/parameters/IntendedEvent'
+      - $ref: '#/components/parameters/NeededAt'
+      - name: variant_id
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Uuid'
+        description: ''
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockSummaryList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/stock/variants/{variant_id}:
+    get:
+      operationId: readVariantStock
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: stock.read
+      summary: readVariantStock
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/StockVariantId'
+      - $ref: '#/components/parameters/IntendedUseKind'
+      - $ref: '#/components/parameters/IntendedUnit'
+      - $ref: '#/components/parameters/IntendedEvent'
+      - $ref: '#/components/parameters/NeededAt'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockSummaryResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/stock/lots:
+    get:
+      operationId: listStockLots
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: stock.read
+      summary: listStockLots
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      - name: variant_id
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+        description: ''
+      - name: location_id
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Uuid'
+        description: ''
+      - name: condition
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - usable
+          - quarantined
+          - rejected
+        description: ''
+      - name: source_kind
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ipc_rm
+          - da_rm
+          - po_rm
+          - open_po
+        description: ''
+      - name: hold_state
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - held
+          - unheld
+        description: ''
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockLotList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/stock/lots/{stock_lot_id}:
+    get:
+      operationId: readStockLot
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: stock.read
+      summary: readStockLot
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/StockLotId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockLotResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/stock/lots/{stock_lot_id}/eligibility:
+    get:
+      operationId: readStockEligibility
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: stock.read
+      summary: readStockEligibility
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/StockLotId'
+      - $ref: '#/components/parameters/IntendedUseKind'
+      - $ref: '#/components/parameters/IntendedUnit'
+      - $ref: '#/components/parameters/IntendedEvent'
+      - $ref: '#/components/parameters/NeededAt'
+      - $ref: '#/components/parameters/ExpectedUnit'
+      - $ref: '#/components/parameters/EligibilityQuantity'
+      - $ref: '#/components/parameters/EligibilityRfLine'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockEligibilityResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/EligibilityConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/stock/lots/{stock_lot_id}/history:
+    get:
+      operationId: listStockLotHistory
+      tags:
+      - Stock queries
+      x-existence: new
+      x-required-action: history.read
+      summary: listStockLotHistory
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/StockLotId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockHistoryList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-required-actions:
+      - history.read
+      - stock.read
+  /api/v1/chapters/{chapter_id}/catalogue/operations/by-key:
+    get:
+      operationId: findCatalogueOperation
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: findCatalogueOperation
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4. Only the
+        originating actor with current catalogue.maintain duty can inspect this receipt; foreign actor/unknown/uncommitted
+        result is uniform 404 resource_not_found. Returns immutable commit identity/version, never current edit authority
+        or private data from revoked scope. GET needs no CSRF. Lookup key is a header, never URL. If absent after
+        uncertain response, re-read current resource and retry original unchanged intent/key only after review; a
+        concurrent original can still be running. Do not create a new intent merely from a 404.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/ActionKey'
+      - $ref: '#/components/parameters/OperationName'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueOperationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/catalogue/operations/{operation_id}:
+    get:
+      operationId: readCatalogueOperation
+      tags:
+      - Catalogue
+      x-existence: new
+      x-required-action: catalogue.maintain
+      summary: readCatalogueOperation
+      description: Current full individual session/MFA, chapter membership and action-specific scoped duty are required
+        on every call. Use x-stage1-action-duties and agreement.md ticket 03. No-store on every outcome. Safe GET
+        accepts no body, no action key except the explicit by-key result lookup. Reject unknown/repeated selectors
+        with 400 invalid_selector. Foreign/unknown records and linked IDs yield uniform 404 after current chapter
+        admission; provider status grants no access. New specification only; absent from scaffold 7287aa4. Only the
+        originating actor with current catalogue.maintain duty can inspect this receipt; foreign actor/unknown/uncommitted
+        result is uniform 404 resource_not_found. Returns immutable commit identity/version, never current edit authority
+        or private data from revoked scope. GET needs no CSRF. Lookup key is a header, never URL. If absent after
+        uncertain response, re-read current resource and retry original unchanged intent/key only after review; a
+        concurrent original can still be running. Do not create a new intent merely from a 404.
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueOperationId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogueOperationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '409':
+          $ref: '#/components/responses/CatalogueSnapshotStale'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   securitySchemes:
     browserSession:
@@ -559,6 +2244,154 @@ components:
       name: X-XSRF-TOKEN
       description: URL-decoded XSRF-TOKEN cookie, tied to this browser session.
   parameters:
+    CatalogueResourceId:
+      name: resource_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Chapter-owned opaque catalogue identity; unknown/foreign IDs are uniform 404.
+    CatalogueVersion:
+      name: material_version
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+      description: Exact retained descriptive version, never an authority token.
+    StockVariantId:
+      name: variant_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: ''
+    StockLotId:
+      name: stock_lot_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: ''
+    CatalogueOperationId:
+      name: operation_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: ''
+    CatalogueLimit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+      description: Default 25; one occurrence only.
+    CatalogueCursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 1024
+      description: Omit on first page; five-minute actor/chapter/authority/filter/limit/snapshot-bound opaque cursor.
+    CatalogueStateFilter:
+      name: state
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+        - active
+        - retired
+        - all
+      description: Default active. all includes retained retired resources.
+    CatalogueSearch:
+      name: q
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 80
+      description: Trim outer ASCII spaces, ASCII case-insensitive literal prefix of code or display name; no wildcards.
+    IntendedUseKind:
+      name: intended_use
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+        - internal_use
+        - sale
+        - booth_custody
+      description: Read context only. Stage 1 creates internal RF demand only; this selector enables no later-stage
+        writes.
+    IntendedUnit:
+      name: requesting_unit_id
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Optional named chapter requesting unit; omission is null and matches no named-unit restriction.
+    IntendedEvent:
+      name: event_id
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Optional chapter event; omission is null and matches no named-event restriction.
+    NeededAt:
+      name: needed_at
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/UtcInstant'
+      description: Intended occurrence; server now and this instant must both satisfy restriction dates. No backdating
+        authority.
+    ExpectedUnit:
+      name: unit_id
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Exact expected variant unit; no implicit conversion.
+    EligibilityQuantity:
+      name: quantity
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/StockQuantity'
+      description: Strictly positive and exact approved scale; excess precision is 400 invalid_selector, never rounded.
+    EligibilityRfLine:
+      name: rf_line_id
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Optional existing same-chapter approved RF line; contextual scope and source demand rechecked. Omit
+        for new demand.
+    OperationName:
+      name: operation_name
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+        - createCatalogueItem
+        - replaceCatalogueItem
+        - createCatalogueVariant
+        - replaceCatalogueVariant
+        - createCatalogueUnit
+        - replaceCatalogueUnit
+        - createCatalogueLocation
+        - replaceCatalogueLocation
+      description: ''
     ChapterId:
       in: path
       name: chapter_id
@@ -645,6 +2478,1823 @@ components:
       schema: {type: string, pattern: '^[1-9][0-9]*$'}
       example: '60'
   schemas:
+    StockQuantity:
+      type: string
+      pattern: ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$
+    CatalogueCode:
+      type: string
+      pattern: ^[A-Z0-9][A-Z0-9_-]{0,31}$
+    CatalogueState:
+      type: string
+      enum:
+      - active
+      - retired
+    CataloguePage:
+      type: object
+      additionalProperties: false
+      required:
+      - next_cursor
+      - snapshot_version
+      properties:
+        next_cursor:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 1024
+          - type: 'null'
+        snapshot_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+    SettingBlocker:
+      type: object
+      additionalProperties: false
+      required:
+      - setting
+      - subject_id
+      - reason
+      properties:
+        setting:
+          type: string
+          enum:
+          - quantity_scale
+          - price
+          - rop
+          - target_level
+          - allocation_priority
+        subject_id:
+          $ref: '#/components/schemas/Uuid'
+        reason:
+          type: string
+          enum:
+          - missing
+          - unapproved
+          - not_effective
+          - expired
+          - incompatible_unit
+    ApprovedCataloguePrice:
+      type: object
+      additionalProperties: false
+      required:
+      - policy_id
+      - material_version
+      - approval_id
+      - approved_by
+      - effective_from
+      - effective_until
+      - value
+      - unit_id
+      - currency
+      properties:
+        policy_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        approval_id:
+          $ref: '#/components/schemas/Uuid'
+        approved_by:
+          $ref: '#/components/schemas/Uuid'
+        effective_from:
+          $ref: '#/components/schemas/UtcInstant'
+        effective_until:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,11})\.[0-9]{2}$
+        unit_id:
+          type: 'null'
+        currency:
+          const: PHP
+    ApprovedCatalogueThreshold:
+      type: object
+      additionalProperties: false
+      required:
+      - policy_id
+      - material_version
+      - approval_id
+      - approved_by
+      - effective_from
+      - effective_until
+      - value
+      - unit_id
+      - currency
+      properties:
+        policy_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        approval_id:
+          $ref: '#/components/schemas/Uuid'
+        approved_by:
+          $ref: '#/components/schemas/Uuid'
+        effective_from:
+          $ref: '#/components/schemas/UtcInstant'
+        effective_until:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,11})(\.[0-9]{1,6})?$
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        currency:
+          type: 'null'
+    CatalogueSettings:
+      type: object
+      additionalProperties: false
+      required:
+      - price
+      - rop
+      - target_level
+      - quantity_policy
+      - blockers
+      properties:
+        price:
+          anyOf:
+          - $ref: '#/components/schemas/ApprovedCataloguePrice'
+          - type: 'null'
+        rop:
+          anyOf:
+          - $ref: '#/components/schemas/ApprovedCatalogueThreshold'
+          - type: 'null'
+        target_level:
+          anyOf:
+          - $ref: '#/components/schemas/ApprovedCatalogueThreshold'
+          - type: 'null'
+        quantity_policy:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            required:
+            - policy_id
+            - material_version
+            - approval_id
+            - approved_by
+            - scale
+            - effective_from
+            - effective_until
+            properties:
+              policy_id:
+                $ref: '#/components/schemas/Uuid'
+              material_version:
+                type: integer
+                minimum: 1
+                maximum: 2147483647
+              approval_id:
+                $ref: '#/components/schemas/Uuid'
+              approved_by:
+                $ref: '#/components/schemas/Uuid'
+              scale:
+                type: integer
+                minimum: 0
+                maximum: 6
+              effective_from:
+                $ref: '#/components/schemas/UtcInstant'
+              effective_until:
+                anyOf:
+                - $ref: '#/components/schemas/UtcInstant'
+                - type: 'null'
+          - type: 'null'
+        blockers:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/SettingBlocker'
+    CatalogueItem:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - code
+      - state
+      - material_version
+      - created_at
+      - updated_at
+      - description
+      - unit_id
+      - settings
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          $ref: '#/components/schemas/CatalogueCode'
+        state:
+          $ref: '#/components/schemas/CatalogueState'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        description:
+          type: string
+          minLength: 1
+          maxLength: 500
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        settings:
+          $ref: '#/components/schemas/CatalogueSettings'
+    CreateCatalogueItem:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - description
+      - unit_id
+      - reason
+      properties:
+        code:
+          $ref: '#/components/schemas/CatalogueCode'
+        description:
+          type: string
+          minLength: 1
+          maxLength: 500
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ReplaceCatalogueItem:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_material_version
+      - state
+      - description
+      - unit_id
+      - reason
+      properties:
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          $ref: '#/components/schemas/CatalogueState'
+        description:
+          type: string
+          minLength: 1
+          maxLength: 500
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    CatalogueItemResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/CatalogueItem'
+    CatalogueItemList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogueItem'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    CatalogueItemVersion:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - resource_id
+      - material_version
+      - actor_id
+      - recorded_at
+      - reason
+      - snapshot
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        snapshot:
+          $ref: '#/components/schemas/CatalogueItem'
+    CatalogueItemHistory:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogueItemVersion'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    CatalogueItemWriteResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - operation_id
+          - resource
+          properties:
+            operation_id:
+              $ref: '#/components/schemas/Uuid'
+            resource:
+              $ref: '#/components/schemas/CatalogueItem'
+    CatalogueVariant:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - code
+      - state
+      - material_version
+      - created_at
+      - updated_at
+      - item_id
+      - label
+      - unit_id
+      - quantity_scale
+      - settings
+      - quantity_identity_locked
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          $ref: '#/components/schemas/CatalogueCode'
+        state:
+          $ref: '#/components/schemas/CatalogueState'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        settings:
+          $ref: '#/components/schemas/CatalogueSettings'
+        quantity_identity_locked:
+          type: boolean
+    CreateCatalogueVariant:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - item_id
+      - label
+      - unit_id
+      - quantity_scale
+      - reason
+      properties:
+        code:
+          $ref: '#/components/schemas/CatalogueCode'
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ReplaceCatalogueVariant:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_material_version
+      - state
+      - label
+      - unit_id
+      - quantity_scale
+      - reason
+      properties:
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          $ref: '#/components/schemas/CatalogueState'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    CatalogueVariantResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/CatalogueVariant'
+    CatalogueVariantList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogueVariant'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    CatalogueVariantVersion:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - resource_id
+      - material_version
+      - actor_id
+      - recorded_at
+      - reason
+      - snapshot
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        snapshot:
+          $ref: '#/components/schemas/CatalogueVariant'
+    CatalogueVariantHistory:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogueVariantVersion'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    CatalogueVariantWriteResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - operation_id
+          - resource
+          properties:
+            operation_id:
+              $ref: '#/components/schemas/Uuid'
+            resource:
+              $ref: '#/components/schemas/CatalogueVariant'
+    CatalogueUnit:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - code
+      - state
+      - material_version
+      - created_at
+      - updated_at
+      - name
+      - quantity_kind
+      - quantity_scale
+      - quantity_identity_locked
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          $ref: '#/components/schemas/CatalogueCode'
+        state:
+          $ref: '#/components/schemas/CatalogueState'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        quantity_kind:
+          type: string
+          enum:
+          - piece
+          - kit
+          - measured
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        quantity_identity_locked:
+          type: boolean
+      allOf:
+      - if:
+          properties:
+            quantity_kind:
+              type: string
+              enum:
+              - piece
+              - kit
+        then:
+          properties:
+            quantity_scale:
+              const: 0
+    CreateCatalogueUnit:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - name
+      - quantity_kind
+      - quantity_scale
+      - reason
+      properties:
+        code:
+          $ref: '#/components/schemas/CatalogueCode'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        quantity_kind:
+          type: string
+          enum:
+          - piece
+          - kit
+          - measured
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      allOf:
+      - if:
+          properties:
+            quantity_kind:
+              type: string
+              enum:
+              - piece
+              - kit
+        then:
+          properties:
+            quantity_scale:
+              const: 0
+    ReplaceCatalogueUnit:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_material_version
+      - state
+      - name
+      - quantity_kind
+      - quantity_scale
+      - reason
+      properties:
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          $ref: '#/components/schemas/CatalogueState'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        quantity_kind:
+          type: string
+          enum:
+          - piece
+          - kit
+          - measured
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      allOf:
+      - if:
+          properties:
+            quantity_kind:
+              type: string
+              enum:
+              - piece
+              - kit
+        then:
+          properties:
+            quantity_scale:
+              const: 0
+    CatalogueUnitResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/CatalogueUnit'
+    CatalogueUnitList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogueUnit'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    CatalogueUnitVersion:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - resource_id
+      - material_version
+      - actor_id
+      - recorded_at
+      - reason
+      - snapshot
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        snapshot:
+          $ref: '#/components/schemas/CatalogueUnit'
+    CatalogueUnitHistory:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogueUnitVersion'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    CatalogueUnitWriteResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - operation_id
+          - resource
+          properties:
+            operation_id:
+              $ref: '#/components/schemas/Uuid'
+            resource:
+              $ref: '#/components/schemas/CatalogueUnit'
+    CatalogueLocation:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - code
+      - state
+      - material_version
+      - created_at
+      - updated_at
+      - name
+      - kind
+      - custodian_id
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          $ref: '#/components/schemas/CatalogueCode'
+        state:
+          $ref: '#/components/schemas/CatalogueState'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          type: string
+          enum:
+          - stockroom
+          - quarantine
+          - booth
+        custodian_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    CreateCatalogueLocation:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - name
+      - kind
+      - custodian_id
+      - reason
+      properties:
+        code:
+          $ref: '#/components/schemas/CatalogueCode'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          type: string
+          enum:
+          - stockroom
+          - quarantine
+          - booth
+        custodian_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ReplaceCatalogueLocation:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_material_version
+      - state
+      - name
+      - kind
+      - custodian_id
+      - reason
+      properties:
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          $ref: '#/components/schemas/CatalogueState'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          type: string
+          enum:
+          - stockroom
+          - quarantine
+          - booth
+        custodian_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    CatalogueLocationResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/CatalogueLocation'
+    CatalogueLocationList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogueLocation'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    CatalogueLocationVersion:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - resource_id
+      - material_version
+      - actor_id
+      - recorded_at
+      - reason
+      - snapshot
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        snapshot:
+          $ref: '#/components/schemas/CatalogueLocation'
+    CatalogueLocationHistory:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CatalogueLocationVersion'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    CatalogueLocationWriteResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - operation_id
+          - resource
+          properties:
+            operation_id:
+              $ref: '#/components/schemas/Uuid'
+            resource:
+              $ref: '#/components/schemas/CatalogueLocation'
+    IntendedUse:
+      type: object
+      additionalProperties: false
+      required:
+      - use
+      - requesting_unit_id
+      - event_id
+      - needed_at
+      properties:
+        use:
+          type: string
+          enum:
+          - internal_use
+          - sale
+          - booth_custody
+        requesting_unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        event_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        needed_at:
+          $ref: '#/components/schemas/UtcInstant'
+    BoundedRestriction:
+      type: object
+      additionalProperties: false
+      required:
+      - state
+      - allowed_uses
+      - event_ids
+      - requesting_unit_ids
+      - effective_from
+      - effective_until
+      - interpretation_id
+      - source_condition_reference
+      properties:
+        state:
+          type: string
+          enum:
+          - unrestricted
+          - bounded
+          - uninterpreted
+        allowed_uses:
+          type: array
+          maxItems: 3
+          items:
+            type: string
+            enum:
+            - internal_use
+            - sale
+            - booth_custody
+        event_ids:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Uuid'
+        requesting_unit_ids:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Uuid'
+        effective_from:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        effective_until:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        interpretation_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        source_condition_reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 200
+          - type: 'null'
+    StockSource:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - source_id
+      - source_reference
+      - source_material_version
+      - accepted_rm_id
+      - accepted_rm_reference
+      - accepted_rm_version
+      - donor_id
+      properties:
+        kind:
+          type: string
+          enum:
+          - ipc_rm
+          - da_rm
+          - po_rm
+          - open_po
+        source_id:
+          $ref: '#/components/schemas/Uuid'
+        source_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+        source_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        accepted_rm_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        accepted_rm_reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+          - type: 'null'
+        accepted_rm_version:
+          anyOf:
+          - type: integer
+            minimum: 1
+            maximum: 2147483647
+          - type: 'null'
+        donor_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    StockReservation:
+      type: object
+      additionalProperties: false
+      required:
+      - reservation_id
+      - parent_kind
+      - parent_id
+      - line_id
+      - material_version
+      - quantity
+      properties:
+        reservation_id:
+          $ref: '#/components/schemas/Uuid'
+        parent_kind:
+          type: string
+          enum:
+          - rf
+          - so
+        parent_id:
+          $ref: '#/components/schemas/Uuid'
+        line_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        quantity:
+          $ref: '#/components/schemas/StockQuantity'
+    StockSegment:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - quantity
+      - reservation
+      - hold_ids
+      - restrictions
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        reservation:
+          anyOf:
+          - $ref: '#/components/schemas/StockReservation'
+          - type: 'null'
+        hold_ids:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Uuid'
+        restrictions:
+          $ref: '#/components/schemas/BoundedRestriction'
+    StockLot:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - material_version
+      - stock_version
+      - variant_id
+      - variant_material_version
+      - item_id
+      - unit_id
+      - unit_material_version
+      - quantity_scale
+      - historical_variant_label
+      - location_id
+      - custodian_id
+      - condition
+      - custody
+      - source
+      - quantity
+      - segments
+      - created_at
+      - observed_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        stock_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        historical_variant_label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        custodian_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        condition:
+          type: string
+          enum:
+          - usable
+          - quarantined
+          - rejected
+        custody:
+          type: string
+          enum:
+          - stockroom
+          - booth
+          - inbound
+        source:
+          $ref: '#/components/schemas/StockSource'
+        quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        segments:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/StockSegment'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        observed_at:
+          $ref: '#/components/schemas/UtcInstant'
+    SevenStockViews:
+      type: object
+      additionalProperties: false
+      required:
+      - usable_stockroom_on_hand
+      - available_to_allocate
+      - rf_reserved
+      - so_reserved
+      - booth_custody
+      - quarantined_rejected
+      - inbound_open_po
+      properties:
+        usable_stockroom_on_hand:
+          type: object
+          additionalProperties: false
+          required:
+          - label
+          - quantity
+          properties:
+            label:
+              const: Usable stockroom on-hand
+            quantity:
+              $ref: '#/components/schemas/StockQuantity'
+        available_to_allocate:
+          type: object
+          additionalProperties: false
+          required:
+          - label
+          - quantity
+          properties:
+            label:
+              const: Available-to-allocate
+            quantity:
+              $ref: '#/components/schemas/StockQuantity'
+        rf_reserved:
+          type: object
+          additionalProperties: false
+          required:
+          - label
+          - quantity
+          properties:
+            label:
+              const: RF-reserved
+            quantity:
+              $ref: '#/components/schemas/StockQuantity'
+        so_reserved:
+          type: object
+          additionalProperties: false
+          required:
+          - label
+          - quantity
+          properties:
+            label:
+              const: SO-reserved
+            quantity:
+              $ref: '#/components/schemas/StockQuantity'
+        booth_custody:
+          type: object
+          additionalProperties: false
+          required:
+          - label
+          - quantity
+          properties:
+            label:
+              const: Booth custody
+            quantity:
+              $ref: '#/components/schemas/StockQuantity'
+        quarantined_rejected:
+          type: object
+          additionalProperties: false
+          required:
+          - label
+          - quantity
+          properties:
+            label:
+              const: Quarantined/rejected
+            quantity:
+              $ref: '#/components/schemas/StockQuantity'
+        inbound_open_po:
+          type: object
+          additionalProperties: false
+          required:
+          - label
+          - quantity
+          properties:
+            label:
+              const: Inbound open PO
+            quantity:
+              $ref: '#/components/schemas/StockQuantity'
+    StockNeed:
+      type: object
+      additionalProperties: false
+      required:
+      - rf_id
+      - line_id
+      - material_version
+      - requested
+      - issued
+      - canceled
+      - reserved
+      - blocked_reserved
+      - unreserved_outstanding
+      - uncovered_need
+      properties:
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        line_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        requested:
+          $ref: '#/components/schemas/StockQuantity'
+        issued:
+          $ref: '#/components/schemas/StockQuantity'
+        canceled:
+          $ref: '#/components/schemas/StockQuantity'
+        reserved:
+          $ref: '#/components/schemas/StockQuantity'
+        blocked_reserved:
+          $ref: '#/components/schemas/StockQuantity'
+        unreserved_outstanding:
+          $ref: '#/components/schemas/StockQuantity'
+        uncovered_need:
+          $ref: '#/components/schemas/StockQuantity'
+    StockSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - variant_id
+      - chapter_id
+      - stock_version
+      - variant_material_version
+      - unit_id
+      - quantity_scale
+      - intended_use
+      - observed_at
+      - views
+      - views_are_additive
+      - item_usable_stockroom_on_hand
+      - approved_rop
+      - approved_target
+      - low_stock
+      - setup_blockers
+      - outstanding_need
+      - procurement_commitment_created
+      properties:
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        stock_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        variant_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        intended_use:
+          $ref: '#/components/schemas/IntendedUse'
+        observed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        views:
+          $ref: '#/components/schemas/SevenStockViews'
+        views_are_additive:
+          const: false
+        item_usable_stockroom_on_hand:
+          $ref: '#/components/schemas/StockQuantity'
+        approved_rop:
+          anyOf:
+          - $ref: '#/components/schemas/ApprovedCatalogueThreshold'
+          - type: 'null'
+        approved_target:
+          anyOf:
+          - $ref: '#/components/schemas/ApprovedCatalogueThreshold'
+          - type: 'null'
+        low_stock:
+          type: string
+          enum:
+          - low
+          - above_rop
+          - setup_blocked
+        setup_blockers:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/SettingBlocker'
+        outstanding_need:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/StockNeed'
+        procurement_commitment_created:
+          const: false
+    StockSummaryResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/StockSummary'
+    StockSummaryList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/StockSummary'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    StockLotResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/StockLot'
+    StockLotList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/StockLot'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    EligibilityBlocker:
+      type: string
+      enum:
+      - unit_incompatible
+      - quantity_scale_unapproved
+      - unsupported_condition
+      - wrong_location
+      - not_accepted
+      - booth_custody
+      - quarantined
+      - rejected
+      - active_hold
+      - reserved_for_other_demand
+      - restriction_use
+      - restriction_event
+      - restriction_unit
+      - restriction_not_effective
+      - restriction_expired
+      - uninterpreted_condition
+      - new_demand_retired
+    StockEligibility:
+      type: object
+      additionalProperties: false
+      required:
+      - stock_lot_id
+      - chapter_id
+      - stock_version
+      - lot_material_version
+      - variant_material_version
+      - unit_id
+      - intended_use
+      - rf_line_id
+      - observed_at
+      - eligible_quantity
+      - requested_quantity
+      - decision
+      - blockers
+      - segments
+      - is_commit_authorization
+      properties:
+        stock_lot_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        stock_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        lot_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        variant_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        intended_use:
+          $ref: '#/components/schemas/IntendedUse'
+        rf_line_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        observed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        eligible_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        requested_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        decision:
+          type: string
+          enum:
+          - eligible
+          - partial
+          - blocked
+        blockers:
+          type: array
+          maxItems: 16
+          items:
+            $ref: '#/components/schemas/EligibilityBlocker'
+        segments:
+          type: array
+          maxItems: 1000
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - segment_id
+            - eligible_quantity
+            - blockers
+            properties:
+              segment_id:
+                $ref: '#/components/schemas/Uuid'
+              eligible_quantity:
+                $ref: '#/components/schemas/StockQuantity'
+              blockers:
+                type: array
+                maxItems: 16
+                items:
+                  $ref: '#/components/schemas/EligibilityBlocker'
+        is_commit_authorization:
+          const: false
+    StockEligibilityResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/StockEligibility'
+    StockHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - stock_lot_id
+      - material_version
+      - recorded_at
+      - actor_id
+      - kind
+      - related_resource_type
+      - related_resource_id
+      - related_material_version
+      - related_reference
+      - physical_quantity_changed
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        stock_lot_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        kind:
+          type: string
+          enum:
+          - accepted_receipt
+          - actual_issue
+          - reservation
+          - reservation_release
+          - hold
+          - hold_clearance
+          - condition_treatment
+        related_resource_type:
+          type: string
+          enum:
+          - ipc
+          - rm
+          - rf
+          - reservation
+          - hold
+          - issue
+          - movement
+          - evidence
+        related_resource_id:
+          $ref: '#/components/schemas/Uuid'
+        related_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        related_reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+          - type: 'null'
+        physical_quantity_changed:
+          type: boolean
+    StockHistoryList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/StockHistoryEntry'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    CatalogueOperationResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - operation_id
+          - chapter_id
+          - actor_id
+          - operation_id_name
+          - action_key
+          - resource_id
+          - resource_kind
+          - committed_material_version
+          - committed_at
+          - outcome
+          properties:
+            operation_id:
+              $ref: '#/components/schemas/Uuid'
+            chapter_id:
+              $ref: '#/components/schemas/Uuid'
+            actor_id:
+              $ref: '#/components/schemas/Uuid'
+            operation_id_name:
+              type: string
+              enum:
+              - createCatalogueItem
+              - replaceCatalogueItem
+              - createCatalogueVariant
+              - replaceCatalogueVariant
+              - createCatalogueUnit
+              - replaceCatalogueUnit
+              - createCatalogueLocation
+              - replaceCatalogueLocation
+            action_key:
+              $ref: '#/components/schemas/Uuid'
+            resource_id:
+              $ref: '#/components/schemas/Uuid'
+            resource_kind:
+              type: string
+              enum:
+              - item
+              - variant
+              - unit
+              - location
+            committed_material_version:
+              type: integer
+              minimum: 1
+              maximum: 2147483647
+            committed_at:
+              $ref: '#/components/schemas/UtcInstant'
+            outcome:
+              const: committed
+    CatalogueWriteConflict:
+      type: object
+      additionalProperties: false
+      required:
+      - request_id
+      - error
+      - current
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        error:
+          type: object
+          additionalProperties: false
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+              enum:
+              - material_version_conflict
+              - quantity_identity_locked
+              - unit_incompatible
+              - precision_unsupported
+              - code_conflict
+              - setup_blocked
+              - action_key_conflict
+              - resource_retired
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+        current:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            required:
+            - resource_id
+            - material_version
+            - state
+            properties:
+              resource_id:
+                $ref: '#/components/schemas/Uuid'
+              material_version:
+                type: integer
+                minimum: 1
+                maximum: 2147483647
+              state:
+                $ref: '#/components/schemas/CatalogueState'
+          - type: 'null'
+      allOf:
+      - if:
+          properties:
+            error:
+              properties:
+                code:
+                  const: material_version_conflict
+        then:
+          properties:
+            current:
+              type: object
     Duty:
       type: string
       enum:
@@ -1777,6 +5427,111 @@ components:
                   code: {enum: [required, invalid_format, too_long, unexpected_field, invalid_type]}
                   message: {type: string, minLength: 1, maxLength: 200}
   responses:
+    CatalogueNotFound:
+      description: chapter_not_found for unknown/foreign/inactive chapter or missing membership; otherwise resource_not_found
+        uniformly for unknown/foreign/inaccessible resource, related ID, version or outcome within an admitted chapter.
+        No private existence detail.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      type: string
+                      enum:
+                      - chapter_not_found
+                      - resource_not_found
+    CatalogueConflict:
+      description: No mutation/result on rejection. Read current authorized detail/version/settings, preserve entered
+        input and explicitly review. Accepted-key replay precedes stale-version checks.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/CatalogueWriteConflict'
+    CatalogueSnapshotStale:
+      description: Expired cursor or changed authority/catalogue/stock snapshot. Restart first page with preserved filters.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      type: string
+                      enum:
+                      - snapshot_stale
+    CatalogueMalformed:
+      description: Missing/malformed action key, malformed JSON, duplicate key/header or invalid/unknown query selector.
+        No mutation/result.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      type: string
+                      enum:
+                      - malformed_request
+                      - invalid_selector
+    EligibilityConflict:
+      description: Stale query snapshot or existing RF line mismatches exact variant/intended context. Re-read current
+        authorized demand; no implicit reallocation.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      type: string
+                      enum:
+                      - snapshot_stale
+                      - eligibility_context_conflict
+    CatalogueWriteDenied:
+      description: Foreign/missing Origin before CSRF; limited MFA or insufficient duty after session admission. No
+        resource details.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      type: string
+                      enum:
+                      - origin_denied
+                      - mfa_incomplete
+                      - duty_denied
     ChapterAccessDenied:
       description: mfa_incomplete for limited authentication; duty_denied for a visible chapter with insufficient
         duty. No protected state is returned
