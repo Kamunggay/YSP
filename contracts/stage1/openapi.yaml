@@ -693,16 +693,16 @@ components:
       - created_at
       additionalProperties: false
       properties:
-        id: &id001
+        id:
           $ref: '#/components/schemas/Uuid'
         reference:
           type: string
           pattern: ^[A-Z][A-Z0-9-]{1,19}$
-        display_name: &id003
+        display_name:
           type: string
           minLength: 1
           maxLength: 200
-        created_at: &id002
+        created_at:
           $ref: '#/components/schemas/UtcInstant'
     MembershipSummary:
       type: object
@@ -711,9 +711,11 @@ components:
       - chapter
       - duties
       - authority_version
+      - duty_grants
       additionalProperties: false
       properties:
-        id: *id001
+        id:
+          $ref: '#/components/schemas/Uuid'
         chapter:
           $ref: '#/components/schemas/ChapterSummary'
         duties:
@@ -721,10 +723,14 @@ components:
           uniqueItems: true
           items:
             $ref: '#/components/schemas/Duty'
-        authority_version: &id004
+        authority_version:
           type: integer
-          minimum: 0
+          minimum: 1
           maximum: 2147483647
+        duty_grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/CurrentDutyGrant'
     MembershipPage:
       type: object
       required:
@@ -763,10 +769,12 @@ components:
           - checked_at
           additionalProperties: false
           properties:
-            user_id: *id001
+            user_id:
+              $ref: '#/components/schemas/Uuid'
             membership:
               $ref: '#/components/schemas/MembershipSummary'
-            checked_at: *id002
+            checked_at:
+              $ref: '#/components/schemas/UtcInstant'
     SetupBlocker:
       type: object
       required:
@@ -777,7 +785,7 @@ components:
       - message
       additionalProperties: false
       properties:
-        setting_key: &id012
+        setting_key:
           enum:
           - quantity_scale
           - valuation_rounding
@@ -787,9 +795,9 @@ components:
           - rop
           - target_level
           - price
-        subject_id: &id013
+        subject_id:
           oneOf:
-          - *id001
+          - $ref: '#/components/schemas/Uuid'
           - type: 'null'
         state:
           enum:
@@ -801,7 +809,10 @@ components:
           enum:
           - CHAPTER_HEAD
           - FINANCE
-        message: *id003
+        message:
+          type: string
+          minLength: 1
+          maxLength: 200
     ActionDecision:
       type: object
       required:
@@ -859,11 +870,20 @@ components:
           - actions
           additionalProperties: false
           properties:
-            chapter_id: *id001
-            user_id: *id001
-            authority_version: *id004
-            setup_version: *id004
-            checked_at: *id002
+            chapter_id:
+              $ref: '#/components/schemas/Uuid'
+            user_id:
+              $ref: '#/components/schemas/Uuid'
+            authority_version:
+              type: integer
+              minimum: 1
+              maximum: 2147483647
+            setup_version:
+              type: integer
+              minimum: 1
+              maximum: 2147483647
+            checked_at:
+              $ref: '#/components/schemas/UtcInstant'
             actions:
               type: array
               minItems: 19
@@ -880,16 +900,22 @@ components:
       - evidence_reference
       additionalProperties: false
       properties:
-        id: *id001
-        approver_id: *id001
+        id:
+          $ref: '#/components/schemas/Uuid'
+        approver_id:
+          $ref: '#/components/schemas/Uuid'
         authority:
           enum:
           - PROVIDER_PROVISIONING
           - PROVIDER_RECOVERY
           - CHAPTER_HEAD
           - FINANCE
-        approved_at: *id002
-        evidence_reference: *id003
+        approved_at:
+          $ref: '#/components/schemas/UtcInstant'
+        evidence_reference:
+          type: string
+          minLength: 1
+          maxLength: 200
     PrepareAccountProcedure:
       type: object
       required:
@@ -906,12 +932,14 @@ components:
       properties:
         procedure_id:
           const: prepareAccount
-        action_key: &id005
+        action_key:
           $ref: '#/components/schemas/Uuid'
-        operator_id: *id005
+        operator_id:
+          $ref: '#/components/schemas/Uuid'
         chapter_id:
           type: 'null'
-        target_id: *id005
+        target_id:
+          $ref: '#/components/schemas/Uuid'
         expected_version:
           const: 0
         reason:
@@ -935,8 +963,14 @@ components:
               type: string
               format: email
               maxLength: 254
-            display_name: *id003
-            credential_delivery_reference: *id003
+            display_name:
+              type: string
+              minLength: 1
+              maxLength: 200
+            credential_delivery_reference:
+              type: string
+              minLength: 1
+              maxLength: 200
     SetAccountStatusProcedure:
       type: object
       required:
@@ -953,13 +987,18 @@ components:
       properties:
         procedure_id:
           const: setAccountStatus
-        action_key: &id006
+        action_key:
           $ref: '#/components/schemas/Uuid'
-        operator_id: *id006
+        operator_id:
+          $ref: '#/components/schemas/Uuid'
         chapter_id:
           type: 'null'
-        target_id: *id006
-        expected_version: *id004
+        target_id:
+          $ref: '#/components/schemas/Uuid'
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
         reason:
           type: string
           minLength: 1
@@ -995,12 +1034,14 @@ components:
       properties:
         procedure_id:
           const: prepareChapter
-        action_key: &id007
+        action_key:
           $ref: '#/components/schemas/Uuid'
-        operator_id: *id007
+        operator_id:
+          $ref: '#/components/schemas/Uuid'
         chapter_id:
           type: 'null'
-        target_id: *id007
+        target_id:
+          $ref: '#/components/schemas/Uuid'
         expected_version:
           const: 0
         reason:
@@ -1023,8 +1064,12 @@ components:
             reference:
               type: string
               pattern: ^[A-Z][A-Z0-9-]{1,19}$
-            display_name: *id003
-            initial_head_user_id: *id001
+            display_name:
+              type: string
+              minLength: 1
+              maxLength: 200
+            initial_head_user_id:
+              $ref: '#/components/schemas/Uuid'
     SetMembershipProcedure:
       type: object
       required:
@@ -1041,12 +1086,18 @@ components:
       properties:
         procedure_id:
           const: setMembership
-        action_key: &id008
+        action_key:
           $ref: '#/components/schemas/Uuid'
-        operator_id: *id008
-        chapter_id: *id001
-        target_id: *id008
-        expected_version: *id004
+        operator_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        target_id:
+          $ref: '#/components/schemas/Uuid'
+        expected_version:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
         reason:
           type: string
           minLength: 1
@@ -1064,12 +1115,14 @@ components:
           - effective_from
           additionalProperties: false
           properties:
-            user_id: *id001
+            user_id:
+              $ref: '#/components/schemas/Uuid'
             status:
               enum:
               - active
               - revoked
-            effective_from: *id002
+            effective_from:
+              $ref: '#/components/schemas/UtcInstant'
     SetDutyProcedure:
       type: object
       required:
@@ -1086,12 +1139,18 @@ components:
       properties:
         procedure_id:
           const: setDuty
-        action_key: &id009
+        action_key:
           $ref: '#/components/schemas/Uuid'
-        operator_id: *id009
-        chapter_id: *id001
-        target_id: *id009
-        expected_version: *id004
+        operator_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        target_id:
+          $ref: '#/components/schemas/Uuid'
+        expected_version:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
         reason:
           type: string
           minLength: 1
@@ -1108,16 +1167,26 @@ components:
           - duty
           - status
           - effective_from
+          - scope
+          - effective_until
           additionalProperties: false
           properties:
-            membership_id: *id001
+            membership_id:
+              $ref: '#/components/schemas/Uuid'
             duty:
               $ref: '#/components/schemas/Duty'
             status:
               enum:
               - active
               - revoked
-            effective_from: *id002
+            effective_from:
+              $ref: '#/components/schemas/UtcInstant'
+            scope:
+              $ref: '#/components/schemas/DutyScope'
+            effective_until:
+              oneOf:
+              - $ref: '#/components/schemas/UtcInstant'
+              - type: 'null'
     SetAlternateProcedure:
       type: object
       required:
@@ -1134,12 +1203,18 @@ components:
       properties:
         procedure_id:
           const: setAlternate
-        action_key: &id010
+        action_key:
           $ref: '#/components/schemas/Uuid'
-        operator_id: *id010
-        chapter_id: *id001
-        target_id: *id010
-        expected_version: *id004
+        operator_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        target_id:
+          $ref: '#/components/schemas/Uuid'
+        expected_version:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
         reason:
           type: string
           minLength: 1
@@ -1159,10 +1234,13 @@ components:
           - status
           - effective_from
           - effective_until
+          - scope
           additionalProperties: false
           properties:
-            membership_id: *id001
-            replaces_user_id: *id001
+            membership_id:
+              $ref: '#/components/schemas/Uuid'
+            replaces_user_id:
+              $ref: '#/components/schemas/Uuid'
             duty:
               enum:
               - RF_APPROVER
@@ -1170,13 +1248,20 @@ components:
               - FINANCE
               - BUDGET_APPROVER
               - INDEPENDENT_REVIEWER
-            decision_scope_reference: *id003
+            decision_scope_reference:
+              type: string
+              minLength: 1
+              maxLength: 200
             status:
               enum:
               - active
               - revoked
-            effective_from: *id002
-            effective_until: *id002
+            effective_from:
+              $ref: '#/components/schemas/UtcInstant'
+            effective_until:
+              $ref: '#/components/schemas/UtcInstant'
+            scope:
+              $ref: '#/components/schemas/DutyScope'
     RecordPolicyProcedure:
       type: object
       required:
@@ -1193,12 +1278,18 @@ components:
       properties:
         procedure_id:
           const: recordPolicy
-        action_key: &id011
+        action_key:
           $ref: '#/components/schemas/Uuid'
-        operator_id: *id011
-        chapter_id: *id001
-        target_id: *id011
-        expected_version: *id004
+        operator_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        target_id:
+          $ref: '#/components/schemas/Uuid'
+        expected_version:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
         reason:
           type: string
           minLength: 1
@@ -1220,8 +1311,20 @@ components:
           - effective_until
           additionalProperties: false
           properties:
-            setting_key: *id012
-            subject_id: *id013
+            setting_key:
+              enum:
+              - quantity_scale
+              - valuation_rounding
+              - ipc_authorization
+              - rf_approval_route
+              - reference_series
+              - rop
+              - target_level
+              - price
+            subject_id:
+              oneOf:
+              - $ref: '#/components/schemas/Uuid'
+              - type: 'null'
             ownership:
               enum:
               - operational
@@ -1232,11 +1335,15 @@ components:
               maxLength: 2000
               description: Exact serialized value validated against the reviewed value_schema_reference for this
                 key/subject; not executable text. Actual approved values are prerequisites, never examples as defaults.
-            value_schema_reference: *id003
-            effective_from: *id002
+            value_schema_reference:
+              type: string
+              minLength: 1
+              maxLength: 200
+            effective_from:
+              $ref: '#/components/schemas/UtcInstant'
             effective_until:
               oneOf:
-              - *id002
+              - $ref: '#/components/schemas/UtcInstant'
               - type: 'null'
           allOf:
           - if:
@@ -1269,13 +1376,18 @@ components:
       properties:
         procedure_id:
           const: resetMfa
-        action_key: &id014
+        action_key:
           $ref: '#/components/schemas/Uuid'
-        operator_id: *id014
+        operator_id:
+          $ref: '#/components/schemas/Uuid'
         chapter_id:
           type: 'null'
-        target_id: *id014
-        expected_version: *id004
+        target_id:
+          $ref: '#/components/schemas/Uuid'
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
         reason:
           type: string
           minLength: 1
@@ -1294,10 +1406,18 @@ components:
           - lost_factor_reason
           additionalProperties: false
           properties:
-            identity_verification_reference: *id003
-            verified_by_user_id: *id001
-            verified_at: *id002
-            lost_factor_reason: *id003
+            identity_verification_reference:
+              type: string
+              minLength: 1
+              maxLength: 200
+            verified_by_user_id:
+              $ref: '#/components/schemas/Uuid'
+            verified_at:
+              $ref: '#/components/schemas/UtcInstant'
+            lost_factor_reason:
+              type: string
+              minLength: 1
+              maxLength: 200
     ControlledSetupResult:
       oneOf:
       - type: object
@@ -1326,11 +1446,18 @@ components:
             - setAlternate
             - recordPolicy
             - resetMfa
-          action_key: *id001
-          target_id: *id001
-          version: *id004
-          audit_id: *id001
-          committed_at: *id002
+          action_key:
+            $ref: '#/components/schemas/Uuid'
+          target_id:
+            $ref: '#/components/schemas/Uuid'
+          version:
+            type: integer
+            minimum: 1
+            maximum: 2147483647
+          audit_id:
+            $ref: '#/components/schemas/Uuid'
+          committed_at:
+            $ref: '#/components/schemas/UtcInstant'
           session_effect:
             enum:
             - none
@@ -1358,7 +1485,8 @@ components:
             - setAlternate
             - recordPolicy
             - resetMfa
-          action_key: *id001
+          action_key:
+            $ref: '#/components/schemas/Uuid'
           code:
             enum:
             - operator_denied
@@ -1369,7 +1497,50 @@ components:
             - action_key_conflict
             - setup_blocked
             - unavailable
-          audit_id: *id001
+          audit_id:
+            $ref: '#/components/schemas/Uuid'
+    DutyScope:
+      type: object
+      required:
+      - unit_id
+      - limit_php
+      additionalProperties: false
+      properties:
+        unit_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+          description: Null is explicitly approved chapter-wide scope; otherwise this exact chapter-owned unit
+            only.
+        limit_php:
+          oneOf:
+          - type: string
+            pattern: ^(0|[1-9][0-9]{0,11})\.[0-9]{2}$
+          - type: 'null'
+          description: Approved maximum for decisions needing monetary authority. Null supplies no monetary authority,
+            never unlimited authority; nonfinancial duties may use null.
+    CurrentDutyGrant:
+      type: object
+      required:
+      - id
+      - duty
+      - scope
+      - effective_from
+      - effective_until
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        duty:
+          $ref: '#/components/schemas/Duty'
+        scope:
+          $ref: '#/components/schemas/DutyScope'
+        effective_from:
+          $ref: '#/components/schemas/UtcInstant'
+        effective_until:
+          oneOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
     Uuid:
       type: string
       format: uuid
