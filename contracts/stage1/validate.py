@@ -229,9 +229,13 @@ def main():
             procedure_coverage.add(procedure_id)
     if procedure_coverage != procedures.keys():
         raise ValueError(f"Missing worked controlled success: {sorted(procedures.keys() - procedure_coverage)}")
-    participants = document.get("x-evidence-participants", {})
+    evidence_participants = document.get("x-evidence-participants", {})
+    inventory_participants = document.get("x-opening-inventory-participants", {})
+    if evidence_participants.keys() & inventory_participants.keys():
+        raise ValueError("Duplicate internal participant ID")
+    participants = evidence_participants | inventory_participants
     participant_coverage = set()
-    for case in examples.get("participant_cases", []):
+    for case in examples.get("participant_cases", []) + examples.get("opening_inventory_cases", []):
         name = case["name"]
         if name in names:
             raise ValueError(f"Duplicate consumer case: {name}")
@@ -244,12 +248,13 @@ def main():
         if case["output"]["outcome"] == "ready" and case.get("input_valid", True):
             participant_coverage.add(participant_id)
     if participant_coverage != participants.keys():
-        raise ValueError(f"Missing worked evidence success: {sorted(participants.keys() - participant_coverage)}")
+        raise ValueError(f"Missing worked participant success: {sorted(participants.keys() - participant_coverage)}")
     print("Versions: " + ", ".join(f"{name}={version(name)}" for name in
                                     ("openapi-spec-validator", "jsonschema", "PyYAML")))
     print(f"PASS OpenAPI 3.1.1; local references; {len(operations)} operations; "
           f"{len(procedures)} controlled procedures; {len(names)} consumer cases; "
-          f"{len(participants)} evidence participants; {checked} schema/example checks")
+          f"{len(evidence_participants)} evidence participants; "
+          f"{len(inventory_participants)} opening Inventory participants; {checked} schema/example checks")
     if args.invalid_example:
         pointer, _ = operations["completeRecoveryChallenge"]
         check_value(pointer + "/requestBody/content/application~1json/schema",
