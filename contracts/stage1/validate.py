@@ -210,13 +210,16 @@ def main():
                     case.get("input_valid", True))
         if procedure_id == "recordPolicy" and case.get("input_valid", True):
             policy = case["input"]["input"]
-            policy_definition = document.get("x-catalogue-policy-values", {}).get(policy["setting_key"])
+            catalogue_definition = document.get("x-catalogue-policy-values", {}).get(policy["setting_key"])
+            opening_definition = document.get("x-opening-policy-values", {}).get(policy["setting_key"])
+            policy_definition = catalogue_definition or opening_definition
             if policy_definition:
                 value_pointer = policy_definition["schema"]["$ref"]
                 if policy["value_schema_reference"] != value_pointer:
                     raise ValueError(f"{name}: policy value reference differs from canonical setting schema")
-                if policy["subject_id"] is None or policy["ownership"] != policy_definition["ownership"]:
-                    raise ValueError(f"{name}: policy subject/ownership does not match its catalogue setting")
+                needs_subject = bool(catalogue_definition) or policy_definition.get("subject_scope") == "ipc"
+                if (policy["subject_id"] is not None) != needs_subject or policy["ownership"] != policy_definition["ownership"]:
+                    raise ValueError(f"{name}: policy subject/ownership does not match its setting")
                 value = json.loads(policy["value"])
                 if json.dumps(value, sort_keys=True, separators=(",", ":")) != policy["value"]:
                     raise ValueError(f"{name}: policy value is not canonical compact JSON")

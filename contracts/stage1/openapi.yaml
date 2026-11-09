@@ -3974,7 +3974,7 @@ paths:
       - Opening stock
       summary: saveMyIpcCount
       x-existence: new
-      x-required-action: ipc.draft
+      x-required-action: ipc.count
       x-owner: Leader
       x-ui-consumer: Glenn
       x-reviewers:
@@ -7730,6 +7730,7 @@ components:
       type: string
       enum:
       - ipc.read
+      - ipc.count
       - opening_rm.read
       - opening.result.read
       - catalogue.read
@@ -10946,14 +10947,19 @@ x-controlled-procedures:
 x-stage1-action-duties:
   ipc.read:
   - INVENTORY
+  - INDEPENDENT_REVIEWER
   - RECEIVING
   - CHAPTER_HEAD
   - FINANCE
+  ipc.count:
+  - INVENTORY
+  - INDEPENDENT_REVIEWER
   opening_rm.read:
   - INVENTORY
   - RECEIVING
   opening.result.read:
   - INVENTORY
+  - INDEPENDENT_REVIEWER
   - RECEIVING
   - CHAPTER_HEAD
   - FINANCE
@@ -11068,11 +11074,14 @@ x-opening-policy-values:
     schema:
       $ref: '#/components/schemas/IpcAuthorizationPolicyValue'
     ownership: operational
+    subject_scope: ipc
   valuation_rounding:
     schema:
       $ref: '#/components/schemas/OpeningValuationPolicyValue'
     ownership: financial
+    subject_scope: chapter
   reference_series:
     schema:
       $ref: '#/components/schemas/OpeningReferencePolicyValue'
-    ownership: financial
+    ownership: operational
+    subject_scope: chapter

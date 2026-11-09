@@ -7576,8 +7576,8 @@ cases:
           posting: null
   - name: opening-postOpeningRm
     operationId: postOpeningRm
-    before: B is authorized receiving preparer/inspector/matcher/poster; independent counter B differs from custodian
-      A. One transaction12 usable+3 separate findings, PHP300.00 accepted.
+    before: B is INDEPENDENT_REVIEWER and authorized receiving preparer/inspector/matcher/poster without INVENTORY;
+      independent counter B differs from custodian A. One transaction12 usable+3 separate findings, PHP300.00 accepted.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -8019,8 +8019,8 @@ cases:
             acknowledgment_id: 95000000-0000-4000-8000-000000000070
   - name: opening-independent-counter-completes
     operationId: saveMyIpcCount
-    before: B counts independently of regular custodian A, signs every same material-version2 line; no role switching
-      supplies independence.
+    before: B holds INDEPENDENT_REVIEWER and scoped RECEIVING, no INVENTORY grant; B counts independently of regular
+      custodian A, signs every same material-version2 line; no role switching supplies independence.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -9803,6 +9803,113 @@ procedure_cases:
     code: invalid_input
     audit_id: 70000000-0000-4000-8000-000000000008
   policy_value_valid: false
+- name: opening-controlled-policy-ipc_authorization
+  procedureId: recordPolicy
+  before: Independent controlled-setup fixture, not actual approval or source chain. Chapter Head owns operational
+    IPC/RM reference series; Finance owns valuation.
+  input:
+    procedure_id: recordPolicy
+    action_key: 95000000-0000-4000-8000-000000000700
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 95000000-0000-4000-8000-000000000030
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 95000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: ipc_authorization
+      subject_id: 95000000-0000-4000-8000-000000000010
+      ownership: operational
+      value: '{"count_team_ids":["95000000-0000-4000-8000-000000000001","95000000-0000-4000-8000-000000000002"],"cutoff_at":"2026-11-09T00:00:00.000000Z","suspension_record_reference":"Illustrative
+        approved count-freeze record"}'
+      value_schema_reference: '#/components/schemas/IpcAuthorizationPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 95000000-0000-4000-8000-000000000700
+    target_id: 95000000-0000-4000-8000-000000000030
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: opening-controlled-policy-valuation_rounding
+  procedureId: recordPolicy
+  before: Independent controlled-setup fixture, not actual approval or source chain. Chapter Head owns operational
+    IPC/RM reference series; Finance owns valuation.
+  input:
+    procedure_id: recordPolicy
+    action_key: 95000000-0000-4000-8000-000000000701
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 95000000-0000-4000-8000-000000000031
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 95000000-0000-4000-8000-000000000004
+      authority: FINANCE
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: valuation_rounding
+      subject_id: null
+      ownership: financial
+      value: '{"currency":"PHP","round_at":"accepted_line","rounding_mode":"half_up","unit_value_scale":2,"valuation_basis_reference":"Illustrative
+        approved documented cost"}'
+      value_schema_reference: '#/components/schemas/OpeningValuationPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 95000000-0000-4000-8000-000000000701
+    target_id: 95000000-0000-4000-8000-000000000031
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: opening-controlled-policy-reference_series
+  procedureId: recordPolicy
+  before: Independent controlled-setup fixture, not actual approval or source chain. Chapter Head owns operational
+    IPC/RM reference series; Finance owns valuation.
+  input:
+    procedure_id: recordPolicy
+    action_key: 95000000-0000-4000-8000-000000000702
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 95000000-0000-4000-8000-000000000032
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 95000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: reference_series
+      subject_id: null
+      ownership: operational
+      value: '{"ipc_prefix":"CEB-IPC-","minimum_digits":6,"rm_prefix":"CEB-RM-"}'
+      value_schema_reference: '#/components/schemas/OpeningReferencePolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 95000000-0000-4000-8000-000000000702
+    target_id: 95000000-0000-4000-8000-000000000032
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
 participant_cases:
   - name: matching-paper-binding
     participantId: checkEvidenceBinding
