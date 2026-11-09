@@ -9262,8 +9262,8 @@ components:
               type: string
               minLength: 1
               maxLength: 2000
-              description: Exact serialized value validated against the reviewed value_schema_reference for this
-                key/subject; not executable text. Actual approved values are prerequisites, never examples as defaults.
+              description: Exact serialized value validated against the reviewed value_schema_reference for this key/subject;
+                not executable text. Actual approved values are prerequisites, never examples as defaults.
             value_schema_reference:
               type: string
               minLength: 1
@@ -9289,6 +9289,19 @@ components:
               properties:
                 ownership:
                   const: operational
+          - if:
+              properties:
+                setting_key:
+                  const: reference_series
+            then:
+              properties:
+                subject_id:
+                  type: 'null'
+                value_schema_reference:
+                  $ref: '#/components/schemas/ReferenceSeriesFamily'
+      description: For reference_series only, exact reviewed value_schema_reference is an immutable family discriminator
+        in applicability/uniqueness and consumer lookup with chapter/key/subject. Other setting identities are unchanged.
+        See x-reference-series-policy-identity and agreement.md.
     ResetMfaProcedure:
       type: object
       required:
@@ -11988,6 +12001,11 @@ components:
             $ref: '#/components/schemas/RfRelatedRecord'
         page:
           $ref: '#/components/schemas/CataloguePage'
+    ReferenceSeriesFamily:
+      type: string
+      enum:
+      - '#/components/schemas/OpeningReferencePolicyValue'
+      - '#/components/schemas/RfReferenceSeriesPolicyValue'
   responses:
     CatalogueNotFound:
       description: chapter_not_found for unknown/foreign/inactive chapter or missing membership; otherwise resource_not_found
@@ -12924,3 +12942,35 @@ x-rf-policy-values:
     ownership: operational
     schema:
       $ref: '#/components/schemas/RfReferenceSeriesPolicyValue'
+
+x-reference-series-policy-identity:
+  setting_key: reference_series
+  discriminator: value_schema_reference
+  subject_id: null
+  applicability_key:
+  - chapter_id
+  - setting_key
+  - subject_id
+  - value_schema_reference
+  families:
+    opening:
+      schema:
+        $ref: '#/components/schemas/OpeningReferencePolicyValue'
+      consumers:
+      - submitIpc
+      - postOpeningRm
+      counter_scopes:
+      - IPC
+      - RM
+    internal_rf:
+      schema:
+        $ref: '#/components/schemas/RfReferenceSeriesPolicyValue'
+      consumers:
+      - submitInternalRf
+      counter_scopes:
+      - RF
+  description: Both chapter-wide Head-approved families may be effective concurrently. Reject overlaps inside the
+    same family even under another policy UUID. Family is immutable for a policy aggregate; positive-version replacement
+    and current-source lookup stay inside it. Unknown family is invalid_input. A missing required family remains
+    setup_blocked; never consume or supersede the other family as fallback. Counter/reference namespaces include
+    the corresponding document kind. No other setting gains a family dimension.
