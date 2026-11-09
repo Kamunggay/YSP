@@ -12979,6 +12979,11 @@ cases:
         expected_material_version: 1
         resolution: Inspection finds no damage; recorded usable condition and quantity unchanged.
         condition_treatment_source_id: null
+        signatories:
+        - user_id: 97000000-0000-4000-8000-000000000001
+          membership_id: 97000000-0000-4000-8000-000000000002
+          duty_grant_id: 97000000-0000-4000-8000-000000000003
+          signed_at: '2026-11-10T01:55:00.000000Z'
       headers:
         X-Action-Key: 97000000-0000-4000-8000-000000001016
     response:
@@ -13033,7 +13038,32 @@ cases:
                   purpose: hold_clearance
                   record_id: 97000000-0000-4000-8000-000000000050
                 material_version: 2
-                sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
+                sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+              material:
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                hold_id: 97000000-0000-4000-8000-000000000050
+                ranges:
+                - stock_lot_id: 97000000-0000-4000-8000-000000000010
+                  basis_segment_id: 97000000-0000-4000-8000-000000000110
+                  offset_quantity: '0'
+                  quantity: '4'
+                reason_code: damage_review
+                reason: Inspect identified four; retain usable condition until authorized treatment.
+                resolution: Inspection finds no damage; recorded usable condition and quantity unchanged.
+                condition_treatment_source_id: null
+                clearance_authority:
+                  user_id: 97000000-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  duty: INVENTORY
+                  unit_id: null
+                  acted_at: '2026-11-10T02:00:00.000000Z'
+                signatories:
+                - user_id: 97000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  signed_at: '2026-11-10T01:55:00.000000Z'
             clearance: null
           rf_changes:
           - rf_id: 81000000-0000-4000-8000-000000000001
@@ -13053,24 +13083,19 @@ cases:
       body:
         expected_version: 2
         expected_material_version: 2
-        acknowledgment:
-          acknowledgment_id: 97000000-0000-4000-8000-000000000063
-          matched_by: 97000000-0000-4000-8000-000000000001
-          matched_at: '2026-11-10T02:00:00.000000Z'
-          recipient_id: null
-          acknowledged_at: '2026-11-10T02:00:00.000000Z'
-          snapshot:
-            target:
-              purpose: hold_clearance
-              record_id: 97000000-0000-4000-8000-000000000050
-            material_version: 2
-            sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
-          bytes:
-            evidence_id: 97000000-0000-4000-8000-000000000060
-            version_id: 97000000-0000-4000-8000-000000000061
-            attachments:
-            - attachment_id: 97000000-0000-4000-8000-000000000062
-              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        expected_snapshot:
+          target:
+            purpose: hold_clearance
+            record_id: 97000000-0000-4000-8000-000000000050
+          material_version: 2
+          sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+        evidence:
+          evidence_id: 97000000-0000-4000-8000-000000000060
+          version_id: 97000000-0000-4000-8000-000000000061
+          attachments:
+          - attachment_id: 97000000-0000-4000-8000-000000000062
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        matches_paper: true
       headers:
         X-Action-Key: 97000000-0000-4000-8000-000000001017
     response:
@@ -13125,7 +13150,32 @@ cases:
                   purpose: hold_clearance
                   record_id: 97000000-0000-4000-8000-000000000050
                 material_version: 2
-                sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
+                sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+              material:
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                hold_id: 97000000-0000-4000-8000-000000000050
+                ranges:
+                - stock_lot_id: 97000000-0000-4000-8000-000000000010
+                  basis_segment_id: 97000000-0000-4000-8000-000000000110
+                  offset_quantity: '0'
+                  quantity: '4'
+                reason_code: damage_review
+                reason: Inspect identified four; retain usable condition until authorized treatment.
+                resolution: Inspection finds no damage; recorded usable condition and quantity unchanged.
+                condition_treatment_source_id: null
+                clearance_authority:
+                  user_id: 97000000-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  duty: INVENTORY
+                  unit_id: null
+                  acted_at: '2026-11-10T02:00:00.000000Z'
+                signatories:
+                - user_id: 97000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  signed_at: '2026-11-10T01:55:00.000000Z'
             clearance:
               cleared_by:
                 user_id: 97000000-0000-4000-8000-000000000001
@@ -13143,13 +13193,13 @@ cases:
                 matched_by: 97000000-0000-4000-8000-000000000001
                 matched_at: '2026-11-10T02:00:00.000000Z'
                 recipient_id: null
-                acknowledged_at: '2026-11-10T02:00:00.000000Z'
+                acknowledged_at: '2026-11-10T01:55:00.000000Z'
                 snapshot:
                   target:
                     purpose: hold_clearance
                     record_id: 97000000-0000-4000-8000-000000000050
                   material_version: 2
-                  sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
+                  sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
                 bytes:
                   evidence_id: 97000000-0000-4000-8000-000000000060
                   version_id: 97000000-0000-4000-8000-000000000061
@@ -13806,8 +13856,8 @@ cases:
                 canceled_quantity: '0'
                 remaining_quantity: '10'
                 unreserved_quantity: '10'
-              free_eligible_quantity: '6'
-              uncovered_quantity: '4'
+              free_eligible_quantity: '10'
+              uncovered_quantity: '0'
               allocation_policy:
                 policy_id: 97000000-0000-4000-8000-000000000020
                 material_version: 1
@@ -14546,24 +14596,19 @@ cases:
       body:
         expected_version: 2
         expected_material_version: 2
-        acknowledgment:
-          acknowledgment_id: 97000000-0000-4000-8000-000000000063
-          matched_by: 97000000-0000-4000-8000-000000000001
-          matched_at: '2026-11-10T02:00:00.000000Z'
-          recipient_id: null
-          acknowledged_at: '2026-11-10T02:00:00.000000Z'
-          snapshot:
-            target:
-              purpose: hold_clearance
-              record_id: 97000000-0000-4000-8000-000000000050
-            material_version: 2
-            sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
-          bytes:
-            evidence_id: 97000000-0000-4000-8000-000000000060
-            version_id: 97000000-0000-4000-8000-000000000061
-            attachments:
-            - attachment_id: 97000000-0000-4000-8000-000000000062
-              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        expected_snapshot:
+          target:
+            purpose: hold_clearance
+            record_id: 97000000-0000-4000-8000-000000000050
+          material_version: 2
+          sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+        evidence:
+          evidence_id: 97000000-0000-4000-8000-000000000060
+          version_id: 97000000-0000-4000-8000-000000000061
+          attachments:
+          - attachment_id: 97000000-0000-4000-8000-000000000062
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        matches_paper: true
       headers:
         X-Action-Key: 97000000-0000-4000-8000-000000001034
     response:
@@ -14617,7 +14662,32 @@ cases:
                   purpose: hold_clearance
                   record_id: 97000000-0000-4000-8000-000000000050
                 material_version: 2
-                sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
+                sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+              material:
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                hold_id: 97000000-0000-4000-8000-000000000050
+                ranges:
+                - stock_lot_id: 97000000-0000-4000-8000-000000000010
+                  basis_segment_id: 97000000-0000-4000-8000-000000000110
+                  offset_quantity: '0'
+                  quantity: '4'
+                reason_code: damage_review
+                reason: Inspect identified four; retain usable condition until authorized treatment.
+                resolution: Inspection finds no damage; recorded usable condition and quantity unchanged.
+                condition_treatment_source_id: null
+                clearance_authority:
+                  user_id: 97000000-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  duty: INVENTORY
+                  unit_id: null
+                  acted_at: '2026-11-10T02:00:00.000000Z'
+                signatories:
+                - user_id: 97000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  signed_at: '2026-11-10T01:55:00.000000Z'
             clearance: null
           review: null
         setup_blockers: []
@@ -14634,24 +14704,19 @@ cases:
       body:
         expected_version: 2
         expected_material_version: 2
-        acknowledgment:
-          acknowledgment_id: 97000000-0000-4000-8000-000000000063
-          matched_by: 97000000-0000-4000-8000-000000000001
-          matched_at: '2026-11-10T02:00:00.000000Z'
-          recipient_id: null
-          acknowledged_at: '2026-11-10T02:00:00.000000Z'
-          snapshot:
-            target:
-              purpose: hold_clearance
-              record_id: 97000000-0000-4000-8000-000000000050
-            material_version: 2
-            sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
-          bytes:
-            evidence_id: 97000000-0000-4000-8000-000000000060
-            version_id: 97000000-0000-4000-8000-000000000061
-            attachments:
-            - attachment_id: 97000000-0000-4000-8000-000000000062
-              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        expected_snapshot:
+          target:
+            purpose: hold_clearance
+            record_id: 97000000-0000-4000-8000-000000000050
+          material_version: 2
+          sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+        evidence:
+          evidence_id: 97000000-0000-4000-8000-000000000060
+          version_id: 97000000-0000-4000-8000-000000000061
+          attachments:
+          - attachment_id: 97000000-0000-4000-8000-000000000062
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        matches_paper: true
       headers:
         X-Action-Key: 97000000-0000-4000-8000-000000001035
     response:
@@ -14705,7 +14770,32 @@ cases:
                   purpose: hold_clearance
                   record_id: 97000000-0000-4000-8000-000000000050
                 material_version: 2
-                sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
+                sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+              material:
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                hold_id: 97000000-0000-4000-8000-000000000050
+                ranges:
+                - stock_lot_id: 97000000-0000-4000-8000-000000000010
+                  basis_segment_id: 97000000-0000-4000-8000-000000000110
+                  offset_quantity: '0'
+                  quantity: '4'
+                reason_code: damage_review
+                reason: Inspect identified four; retain usable condition until authorized treatment.
+                resolution: Inspection finds no damage; recorded usable condition and quantity unchanged.
+                condition_treatment_source_id: null
+                clearance_authority:
+                  user_id: 97000000-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  duty: INVENTORY
+                  unit_id: null
+                  acted_at: '2026-11-10T02:00:00.000000Z'
+                signatories:
+                - user_id: 97000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  signed_at: '2026-11-10T01:55:00.000000Z'
             clearance: null
           review: null
         setup_blockers: []
@@ -14722,24 +14812,19 @@ cases:
       body:
         expected_version: 2
         expected_material_version: 2
-        acknowledgment:
-          acknowledgment_id: 97000000-0000-4000-8000-000000000063
-          matched_by: 97000000-0000-4000-8000-000000000001
-          matched_at: '2026-11-10T02:00:00.000000Z'
-          recipient_id: null
-          acknowledged_at: '2026-11-10T02:00:00.000000Z'
-          snapshot:
-            target:
-              purpose: hold_clearance
-              record_id: 97000000-0000-4000-8000-000000000050
-            material_version: 2
-            sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
-          bytes:
-            evidence_id: 97000000-0000-4000-8000-000000000060
-            version_id: 97000000-0000-4000-8000-000000000061
-            attachments:
-            - attachment_id: 97000000-0000-4000-8000-000000000062
-              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        expected_snapshot:
+          target:
+            purpose: hold_clearance
+            record_id: 97000000-0000-4000-8000-000000000050
+          material_version: 2
+          sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+        evidence:
+          evidence_id: 97000000-0000-4000-8000-000000000060
+          version_id: 97000000-0000-4000-8000-000000000061
+          attachments:
+          - attachment_id: 97000000-0000-4000-8000-000000000062
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        matches_paper: true
       headers:
         X-Action-Key: 97000000-0000-4000-8000-000000001036
     response:
@@ -14793,7 +14878,32 @@ cases:
                   purpose: hold_clearance
                   record_id: 97000000-0000-4000-8000-000000000050
                 material_version: 2
-                sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
+                sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+              material:
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                hold_id: 97000000-0000-4000-8000-000000000050
+                ranges:
+                - stock_lot_id: 97000000-0000-4000-8000-000000000010
+                  basis_segment_id: 97000000-0000-4000-8000-000000000110
+                  offset_quantity: '0'
+                  quantity: '4'
+                reason_code: damage_review
+                reason: Inspect identified four; retain usable condition until authorized treatment.
+                resolution: Inspection finds no damage; recorded usable condition and quantity unchanged.
+                condition_treatment_source_id: null
+                clearance_authority:
+                  user_id: 97000000-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  duty: INVENTORY
+                  unit_id: null
+                  acted_at: '2026-11-10T02:00:00.000000Z'
+                signatories:
+                - user_id: 97000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  signed_at: '2026-11-10T01:55:00.000000Z'
             clearance: null
           review: null
         setup_blockers: []
@@ -14810,24 +14920,19 @@ cases:
       body:
         expected_version: 2
         expected_material_version: 2
-        acknowledgment:
-          acknowledgment_id: 97000000-0000-4000-8000-000000000063
-          matched_by: 97000000-0000-4000-8000-000000000001
-          matched_at: '2026-11-10T02:00:00.000000Z'
-          recipient_id: null
-          acknowledged_at: '2026-11-10T02:00:00.000000Z'
-          snapshot:
-            target:
-              purpose: hold_clearance
-              record_id: 97000000-0000-4000-8000-000000000050
-            material_version: 2
-            sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
-          bytes:
-            evidence_id: 97000000-0000-4000-8000-000000000060
-            version_id: 97000000-0000-4000-8000-000000000061
-            attachments:
-            - attachment_id: 97000000-0000-4000-8000-000000000062
-              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        expected_snapshot:
+          target:
+            purpose: hold_clearance
+            record_id: 97000000-0000-4000-8000-000000000050
+          material_version: 2
+          sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+        evidence:
+          evidence_id: 97000000-0000-4000-8000-000000000060
+          version_id: 97000000-0000-4000-8000-000000000061
+          attachments:
+          - attachment_id: 97000000-0000-4000-8000-000000000062
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        matches_paper: true
       headers:
         X-Action-Key: 97000000-0000-4000-8000-000000001037
     response:
@@ -14881,7 +14986,32 @@ cases:
                   purpose: hold_clearance
                   record_id: 97000000-0000-4000-8000-000000000050
                 material_version: 2
-                sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
+                sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+              material:
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                hold_id: 97000000-0000-4000-8000-000000000050
+                ranges:
+                - stock_lot_id: 97000000-0000-4000-8000-000000000010
+                  basis_segment_id: 97000000-0000-4000-8000-000000000110
+                  offset_quantity: '0'
+                  quantity: '4'
+                reason_code: damage_review
+                reason: Inspect identified four; retain usable condition until authorized treatment.
+                resolution: Inspection finds no damage; recorded usable condition and quantity unchanged.
+                condition_treatment_source_id: null
+                clearance_authority:
+                  user_id: 97000000-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  duty: INVENTORY
+                  unit_id: null
+                  acted_at: '2026-11-10T02:00:00.000000Z'
+                signatories:
+                - user_id: 97000000-0000-4000-8000-000000000001
+                  membership_id: 97000000-0000-4000-8000-000000000002
+                  duty_grant_id: 97000000-0000-4000-8000-000000000003
+                  signed_at: '2026-11-10T01:55:00.000000Z'
             clearance: null
           review: null
         setup_blockers: []
@@ -14988,24 +15118,19 @@ cases:
       body:
         expected_version: 2
         expected_material_version: 2
-        acknowledgment:
-          acknowledgment_id: 97000000-0000-4000-8000-000000000063
-          matched_by: 97000000-0000-4000-8000-000000000001
-          matched_at: '2026-11-10T02:00:00.000000Z'
-          recipient_id: null
-          acknowledged_at: '2026-11-10T02:00:00.000000Z'
-          snapshot:
-            target:
-              purpose: hold_clearance
-              record_id: 97000000-0000-4000-8000-000000000050
-            material_version: 2
-            sha256: 7a6b49efb503712e885095d4d54ed2ede285d1a69e18eeb81e4d71a60f9d5be4
-          bytes:
-            evidence_id: 97000000-0000-4000-8000-000000000060
-            version_id: 97000000-0000-4000-8000-000000000061
-            attachments:
-            - attachment_id: 97000000-0000-4000-8000-000000000062
-              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        expected_snapshot:
+          target:
+            purpose: hold_clearance
+            record_id: 97000000-0000-4000-8000-000000000050
+          material_version: 2
+          sha256: 7f939cfea461e2933208e3073f3e13de05e4eba4ace0f943d30e79b4acfafffa
+        evidence:
+          evidence_id: 97000000-0000-4000-8000-000000000060
+          version_id: 97000000-0000-4000-8000-000000000061
+          attachments:
+          - attachment_id: 97000000-0000-4000-8000-000000000062
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        matches_paper: true
       headers:
         X-Action-Key: 97000000-0000-4000-8000-000000001041
     response:
@@ -19730,9 +19855,9 @@ reservation_participant_cases:
     change: release
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -19749,8 +19874,8 @@ reservation_participant_cases:
     outcome: ready
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    next_rf_version: 5
-    next_progress_version: 2
+    next_rf_version: 6
+    next_progress_version: 3
     progress:
       approved_quantity: '10'
       issued_quantity: '0'
@@ -19774,9 +19899,9 @@ reservation_participant_cases:
     change: reallocate
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -19787,8 +19912,8 @@ reservation_participant_cases:
       offset_quantity: '0'
       quantity: '6'
     replacement_targets:
-    - stock_lot_id: 97000000-0000-4000-8000-000000000010
-      basis_segment_id: 97000000-0000-4000-8000-000000000110
+    - stock_lot_id: 97000000-0000-4000-8000-000000000011
+      basis_segment_id: 97000000-0000-4000-8000-000000000111
       offset_quantity: '0'
       quantity: '6'
       expected_lot_material_version: 1
@@ -19799,8 +19924,8 @@ reservation_participant_cases:
     outcome: ready
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    next_rf_version: 5
-    next_progress_version: 2
+    next_rf_version: 6
+    next_progress_version: 3
     progress:
       approved_quantity: '10'
       issued_quantity: '0'
@@ -19824,9 +19949,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -19864,8 +19989,8 @@ reservation_participant_cases:
     outcome: ready
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    next_rf_version: 5
-    next_progress_version: 2
+    next_rf_version: 6
+    next_progress_version: 3
     progress:
       approved_quantity: '10'
       issued_quantity: '6'
@@ -19889,9 +20014,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -19939,9 +20064,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -19989,9 +20114,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -20039,9 +20164,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -20089,9 +20214,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -20139,9 +20264,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -20189,9 +20314,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -20239,9 +20364,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1
@@ -20289,9 +20414,9 @@ reservation_participant_cases:
     change: consume
     rf_id: 81000000-0000-4000-8000-000000000001
     rf_line_id: 82000000-0000-4000-8000-000000000001
-    expected_rf_version: 4
+    expected_rf_version: 5
     expected_rf_material_version: 2
-    expected_rf_progress_version: 1
+    expected_rf_progress_version: 2
     reservation_id: 97000000-0000-4000-8000-000000000040
     expected_reservation_version: 1
     expected_reservation_material_version: 1

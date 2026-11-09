@@ -7435,6 +7435,76 @@ components:
       schema: {type: string, pattern: '^[1-9][0-9]*$'}
       example: '60'
   schemas:
+    HoldClearanceSignatory:
+      type: object
+      additionalProperties: false
+      required:
+      - user_id
+      - membership_id
+      - duty_grant_id
+      - signed_at
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        membership_id:
+          $ref: '#/components/schemas/Uuid'
+        duty_grant_id:
+          $ref: '#/components/schemas/Uuid'
+        signed_at:
+          $ref: '#/components/schemas/UtcInstant'
+    HoldClearanceMaterial:
+      type: object
+      additionalProperties: false
+      required:
+      - chapter_id
+      - hold_id
+      - ranges
+      - reason_code
+      - reason
+      - resolution
+      - condition_treatment_source_id
+      - clearance_authority
+      - signatories
+      properties:
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        hold_id:
+          $ref: '#/components/schemas/Uuid'
+        ranges:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/StockRange'
+        reason_code:
+          enum:
+          - damage_review
+          - safety_review
+          - source_dispute
+          - count_discrepancy
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        resolution:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        condition_treatment_source_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        clearance_authority:
+          $ref: '#/components/schemas/RfActor'
+        signatories:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/HoldClearanceSignatory'
     StockRange:
       type: object
       additionalProperties: false
@@ -7997,6 +8067,7 @@ components:
       - expected_material_version
       - resolution
       - condition_treatment_source_id
+      - signatories
       properties:
         expected_version:
           type: integer
@@ -8015,6 +8086,13 @@ components:
           anyOf:
           - $ref: '#/components/schemas/Uuid'
           - type: 'null'
+        signatories:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/HoldClearanceSignatory'
     HoldClearanceProposal:
       type: object
       additionalProperties: false
@@ -8024,6 +8102,7 @@ components:
       - prepared_by
       - prepared_at
       - snapshot
+      - material
       properties:
         resolution:
           type: string
@@ -8040,6 +8119,8 @@ components:
           $ref: '#/components/schemas/UtcInstant'
         snapshot:
           $ref: '#/components/schemas/EvidenceSnapshot'
+        material:
+          $ref: '#/components/schemas/HoldClearanceMaterial'
     HoldClearance:
       type: object
       additionalProperties: false
@@ -8133,7 +8214,9 @@ components:
       required:
       - expected_version
       - expected_material_version
-      - acknowledgment
+      - expected_snapshot
+      - evidence
+      - matches_paper
       properties:
         expected_version:
           type: integer
@@ -8143,8 +8226,15 @@ components:
           type: integer
           minimum: 1
           maximum: 2147483647
-        acknowledgment:
-          $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+        expected_snapshot:
+          $ref: '#/components/schemas/EvidenceSnapshot'
+        evidence:
+          $ref: '#/components/schemas/EvidenceByteBinding'
+        matches_paper:
+          const: true
+      description: Authenticated matcher confirms exact retained clearance material and actual signed paper. All acknowledgment
+        IDs, matcher identity and matching timestamps are derived by the server; caller cannot assert the trusted internal
+        acknowledgment.
     ReservationMutationName:
       enum:
       - prepareRfReservation
@@ -8365,7 +8455,9 @@ components:
         id:
           $ref: '#/components/schemas/Uuid'
         resource_kind:
-          $ref: '#/components/schemas/ReservationResourceKind'
+          enum:
+          - reservation
+          - hold
         resource_id:
           $ref: '#/components/schemas/Uuid'
         version:
@@ -8403,6 +8495,23 @@ components:
           - $ref: '#/components/schemas/StockHold'
         related_operation_id:
           $ref: '#/components/schemas/Uuid'
+      allOf:
+      - if:
+          properties:
+            resource_kind:
+              const: reservation
+        then:
+          properties:
+            snapshot:
+              $ref: '#/components/schemas/RfReservation'
+      - if:
+          properties:
+            resource_kind:
+              const: hold
+        then:
+          properties:
+            snapshot:
+              $ref: '#/components/schemas/StockHold'
     ReservationPreparationResult:
       type: object
       additionalProperties: false
