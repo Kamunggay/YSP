@@ -148,9 +148,18 @@ def main():
         elif "body" in request:
             raise ValueError(f"{name}: operation has no request body")
         request_headers = examples["request_defaults"]["headers"] | request.get("headers", {})
+        request_locations = {"header": request_headers, "path": request.get("path", {}),
+                             "query": request.get("query", {})}
         for index, _ in enumerate(operation.get("parameters", [])):
             parameter_pointer, parameter = dereference(pointer + f"/parameters/{index}")
-            check_value(parameter_pointer + "/schema", request_headers[parameter["name"]], name + " header")
+            values = request_locations[parameter["in"]]
+            if parameter["name"] not in values:
+                if parameter.get("required", False):
+                    raise ValueError(f"{name}: missing {parameter['in']} parameter {parameter['name']}")
+                continue
+            check_value(parameter_pointer + "/schema", values[parameter["name"]],
+                        name + " " + parameter["in"],
+                        parameter["in"] + "." + parameter["name"] not in case.get("invalid_parameters", []))
         response = case["response"]
         status = response["status"]
         response_pointer, definition = dereference(pointer + "/responses/" + status)
@@ -183,10 +192,29 @@ def main():
 
     if covered != operations.keys():
         raise ValueError(f"Missing worked success: {sorted(operations.keys() - covered)}")
+    procedures = document.get("x-controlled-procedures", {})
+    procedure_coverage = set()
+    for case in examples.get("procedure_cases", []):
+        name = case["name"]
+        if name in names:
+            raise ValueError(f"Duplicate consumer case: {name}")
+        names.add(name)
+        procedure_id = case["procedureId"]
+        procedure = procedures[procedure_id]
+        check_value(procedure["input"]["$ref"], case["input"], name + " input",
+                    case.get("input_valid", True))
+        check_value(procedure["output"]["$ref"], case["output"], name + " output")
+        if case["input"]["procedure_id"] != procedure_id or case["output"]["procedure_id"] != procedure_id:
+            raise ValueError(f"{name}: procedure identity mismatch")
+        if case["output"]["outcome"] == "committed" and case.get("input_valid", True):
+            procedure_coverage.add(procedure_id)
+    if procedure_coverage != procedures.keys():
+        raise ValueError(f"Missing worked controlled success: {sorted(procedures.keys() - procedure_coverage)}")
     print("Versions: " + ", ".join(f"{name}={version(name)}" for name in
                                     ("openapi-spec-validator", "jsonschema", "PyYAML")))
     print(f"PASS OpenAPI 3.1.1; local references; {len(operations)} operations; "
-          f"{len(names)} consumer cases; {checked} schema/example checks")
+          f"{len(procedures)} controlled procedures; {len(names)} consumer cases; "
+          f"{checked} schema/example checks")
     if args.invalid_example:
         pointer, _ = operations["completeRecoveryChallenge"]
         check_value(pointer + "/requestBody/content/application~1json/schema",

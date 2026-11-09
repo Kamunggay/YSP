@@ -431,3 +431,1542 @@ cases:
         Set-Cookie:
           - 'ysp_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax'
           - 'XSRF-TOKEN=; Path=/; Max-Age=0; Secure; SameSite=Lax'
+  - name: discover-current-memberships
+    operationId: listMyChapterMemberships
+    before: Enabled requester 10000000-0000-4000-8000-000000000002, full session, two explicitly authorized memberships;
+      no shared account
+    request: {}
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000001
+          chapter:
+            id: 60000000-0000-4000-8000-000000000001
+            reference: SYN-A
+            display_name: Synthetic chapter A
+            created_at: '2026-11-09T02:00:00.000000Z'
+          duties:
+          - COMMITTEE_REQUESTER
+          authority_version: 3
+        - id: 70000000-0000-4000-8000-000000000002
+          chapter:
+            id: 60000000-0000-4000-8000-000000000002
+            reference: SYN-B
+            display_name: Synthetic chapter B
+            created_at: '2026-11-09T02:00:00.000000Z'
+          duties:
+          - COMMITTEE_REQUESTER
+          authority_version: 3
+        page:
+          next_cursor: null
+  - name: discover-empty-provider-memberships
+    operationId: listMyChapterMemberships
+    before: Provider 10000000-0000-4000-8000-000000000004 has provisioning authority only and no operational
+      membership
+    request: {}
+    response:
+      status: '200'
+      body:
+        data: []
+        page:
+          next_cursor: null
+  - name: discover-first-page
+    operationId: listMyChapterMemberships
+    before: Same requester; two memberships, limit 1
+    request:
+      query:
+        limit: 1
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000001
+          chapter:
+            id: 60000000-0000-4000-8000-000000000001
+            reference: SYN-A
+            display_name: Synthetic chapter A
+            created_at: '2026-11-09T02:00:00.000000Z'
+          duties:
+          - COMMITTEE_REQUESTER
+          authority_version: 3
+        page:
+          next_cursor: synthetic-page-2
+  - name: discover-second-page
+    operationId: listMyChapterMemberships
+    before: Same actor/snapshot, cursor and limit
+    request:
+      query:
+        limit: 1
+        cursor: synthetic-page-2
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000002
+          chapter:
+            id: 60000000-0000-4000-8000-000000000002
+            reference: SYN-B
+            display_name: Synthetic chapter B
+            created_at: '2026-11-09T02:00:00.000000Z'
+          duties:
+          - COMMITTEE_REQUESTER
+          authority_version: 3
+        page:
+          next_cursor: null
+  - name: discover-invalid-page-limit
+    operationId: listMyChapterMemberships
+    before: Current full session; 101 exceeds supported page bound
+    request:
+      query:
+        limit: 101
+    response:
+      status: '400'
+      body:
+        error:
+          code: invalid_selector
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+    invalid_parameters:
+    - query.limit
+  - name: discover-stale-authority-cursor
+    operationId: listMyChapterMemberships
+    before: One membership revoked after first page; snapshot invalidated
+    request:
+      query:
+        limit: 1
+        cursor: synthetic-page-2
+    response:
+      status: '409'
+      body:
+        error:
+          code: snapshot_stale
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: select-visible-chapter-context
+    operationId: readChapterContext
+    before: Requester 10000000-0000-4000-8000-000000000002 explicitly selects chapter A; original form remains
+      bound to chapter B pending review
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          user_id: 10000000-0000-4000-8000-000000000002
+          membership:
+            id: 70000000-0000-4000-8000-000000000001
+            chapter:
+              id: 60000000-0000-4000-8000-000000000001
+              reference: SYN-A
+              display_name: Synthetic chapter A
+              created_at: '2026-11-09T02:00:00.000000Z'
+            duties:
+            - COMMITTEE_REQUESTER
+            authority_version: 3
+          checked_at: '2026-11-09T02:00:00.000000Z'
+  - name: read-actions-missing-approval-keeps-draft
+    operationId: readChapterAccess
+    before: Requester 10000000-0000-4000-8000-000000000002 has only requester duty; unapproved RF route blocks
+      submit, authorized draft is possible
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          user_id: 10000000-0000-4000-8000-000000000002
+          authority_version: 3
+          setup_version: 2
+          checked_at: '2026-11-09T02:00:00.000000Z'
+          actions:
+          - action: catalogue.read
+            state: allowed
+            required_duties: &id001
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            blockers: []
+          - action: catalogue.maintain
+            state: duty_denied
+            required_duties: &id002
+            - INVENTORY
+            blockers: []
+          - action: stock.read
+            state: duty_denied
+            required_duties: &id003
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: evidence.read
+            state: duty_denied
+            required_duties: &id004
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+          - action: evidence.prepare
+            state: duty_denied
+            required_duties: &id005
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: ipc.draft
+            state: duty_denied
+            required_duties: &id006
+            - INVENTORY
+            blockers: []
+          - action: ipc.authorize
+            state: duty_denied
+            required_duties: &id007
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: opening_rm.prepare
+            state: duty_denied
+            required_duties: &id008
+            - RECEIVING
+            blockers: []
+          - action: opening_rm.post
+            state: duty_denied
+            required_duties: &id009
+            - RECEIVING
+            blockers: []
+          - action: rf.draft
+            state: allowed
+            required_duties: &id010
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.submit
+            state: setup_blocked
+            required_duties: &id011
+            - COMMITTEE_REQUESTER
+            blockers:
+            - setting_key: rf_approval_route
+              subject_id: null
+              state: unapproved
+              approval_owner: CHAPTER_HEAD
+              message: Approve the chapter RF decision route before submission.
+          - action: rf.approve
+            state: duty_denied
+            required_duties: &id012
+            - RF_APPROVER
+            blockers: []
+          - action: rf.reserve
+            state: duty_denied
+            required_duties: &id013
+            - INVENTORY
+            blockers: []
+          - action: rf.reallocate
+            state: duty_denied
+            required_duties: &id014
+            - INVENTORY
+            blockers: []
+          - action: hold.place
+            state: duty_denied
+            required_duties: &id015
+            - INVENTORY
+            blockers: []
+          - action: hold.clear
+            state: duty_denied
+            required_duties: &id016
+            - INVENTORY
+            blockers: []
+          - action: issue.prepare
+            state: duty_denied
+            required_duties: &id017
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: issue.post
+            state: duty_denied
+            required_duties: &id018
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: history.read
+            state: duty_denied
+            required_duties: &id019
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+  - name: provider-without-membership
+    operationId: readChapterContext
+    before: Independent synthetic actor 10000000-0000-4000-8000-000000000004; provider-without-membership; no
+      role switching or old link can satisfy current admission
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '404'
+      body:
+        error:
+          code: chapter_not_found
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: foreign-chapter-probe
+    operationId: readChapterContext
+    before: Synthetic requester 10000000-0000-4000-8000-000000000002 belongs only to chapter B; probes chapter
+      A UUID.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '404'
+      body:
+        error:
+          code: chapter_not_found
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: unknown-opaque-chapter
+    operationId: readChapterContext
+    before: Independent synthetic actor 10000000-0000-4000-8000-000000000002; unknown-opaque-chapter; no role
+      switching or old link can satisfy current admission
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000099
+    response:
+      status: '404'
+      body:
+        error:
+          code: chapter_not_found
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: membership-revoked
+    operationId: readChapterContext
+    before: Independent synthetic actor 10000000-0000-4000-8000-000000000002; membership-revoked; no role switching
+      or old link can satisfy current admission
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '404'
+      body:
+        error:
+          code: chapter_not_found
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: disabled-account
+    operationId: readChapterContext
+    before: Independent synthetic actor 10000000-0000-4000-8000-000000000002; disabled-account; no role switching
+      or old link can satisfy current admission
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '401'
+      body:
+        error:
+          code: unauthenticated
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: limited-mfa
+    operationId: readChapterContext
+    before: Independent synthetic actor 10000000-0000-4000-8000-000000000003; limited-mfa; no role switching
+      or old link can satisfy current admission
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        error:
+          code: mfa_incomplete
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: invalid-chapter-identifier
+    operationId: readChapterContext
+    before: Full session; malformed UUID after admission
+    request:
+      path:
+        chapter_id: not-a-uuid
+    response:
+      status: '400'
+      body:
+        error:
+          code: invalid_selector
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+    invalid_parameters:
+    - path.chapter_id
+  - name: revoked-duty-current-actions
+    operationId: readChapterAccess
+    before: 10000000-0000-4000-8000-000000000002 retains membership but requester duty was revoked; old draft
+      cannot be submitted
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          user_id: 10000000-0000-4000-8000-000000000002
+          authority_version: 4
+          setup_version: 2
+          checked_at: '2026-11-09T02:00:00.000000Z'
+          actions:
+          - action: catalogue.read
+            state: duty_denied
+            required_duties: *id001
+            blockers: []
+          - action: catalogue.maintain
+            state: duty_denied
+            required_duties: *id002
+            blockers: []
+          - action: stock.read
+            state: duty_denied
+            required_duties: *id003
+            blockers: []
+          - action: evidence.read
+            state: duty_denied
+            required_duties: *id004
+            blockers: []
+          - action: evidence.prepare
+            state: duty_denied
+            required_duties: *id005
+            blockers: []
+          - action: ipc.draft
+            state: duty_denied
+            required_duties: *id006
+            blockers: []
+          - action: ipc.authorize
+            state: duty_denied
+            required_duties: *id007
+            blockers: []
+          - action: opening_rm.prepare
+            state: duty_denied
+            required_duties: *id008
+            blockers: []
+          - action: opening_rm.post
+            state: duty_denied
+            required_duties: *id009
+            blockers: []
+          - action: rf.draft
+            state: duty_denied
+            required_duties: *id010
+            blockers: []
+          - action: rf.submit
+            state: duty_denied
+            required_duties: *id011
+            blockers: []
+          - action: rf.approve
+            state: duty_denied
+            required_duties: *id012
+            blockers: []
+          - action: rf.reserve
+            state: duty_denied
+            required_duties: *id013
+            blockers: []
+          - action: rf.reallocate
+            state: duty_denied
+            required_duties: *id014
+            blockers: []
+          - action: hold.place
+            state: duty_denied
+            required_duties: *id015
+            blockers: []
+          - action: hold.clear
+            state: duty_denied
+            required_duties: *id016
+            blockers: []
+          - action: issue.prepare
+            state: duty_denied
+            required_duties: *id017
+            blockers: []
+          - action: issue.post
+            state: duty_denied
+            required_duties: *id018
+            blockers: []
+          - action: history.read
+            state: duty_denied
+            required_duties: *id019
+            blockers: []
+  - name: recovery-restores-no-new-membership
+    operationId: listMyChapterMemberships
+    before: 10000000-0000-4000-8000-000000000003 recovered identity using ticket 01; only separately current
+      authorized chapter B remains
+    request: {}
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000002
+          chapter:
+            id: 60000000-0000-4000-8000-000000000002
+            reference: SYN-B
+            display_name: Synthetic chapter B
+            created_at: '2026-11-09T02:00:00.000000Z'
+          duties:
+          - COMMITTEE_REQUESTER
+          authority_version: 3
+        page:
+          next_cursor: null
+  - name: reset-ended-existing-session
+    operationId: readChapterContext
+    before: Controlled MFA reset revoked the browser lineage, including previously full access
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '401'
+      body:
+        error:
+          code: unauthenticated
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: context-read-throttled
+    operationId: readChapterContext
+    before: Current enabled requester exceeds shared authority-read IP budget
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '429'
+      body:
+        error:
+          code: throttled
+          message: Synthetic denial; refresh current authorized access.
+        request_id: 50000000-0000-4000-8000-000000000001
+      headers:
+        Retry-After: '60'
+  - name: approved-setup-still-requires-record-context
+    operationId: readChapterAccess
+    before: Same current requester; Head approved and activated RF route. No RF record, source or self-approval
+      check has been evaluated.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          user_id: 10000000-0000-4000-8000-000000000002
+          authority_version: 3
+          setup_version: 3
+          checked_at: '2026-11-09T02:00:00.000000Z'
+          actions:
+          - action: catalogue.read
+            state: allowed
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            blockers: []
+          - action: catalogue.maintain
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: stock.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: evidence.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+          - action: evidence.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: ipc.draft
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: ipc.authorize
+            state: duty_denied
+            required_duties:
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: opening_rm.prepare
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: opening_rm.post
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: rf.draft
+            state: allowed
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.submit
+            state: context_required
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.approve
+            state: duty_denied
+            required_duties:
+            - RF_APPROVER
+            blockers: []
+          - action: rf.reserve
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: rf.reallocate
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.place
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.clear
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: issue.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: issue.post
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: history.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+  - name: missing-financial-valuation
+    operationId: readChapterAccess
+    before: Current receiving officer has RECEIVING duty. Opening RM draft allowed; absent Finance valuation
+      prevents accepted opening posting, no invented default.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          user_id: 10000000-0000-4000-8000-000000000002
+          authority_version: 3
+          setup_version: 2
+          checked_at: '2026-11-09T02:00:00.000000Z'
+          actions:
+          - action: catalogue.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            blockers: []
+          - action: catalogue.maintain
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: stock.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: evidence.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+          - action: evidence.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: ipc.draft
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: ipc.authorize
+            state: duty_denied
+            required_duties:
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: opening_rm.prepare
+            state: allowed
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: opening_rm.post
+            state: setup_blocked
+            required_duties:
+            - RECEIVING
+            blockers:
+            - setting_key: valuation_rounding
+              subject_id: null
+              state: missing
+              approval_owner: FINANCE
+              message: Finance-approved effective valuation is required.
+          - action: rf.draft
+            state: duty_denied
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.submit
+            state: duty_denied
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.approve
+            state: duty_denied
+            required_duties:
+            - RF_APPROVER
+            blockers: []
+          - action: rf.reserve
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: rf.reallocate
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.place
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.clear
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: issue.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: issue.post
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: history.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+  - name: future-rf-route
+    operationId: readChapterAccess
+    before: Current requester; RF route not_effective; authorized draft remains available.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          user_id: 10000000-0000-4000-8000-000000000002
+          authority_version: 3
+          setup_version: 2
+          checked_at: '2026-11-09T02:00:00.000000Z'
+          actions:
+          - action: catalogue.read
+            state: allowed
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            blockers: []
+          - action: catalogue.maintain
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: stock.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: evidence.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+          - action: evidence.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: ipc.draft
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: ipc.authorize
+            state: duty_denied
+            required_duties:
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: opening_rm.prepare
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: opening_rm.post
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: rf.draft
+            state: allowed
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.submit
+            state: setup_blocked
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers:
+            - setting_key: rf_approval_route
+              subject_id: null
+              state: not_effective
+              approval_owner: CHAPTER_HEAD
+              message: Approve the chapter RF decision route before submission.
+          - action: rf.approve
+            state: duty_denied
+            required_duties:
+            - RF_APPROVER
+            blockers: []
+          - action: rf.reserve
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: rf.reallocate
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.place
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.clear
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: issue.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: issue.post
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: history.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+  - name: expired-rf-route
+    operationId: readChapterAccess
+    before: Current requester; RF route expired; authorized draft remains available.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          user_id: 10000000-0000-4000-8000-000000000002
+          authority_version: 3
+          setup_version: 2
+          checked_at: '2026-11-09T02:00:00.000000Z'
+          actions:
+          - action: catalogue.read
+            state: allowed
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            blockers: []
+          - action: catalogue.maintain
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: stock.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: evidence.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+          - action: evidence.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: ipc.draft
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: ipc.authorize
+            state: duty_denied
+            required_duties:
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: opening_rm.prepare
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: opening_rm.post
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: rf.draft
+            state: allowed
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.submit
+            state: setup_blocked
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers:
+            - setting_key: rf_approval_route
+              subject_id: null
+              state: expired
+              approval_owner: CHAPTER_HEAD
+              message: Approve the chapter RF decision route before submission.
+          - action: rf.approve
+            state: duty_denied
+            required_duties:
+            - RF_APPROVER
+            blockers: []
+          - action: rf.reserve
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: rf.reallocate
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.place
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.clear
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: issue.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: issue.post
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: history.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+
+procedure_cases:
+- name: controlled-prepareAccount
+  procedureId: prepareAccount
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: prepareAccount
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: null
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: PROVIDER_PROVISIONING
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      login: new-officer@example.invalid
+      display_name: Synthetic new officer
+      credential_delivery_reference: private-single-use-onboarding
+  output:
+    outcome: committed
+    procedure_id: prepareAccount
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 10000000-0000-4000-8000-000000000002
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: none
+- name: controlled-setAccountStatus
+  procedureId: setAccountStatus
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: setAccountStatus
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: null
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: PROVIDER_PROVISIONING
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      status: disabled
+  output:
+    outcome: committed
+    procedure_id: setAccountStatus
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 10000000-0000-4000-8000-000000000002
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: revoke_all
+- name: controlled-prepareChapter
+  procedureId: prepareChapter
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: prepareChapter
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: null
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: PROVIDER_PROVISIONING
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      reference: SYN-C
+      display_name: Synthetic chapter C
+      initial_head_user_id: 10000000-0000-4000-8000-000000000003
+  output:
+    outcome: committed
+    procedure_id: prepareChapter
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 10000000-0000-4000-8000-000000000002
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: none
+- name: controlled-setMembership
+  procedureId: setMembership
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: setMembership
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000001
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      user_id: 10000000-0000-4000-8000-000000000002
+      status: active
+      effective_from: '2026-11-09T02:00:00.000000Z'
+  output:
+    outcome: committed
+    procedure_id: setMembership
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 70000000-0000-4000-8000-000000000001
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: controlled-setDuty
+  procedureId: setDuty
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: setDuty
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000001
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      membership_id: 70000000-0000-4000-8000-000000000001
+      duty: COMMITTEE_REQUESTER
+      status: revoked
+      effective_from: '2026-11-09T02:00:00.000000Z'
+  output:
+    outcome: committed
+    procedure_id: setDuty
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 70000000-0000-4000-8000-000000000001
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: controlled-setAlternate
+  procedureId: setAlternate
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: setAlternate
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000001
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      membership_id: 70000000-0000-4000-8000-000000000001
+      replaces_user_id: 10000000-0000-4000-8000-000000000003
+      duty: RF_APPROVER
+      decision_scope_reference: synthetic-RF-scope
+      status: active
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: '2026-11-10T02:00:00.000000Z'
+  output:
+    outcome: committed
+    procedure_id: setAlternate
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 70000000-0000-4000-8000-000000000001
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: controlled-recordPolicy
+  procedureId: recordPolicy
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: recordPolicy
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: rf_approval_route
+      subject_id: null
+      ownership: operational
+      value: synthetic-approved-route-reference
+      value_schema_reference: controlled-rf-route-v1
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 10000000-0000-4000-8000-000000000002
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: controlled-resetMfa
+  procedureId: resetMfa
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: resetMfa
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: null
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: PROVIDER_RECOVERY
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      identity_verification_reference: restricted-verification-record
+      verified_by_user_id: 10000000-0000-4000-8000-000000000003
+      verified_at: '2026-11-09T02:00:00.000000Z'
+      lost_factor_reason: Synthetic lost device
+  output:
+    outcome: committed
+    procedure_id: resetMfa
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 10000000-0000-4000-8000-000000000002
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: require_reenrollment
+- name: controlled-resetMfa-rejected-identity_verification_required
+  procedureId: resetMfa
+  before: Syntactically valid request fails current identity_verification_required check; no setup/authority/factor
+    change committed
+  input:
+    procedure_id: resetMfa
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: null
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: PROVIDER_RECOVERY
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      identity_verification_reference: restricted-verification-record
+      verified_by_user_id: 10000000-0000-4000-8000-000000000003
+      verified_at: '2026-11-09T02:00:00.000000Z'
+      lost_factor_reason: Synthetic lost device
+  output:
+    outcome: rejected
+    procedure_id: resetMfa
+    action_key: 40000000-0000-4000-8000-000000000002
+    code: identity_verification_required
+    audit_id: 50000000-0000-4000-8000-000000000001
+- name: controlled-setDuty-rejected-approval_required
+  procedureId: setDuty
+  before: Syntactically valid request fails current approval_required check; no setup/authority/factor change
+    committed
+  input:
+    procedure_id: setDuty
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000001
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      membership_id: 70000000-0000-4000-8000-000000000001
+      duty: COMMITTEE_REQUESTER
+      status: revoked
+      effective_from: '2026-11-09T02:00:00.000000Z'
+  output:
+    outcome: rejected
+    procedure_id: setDuty
+    action_key: 40000000-0000-4000-8000-000000000002
+    code: approval_required
+    audit_id: 50000000-0000-4000-8000-000000000001
+- name: controlled-recordPolicy-rejected-version_conflict
+  procedureId: recordPolicy
+  before: Syntactically valid request fails current version_conflict check; no setup/authority/factor change
+    committed
+  input:
+    procedure_id: recordPolicy
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: rf_approval_route
+      subject_id: null
+      ownership: operational
+      value: synthetic-approved-route-reference
+      value_schema_reference: controlled-rf-route-v1
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: rejected
+    procedure_id: recordPolicy
+    action_key: 40000000-0000-4000-8000-000000000002
+    code: version_conflict
+    audit_id: 50000000-0000-4000-8000-000000000001
+- name: controlled-setMembership-rejected-operator_denied
+  procedureId: setMembership
+  before: Syntactically valid request fails current operator_denied check; no setup/authority/factor change
+    committed
+  input:
+    procedure_id: setMembership
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000001
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      user_id: 10000000-0000-4000-8000-000000000002
+      status: active
+      effective_from: '2026-11-09T02:00:00.000000Z'
+  output:
+    outcome: rejected
+    procedure_id: setMembership
+    action_key: 40000000-0000-4000-8000-000000000002
+    code: operator_denied
+    audit_id: 50000000-0000-4000-8000-000000000001
+- name: controlled-account-invalid-input
+  procedureId: prepareAccount
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: prepareAccount
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: null
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: PROVIDER_PROVISIONING
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      login: invalid
+      display_name: Synthetic new officer
+      credential_delivery_reference: private-single-use-onboarding
+  output:
+    outcome: rejected
+    procedure_id: prepareAccount
+    action_key: 40000000-0000-4000-8000-000000000002
+    code: invalid_input
+    audit_id: 50000000-0000-4000-8000-000000000001
+  input_valid: false
+- name: controlled-setMembership-authorized-replay
+  procedureId: setMembership
+  before: Current authorized operator repeats exact accepted intent after lost response; current authority
+    rechecked, original receipt only, no second effect.
+  input:
+    procedure_id: setMembership
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000001
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      user_id: 10000000-0000-4000-8000-000000000002
+      status: active
+      effective_from: '2026-11-09T02:00:00.000000Z'
+  output:
+    outcome: replayed
+    procedure_id: setMembership
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 70000000-0000-4000-8000-000000000001
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: controlled-resetMfa-authorized-replay
+  procedureId: resetMfa
+  before: Current authorized operator repeats exact accepted intent after lost response; current authority
+    rechecked, original receipt only, no second effect.
+  input:
+    procedure_id: resetMfa
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: null
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: PROVIDER_RECOVERY
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      identity_verification_reference: restricted-verification-record
+      verified_by_user_id: 10000000-0000-4000-8000-000000000003
+      verified_at: '2026-11-09T02:00:00.000000Z'
+      lost_factor_reason: Synthetic lost device
+  output:
+    outcome: replayed
+    procedure_id: resetMfa
+    action_key: 40000000-0000-4000-8000-000000000002
+    target_id: 10000000-0000-4000-8000-000000000002
+    version: 4
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: require_reenrollment
+- name: controlled-policy-wrong-ownership
+  procedureId: recordPolicy
+  before: Independent synthetic fixture; authenticated MFA operator has separately approved controlled-command
+    authority; named approvals are illustrative, not real approval evidence
+  input:
+    procedure_id: recordPolicy
+    action_key: 40000000-0000-4000-8000-000000000002
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    target_id: 10000000-0000-4000-8000-000000000002
+    expected_version: 3
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 80000000-0000-4000-8000-000000000001
+      approver_id: 10000000-0000-4000-8000-000000000003
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: rf_approval_route
+      subject_id: null
+      ownership: financial
+      value: synthetic-approved-route-reference
+      value_schema_reference: controlled-rf-route-v1
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: rejected
+    procedure_id: recordPolicy
+    action_key: 40000000-0000-4000-8000-000000000002
+    code: invalid_input
+    audit_id: 50000000-0000-4000-8000-000000000001
+  input_valid: false
