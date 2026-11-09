@@ -1813,12 +1813,6 @@ cases:
               target_level: null
               quantity_policy: null
               blockers:
-              - setting: quantity_scale
-                subject_id: 70000000-0000-4000-8000-000000000004
-                reason: missing
-              - setting: price
-                subject_id: 70000000-0000-4000-8000-000000000004
-                reason: unapproved
               - setting: rop
                 subject_id: 70000000-0000-4000-8000-000000000003
                 reason: missing
@@ -1896,12 +1890,6 @@ cases:
             target_level: null
             quantity_policy: null
             blockers:
-            - setting: quantity_scale
-              subject_id: 70000000-0000-4000-8000-000000000004
-              reason: missing
-            - setting: price
-              subject_id: 70000000-0000-4000-8000-000000000004
-              reason: unapproved
             - setting: rop
               subject_id: 70000000-0000-4000-8000-000000000003
               reason: missing
@@ -1943,12 +1931,6 @@ cases:
               target_level: null
               quantity_policy: null
               blockers:
-              - setting: quantity_scale
-                subject_id: 70000000-0000-4000-8000-000000000004
-                reason: missing
-              - setting: price
-                subject_id: 70000000-0000-4000-8000-000000000004
-                reason: unapproved
               - setting: rop
                 subject_id: 70000000-0000-4000-8000-000000000003
                 reason: missing
@@ -2112,12 +2094,6 @@ cases:
               target_level: null
               quantity_policy: null
               blockers:
-              - setting: quantity_scale
-                subject_id: 70000000-0000-4000-8000-000000000004
-                reason: missing
-              - setting: price
-                subject_id: 70000000-0000-4000-8000-000000000004
-                reason: unapproved
               - setting: rop
                 subject_id: 70000000-0000-4000-8000-000000000003
                 reason: missing
@@ -2956,9 +2932,9 @@ cases:
             unit_id: 70000000-0000-4000-8000-000000000005
             currency: null
           approved_target:
-            policy_id: 70000000-0000-4000-8000-000000000020
+            policy_id: 70000000-0000-4000-8000-000000000023
             material_version: 1
-            approval_id: 70000000-0000-4000-8000-000000000021
+            approval_id: 70000000-0000-4000-8000-000000000024
             approved_by: 70000000-0000-4000-8000-000000000022
             effective_from: '2026-11-09T02:00:00.000000Z'
             effective_until: null
@@ -3492,12 +3468,6 @@ cases:
               target_level: null
               quantity_policy: null
               blockers:
-              - setting: quantity_scale
-                subject_id: 70000000-0000-4000-8000-000000000004
-                reason: missing
-              - setting: price
-                subject_id: 70000000-0000-4000-8000-000000000004
-                reason: unapproved
               - setting: rop
                 subject_id: 70000000-0000-4000-8000-000000000003
                 reason: missing
@@ -3891,9 +3861,9 @@ cases:
             unit_id: 70000000-0000-4000-8000-000000000005
             currency: null
           approved_target:
-            policy_id: 70000000-0000-4000-8000-000000000020
+            policy_id: 70000000-0000-4000-8000-000000000023
             material_version: 1
-            approval_id: 70000000-0000-4000-8000-000000000021
+            approval_id: 70000000-0000-4000-8000-000000000024
             approved_by: 70000000-0000-4000-8000-000000000022
             effective_from: '2026-11-09T02:00:00.000000Z'
             effective_until: null
@@ -4792,6 +4762,145 @@ cases:
               source_condition_reference: Programme event only
           created_at: '2026-11-09T02:00:00.000000Z'
           observed_at: '2026-11-09T02:00:00.000000Z'
+  - name: catalogue-effective-approved-settings-consumption
+    operationId: readCatalogueVariant
+    setup: 'Synthetic projection matching the four catalogue-controlled-policy cases: original approval IDs/person/version
+      retained, no real approval is claimed.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        resource_id: 70000000-0000-4000-8000-000000000004
+    response:
+      status: '200'
+      body:
+        data:
+          id: 70000000-0000-4000-8000-000000000004
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          code: SHIRT-BLU-M
+          state: active
+          material_version: 1
+          created_at: '2026-11-09T02:00:00.000000Z'
+          updated_at: '2026-11-09T02:00:00.000000Z'
+          item_id: 70000000-0000-4000-8000-000000000003
+          label: Blue / medium
+          unit_id: 70000000-0000-4000-8000-000000000005
+          quantity_scale: 0
+          settings:
+            price:
+              policy_id: 70000000-0000-4000-8000-000000000123
+              material_version: 1
+              approval_id: 70000000-0000-4000-8000-000000000143
+              approved_by: 70000000-0000-4000-8000-000000000022
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+              value: '125.00'
+              unit_id: null
+              currency: PHP
+            rop:
+              policy_id: 70000000-0000-4000-8000-000000000121
+              material_version: 1
+              approval_id: 70000000-0000-4000-8000-000000000141
+              approved_by: 70000000-0000-4000-8000-000000000022
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+              value: '10'
+              unit_id: 70000000-0000-4000-8000-000000000005
+              currency: null
+            target_level:
+              policy_id: 70000000-0000-4000-8000-000000000122
+              material_version: 1
+              approval_id: 70000000-0000-4000-8000-000000000142
+              approved_by: 70000000-0000-4000-8000-000000000022
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+              value: '20'
+              unit_id: 70000000-0000-4000-8000-000000000005
+              currency: null
+            quantity_policy:
+              policy_id: 70000000-0000-4000-8000-000000000120
+              material_version: 1
+              approval_id: 70000000-0000-4000-8000-000000000140
+              approved_by: 70000000-0000-4000-8000-000000000022
+              scale: 0
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+            blockers: []
+          quantity_identity_locked: false
+  - name: measured-unit-fixed-three-place-zero-output
+    operationId: readVariantStock
+    setup: Independent synthetic measured-unit scale3 current approval; on-hand1.250 available1.250, all other categories0.000;
+      approved item ROP2.000, target3.000; no RF/stock was posted.
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        variant_id: 70000000-0000-4000-8000-000000000111
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          variant_id: 70000000-0000-4000-8000-000000000111
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000110
+          quantity_scale: 3
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          views:
+            usable_stockroom_on_hand:
+              label: Usable stockroom on-hand
+              quantity: '1.250'
+            available_to_allocate:
+              label: Available-to-allocate
+              quantity: '1.250'
+            rf_reserved:
+              label: RF-reserved
+              quantity: '0.000'
+            so_reserved:
+              label: SO-reserved
+              quantity: '0.000'
+            booth_custody:
+              label: Booth custody
+              quantity: '0.000'
+            quarantined_rejected:
+              label: Quarantined/rejected
+              quantity: '0.000'
+            inbound_open_po:
+              label: Inbound open PO
+              quantity: '0.000'
+          views_are_additive: false
+          item_usable_stockroom_on_hand: '1.250'
+          approved_rop:
+            policy_id: 70000000-0000-4000-8000-000000000020
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000021
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '2.000'
+            unit_id: 70000000-0000-4000-8000-000000000110
+            currency: null
+          approved_target:
+            policy_id: 70000000-0000-4000-8000-000000000023
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000024
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '3.000'
+            unit_id: 70000000-0000-4000-8000-000000000110
+            currency: null
+          low_stock: low
+          setup_blockers: []
+          outstanding_need: []
+          procurement_commitment_created: false
 procedure_cases:
 - name: controlled-prepareAccount
   procedureId: prepareAccount
@@ -5405,3 +5514,209 @@ procedure_cases:
     code: invalid_input
     audit_id: 50000000-0000-4000-8000-000000000001
   input_valid: false
+- name: catalogue-controlled-policy-quantity-scale
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000130
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000120
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000140
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: quantity_scale
+      subject_id: 70000000-0000-4000-8000-000000000004
+      ownership: operational
+      value: '{"quantity_kind":"piece","quantity_scale":0,"unit_id":"70000000-0000-4000-8000-000000000005"}'
+      value_schema_reference: '#/components/schemas/CatalogueQuantityPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000130
+    target_id: 70000000-0000-4000-8000-000000000120
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: catalogue-controlled-policy-quantity-scale-invalid-value
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000130
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000120
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000140
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: quantity_scale
+      subject_id: 70000000-0000-4000-8000-000000000004
+      ownership: operational
+      value: '{"quantity_kind":"piece","quantity_scale":1,"unit_id":"70000000-0000-4000-8000-000000000005"}'
+      value_schema_reference: '#/components/schemas/CatalogueQuantityPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: rejected
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000130
+    code: invalid_input
+    audit_id: 70000000-0000-4000-8000-000000000008
+  policy_value_valid: false
+- name: catalogue-controlled-policy-rop
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000131
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000121
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000141
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: rop
+      subject_id: 70000000-0000-4000-8000-000000000003
+      ownership: operational
+      value: '{"quantity":"10","unit_id":"70000000-0000-4000-8000-000000000005"}'
+      value_schema_reference: '#/components/schemas/CatalogueThresholdPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000131
+    target_id: 70000000-0000-4000-8000-000000000121
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: catalogue-controlled-policy-target-level
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000132
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000122
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000142
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: CHAPTER_HEAD
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: target_level
+      subject_id: 70000000-0000-4000-8000-000000000003
+      ownership: operational
+      value: '{"quantity":"20","unit_id":"70000000-0000-4000-8000-000000000005"}'
+      value_schema_reference: '#/components/schemas/CatalogueThresholdPolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000132
+    target_id: 70000000-0000-4000-8000-000000000122
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: catalogue-controlled-policy-price
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000133
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000123
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000143
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: FINANCE
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: price
+      subject_id: 70000000-0000-4000-8000-000000000004
+      ownership: financial
+      value: '{"amount":"125.00","currency":"PHP"}'
+      value_schema_reference: '#/components/schemas/CataloguePricePolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: committed
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000133
+    target_id: 70000000-0000-4000-8000-000000000123
+    version: 1
+    audit_id: 50000000-0000-4000-8000-000000000001
+    committed_at: '2026-11-09T02:00:00.000000Z'
+    session_effect: recheck_authority
+- name: catalogue-controlled-policy-price-invalid-value
+  procedureId: recordPolicy
+  before: Independent synthetic approved-setting example only; no actual mandate, officer approval or runtime command
+    was executed.
+  input:
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000133
+    operator_id: 10000000-0000-4000-8000-000000000004
+    chapter_id: 70000000-0000-4000-8000-000000000001
+    target_id: 70000000-0000-4000-8000-000000000123
+    expected_version: 0
+    reason: Synthetic controlled preparation only; no actual approval
+    approvals:
+    - id: 70000000-0000-4000-8000-000000000143
+      approver_id: 70000000-0000-4000-8000-000000000022
+      authority: FINANCE
+      approved_at: '2026-11-09T02:00:00.000000Z'
+      evidence_reference: synthetic-approval-only
+    input:
+      setting_key: price
+      subject_id: 70000000-0000-4000-8000-000000000004
+      ownership: financial
+      value: '{"amount":"125.001","currency":"PHP"}'
+      value_schema_reference: '#/components/schemas/CataloguePricePolicyValue'
+      effective_from: '2026-11-09T02:00:00.000000Z'
+      effective_until: null
+  output:
+    outcome: rejected
+    procedure_id: recordPolicy
+    action_key: 70000000-0000-4000-8000-000000000133
+    code: invalid_input
+    audit_id: 70000000-0000-4000-8000-000000000008
+  policy_value_valid: false

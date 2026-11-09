@@ -1,6 +1,7 @@
 """Validate only this canonical Stage 1 contract and its published examples."""
 
 import argparse
+import json
 from importlib.metadata import version
 from pathlib import Path
 
@@ -203,6 +204,20 @@ def main():
         procedure = procedures[procedure_id]
         check_value(procedure["input"]["$ref"], case["input"], name + " input",
                     case.get("input_valid", True))
+        if procedure_id == "recordPolicy" and case.get("input_valid", True):
+            policy = case["input"]["input"]
+            policy_definition = document.get("x-catalogue-policy-values", {}).get(policy["setting_key"])
+            if policy_definition:
+                value_pointer = policy_definition["schema"]["$ref"]
+                if policy["value_schema_reference"] != value_pointer:
+                    raise ValueError(f"{name}: policy value reference differs from canonical setting schema")
+                if policy["subject_id"] is None or policy["ownership"] != policy_definition["ownership"]:
+                    raise ValueError(f"{name}: policy subject/ownership does not match its catalogue setting")
+                value = json.loads(policy["value"])
+                if json.dumps(value, sort_keys=True, separators=(",", ":")) != policy["value"]:
+                    raise ValueError(f"{name}: policy value is not canonical compact JSON")
+                check_value(value_pointer, value, name + " decoded policy value",
+                            case.get("policy_value_valid", True))
         check_value(procedure["output"]["$ref"], case["output"], name + " output")
         if case["input"]["procedure_id"] != procedure_id or case["output"]["procedure_id"] != procedure_id:
             raise ValueError(f"{name}: procedure identity mismatch")
