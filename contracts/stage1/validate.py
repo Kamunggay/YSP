@@ -169,11 +169,12 @@ def main():
         if status.startswith("2"):
             covered.add(case["operationId"])
             rf_mutations = document["components"]["schemas"].get("RfMutationName", {}).get("enum", [])
-            if case["operationId"] in rf_mutations:
+            reservation_mutations = document["components"]["schemas"].get("ReservationMutationName", {}).get("enum", [])
+            if case["operationId"] in rf_mutations + reservation_mutations:
                 receipt = response["body"]["data"]
                 if (receipt["operation_name"] != case["operationId"] or
                         receipt["action_key"] != request_headers["X-Action-Key"]):
-                    raise ValueError(f"{name}: RF receipt differs from originating operation/key")
+                    raise ValueError(f"{name}: receipt differs from originating operation/key")
         if "content" in definition:
             response_media = response.get("media_type", "application/json")
             check_value(response_pointer + "/content/" + pointer_part(response_media) + "/schema",
@@ -228,6 +229,9 @@ def main():
             opening_policy = document.get("x-opening-policy-values", {}).get(policy["setting_key"])
             policy_definition = catalogue_policy or opening_policy
             rf_policy = document.get("x-rf-policy-values", {}).get(policy["setting_key"])
+            reservation_policy = document.get("x-reservation-policy-values", {}).get(policy["setting_key"])
+            if reservation_policy:
+                policy_definition = reservation_policy
             if rf_policy and (policy["setting_key"] == "rf_approval_route" or
                               policy["value_schema_reference"] == rf_policy["schema"]["$ref"]):
                 policy_definition = rf_policy
@@ -254,11 +258,14 @@ def main():
         raise ValueError(f"Missing worked controlled success: {sorted(procedures.keys() - procedure_coverage)}")
     evidence_participants = document.get("x-evidence-participants", {})
     inventory_participants = document.get("x-opening-inventory-participants", {})
-    if evidence_participants.keys() & inventory_participants.keys():
+    reservation_participants = document.get("x-reservation-participants", {})
+    if (evidence_participants.keys() & inventory_participants.keys() or
+            (evidence_participants.keys() | inventory_participants.keys()) & reservation_participants.keys()):
         raise ValueError("Duplicate internal participant ID")
-    participants = evidence_participants | inventory_participants
+    participants = evidence_participants | inventory_participants | reservation_participants
     participant_coverage = set()
-    for case in examples.get("participant_cases", []) + examples.get("opening_inventory_cases", []):
+    for case in (examples.get("participant_cases", []) + examples.get("opening_inventory_cases", []) +
+                 examples.get("reservation_participant_cases", [])):
         name = case["name"]
         if name in names:
             raise ValueError(f"Duplicate consumer case: {name}")
@@ -277,7 +284,8 @@ def main():
     print(f"PASS OpenAPI 3.1.1; local references; {len(operations)} operations; "
           f"{len(procedures)} controlled procedures; {len(names)} consumer cases; "
           f"{len(evidence_participants)} evidence participants; "
-          f"{len(inventory_participants)} opening Inventory participants; {checked} schema/example checks")
+          f"{len(inventory_participants)} opening Inventory participants; "
+          f"{len(reservation_participants)} reservation participants; {checked} schema/example checks")
     if args.invalid_example:
         pointer, _ = operations["completeRecoveryChallenge"]
         check_value(pointer + "/requestBody/content/application~1json/schema",

@@ -2,9 +2,9 @@ openapi: 3.1.1
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: YSP Stage 1 canonical HTTP agreement
-  version: 0.6.0
+  version: 0.7.0
   description: >-
-    Tickets stage1-contracts-01/02/03/04/05/06, specification 19. Contract candidate, not implemented
+    Tickets stage1-contracts-01/02/03/04/05/06/07, specification 19. Contract candidate, not implemented
     authentication. agreement.md defines normative security, retry and ownership rules.
     Only /api/health exists in scaffold 7287aa439876e7280075206b77f5f2a62b44de0a.
     Authentication and chapter discovery/context/action reads are specified. Controlled
@@ -21,6 +21,7 @@ tags:
   - name: Catalogue
   - name: Stock queries
   - name: Opening stock
+  - name: Reservations and holds
 paths:
   /api/v1/chapters/{chapter_id}/catalogue/items:
     get:
@@ -5840,6 +5841,1129 @@ paths:
           $ref: '#/components/responses/Throttled'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservation-preparations:
+    post:
+      operationId: prepareRfReservation
+      tags:
+      - Reservations and holds
+      summary: prepareRfReservation
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: rf.reserve AND rf.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrepareRfReservation'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}:
+    get:
+      operationId: readRfReservationPreparation
+      tags:
+      - Reservations and holds
+      summary: readRfReservationPreparation
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: rf.reserve AND rf.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/PreparationId'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationPreparationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}/commit:
+    post:
+      operationId: commitRfReservation
+      tags:
+      - Reservations and holds
+      summary: commitRfReservation
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: rf.reserve AND rf.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/PreparationId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommitRfReservation'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations:
+    get:
+      operationId: listRfReservations
+      tags:
+      - Reservations and holds
+      summary: listRfReservations
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: rf.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/ReservationState'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/ReservationCursor'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfReservationList'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}:
+    get:
+      operationId: readRfReservation
+      tags:
+      - Reservations and holds
+      summary: readRfReservation
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: rf.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/ReservationId'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfReservationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/history:
+    get:
+      operationId: listRfReservationHistory
+      tags:
+      - Reservations and holds
+      summary: listRfReservationHistory
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: history.read AND rf.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/ReservationId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/ReservationCursor'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationHistoryEntryList'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/release:
+    post:
+      operationId: releaseRfReservation
+      tags:
+      - Reservations and holds
+      summary: releaseRfReservation
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: rf.reserve AND rf.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/ReservationId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseRfReservation'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/reallocate:
+    post:
+      operationId: reallocateRfReservation
+      tags:
+      - Reservations and holds
+      summary: reallocateRfReservation
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: rf.reallocate AND rf.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/ReservationId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReallocateRfReservation'
+  /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/allocation-review:
+    get:
+      operationId: readRfAllocationReview
+      tags:
+      - Reservations and holds
+      summary: readRfAllocationReview
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: rf.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/RfId'
+      - $ref: '#/components/parameters/ReservationRfLine'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/ReservationCursor'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RfAllocationReviewResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+  /api/v1/chapters/{chapter_id}/stock-holds:
+    get:
+      operationId: listStockHolds
+      tags:
+      - Reservations and holds
+      summary: listStockHolds
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/HoldState'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/ReservationCursor'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockHoldList'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+    post:
+      operationId: placeStockHold
+      tags:
+      - Reservations and holds
+      summary: placeStockHold
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: hold.place AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceStockHold'
+  /api/v1/chapters/{chapter_id}/stock-holds/{hold_id}:
+    get:
+      operationId: readStockHold
+      tags:
+      - Reservations and holds
+      summary: readStockHold
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/HoldId'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockHoldResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+  /api/v1/chapters/{chapter_id}/stock-holds/{hold_id}/history:
+    get:
+      operationId: listStockHoldHistory
+      tags:
+      - Reservations and holds
+      summary: listStockHoldHistory
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: history.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/HoldId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/ReservationCursor'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationHistoryEntryList'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+  /api/v1/chapters/{chapter_id}/stock-holds/{hold_id}/clearance-proposal:
+    put:
+      operationId: proposeStockHoldClearance
+      tags:
+      - Reservations and holds
+      summary: proposeStockHoldClearance
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: hold.clear AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/HoldId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProposeStockHoldClearance'
+  /api/v1/chapters/{chapter_id}/stock-holds/{hold_id}/clear:
+    post:
+      operationId: clearStockHold
+      tags:
+      - Reservations and holds
+      summary: clearStockHold
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: hold.clear AND evidence.read AND stock.read
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/HoldId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClearStockHold'
+  /api/v1/chapters/{chapter_id}/reservation-operations/by-key:
+    get:
+      operationId: findReservationOperation
+      tags:
+      - Reservations and holds
+      summary: findReservationOperation
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: stock.read AND originating mutation action
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/ReservationOperationName'
+      - $ref: '#/components/parameters/RfActionKeyLookup'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+  /api/v1/chapters/{chapter_id}/reservation-operations/{operation_id}:
+    get:
+      operationId: readReservationOperation
+      tags:
+      - Reservations and holds
+      summary: readReservationOperation
+      x-existence: new
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Leader
+      - Efren (posting/demand compatibility)
+      x-required-action: stock.read AND originating mutation action
+      description: 'New/unimplemented. See ticket07 agreement for exact range selection, current scoped admission,
+        setup, source, version, evidence, ordering and transaction rules. Full current MFA/session and chapter/record
+        permissions precede disclosure. No silent quantity reduction or source substitution. Safe reads do not commit
+        or initiate procurement. All responses no-store. Unsafe requests require Origin, CSRF and X-Action-Key; current-authorized
+        same-key/same-payload replay returns original result before new-intent version gates, different payload conflicts,
+        rejection/rollback consumes no key. Timeout/503 is uncertain: lookup before retry; do not repeat a physical
+        handover.'
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/ReservationOperationId'
+      responses:
+        '200':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationMutationResult'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/RfDenied'
+        '404':
+          $ref: '#/components/responses/CatalogueNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          description: Current authorized read or original committed result. Preparation, reservation and hold changes
+            create no physical movement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationConflict'
+
 components:
   securitySchemes:
     browserSession:
@@ -5856,6 +6980,71 @@ components:
       name: X-XSRF-TOKEN
       description: URL-decoded XSRF-TOKEN cookie, tied to this browser session.
   parameters:
+    ReservationId:
+      name: reservation_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    PreparationId:
+      name: preparation_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    HoldId:
+      name: hold_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ReservationOperationId:
+      name: operation_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ReservationOperationName:
+      name: operation_name
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/ReservationMutationName'
+    ReservationRfLine:
+      name: rf_line_id
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    HoldState:
+      name: status
+      in: query
+      required: false
+      schema:
+        enum:
+        - active
+        - cleared
+    ReservationState:
+      name: status
+      in: query
+      required: false
+      schema:
+        enum:
+        - active
+        - blocked
+        - partially_blocked
+        - fulfilled
+        - released
+        - closed_mixed
+    ReservationCursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 1024
+        pattern: \S
     CatalogueResourceId:
       name: resource_id
       in: path
@@ -6246,6 +7435,1215 @@ components:
       schema: {type: string, pattern: '^[1-9][0-9]*$'}
       example: '60'
   schemas:
+    StockRange:
+      type: object
+      additionalProperties: false
+      required:
+      - stock_lot_id
+      - basis_segment_id
+      - offset_quantity
+      - quantity
+      properties:
+        stock_lot_id:
+          $ref: '#/components/schemas/Uuid'
+        basis_segment_id:
+          $ref: '#/components/schemas/Uuid'
+        offset_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        quantity:
+          $ref: '#/components/schemas/StockQuantity'
+    ReviewedStockTarget:
+      type: object
+      additionalProperties: false
+      required:
+      - stock_lot_id
+      - basis_segment_id
+      - offset_quantity
+      - quantity
+      - expected_lot_material_version
+      - expected_stock_version
+      properties:
+        stock_lot_id:
+          $ref: '#/components/schemas/Uuid'
+        basis_segment_id:
+          $ref: '#/components/schemas/Uuid'
+        offset_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        expected_lot_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_stock_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+    AllocationPriorityPolicyValue:
+      type: object
+      additionalProperties: false
+      required:
+      - priorities
+      - overrides
+      properties:
+        priorities:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - requesting_unit_id
+            - rank
+            properties:
+              requesting_unit_id:
+                $ref: '#/components/schemas/Uuid'
+              rank:
+                type: integer
+                minimum: 1
+                maximum: 1000
+        overrides:
+          type: array
+          minItems: 0
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - rf_id
+            - rf_line_id
+            - selection_sha256
+            - reason
+            - expires_at
+            properties:
+              rf_id:
+                $ref: '#/components/schemas/Uuid'
+              rf_line_id:
+                $ref: '#/components/schemas/Uuid'
+              selection_sha256:
+                $ref: '#/components/schemas/AllocationDigest'
+              reason:
+                type: string
+                minLength: 1
+                maxLength: 500
+                pattern: \S
+              expires_at:
+                $ref: '#/components/schemas/UtcInstant'
+    AllocationDigest:
+      type: string
+      pattern: ^[a-f0-9]{64}$
+    AllocationPolicyIdentity:
+      type: object
+      additionalProperties: false
+      required:
+      - policy_id
+      - material_version
+      - approval_id
+      - approved_by
+      properties:
+        policy_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        approval_id:
+          $ref: '#/components/schemas/Uuid'
+        approved_by:
+          $ref: '#/components/schemas/Uuid'
+    ReservationOrderEntry:
+      type: object
+      additionalProperties: false
+      required:
+      - rf_id
+      - rf_line_id
+      - priority_rank
+      - needed_at
+      - approved_at
+      - unreserved_quantity
+      properties:
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        priority_rank:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        needed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        approved_at:
+          $ref: '#/components/schemas/UtcInstant'
+        unreserved_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+    RfAllocationReview:
+      type: object
+      additionalProperties: false
+      required:
+      - rf_id
+      - rf_line_id
+      - rf_version
+      - rf_material_version
+      - rf_progress_version
+      - progress
+      - free_eligible_quantity
+      - uncovered_quantity
+      - allocation_policy
+      - ordered_demands
+      - queue_next_cursor
+      - setup_blockers
+      - observed_at
+      - is_commit_authorization
+      properties:
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        rf_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        rf_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        progress:
+          $ref: '#/components/schemas/RfLineProgress'
+        free_eligible_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        uncovered_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        allocation_policy:
+          anyOf:
+          - $ref: '#/components/schemas/AllocationPolicyIdentity'
+          - type: 'null'
+        ordered_demands:
+          type: array
+          minItems: 0
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReservationOrderEntry'
+        queue_next_cursor:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 1024
+            pattern: \S
+          - type: 'null'
+        setup_blockers:
+          type: array
+          minItems: 0
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+        observed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        is_commit_authorization:
+          const: false
+    PrepareRfReservation:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_rf_version
+      - expected_rf_material_version
+      - expected_rf_progress_version
+      - rf_line_id
+      - targets
+      - override_policy_id
+      - reason
+      properties:
+        expected_rf_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        targets:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ReviewedStockTarget'
+        override_policy_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    ReservationPreparation:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - rf_id
+      - rf_line_id
+      - version
+      - prepared_by
+      - prepared_at
+      - selection
+      - review
+      - state
+      - reservation_id
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        prepared_by:
+          $ref: '#/components/schemas/RfActor'
+        prepared_at:
+          $ref: '#/components/schemas/UtcInstant'
+        selection:
+          $ref: '#/components/schemas/PrepareRfReservation'
+        review:
+          $ref: '#/components/schemas/RfAllocationReview'
+        state:
+          enum:
+          - prepared
+          - committed
+        reservation_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    CommitRfReservation:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_preparation_version
+      - expected_rf_version
+      - expected_rf_material_version
+      - expected_rf_progress_version
+      properties:
+        expected_preparation_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+    RfReservation:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - rf_id
+      - rf_line_id
+      - version
+      - material_version
+      - approved_rf_material_version
+      - variant_id
+      - unit_id
+      - quantity_scale
+      - status
+      - committed_quantity
+      - active_quantity
+      - blocked_quantity
+      - fulfilled_quantity
+      - released_quantity
+      - allocations
+      - active_hold_ids
+      - created_by
+      - created_at
+      - updated_at
+      - expires_at
+      - rf_version
+      - rf_progress_version
+      - demand
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        approved_rf_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        status:
+          enum:
+          - active
+          - blocked
+          - partially_blocked
+          - fulfilled
+          - released
+          - closed_mixed
+        committed_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        active_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        blocked_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        fulfilled_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        released_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        allocations:
+          type: array
+          minItems: 0
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/StockRange'
+        active_hold_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/Uuid'
+          uniqueItems: true
+          maxItems: 100
+        created_by:
+          $ref: '#/components/schemas/RfActor'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        expires_at:
+          type: 'null'
+        rf_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        rf_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        demand:
+          $ref: '#/components/schemas/RfLineProgress'
+    ReleaseRfReservation:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - expected_rf_version
+      - expected_rf_material_version
+      - expected_rf_progress_version
+      - ranges
+      - reason
+      - release_kind
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        ranges:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/StockRange'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        release_kind:
+          enum:
+          - release
+          - cancel_commitment
+    ReallocateRfReservation:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - expected_rf_version
+      - expected_rf_material_version
+      - expected_rf_progress_version
+      - from_ranges
+      - to_targets
+      - override_policy_id
+      - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        from_ranges:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/StockRange'
+        to_targets:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ReviewedStockTarget'
+        override_policy_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    PlaceStockHold:
+      type: object
+      additionalProperties: false
+      required:
+      - targets
+      - reason_code
+      - reason
+      properties:
+        targets:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ReviewedStockTarget'
+        reason_code:
+          enum:
+          - damage_review
+          - safety_review
+          - source_dispute
+          - count_discrepancy
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    ProposeStockHoldClearance:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - resolution
+      - condition_treatment_source_id
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        resolution:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        condition_treatment_source_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    HoldClearanceProposal:
+      type: object
+      additionalProperties: false
+      required:
+      - resolution
+      - condition_treatment_source_id
+      - prepared_by
+      - prepared_at
+      - snapshot
+      properties:
+        resolution:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        condition_treatment_source_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        prepared_by:
+          $ref: '#/components/schemas/RfActor'
+        prepared_at:
+          $ref: '#/components/schemas/UtcInstant'
+        snapshot:
+          $ref: '#/components/schemas/EvidenceSnapshot'
+    HoldClearance:
+      type: object
+      additionalProperties: false
+      required:
+      - cleared_by
+      - cleared_at
+      - resolution
+      - condition_treatment_source_id
+      - acknowledgment
+      properties:
+        cleared_by:
+          $ref: '#/components/schemas/RfActor'
+        cleared_at:
+          $ref: '#/components/schemas/UtcInstant'
+        resolution:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        condition_treatment_source_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        acknowledgment:
+          $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+    StockHold:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - version
+      - material_version
+      - status
+      - ranges
+      - reason_code
+      - reason
+      - placed_by
+      - placed_at
+      - clearance_proposal
+      - clearance
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        status:
+          enum:
+          - active
+          - cleared
+        ranges:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/StockRange'
+        reason_code:
+          enum:
+          - damage_review
+          - safety_review
+          - source_dispute
+          - count_discrepancy
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        placed_by:
+          $ref: '#/components/schemas/RfActor'
+        placed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        clearance_proposal:
+          anyOf:
+          - $ref: '#/components/schemas/HoldClearanceProposal'
+          - type: 'null'
+        clearance:
+          anyOf:
+          - $ref: '#/components/schemas/HoldClearance'
+          - type: 'null'
+    ClearStockHold:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - acknowledgment
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        acknowledgment:
+          $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+    ReservationMutationName:
+      enum:
+      - prepareRfReservation
+      - commitRfReservation
+      - releaseRfReservation
+      - reallocateRfReservation
+      - placeStockHold
+      - proposeStockHoldClearance
+      - clearStockHold
+    ReservationResourceKind:
+      enum:
+      - preparation
+      - reservation
+      - hold
+    ReservationOperationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - chapter_id
+      - actor_id
+      - operation_name
+      - action_key
+      - resource_kind
+      - resource_id
+      - committed_at
+      - outcome
+      - result
+      - rf_changes
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_name:
+          $ref: '#/components/schemas/ReservationMutationName'
+        action_key:
+          $ref: '#/components/schemas/Uuid'
+        resource_kind:
+          $ref: '#/components/schemas/ReservationResourceKind'
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        committed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        outcome:
+          const: committed
+        result:
+          oneOf:
+          - $ref: '#/components/schemas/ReservationPreparation'
+          - $ref: '#/components/schemas/RfReservation'
+          - $ref: '#/components/schemas/StockHold'
+        rf_changes:
+          type: array
+          minItems: 0
+          maxItems: 1000
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - rf_id
+            - version
+            - progress_version
+            properties:
+              rf_id:
+                $ref: '#/components/schemas/Uuid'
+              version:
+                type: integer
+                minimum: 1
+                maximum: 2147483647
+              progress_version:
+                type: integer
+                minimum: 1
+                maximum: 2147483647
+      allOf:
+      - if:
+          properties:
+            operation_name:
+              enum:
+              - prepareRfReservation
+        then:
+          properties:
+            resource_kind:
+              const: preparation
+            result:
+              $ref: '#/components/schemas/ReservationPreparation'
+      - if:
+          properties:
+            operation_name:
+              enum:
+              - commitRfReservation
+              - releaseRfReservation
+              - reallocateRfReservation
+        then:
+          properties:
+            resource_kind:
+              const: reservation
+            result:
+              $ref: '#/components/schemas/RfReservation'
+      - if:
+          properties:
+            operation_name:
+              enum:
+              - placeStockHold
+              - proposeStockHoldClearance
+              - clearStockHold
+        then:
+          properties:
+            resource_kind:
+              const: hold
+            result:
+              $ref: '#/components/schemas/StockHold'
+    ReservationMutationResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ReservationOperationReceipt'
+    ReservationConflict:
+      type: object
+      additionalProperties: false
+      required:
+      - request_id
+      - error
+      - failed_intent_committed
+      - current
+      - setup_blockers
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        error:
+          type: object
+          additionalProperties: false
+          required:
+          - code
+          - message
+          properties:
+            code:
+              enum:
+              - availability_conflict
+              - material_version_conflict
+              - progress_version_conflict
+              - state_conflict
+              - action_key_conflict
+              - approval_invalid
+              - allocation_order_blocked
+              - override_denied
+              - setup_blocked
+              - evidence_missing
+              - evidence_invalid
+              - evidence_mismatch
+              - treatment_required
+              - handover_unresolved
+              - snapshot_stale
+              - restriction_unsupported
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: \S
+        failed_intent_committed:
+          const: false
+        current:
+          type: object
+          additionalProperties: false
+          required:
+          - rf
+          - preparation
+          - reservation
+          - hold
+          - review
+          properties:
+            rf:
+              anyOf:
+              - $ref: '#/components/schemas/InternalRf'
+              - type: 'null'
+            preparation:
+              anyOf:
+              - $ref: '#/components/schemas/ReservationPreparation'
+              - type: 'null'
+            reservation:
+              anyOf:
+              - $ref: '#/components/schemas/RfReservation'
+              - type: 'null'
+            hold:
+              anyOf:
+              - $ref: '#/components/schemas/StockHold'
+              - type: 'null'
+            review:
+              anyOf:
+              - $ref: '#/components/schemas/RfAllocationReview'
+              - type: 'null'
+        setup_blockers:
+          type: array
+          minItems: 0
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+    ReservationHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - resource_kind
+      - resource_id
+      - version
+      - material_version
+      - transition
+      - reason
+      - actor
+      - recorded_at
+      - snapshot
+      - related_operation_id
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        resource_kind:
+          $ref: '#/components/schemas/ReservationResourceKind'
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        transition:
+          enum:
+          - reserved
+          - hold_blocked
+          - hold_unblocked
+          - released
+          - canceled_commitment
+          - reallocated
+          - consumed
+          - hold_placed
+          - clearance_proposed
+          - hold_cleared
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        actor:
+          $ref: '#/components/schemas/RfActor'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        snapshot:
+          oneOf:
+          - $ref: '#/components/schemas/RfReservation'
+          - $ref: '#/components/schemas/StockHold'
+        related_operation_id:
+          $ref: '#/components/schemas/Uuid'
+    ReservationPreparationResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ReservationPreparation'
+    RfReservationResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/RfReservation'
+    StockHoldResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/StockHold'
+    RfAllocationReviewResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/RfAllocationReview'
+    RfReservationList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          minItems: 0
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RfReservation'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    StockHoldList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          minItems: 0
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/StockHold'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    ReservationHistoryEntryList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          minItems: 0
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReservationHistoryEntry'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    RfDemandChange:
+      type: object
+      additionalProperties: false
+      required:
+      - actor_id
+      - chapter_id
+      - operation_id
+      - change
+      - rf_id
+      - rf_line_id
+      - expected_rf_version
+      - expected_rf_material_version
+      - expected_rf_progress_version
+      - reservation_id
+      - expected_reservation_version
+      - expected_reservation_material_version
+      - quantity
+      - ranges
+      - replacement_targets
+      - override_policy_id
+      - issue
+      properties:
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        change:
+          enum:
+          - reserve
+          - release
+          - reallocate
+          - consume
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        expected_rf_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_rf_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reservation_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        expected_reservation_version:
+          anyOf:
+          - type: integer
+            minimum: 1
+            maximum: 2147483647
+          - type: 'null'
+        expected_reservation_material_version:
+          anyOf:
+          - type: integer
+            minimum: 1
+            maximum: 2147483647
+          - type: 'null'
+        quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        ranges:
+          type: array
+          minItems: 0
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/StockRange'
+        replacement_targets:
+          type: array
+          minItems: 0
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ReviewedStockTarget'
+        override_policy_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        issue:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            required:
+            - issue_id
+            - material_version
+            - recipient_id
+            - evidence
+            properties:
+              issue_id:
+                $ref: '#/components/schemas/Uuid'
+              material_version:
+                type: integer
+                minimum: 1
+                maximum: 2147483647
+              recipient_id:
+                $ref: '#/components/schemas/Uuid'
+              evidence:
+                $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+          - type: 'null'
+    RfDemandChangeResult:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - rf_id
+        - rf_line_id
+        - next_rf_version
+        - next_progress_version
+        - progress
+        - reserved_quantity
+        - released_quantity
+        - transferred_quantity
+        - consumed_quantity
+        properties:
+          outcome:
+            const: ready
+          rf_id:
+            $ref: '#/components/schemas/Uuid'
+          rf_line_id:
+            $ref: '#/components/schemas/Uuid'
+          next_rf_version:
+            type: integer
+            minimum: 1
+            maximum: 2147483647
+          next_progress_version:
+            type: integer
+            minimum: 1
+            maximum: 2147483647
+          progress:
+            $ref: '#/components/schemas/RfLineProgress'
+          reserved_quantity:
+            $ref: '#/components/schemas/StockQuantity'
+          released_quantity:
+            $ref: '#/components/schemas/StockQuantity'
+          transferred_quantity:
+            $ref: '#/components/schemas/StockQuantity'
+          consumed_quantity:
+            $ref: '#/components/schemas/StockQuantity'
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - reason
+        properties:
+          outcome:
+            const: rejected
+          reason:
+            enum:
+            - authority_denied
+            - approval_invalid
+            - version_conflict
+            - demand_exceeded
+            - reservation_conflict
+            - stock_ineligible
+            - allocation_order_blocked
+            - evidence_mismatch
+            - handover_unresolved
     CatalogueQuantityPolicyValue:
       type: object
       required:
@@ -7455,6 +9853,8 @@ components:
       - reservation
       - hold_ids
       - restrictions
+      - basis_segment_id
+      - offset_quantity
       properties:
         id:
           $ref: '#/components/schemas/Uuid'
@@ -7471,6 +9871,13 @@ components:
             $ref: '#/components/schemas/Uuid'
         restrictions:
           $ref: '#/components/schemas/BoundedRestriction'
+        basis_segment_id:
+          $ref: '#/components/schemas/Uuid'
+        offset_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+      description: Disjoint current partition. basis_segment_id is its immutable accepted-segment coordinate root; offset_quantity
+        is the inclusive start. The interval ends at offset+quantity, exclusively. Splits get new id values, retain
+        basis/offset, and never duplicate goods. See ticket07 agreement.
     StockLot:
       type: object
       additionalProperties: false
@@ -8724,6 +11131,7 @@ components:
           - rop
           - target_level
           - price
+          - allocation_priority
         subject_id:
           oneOf:
           - $ref: '#/components/schemas/Uuid'
@@ -9250,6 +11658,7 @@ components:
               - rop
               - target_level
               - price
+              - allocation_priority
             subject_id:
               oneOf:
               - $ref: '#/components/schemas/Uuid'
@@ -12974,3 +15383,24 @@ x-reference-series-policy-identity:
     and current-source lookup stay inside it. Unknown family is invalid_input. A missing required family remains
     setup_blocked; never consume or supersede the other family as fallback. Counter/reference namespaces include
     the corresponding document kind. No other setting gains a family dimension.
+
+x-reservation-policy-values:
+  allocation_priority:
+    subject_kind: chapter
+    ownership: operational
+    schema:
+      $ref: '#/components/schemas/AllocationPriorityPolicyValue'
+x-reservation-participants:
+  prepareRfDemandChange:
+    owner: Glenn
+    callers:
+    - Glenn reservation writer
+    - Efren actual issue writer
+    input:
+      $ref: '#/components/schemas/RfDemandChange'
+    output:
+      $ref: '#/components/schemas/RfDemandChangeResult'
+    description: Synchronous transaction-local RF/demand/reservation participant. ready is a staged plan under the
+      caller shared MySQL locks, never an independent commit or durable authorization. Caller aborts all writes
+      on rejected/error. See ticket07 agreement for exact reserve/release/reallocate/consume responsibilities and
+      ticket08 issue/evidence boundary.
