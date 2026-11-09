@@ -8815,8 +8815,8 @@ components:
               $ref: '#/components/schemas/UtcInstant'
             actions:
               type: array
-              minItems: 20
-              maxItems: 20
+              minItems: 24
+              maxItems: 24
               items:
                 $ref: '#/components/schemas/ActionDecision'
     SetupApproval:

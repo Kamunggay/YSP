@@ -749,6 +749,36 @@ cases:
             - DISPATCH
             - RF_APPROVER
             blockers: []
+          - action: ipc.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: ipc.count
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            blockers: []
+          - action: opening_rm.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            blockers: []
+          - action: opening.result.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
   - name: provider-without-membership
     operationId: readChapterContext
     before: Independent synthetic actor 10000000-0000-4000-8000-000000000004; provider-without-membership; no
@@ -949,6 +979,36 @@ cases:
             state: duty_denied
             required_duties: *id019
             blockers: []
+          - action: ipc.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: ipc.count
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            blockers: []
+          - action: opening_rm.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            blockers: []
+          - action: opening.result.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
   - name: recovery-restores-no-new-membership
     operationId: listMyChapterMemberships
     before: 10000000-0000-4000-8000-000000000003 recovered identity using ticket 01; only separately current
@@ -1143,6 +1203,36 @@ cases:
             - DISPATCH
             - RF_APPROVER
             blockers: []
+          - action: ipc.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: ipc.count
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            blockers: []
+          - action: opening_rm.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            blockers: []
+          - action: opening.result.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
   - name: missing-financial-valuation
     operationId: readChapterAccess
     before: Current receiving officer has RECEIVING duty. Opening RM draft allowed; absent Finance valuation
@@ -1286,6 +1376,36 @@ cases:
             - DISPATCH
             - RF_APPROVER
             blockers: []
+          - action: ipc.read
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: ipc.count
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            blockers: []
+          - action: opening_rm.read
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            blockers: []
+          - action: opening.result.read
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
   - name: future-rf-route
     operationId: readChapterAccess
     before: Current requester; RF route not_effective; authorized draft remains available.
@@ -1427,6 +1547,36 @@ cases:
             - RECEIVING
             - DISPATCH
             - RF_APPROVER
+            blockers: []
+          - action: ipc.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: ipc.count
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            blockers: []
+          - action: opening_rm.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            blockers: []
+          - action: opening.result.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
             blockers: []
   - name: expired-rf-route
     operationId: readChapterAccess
@@ -1571,6 +1721,36 @@ cases:
             - RF_APPROVER
             blockers: []
 
+          - action: ipc.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: ipc.count
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            blockers: []
+          - action: opening_rm.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            blockers: []
+          - action: opening.result.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
   - name: upload-paper-pdf
     operationId: uploadPaperEvidence
     before: Independent synthetic case; byte labels are placeholders, not validated files.
