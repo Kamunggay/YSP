@@ -570,7 +570,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaperEvidenceVersionResult'
+                $ref: '#/components/schemas/PublishedPaperEvidenceResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -716,7 +716,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaperEvidenceVersionResult'
+                $ref: '#/components/schemas/PublishedPaperEvidenceResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1129,6 +1129,19 @@ components:
               $ref: '#/components/schemas/Uuid'
             replacement_reason:
               type: string
+    PublishedPaperEvidenceResult:
+      description: Original successful publication snapshot, including on authorized intent replay.
+      allOf:
+      - $ref: '#/components/schemas/PaperEvidenceVersionResult'
+      - properties:
+          data:
+            properties:
+              technical_state:
+                const: ready
+              invalid_reason:
+                type: 'null'
+              superseded_by_version_id:
+                type: 'null'
     PaperEvidenceVersionResult:
       type: object
       additionalProperties: false
