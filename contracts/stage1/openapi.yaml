@@ -4,7 +4,7 @@ info:
   title: YSP Stage 1 canonical HTTP agreement
   version: 0.6.0
   description: >-
-    Tickets stage1-contracts-01/02/03/04/06, specification 19. Contract candidate, not implemented
+    Tickets stage1-contracts-01/02/03/04/05/06, specification 19. Contract candidate, not implemented
     authentication. agreement.md defines normative security, retry and ownership rules.
     Only /api/health exists in scaffold 7287aa439876e7280075206b77f5f2a62b44de0a.
     Authentication and chapter discovery/context/action reads are specified. Controlled
@@ -20,6 +20,7 @@ tags:
   - name: Paper evidence
   - name: Catalogue
   - name: Stock queries
+  - name: Opening stock
 paths:
   /api/v1/chapters/{chapter_id}/catalogue/items:
     get:
@@ -2547,6 +2548,2494 @@ paths:
         UUID filename and detected extension; never inline. Ignore conditional/range request headers; return
         complete 200 after authorization, never 206/304. No query/body. Errors are JSON and contain no protected
         bytes. Accept includes the three permitted media types and application/json.
+  /api/v1/chapters/{chapter_id}/ipcs:
+    get:
+      operationId: listIpcs
+      tags:
+      - Opening stock
+      summary: listIpcs
+      x-existence: new
+      x-required-action: ipc.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      - $ref: '#/components/parameters/OpeningStateFilter'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpcList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createIpc
+      tags:
+      - Opening stock
+      summary: createIpc
+      x-existence: new
+      x-required-action: ipc.draft
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: createIpc
+                        record:
+                          $ref: '#/components/schemas/IpcRecord'
+                        posting:
+                          type: 'null'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIpc'
+  /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}:
+    get:
+      operationId: readIpc
+      tags:
+      - Opening stock
+      summary: readIpc
+      x-existence: new
+      x-required-action: ipc.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/IpcId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpcResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    put:
+      operationId: replaceIpc
+      tags:
+      - Opening stock
+      summary: replaceIpc
+      x-existence: new
+      x-required-action: ipc.draft
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/IpcId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: replaceIpc
+                        record:
+                          $ref: '#/components/schemas/IpcRecord'
+                        posting:
+                          type: 'null'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceIpc'
+  /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/history:
+    get:
+      operationId: listIpcHistory
+      tags:
+      - Opening stock
+      summary: listIpcHistory
+      x-existence: new
+      x-required-action: ipc.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Requires history.read in addition to the record action; historical access never revives revoked authority. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/IpcId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningHistoryResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-additional-actions:
+      - history.read
+  /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/versions/{revision}:
+    get:
+      operationId: readIpcRevision
+      tags:
+      - Opening stock
+      summary: readIpcRevision
+      x-existence: new
+      x-required-action: ipc.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Requires history.read in addition to the record action; historical access never revives revoked authority. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/IpcId'
+      - $ref: '#/components/parameters/OpeningRevision'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IpcResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-additional-actions:
+      - history.read
+  /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/related:
+    get:
+      operationId: readIpcRelated
+      tags:
+      - Opening stock
+      summary: readIpcRelated
+      x-existence: new
+      x-required-action: ipc.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Requires history.read in addition to the record action; historical access never revives revoked authority. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/IpcId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningRelatedResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-additional-actions:
+      - history.read
+  /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/print:
+    get:
+      operationId: printIpc
+      tags:
+      - Opening stock
+      summary: printIpc
+      x-existence: new
+      x-required-action: ipc.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Escaped non-executable printable HTML identifies draft/posted status, exact revision/material, sources/signatories/accepted
+        and excluded lines; printing never posts. No embedded private file links or signatures. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/IpcId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Content-Security-Policy:
+              required: true
+              schema:
+                const: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action
+                  'none'
+            X-Content-Type-Options:
+              required: true
+              schema:
+                const: nosniff
+          content:
+            text/html:
+              schema:
+                type: string
+                minLength: 1
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/opening-rms:
+    get:
+      operationId: listOpeningRms
+      tags:
+      - Opening stock
+      summary: listOpeningRms
+      x-existence: new
+      x-required-action: opening_rm.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      - $ref: '#/components/parameters/OpeningStateFilter'
+      - $ref: '#/components/parameters/OpeningIpcFilter'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningRmList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createOpeningRm
+      tags:
+      - Opening stock
+      summary: createOpeningRm
+      x-existence: new
+      x-required-action: opening_rm.prepare
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '201':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: createOpeningRm
+                        record:
+                          $ref: '#/components/schemas/OpeningRmRecord'
+                        posting:
+                          type: 'null'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOpeningRm'
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}:
+    get:
+      operationId: readOpeningRm
+      tags:
+      - Opening stock
+      summary: readOpeningRm
+      x-existence: new
+      x-required-action: opening_rm.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningRmResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    put:
+      operationId: replaceOpeningRm
+      tags:
+      - Opening stock
+      summary: replaceOpeningRm
+      x-existence: new
+      x-required-action: opening_rm.prepare
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: replaceOpeningRm
+                        record:
+                          $ref: '#/components/schemas/OpeningRmRecord'
+                        posting:
+                          type: 'null'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceOpeningRm'
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/history:
+    get:
+      operationId: listOpeningRmHistory
+      tags:
+      - Opening stock
+      summary: listOpeningRmHistory
+      x-existence: new
+      x-required-action: opening_rm.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Requires history.read in addition to the record action; historical access never revives revoked authority. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningHistoryResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-additional-actions:
+      - history.read
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/versions/{revision}:
+    get:
+      operationId: readOpeningRmRevision
+      tags:
+      - Opening stock
+      summary: readOpeningRmRevision
+      x-existence: new
+      x-required-action: opening_rm.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Requires history.read in addition to the record action; historical access never revives revoked authority. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      - $ref: '#/components/parameters/OpeningRevision'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningRmResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-additional-actions:
+      - history.read
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/related:
+    get:
+      operationId: readOpeningRmRelated
+      tags:
+      - Opening stock
+      summary: readOpeningRmRelated
+      x-existence: new
+      x-required-action: opening_rm.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Requires history.read in addition to the record action; historical access never revives revoked authority. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningRelatedResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-additional-actions:
+      - history.read
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/print:
+    get:
+      operationId: printOpeningRm
+      tags:
+      - Opening stock
+      summary: printOpeningRm
+      x-existence: new
+      x-required-action: opening_rm.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Escaped non-executable printable HTML identifies draft/posted status, exact revision/material, sources/signatories/accepted
+        and excluded lines; printing never posts. No embedded private file links or signatures. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Content-Security-Policy:
+              required: true
+              schema:
+                const: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action
+                  'none'
+            X-Content-Type-Options:
+              required: true
+              schema:
+                const: nosniff
+          content:
+            text/html:
+              schema:
+                type: string
+                minLength: 1
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/my-count:
+    put:
+      operationId: saveMyIpcCount
+      tags:
+      - Opening stock
+      summary: saveMyIpcCount
+      x-existence: new
+      x-required-action: ipc.count
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/IpcId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: saveMyIpcCount
+                        record:
+                          $ref: '#/components/schemas/IpcRecord'
+                        posting:
+                          type: 'null'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveIpcCount'
+  /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/submit:
+    post:
+      operationId: submitIpc
+      tags:
+      - Opening stock
+      summary: submitIpc
+      x-existence: new
+      x-required-action: ipc.draft
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/IpcId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: submitIpc
+                        record:
+                          $ref: '#/components/schemas/IpcRecord'
+                        posting:
+                          type: 'null'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitIpc'
+  /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/authorizations:
+    post:
+      operationId: authorizeIpc
+      tags:
+      - Opening stock
+      summary: authorizeIpc
+      x-existence: new
+      x-required-action: ipc.authorize
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/IpcId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: authorizeIpc
+                        record:
+                          $ref: '#/components/schemas/IpcRecord'
+                        posting:
+                          type: 'null'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizeIpc'
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/inspection:
+    post:
+      operationId: inspectOpeningRm
+      tags:
+      - Opening stock
+      summary: inspectOpeningRm
+      x-existence: new
+      x-required-action: opening_rm.prepare
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: inspectOpeningRm
+                        record:
+                          $ref: '#/components/schemas/OpeningRmRecord'
+                        posting:
+                          type: 'null'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InspectOpeningRm'
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/evidence-match:
+    post:
+      operationId: matchOpeningRmEvidence
+      tags:
+      - Opening stock
+      summary: matchOpeningRmEvidence
+      x-existence: new
+      x-required-action: opening_rm.prepare
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: matchOpeningRmEvidence
+                        record:
+                          $ref: '#/components/schemas/OpeningRmRecord'
+                        posting:
+                          type: 'null'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      x-additional-actions:
+      - evidence.read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchOpeningRmEvidence'
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/post:
+    post:
+      operationId: postOpeningRm
+      tags:
+      - Opening stock
+      summary: postOpeningRm
+      x-existence: new
+      x-required-action: opening_rm.post
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. Exact same-origin
+        Origin and synchronized CSRF are required. X-Action-Key is chapter+actor+operationId scoped; fingerprint contains
+        target and entire canonical body. Same-payload accepted replay returns original status/body after current
+        authorization, with X-Action-Replayed true. Different payload conflicts; rejected/rolled-back attempts consume
+        no accepted key or human reference. Save immutable revision/audit/result/notification intent atomically. Post
+        adds the entire chapter opening/Inventory commit. '
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      - $ref: '#/components/parameters/Origin'
+      - $ref: '#/components/parameters/ActionKey'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/OpeningActionResult'
+                - properties:
+                    data:
+                      properties:
+                        operation:
+                          properties:
+                            operation:
+                              const: postOpeningRm
+                        record:
+                          $ref: '#/components/schemas/OpeningRmRecord'
+                        posting:
+                          $ref: '#/components/schemas/OpeningPostingOutcome'
+        '400':
+          $ref: '#/components/responses/CatalogueMalformed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '428':
+          $ref: '#/components/responses/OpeningSetupBlocked'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostOpeningRm'
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/movements:
+    get:
+      operationId: listOpeningRmMovements
+      tags:
+      - Opening stock
+      summary: listOpeningRmMovements
+      x-existence: new
+      x-required-action: stock.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Requires history.read in addition to the record action; historical access never revives revoked authority. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningMovementsResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-additional-actions:
+      - history.read
+  /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/findings:
+    get:
+      operationId: listOpeningRmFindings
+      tags:
+      - Opening stock
+      summary: listOpeningRmFindings
+      x-existence: new
+      x-required-action: stock.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector.
+        Requires history.read in addition to the record action; historical access never revives revoked authority. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningRmId'
+      - $ref: '#/components/parameters/CatalogueLimit'
+      - $ref: '#/components/parameters/CatalogueCursor'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningFindingsResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      x-additional-actions:
+      - history.read
+  /api/v1/chapters/{chapter_id}/opening-baseline:
+    get:
+      operationId: readChapterOpeningBaseline
+      tags:
+      - Opening stock
+      summary: readChapterOpeningBaseline
+      x-existence: new
+      x-required-action: stock.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChapterOpeningBaselineResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/opening-actions/by-key:
+    get:
+      operationId: findOpeningActionByKey
+      tags:
+      - Opening stock
+      summary: findOpeningActionByKey
+      x-existence: new
+      x-required-action: opening.result.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/ActionKey'
+      - $ref: '#/components/parameters/OpeningOperationFilter'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningActionResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/opening-actions/{operation_id}:
+    get:
+      operationId: readOpeningAction
+      tags:
+      - Opening stock
+      summary: readOpeningAction
+      x-existence: new
+      x-required-action: opening.result.read
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected catalogue/access/evidence owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - GOV-04
+      - GOV-05
+      - GOV-08
+      - GOV-09
+      - DOC-01
+      - DOC-03
+      - DOC-04
+      - DOC-05
+      - DOC-08
+      - DOC-09
+      - DOC-10
+      - DOC-11
+      - INV-07
+      - INV-08
+      - INV-13
+      - INV-14
+      - RCV-01
+      - RCV-02
+      - RCV-03
+      - RCV-07
+      - RCV-08
+      - RCV-09
+      - RCV-10
+      - MIG-04
+      x-source-nodes:
+      - S3-09–S3-23
+      - T-16–T-20
+      - A-16–A-19
+      description: 'Current individual full session/MFA, current chapter membership and scoped action duty on every
+        call. Follow agreement.md ticket05 for exact transitions, signature ownership, lock order and evidence. All
+        results/errors no-store. Only /api/health exists in scaffold7287aa4; this operation is new. GET has no body/action
+        key except the explicit by-key lookup header. Unknown/repeated query selectors return400 invalid_selector. '
+      security:
+      - browserSession: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/OpeningOperationId'
+      responses:
+        '200':
+          description: Current authorized result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpeningActionResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/OpeningDenied'
+        '404':
+          $ref: '#/components/responses/OpeningNotFound'
+        '409':
+          $ref: '#/components/responses/OpeningConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /api/v1/chapters/{chapter_id}/internal-rfs:
     get:
       operationId: listInternalRfs
@@ -3367,62 +5856,6 @@ components:
       name: X-XSRF-TOKEN
       description: URL-decoded XSRF-TOKEN cookie, tied to this browser session.
   parameters:
-    RfId:
-      in: path
-      name: rf_id
-      required: true
-      schema:
-        $ref: '#/components/schemas/Uuid'
-    RfVersion:
-      in: path
-      name: version
-      required: true
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 2147483647
-    RfOperationId:
-      in: path
-      name: operation_id
-      required: true
-      schema:
-        $ref: '#/components/schemas/Uuid'
-    RfOperationName:
-      in: query
-      name: operation_name
-      required: true
-      schema:
-        $ref: '#/components/schemas/RfMutationName'
-    RfActionKeyLookup:
-      in: query
-      name: action_key
-      required: true
-      schema:
-        $ref: '#/components/schemas/Uuid'
-      description: Original actor only; sensitive selector, never log query strings. No mutation uses a key in its URL.
-    RfStatusFilter:
-      in: query
-      name: status
-      required: false
-      schema:
-        $ref: '#/components/schemas/RfStatus'
-      description: Omit for every visible state.
-    RfUnitFilter:
-      in: query
-      name: requesting_unit_id
-      required: false
-      schema:
-        $ref: '#/components/schemas/Uuid'
-    RfCursor:
-      in: query
-      name: cursor
-      required: false
-      schema:
-        type: string
-        minLength: 1
-        maxLength: 1024
-      description: Five-minute cursor bound to actor/chapter/authority, operation/record, filters, limit and snapshot.
-        Changed snapshot is 409 snapshot_stale. Foreign/invalid cursor is 400 invalid_selector.
     CatalogueResourceId:
       name: resource_id
       in: path
@@ -3650,6 +6083,131 @@ components:
         different-payload reuse is 409. Never put keys or proofs in URLs.
       schema: {$ref: '#/components/schemas/Uuid'}
       example: 40000000-0000-4000-8000-000000000001
+    IpcId:
+      name: ipc_id
+      in: path
+      required: true
+      description: Opaque chapter-owned identity; current admission precedes existence disclosure.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    OpeningRmId:
+      name: rm_id
+      in: path
+      required: true
+      description: Opaque chapter-owned identity; current admission precedes existence disclosure.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    OpeningOperationId:
+      name: operation_id
+      in: path
+      required: true
+      description: Opaque chapter-owned identity; current admission precedes existence disclosure.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    OpeningRevision:
+      name: revision
+      in: path
+      required: true
+      description: Retained immutable resource revision, not material version.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+    OpeningOperationFilter:
+      name: operation
+      in: query
+      required: true
+      description: Exact mutation operationId in current actor/chapter key scope.
+      schema:
+        type: string
+        enum:
+        - createIpc
+        - replaceIpc
+        - saveMyIpcCount
+        - submitIpc
+        - authorizeIpc
+        - createOpeningRm
+        - replaceOpeningRm
+        - inspectOpeningRm
+        - matchOpeningRmEvidence
+        - postOpeningRm
+    OpeningStateFilter:
+      name: state
+      in: query
+      required: false
+      description: Optional exact state; states not applicable to the selected record family yield 400 invalid_selector.
+      schema:
+        type: string
+        enum:
+        - draft
+        - awaiting_authorization
+        - authorized
+        - inspected
+        - matched
+        - posted
+    OpeningIpcFilter:
+      name: ipc_id
+      in: query
+      required: false
+      description: Optional visible IPC filter for opening RM list; uniform 404 for inaccessible source.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RfId:
+      in: path
+      name: rf_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RfVersion:
+      in: path
+      name: version
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+    RfOperationId:
+      in: path
+      name: operation_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RfOperationName:
+      in: query
+      name: operation_name
+      required: true
+      schema:
+        $ref: '#/components/schemas/RfMutationName'
+    RfActionKeyLookup:
+      in: query
+      name: action_key
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Original actor only; sensitive selector, never log query strings. No mutation uses a key in its URL.
+    RfStatusFilter:
+      in: query
+      name: status
+      required: false
+      schema:
+        $ref: '#/components/schemas/RfStatus'
+      description: Omit for every visible state.
+    RfUnitFilter:
+      in: query
+      name: requesting_unit_id
+      required: false
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RfCursor:
+      in: query
+      name: cursor
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 1024
+      description: Five-minute cursor bound to actor/chapter/authority, operation/record, filters, limit and snapshot.
+        Changed snapshot is 409 snapshot_stale. Foreign/invalid cursor is 400 invalid_selector.
   headers:
     NoStore:
       required: true
@@ -3688,936 +6246,6 @@ components:
       schema: {type: string, pattern: '^[1-9][0-9]*$'}
       example: '60'
   schemas:
-    RfApprovalRoutePolicyValue:
-      type: object
-      additionalProperties: false
-      required:
-      - routes
-      properties:
-        routes:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required:
-            - requesting_unit_id
-            - primary_approver_grant_id
-            - alternate_authorization_ids
-            properties:
-              requesting_unit_id:
-                $ref: '#/components/schemas/Uuid'
-              primary_approver_grant_id:
-                $ref: '#/components/schemas/Uuid'
-              alternate_authorization_ids:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Uuid'
-                uniqueItems: true
-          minItems: 1
-          maxItems: 20
-    RfReferenceSeriesPolicyValue:
-      type: object
-      additionalProperties: false
-      required:
-      - document_kind
-      - prefix
-      - year_basis
-      - sequence_width
-      properties:
-        document_kind:
-          const: RF
-        prefix:
-          type: string
-          pattern: ^[A-Z0-9]{1,12}$
-        year_basis:
-          const: Asia/Manila
-        sequence_width:
-          type: integer
-          minimum: 6
-          maximum: 12
-    RfStatus:
-      type: string
-      enum:
-      - draft
-      - submitted
-      - returned
-      - approved
-      - canceled
-    RfLineInput:
-      type: object
-      additionalProperties: false
-      required:
-      - line_id
-      - variant_id
-      - unit_id
-      - requested_quantity
-      properties:
-        line_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        variant_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        unit_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        requested_quantity:
-          anyOf:
-          - allOf:
-            - $ref: '#/components/schemas/StockQuantity'
-            - not:
-                pattern: ^0(?:\.0+)?$
-          - type: 'null'
-    CreateInternalRf:
-      type: object
-      additionalProperties: false
-      required:
-      - purpose
-      - requesting_unit_id
-      - event_id
-      - needed_at
-      - justification
-      - lines
-      properties:
-        purpose:
-          const: internal_use
-        requesting_unit_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        event_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        needed_at:
-          anyOf:
-          - $ref: '#/components/schemas/UtcInstant'
-          - type: 'null'
-        justification:
-          anyOf:
-          - type: string
-            minLength: 1
-            maxLength: 2000
-            pattern: \S
-          - type: 'null'
-        lines:
-          type: array
-          items:
-            $ref: '#/components/schemas/RfLineInput'
-          maxItems: 100
-    ReplaceInternalRfDraft:
-      type: object
-      additionalProperties: false
-      required:
-      - expected_version
-      - expected_material_version
-      - purpose
-      - requesting_unit_id
-      - event_id
-      - needed_at
-      - justification
-      - lines
-      - reason
-      properties:
-        expected_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        expected_material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        purpose:
-          const: internal_use
-        requesting_unit_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        event_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        needed_at:
-          anyOf:
-          - $ref: '#/components/schemas/UtcInstant'
-          - type: 'null'
-        justification:
-          anyOf:
-          - type: string
-            minLength: 1
-            maxLength: 2000
-            pattern: \S
-          - type: 'null'
-        lines:
-          type: array
-          items:
-            $ref: '#/components/schemas/RfLineInput'
-          maxItems: 100
-        reason:
-          type: string
-          minLength: 1
-          maxLength: 500
-          pattern: \S
-    RfTransition:
-      type: object
-      additionalProperties: false
-      required:
-      - expected_version
-      - expected_material_version
-      properties:
-        expected_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        expected_material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-    RfReasonedTransition:
-      type: object
-      additionalProperties: false
-      required:
-      - expected_version
-      - expected_material_version
-      - reason
-      properties:
-        expected_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        expected_material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        reason:
-          type: string
-          minLength: 1
-          maxLength: 500
-          pattern: \S
-    ReviseInternalRf:
-      type: object
-      additionalProperties: false
-      required:
-      - expected_version
-      - expected_material_version
-      - expected_progress_version
-      - purpose
-      - requesting_unit_id
-      - event_id
-      - needed_at
-      - justification
-      - lines
-      - reason
-      properties:
-        expected_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        expected_material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        expected_progress_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        purpose:
-          const: internal_use
-        requesting_unit_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        event_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        needed_at:
-          anyOf:
-          - $ref: '#/components/schemas/UtcInstant'
-          - type: 'null'
-        justification:
-          anyOf:
-          - type: string
-            minLength: 1
-            maxLength: 2000
-            pattern: \S
-          - type: 'null'
-        lines:
-          type: array
-          items:
-            $ref: '#/components/schemas/RfLineInput'
-          maxItems: 100
-        reason:
-          type: string
-          minLength: 1
-          maxLength: 500
-          pattern: \S
-    CancelInternalRf:
-      type: object
-      additionalProperties: false
-      required:
-      - expected_version
-      - expected_material_version
-      - expected_progress_version
-      - reason
-      properties:
-        expected_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        expected_material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        expected_progress_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        reason:
-          type: string
-          minLength: 1
-          maxLength: 500
-          pattern: \S
-    RfActor:
-      type: object
-      additionalProperties: false
-      required:
-      - user_id
-      - chapter_id
-      - membership_id
-      - duty_grant_id
-      - duty
-      - unit_id
-      - acted_at
-      properties:
-        user_id:
-          $ref: '#/components/schemas/Uuid'
-        chapter_id:
-          $ref: '#/components/schemas/Uuid'
-        membership_id:
-          $ref: '#/components/schemas/Uuid'
-        duty_grant_id:
-          $ref: '#/components/schemas/Uuid'
-        duty:
-          enum:
-          - COMMITTEE_REQUESTER
-          - RF_APPROVER
-          - INVENTORY
-          - DISPATCH
-        unit_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        acted_at:
-          $ref: '#/components/schemas/UtcInstant'
-    RfApproval:
-      type: object
-      additionalProperties: false
-      required:
-      - actor
-      - material_version
-      - route_policy_id
-      - route_policy_version
-      - alternate_authorization_id
-      properties:
-        actor:
-          $ref: '#/components/schemas/RfActor'
-        material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        route_policy_id:
-          $ref: '#/components/schemas/Uuid'
-        route_policy_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        alternate_authorization_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-    RfLineProgress:
-      type: object
-      additionalProperties: false
-      required:
-      - approved_quantity
-      - issued_quantity
-      - reserved_quantity
-      - blocked_reserved_quantity
-      - canceled_quantity
-      - remaining_quantity
-      - unreserved_quantity
-      properties:
-        approved_quantity:
-          anyOf:
-          - $ref: '#/components/schemas/StockQuantity'
-          - type: 'null'
-        issued_quantity:
-          $ref: '#/components/schemas/StockQuantity'
-        reserved_quantity:
-          $ref: '#/components/schemas/StockQuantity'
-        blocked_reserved_quantity:
-          $ref: '#/components/schemas/StockQuantity'
-        canceled_quantity:
-          $ref: '#/components/schemas/StockQuantity'
-        remaining_quantity:
-          anyOf:
-          - $ref: '#/components/schemas/StockQuantity'
-          - type: 'null'
-        unreserved_quantity:
-          anyOf:
-          - $ref: '#/components/schemas/StockQuantity'
-          - type: 'null'
-    RfCatalogueIdentity:
-      type: object
-      additionalProperties: false
-      required:
-      - variant_id
-      - variant_material_version
-      - item_id
-      - item_code
-      - variant_code
-      - display_name
-      - unit_id
-      - unit_code
-      - unit_material_version
-      - quantity_scale
-      properties:
-        variant_id:
-          $ref: '#/components/schemas/Uuid'
-        variant_material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        item_id:
-          $ref: '#/components/schemas/Uuid'
-        item_code:
-          type: string
-          minLength: 1
-          maxLength: 40
-          pattern: \S
-        variant_code:
-          type: string
-          minLength: 1
-          maxLength: 40
-          pattern: \S
-        display_name:
-          type: string
-          minLength: 1
-          maxLength: 160
-          pattern: \S
-        unit_id:
-          $ref: '#/components/schemas/Uuid'
-        unit_code:
-          type: string
-          minLength: 1
-          maxLength: 40
-          pattern: \S
-        unit_material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        quantity_scale:
-          type: integer
-          minimum: 0
-          maximum: 6
-    RfLine:
-      type: object
-      additionalProperties: false
-      required:
-      - id
-      - variant_id
-      - unit_id
-      - requested_quantity
-      - identity_at_approval
-      - progress
-      properties:
-        id:
-          $ref: '#/components/schemas/Uuid'
-        variant_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        unit_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        requested_quantity:
-          anyOf:
-          - allOf:
-            - $ref: '#/components/schemas/StockQuantity'
-            - not:
-                pattern: ^0(?:\.0+)?$
-          - type: 'null'
-        identity_at_approval:
-          anyOf:
-          - $ref: '#/components/schemas/RfCatalogueIdentity'
-          - type: 'null'
-        progress:
-          $ref: '#/components/schemas/RfLineProgress'
-    RfAdvancementBlocker:
-      type: object
-      additionalProperties: false
-      required:
-      - code
-      - pointer
-      - message
-      properties:
-        code:
-          enum:
-          - incomplete
-          - resource_retired
-          - unit_incompatible
-          - precision_unsupported
-          - approver_unavailable
-          - approval_authority_revoked
-          - commitment_active
-          - handover_unresolved
-        pointer:
-          type: string
-          pattern: ^(/([^~/]|~[01])*)*$
-        message:
-          type: string
-          minLength: 1
-          maxLength: 200
-          pattern: \S
-    InternalRf:
-      type: object
-      additionalProperties: false
-      required:
-      - id
-      - chapter_id
-      - reference
-      - status
-      - version
-      - material_version
-      - progress_version
-      - requester_id
-      - purpose
-      - requesting_unit_id
-      - event_id
-      - needed_at
-      - justification
-      - lines
-      - approval
-      - fulfillment
-      - created_by
-      - created_at
-      - updated_at
-      - submitted_at
-      - setup_blockers
-      - advancement_blockers
-      properties:
-        id:
-          $ref: '#/components/schemas/Uuid'
-        chapter_id:
-          $ref: '#/components/schemas/Uuid'
-        reference:
-          anyOf:
-          - type: string
-            minLength: 1
-            maxLength: 80
-            pattern: \S
-          - type: 'null'
-        status:
-          $ref: '#/components/schemas/RfStatus'
-        version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        progress_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        requester_id:
-          $ref: '#/components/schemas/Uuid'
-        purpose:
-          const: internal_use
-        requesting_unit_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        event_id:
-          anyOf:
-          - $ref: '#/components/schemas/Uuid'
-          - type: 'null'
-        needed_at:
-          anyOf:
-          - $ref: '#/components/schemas/UtcInstant'
-          - type: 'null'
-        justification:
-          anyOf:
-          - type: string
-            minLength: 1
-            maxLength: 2000
-            pattern: \S
-          - type: 'null'
-        lines:
-          type: array
-          items:
-            $ref: '#/components/schemas/RfLine'
-          maxItems: 100
-        approval:
-          anyOf:
-          - $ref: '#/components/schemas/RfApproval'
-          - type: 'null'
-        fulfillment:
-          enum:
-          - not_approved
-          - outstanding
-          - partially_issued
-          - fulfilled
-          - closed_canceled
-        created_by:
-          $ref: '#/components/schemas/RfActor'
-        created_at:
-          $ref: '#/components/schemas/UtcInstant'
-        updated_at:
-          $ref: '#/components/schemas/UtcInstant'
-        submitted_at:
-          anyOf:
-          - $ref: '#/components/schemas/UtcInstant'
-          - type: 'null'
-        setup_blockers:
-          type: array
-          items:
-            $ref: '#/components/schemas/SetupBlocker'
-        advancement_blockers:
-          type: array
-          items:
-            $ref: '#/components/schemas/RfAdvancementBlocker'
-      allOf:
-      - if:
-          properties:
-            status:
-              enum:
-              - draft
-              - submitted
-              - returned
-        then:
-          properties:
-            approval:
-              type: 'null'
-            fulfillment:
-              const: not_approved
-            lines:
-              items:
-                properties:
-                  identity_at_approval:
-                    type: 'null'
-                  progress:
-                    properties:
-                      approved_quantity:
-                        type: 'null'
-                      remaining_quantity:
-                        type: 'null'
-                      unreserved_quantity:
-                        type: 'null'
-                      issued_quantity:
-                        const: '0'
-                      reserved_quantity:
-                        const: '0'
-                      blocked_reserved_quantity:
-                        const: '0'
-                      canceled_quantity:
-                        const: '0'
-      - if:
-          properties:
-            status:
-              const: approved
-        then:
-          properties:
-            approval:
-              $ref: '#/components/schemas/RfApproval'
-            reference:
-              type: string
-            requesting_unit_id:
-              $ref: '#/components/schemas/Uuid'
-            needed_at:
-              $ref: '#/components/schemas/UtcInstant'
-            justification:
-              type: string
-            lines:
-              minItems: 1
-              items:
-                properties:
-                  identity_at_approval:
-                    type: object
-                  requested_quantity:
-                    allOf:
-                    - $ref: '#/components/schemas/StockQuantity'
-                    - not:
-                        pattern: ^0(?:\.0+)?$
-                  progress:
-                    properties:
-                      approved_quantity:
-                        type: string
-                      remaining_quantity:
-                        type: string
-                      unreserved_quantity:
-                        type: string
-            fulfillment:
-              enum:
-              - outstanding
-              - partially_issued
-              - fulfilled
-    InternalRfResult:
-      type: object
-      additionalProperties: false
-      required:
-      - data
-      properties:
-        data:
-          $ref: '#/components/schemas/InternalRf'
-    InternalRfList:
-      type: object
-      additionalProperties: false
-      required:
-      - data
-      - page
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/InternalRf'
-        page:
-          $ref: '#/components/schemas/CataloguePage'
-    RfMutationName:
-      type: string
-      enum:
-      - createInternalRf
-      - replaceInternalRfDraft
-      - submitInternalRf
-      - approveInternalRf
-      - returnInternalRf
-      - reviseInternalRf
-      - cancelInternalRf
-    RfOperationReceipt:
-      type: object
-      additionalProperties: false
-      required:
-      - operation_id
-      - chapter_id
-      - actor_id
-      - operation_name
-      - action_key
-      - rf_id
-      - committed_version
-      - committed_material_version
-      - committed_progress_version
-      - committed_at
-      - outcome
-      - result
-      properties:
-        operation_id:
-          $ref: '#/components/schemas/Uuid'
-        chapter_id:
-          $ref: '#/components/schemas/Uuid'
-        actor_id:
-          $ref: '#/components/schemas/Uuid'
-        operation_name:
-          $ref: '#/components/schemas/RfMutationName'
-        action_key:
-          $ref: '#/components/schemas/Uuid'
-        rf_id:
-          $ref: '#/components/schemas/Uuid'
-        committed_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        committed_material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        committed_progress_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        committed_at:
-          $ref: '#/components/schemas/UtcInstant'
-        outcome:
-          const: committed
-        result:
-          $ref: '#/components/schemas/InternalRf'
-    RfMutationResult:
-      type: object
-      additionalProperties: false
-      required:
-      - data
-      properties:
-        data:
-          $ref: '#/components/schemas/RfOperationReceipt'
-    RfConflict:
-      type: object
-      additionalProperties: false
-      required:
-      - request_id
-      - error
-      - current
-      - setup_blockers
-      properties:
-        request_id:
-          $ref: '#/components/schemas/Uuid'
-        error:
-          type: object
-          additionalProperties: false
-          required:
-          - code
-          - message
-          properties:
-            code:
-              enum:
-              - material_version_conflict
-              - progress_version_conflict
-              - state_conflict
-              - action_key_conflict
-              - setup_blocked
-              - resource_retired
-              - commitment_conflict
-              - handover_unresolved
-              - approval_authority_revoked
-              - snapshot_stale
-            message:
-              type: string
-              minLength: 1
-              maxLength: 500
-              pattern: \S
-        current:
-          anyOf:
-          - $ref: '#/components/schemas/InternalRf'
-          - type: 'null'
-        setup_blockers:
-          type: array
-          items:
-            $ref: '#/components/schemas/SetupBlocker'
-    RfHistoryEntry:
-      type: object
-      additionalProperties: false
-      required:
-      - id
-      - version
-      - material_version
-      - progress_version
-      - action
-      - actor
-      - reason
-      - reference
-      - occurred_at
-      properties:
-        id:
-          $ref: '#/components/schemas/Uuid'
-        version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        progress_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        action:
-          enum:
-          - createInternalRf
-          - replaceInternalRfDraft
-          - submitInternalRf
-          - approveInternalRf
-          - returnInternalRf
-          - reviseInternalRf
-          - cancelInternalRf
-          - reservation_changed
-          - issue_posted
-          - approval_invalidated
-        actor:
-          $ref: '#/components/schemas/RfActor'
-        reason:
-          anyOf:
-          - type: string
-            minLength: 1
-            maxLength: 500
-            pattern: \S
-          - type: 'null'
-        reference:
-          anyOf:
-          - type: string
-            minLength: 1
-            maxLength: 80
-            pattern: \S
-          - type: 'null'
-        occurred_at:
-          $ref: '#/components/schemas/UtcInstant'
-    RfHistoryList:
-      type: object
-      additionalProperties: false
-      required:
-      - data
-      - page
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/RfHistoryEntry'
-        page:
-          $ref: '#/components/schemas/CataloguePage'
-    RfRelatedRecord:
-      type: object
-      additionalProperties: false
-      required:
-      - kind
-      - id
-      - rf_line_id
-      - reference
-      - material_version
-      - state
-      properties:
-        kind:
-          enum:
-          - reservation
-          - hold
-          - actual_issue
-          - inventory_movement
-        id:
-          $ref: '#/components/schemas/Uuid'
-        rf_line_id:
-          $ref: '#/components/schemas/Uuid'
-        reference:
-          anyOf:
-          - type: string
-            minLength: 1
-            maxLength: 80
-            pattern: \S
-          - type: 'null'
-        material_version:
-          type: integer
-          minimum: 1
-          maximum: 2147483647
-        state:
-          type: string
-          minLength: 1
-          maxLength: 80
-          pattern: \S
-    RfRelatedList:
-      type: object
-      additionalProperties: false
-      required:
-      - data
-      - page
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/RfRelatedRecord'
-        page:
-          $ref: '#/components/schemas/CataloguePage'
     CatalogueQuantityPolicyValue:
       type: object
       required:
@@ -6981,6 +8609,10 @@ components:
       - issue.prepare
       - issue.post
       - history.read
+      - ipc.read
+      - ipc.count
+      - opening_rm.read
+      - opening.result.read
     ChapterSummary:
       type: object
       required:
@@ -8073,38 +9705,2290 @@ components:
                   pointer: {type: string, pattern: '^(/([^~/]|~[01])*)*$'}
                   code: {enum: [required, invalid_format, too_long, unexpected_field, invalid_type]}
                   message: {type: string, minLength: 1, maxLength: 200}
-  responses:
+    OpeningPolicyBinding:
+      type: object
+      additionalProperties: false
+      required:
+      - setting_key
+      - policy_id
+      - version
+      properties:
+        setting_key:
+          type: string
+          enum:
+          - ipc_authorization
+          - valuation_rounding
+          - reference_series
+        policy_id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+    IpcTeamMember:
+      type: object
+      additionalProperties: false
+      required:
+      - user_id
+      - regular_custodian
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        regular_custodian:
+          type: boolean
+    IpcLine:
+      type: object
+      additionalProperties: false
+      required:
+      - line_id
+      - item_id
+      - variant_id
+      - variant_material_version
+      - unit_id
+      - unit_material_version
+      - quantity_scale
+      - historical_variant_label
+      - location_id
+      - location_material_version
+      - regular_custodian_ids
+      - condition
+      - counted_quantity
+      - unit_value
+      - valuation_basis
+      - provenance_reference
+      - restrictions
+      properties:
+        line_id:
+          $ref: '#/components/schemas/Uuid'
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        historical_variant_label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        location_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        regular_custodian_ids:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Uuid'
+        condition:
+          type: string
+          enum:
+          - usable
+          - damaged
+          - rejected
+        counted_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+        unit_value:
+          anyOf:
+          - type: string
+            pattern: ^(0|[1-9][0-9]{0,11})\.[0-9]{2}$
+          - type: 'null'
+        valuation_basis:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 500
+          - type: 'null'
+        provenance_reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 200
+          - type: 'null'
+        restrictions:
+          $ref: '#/components/schemas/BoundedRestriction'
+    IpcMaterial:
+      type: object
+      additionalProperties: false
+      required:
+      - cutoff_at
+      - informal_movements_suspended
+      - count_team
+      - policies
+      - lines
+      - notes
+      properties:
+        cutoff_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        informal_movements_suspended:
+          type: boolean
+        count_team:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/IpcTeamMember'
+        policies:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/OpeningPolicyBinding'
+        lines:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/IpcLine'
+        notes:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 500
+          - type: 'null'
+    CompleteIpcMaterial:
+      allOf:
+      - $ref: '#/components/schemas/IpcMaterial'
+      - properties:
+          cutoff_at:
+            $ref: '#/components/schemas/UtcInstant'
+          informal_movements_suspended:
+            const: true
+          count_team:
+            minItems: 2
+          policies:
+            minItems: 3
+          lines:
+            minItems: 1
+            items:
+              properties:
+                counted_quantity:
+                  $ref: '#/components/schemas/StockQuantity'
+                unit_value:
+                  type: string
+                  pattern: ^(0|[1-9][0-9]{0,11})\.[0-9]{2}$
+                valuation_basis:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+    IpcCountEntry:
+      type: object
+      additionalProperties: false
+      required:
+      - ipc_line_id
+      - quantity
+      - condition
+      - notes
+      properties:
+        ipc_line_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+        condition:
+          anyOf:
+          - type: string
+            enum:
+            - usable
+            - damaged
+            - rejected
+          - type: 'null'
+        notes:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 500
+          - type: 'null'
+    IpcCount:
+      type: object
+      additionalProperties: false
+      required:
+      - actor_id
+      - material_version
+      - counted_at
+      - completed
+      - signed_at
+      - entries
+      properties:
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        counted_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        completed:
+          type: boolean
+        signed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        entries:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/IpcCountEntry'
+    IpcAuthorization:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - actor_id
+      - duty
+      - material_version
+      - authorized_at
+      - signed_at
+      - signed_ipc
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        duty:
+          type: string
+          enum:
+          - CHAPTER_HEAD
+          - FINANCE
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        authorized_at:
+          $ref: '#/components/schemas/UtcInstant'
+        signed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        signed_ipc:
+          $ref: '#/components/schemas/EvidenceByteBinding'
+    IpcRecord:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - reference
+      - revision
+      - material_version
+      - state
+      - prepared_by
+      - created_at
+      - updated_at
+      - material
+      - counts
+      - signed_ipc
+      - authorizations
+      - posted_rm_id
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+          - type: 'null'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          type: string
+          enum:
+          - draft
+          - awaiting_authorization
+          - authorized
+          - posted
+        prepared_by:
+          $ref: '#/components/schemas/Uuid'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        material:
+          $ref: '#/components/schemas/IpcMaterial'
+        counts:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/IpcCount'
+        signed_ipc:
+          anyOf:
+          - $ref: '#/components/schemas/EvidenceByteBinding'
+          - type: 'null'
+        authorizations:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/IpcAuthorization'
+        posted_rm_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    CreateIpc:
+      type: object
+      additionalProperties: false
+      required:
+      - material
+      properties:
+        material:
+          $ref: '#/components/schemas/IpcMaterial'
+    ReplaceIpc:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_revision
+      - reason
+      - material
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        material:
+          $ref: '#/components/schemas/IpcMaterial'
+    SaveIpcCount:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_revision
+      - material_version
+      - counted_at
+      - completed
+      - signed_at
+      - entries
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        counted_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        completed:
+          type: boolean
+        signed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        entries:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/IpcCountEntry'
+    SubmitIpc:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_revision
+      - material_version
+      - signed_ipc
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        signed_ipc:
+          $ref: '#/components/schemas/EvidenceByteBinding'
+    AuthorizeIpc:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_revision
+      - material_version
+      - duty
+      - signed_at
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        duty:
+          type: string
+          enum:
+          - CHAPTER_HEAD
+          - FINANCE
+        signed_at:
+          $ref: '#/components/schemas/UtcInstant'
+    OpeningInspectionLine:
+      type: object
+      additionalProperties: false
+      required:
+      - ipc_line_id
+      - accepted_quantity
+      - damaged_quantity
+      - rejected_quantity
+      - accepted_value
+      - finding_reason
+      properties:
+        ipc_line_id:
+          $ref: '#/components/schemas/Uuid'
+        accepted_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+        damaged_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+        rejected_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+        accepted_value:
+          anyOf:
+          - type: string
+            pattern: ^(0|[1-9][0-9]{0,11})\.[0-9]{2}$
+          - type: 'null'
+        finding_reason:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 500
+          - type: 'null'
+    OpeningRmMaterial:
+      type: object
+      additionalProperties: false
+      required:
+      - ipc_material_version
+      - lines
+      - notes
+      properties:
+        ipc_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        lines:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/OpeningInspectionLine'
+        notes:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 500
+          - type: 'null'
+    OpeningInspection:
+      type: object
+      additionalProperties: false
+      required:
+      - inspector_id
+      - inspected_at
+      - material_version
+      - technical_representative_id
+      - inspection_notes
+      properties:
+        inspector_id:
+          $ref: '#/components/schemas/Uuid'
+        inspected_at:
+          $ref: '#/components/schemas/UtcInstant'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        technical_representative_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        inspection_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+    OpeningReceiptSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+      - chapter_id
+      - rm_id
+      - rm_material_version
+      - ipc_id
+      - ipc_material_version
+      - ipc_reference
+      - material
+      - counts
+      - signed_ipc
+      - authorizations
+      - rm_material
+      - inspection
+      properties:
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        ipc_id:
+          $ref: '#/components/schemas/Uuid'
+        ipc_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        ipc_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+        material:
+          $ref: '#/components/schemas/CompleteIpcMaterial'
+        counts:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/CompletedIpcCount'
+        signed_ipc:
+          $ref: '#/components/schemas/EvidenceByteBinding'
+        authorizations:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/IpcAuthorization'
+        rm_material:
+          $ref: '#/components/schemas/CompleteOpeningRmMaterial'
+        inspection:
+          $ref: '#/components/schemas/OpeningInspection'
+    CompletedIpcCount:
+      allOf:
+      - $ref: '#/components/schemas/IpcCount'
+      - properties:
+          completed:
+            const: true
+          counted_at:
+            $ref: '#/components/schemas/UtcInstant'
+          signed_at:
+            $ref: '#/components/schemas/UtcInstant'
+          entries:
+            minItems: 1
+            items:
+              properties:
+                quantity:
+                  $ref: '#/components/schemas/StockQuantity'
+                condition:
+                  type: string
+                  enum:
+                  - usable
+                  - damaged
+                  - rejected
+    CompleteOpeningRmMaterial:
+      allOf:
+      - $ref: '#/components/schemas/OpeningRmMaterial'
+      - properties:
+          lines:
+            minItems: 1
+            items:
+              properties:
+                accepted_quantity:
+                  $ref: '#/components/schemas/StockQuantity'
+                damaged_quantity:
+                  $ref: '#/components/schemas/StockQuantity'
+                rejected_quantity:
+                  $ref: '#/components/schemas/StockQuantity'
+                accepted_value:
+                  type: string
+                  pattern: ^(0|[1-9][0-9]{0,11})\.[0-9]{2}$
+    IpcAuthorizationPolicyValue:
+      type: object
+      additionalProperties: false
+      required:
+      - cutoff_at
+      - count_team_ids
+      - suspension_record_reference
+      properties:
+        cutoff_at:
+          $ref: '#/components/schemas/UtcInstant'
+        count_team_ids:
+          type: array
+          minItems: 2
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+        suspension_record_reference:
+          type: string
+          minLength: 1
+          maxLength: 200
+    OpeningValuationPolicyValue:
+      type: object
+      additionalProperties: false
+      required:
+      - currency
+      - unit_value_scale
+      - rounding_mode
+      - round_at
+      - valuation_basis_reference
+      properties:
+        currency:
+          const: PHP
+        unit_value_scale:
+          const: 2
+        rounding_mode:
+          type: string
+          enum:
+          - half_up
+          - half_even
+          - down
+        round_at:
+          const: accepted_line
+        valuation_basis_reference:
+          type: string
+          minLength: 1
+          maxLength: 200
+    OpeningReferencePolicyValue:
+      type: object
+      additionalProperties: false
+      required:
+      - ipc_prefix
+      - rm_prefix
+      - minimum_digits
+      properties:
+        ipc_prefix:
+          type: string
+          minLength: 1
+          maxLength: 40
+        rm_prefix:
+          type: string
+          minLength: 1
+          maxLength: 40
+        minimum_digits:
+          type: integer
+          minimum: 1
+          maximum: 12
+    OpeningRmRecord:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - reference
+      - ipc_id
+      - revision
+      - material_version
+      - state
+      - prepared_by
+      - created_at
+      - updated_at
+      - material
+      - inspection
+      - snapshot
+      - snapshot_sha256
+      - acknowledgment
+      - posted_at
+      - outcome_id
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+          - type: 'null'
+        ipc_id:
+          $ref: '#/components/schemas/Uuid'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          type: string
+          enum:
+          - draft
+          - inspected
+          - matched
+          - posted
+        prepared_by:
+          $ref: '#/components/schemas/Uuid'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        material:
+          $ref: '#/components/schemas/OpeningRmMaterial'
+        inspection:
+          anyOf:
+          - $ref: '#/components/schemas/OpeningInspection'
+          - type: 'null'
+        snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/OpeningReceiptSnapshot'
+          - type: 'null'
+        snapshot_sha256:
+          anyOf:
+          - type: string
+            pattern: ^[a-f0-9]{64}$
+          - type: 'null'
+        acknowledgment:
+          anyOf:
+          - $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+          - type: 'null'
+        posted_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        outcome_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    CreateOpeningRm:
+      type: object
+      additionalProperties: false
+      required:
+      - ipc_id
+      - material
+      properties:
+        ipc_id:
+          $ref: '#/components/schemas/Uuid'
+        material:
+          $ref: '#/components/schemas/OpeningRmMaterial'
+    ReplaceOpeningRm:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_revision
+      - reason
+      - material
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        material:
+          $ref: '#/components/schemas/OpeningRmMaterial'
+    InspectOpeningRm:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_revision
+      - ipc_material_version
+      - inspected_at
+      - technical_representative_id
+      - inspection_notes
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        ipc_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        inspected_at:
+          $ref: '#/components/schemas/UtcInstant'
+        technical_representative_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        inspection_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+    MatchOpeningRmEvidence:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_revision
+      - material_version
+      - snapshot_sha256
+      - bytes
+      - acknowledged_at
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        snapshot_sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        bytes:
+          $ref: '#/components/schemas/EvidenceByteBinding'
+        acknowledged_at:
+          $ref: '#/components/schemas/UtcInstant'
+    PostOpeningRm:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_revision
+      - material_version
+      - ipc_material_version
+      - acknowledgment_id
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        ipc_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        acknowledgment_id:
+          $ref: '#/components/schemas/Uuid'
+    OpeningMovement:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - kind
+      - rm_id
+      - rm_reference
+      - rm_material_version
+      - ipc_id
+      - ipc_reference
+      - ipc_material_version
+      - ipc_line_id
+      - lot_id
+      - variant_id
+      - unit_id
+      - location_id
+      - quantity
+      - value
+      - currency
+      - condition
+      - posted_by
+      - posted_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        kind:
+          const: opening_accepted_receipt
+        rm_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+        rm_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        ipc_id:
+          $ref: '#/components/schemas/Uuid'
+        ipc_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+        ipc_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        ipc_line_id:
+          $ref: '#/components/schemas/Uuid'
+        lot_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,11})\.[0-9]{2}$
+        currency:
+          const: PHP
+        condition:
+          const: usable
+        posted_by:
+          $ref: '#/components/schemas/Uuid'
+        posted_at:
+          $ref: '#/components/schemas/UtcInstant'
+    OpeningFinding:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - rm_id
+      - ipc_id
+      - ipc_line_id
+      - lot_id
+      - variant_id
+      - unit_id
+      - location_id
+      - condition
+      - quantity
+      - reason
+      - recorded_by
+      - recorded_at
+      - resolution
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_id:
+          $ref: '#/components/schemas/Uuid'
+        ipc_id:
+          $ref: '#/components/schemas/Uuid'
+        ipc_line_id:
+          $ref: '#/components/schemas/Uuid'
+        lot_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        condition:
+          type: string
+          enum:
+          - quarantined
+          - rejected
+        quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        recorded_by:
+          $ref: '#/components/schemas/Uuid'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        resolution:
+          const: requires_later_approved_treatment
+    OpeningPostingOutcome:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - rm_id
+      - ipc_id
+      - posted_at
+      - stock_version
+      - movements
+      - findings
+      - lots
+      - accepted_value
+      - currency
+      - baseline_locked
+      - acknowledgment_id
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_id:
+          $ref: '#/components/schemas/Uuid'
+        ipc_id:
+          $ref: '#/components/schemas/Uuid'
+        posted_at:
+          $ref: '#/components/schemas/UtcInstant'
+        stock_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        movements:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/OpeningMovement'
+        findings:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/OpeningFinding'
+        lots:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/StockLot'
+        accepted_value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,11})\.[0-9]{2}$
+        currency:
+          const: PHP
+        baseline_locked:
+          const: true
+        acknowledgment_id:
+          $ref: '#/components/schemas/Uuid'
+    OpeningOperationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - operation
+      - action_key
+      - actor_id
+      - chapter_id
+      - record_kind
+      - record_id
+      - record_revision
+      - material_version
+      - http_status
+      - committed_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        operation:
+          type: string
+          enum:
+          - createIpc
+          - replaceIpc
+          - saveMyIpcCount
+          - submitIpc
+          - authorizeIpc
+          - createOpeningRm
+          - replaceOpeningRm
+          - inspectOpeningRm
+          - matchOpeningRmEvidence
+          - postOpeningRm
+        action_key:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        record_kind:
+          type: string
+          enum:
+          - ipc
+          - opening_rm
+        record_id:
+          $ref: '#/components/schemas/Uuid'
+        record_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        http_status:
+          type: integer
+          enum:
+          - 200
+          - 201
+        committed_at:
+          $ref: '#/components/schemas/UtcInstant'
+    OpeningActionResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - operation
+          - record
+          - posting
+          properties:
+            operation:
+              $ref: '#/components/schemas/OpeningOperationReceipt'
+            record:
+              oneOf:
+              - $ref: '#/components/schemas/IpcRecord'
+              - $ref: '#/components/schemas/OpeningRmRecord'
+            posting:
+              anyOf:
+              - $ref: '#/components/schemas/OpeningPostingOutcome'
+              - type: 'null'
+    IpcResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/IpcRecord'
+    IpcList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/IpcRecord'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    OpeningRmResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/OpeningRmRecord'
+    OpeningRmList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/OpeningRmRecord'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    OpeningHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+      - operation
+      - reason
+      properties:
+        operation:
+          $ref: '#/components/schemas/OpeningOperationReceipt'
+        reason:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 500
+          - type: 'null'
+    OpeningHistoryResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/OpeningHistoryEntry'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    OpeningRelatedResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - ipc_id
+          - rm_ids
+          - evidence
+          - movement_ids
+          - finding_ids
+          - outcome_id
+          properties:
+            ipc_id:
+              $ref: '#/components/schemas/Uuid'
+            rm_ids:
+              type: array
+              minItems: 0
+              items:
+                $ref: '#/components/schemas/Uuid'
+            evidence:
+              type: array
+              minItems: 0
+              items:
+                $ref: '#/components/schemas/EvidenceByteBinding'
+            movement_ids:
+              type: array
+              minItems: 0
+              items:
+                $ref: '#/components/schemas/Uuid'
+            finding_ids:
+              type: array
+              minItems: 0
+              items:
+                $ref: '#/components/schemas/Uuid'
+            outcome_id:
+              anyOf:
+              - $ref: '#/components/schemas/Uuid'
+              - type: 'null'
+    OpeningMovementsResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/OpeningMovement'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    OpeningFindingsResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          minItems: 0
+          items:
+            $ref: '#/components/schemas/OpeningFinding'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    ChapterOpeningBaselineResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          anyOf:
+          - $ref: '#/components/schemas/OpeningPostingOutcome'
+          - type: 'null'
+    PrepareOpeningInventoryInput:
+      type: object
+      additionalProperties: false
+      required:
+      - actor_id
+      - chapter_id
+      - operation_id
+      - snapshot
+      - acknowledgment
+      - current_stock_version
+      properties:
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        snapshot:
+          $ref: '#/components/schemas/OpeningReceiptSnapshot'
+        acknowledgment:
+          $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+        current_stock_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+    PrepareOpeningInventoryResult:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - posting
+        properties:
+          outcome:
+            const: ready
+          posting:
+            $ref: '#/components/schemas/OpeningPostingOutcome'
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - reason
+        properties:
+          outcome:
+            const: rejected
+          reason:
+            type: string
+            enum:
+            - invalid_source
+            - stale_version
+            - independence_required
+            - setup_blocked
+            - evidence_missing
+            - evidence_invalid
+            - evidence_mismatch
+            - baseline_already_posted
+            - authority_changed
+    RfApprovalRoutePolicyValue:
+      type: object
+      additionalProperties: false
+      required:
+      - routes
+      properties:
+        routes:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - requesting_unit_id
+            - primary_approver_grant_id
+            - alternate_authorization_ids
+            properties:
+              requesting_unit_id:
+                $ref: '#/components/schemas/Uuid'
+              primary_approver_grant_id:
+                $ref: '#/components/schemas/Uuid'
+              alternate_authorization_ids:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Uuid'
+                uniqueItems: true
+          minItems: 1
+          maxItems: 20
+    RfReferenceSeriesPolicyValue:
+      type: object
+      additionalProperties: false
+      required:
+      - document_kind
+      - prefix
+      - year_basis
+      - sequence_width
+      properties:
+        document_kind:
+          const: RF
+        prefix:
+          type: string
+          pattern: ^[A-Z0-9]{1,12}$
+        year_basis:
+          const: Asia/Manila
+        sequence_width:
+          type: integer
+          minimum: 6
+          maximum: 12
+    RfStatus:
+      type: string
+      enum:
+      - draft
+      - submitted
+      - returned
+      - approved
+      - canceled
+    RfLineInput:
+      type: object
+      additionalProperties: false
+      required:
+      - line_id
+      - variant_id
+      - unit_id
+      - requested_quantity
+      properties:
+        line_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        variant_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        requested_quantity:
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/StockQuantity'
+            - not:
+                pattern: ^0(?:\.0+)?$
+          - type: 'null'
+    CreateInternalRf:
+      type: object
+      additionalProperties: false
+      required:
+      - purpose
+      - requesting_unit_id
+      - event_id
+      - needed_at
+      - justification
+      - lines
+      properties:
+        purpose:
+          const: internal_use
+        requesting_unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        event_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        needed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        justification:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 2000
+            pattern: \S
+          - type: 'null'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfLineInput'
+          maxItems: 100
+    ReplaceInternalRfDraft:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - purpose
+      - requesting_unit_id
+      - event_id
+      - needed_at
+      - justification
+      - lines
+      - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        purpose:
+          const: internal_use
+        requesting_unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        event_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        needed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        justification:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 2000
+            pattern: \S
+          - type: 'null'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfLineInput'
+          maxItems: 100
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    RfTransition:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+    RfReasonedTransition:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    ReviseInternalRf:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - expected_progress_version
+      - purpose
+      - requesting_unit_id
+      - event_id
+      - needed_at
+      - justification
+      - lines
+      - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        purpose:
+          const: internal_use
+        requesting_unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        event_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        needed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        justification:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 2000
+            pattern: \S
+          - type: 'null'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfLineInput'
+          maxItems: 100
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    CancelInternalRf:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - expected_progress_version
+      - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    RfActor:
+      type: object
+      additionalProperties: false
+      required:
+      - user_id
+      - chapter_id
+      - membership_id
+      - duty_grant_id
+      - duty
+      - unit_id
+      - acted_at
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        membership_id:
+          $ref: '#/components/schemas/Uuid'
+        duty_grant_id:
+          $ref: '#/components/schemas/Uuid'
+        duty:
+          enum:
+          - COMMITTEE_REQUESTER
+          - RF_APPROVER
+          - INVENTORY
+          - DISPATCH
+        unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        acted_at:
+          $ref: '#/components/schemas/UtcInstant'
+    RfApproval:
+      type: object
+      additionalProperties: false
+      required:
+      - actor
+      - material_version
+      - route_policy_id
+      - route_policy_version
+      - alternate_authorization_id
+      properties:
+        actor:
+          $ref: '#/components/schemas/RfActor'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        route_policy_id:
+          $ref: '#/components/schemas/Uuid'
+        route_policy_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        alternate_authorization_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    RfLineProgress:
+      type: object
+      additionalProperties: false
+      required:
+      - approved_quantity
+      - issued_quantity
+      - reserved_quantity
+      - blocked_reserved_quantity
+      - canceled_quantity
+      - remaining_quantity
+      - unreserved_quantity
+      properties:
+        approved_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+        issued_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        reserved_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        blocked_reserved_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        canceled_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        remaining_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+        unreserved_quantity:
+          anyOf:
+          - $ref: '#/components/schemas/StockQuantity'
+          - type: 'null'
+    RfCatalogueIdentity:
+      type: object
+      additionalProperties: false
+      required:
+      - variant_id
+      - variant_material_version
+      - item_id
+      - item_code
+      - variant_code
+      - display_name
+      - unit_id
+      - unit_code
+      - unit_material_version
+      - quantity_scale
+      properties:
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        item_code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: \S
+        variant_code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: \S
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 160
+          pattern: \S
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: \S
+        unit_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+    RfLine:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - variant_id
+      - unit_id
+      - requested_quantity
+      - identity_at_approval
+      - progress
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        requested_quantity:
+          anyOf:
+          - allOf:
+            - $ref: '#/components/schemas/StockQuantity'
+            - not:
+                pattern: ^0(?:\.0+)?$
+          - type: 'null'
+        identity_at_approval:
+          anyOf:
+          - $ref: '#/components/schemas/RfCatalogueIdentity'
+          - type: 'null'
+        progress:
+          $ref: '#/components/schemas/RfLineProgress'
+    RfAdvancementBlocker:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - pointer
+      - message
+      properties:
+        code:
+          enum:
+          - incomplete
+          - resource_retired
+          - unit_incompatible
+          - precision_unsupported
+          - approver_unavailable
+          - approval_authority_revoked
+          - commitment_active
+          - handover_unresolved
+        pointer:
+          type: string
+          pattern: ^(/([^~/]|~[01])*)*$
+        message:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: \S
+    InternalRf:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - chapter_id
+      - reference
+      - status
+      - version
+      - material_version
+      - progress_version
+      - requester_id
+      - purpose
+      - requesting_unit_id
+      - event_id
+      - needed_at
+      - justification
+      - lines
+      - approval
+      - fulfillment
+      - created_by
+      - created_at
+      - updated_at
+      - submitted_at
+      - setup_blockers
+      - advancement_blockers
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+            pattern: \S
+          - type: 'null'
+        status:
+          $ref: '#/components/schemas/RfStatus'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        requester_id:
+          $ref: '#/components/schemas/Uuid'
+        purpose:
+          const: internal_use
+        requesting_unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        event_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        needed_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        justification:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 2000
+            pattern: \S
+          - type: 'null'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfLine'
+          maxItems: 100
+        approval:
+          anyOf:
+          - $ref: '#/components/schemas/RfApproval'
+          - type: 'null'
+        fulfillment:
+          enum:
+          - not_approved
+          - outstanding
+          - partially_issued
+          - fulfilled
+          - closed_canceled
+        created_by:
+          $ref: '#/components/schemas/RfActor'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        submitted_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        setup_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+        advancement_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfAdvancementBlocker'
+      allOf:
+      - if:
+          properties:
+            status:
+              enum:
+              - draft
+              - submitted
+              - returned
+        then:
+          properties:
+            approval:
+              type: 'null'
+            fulfillment:
+              const: not_approved
+            lines:
+              items:
+                properties:
+                  identity_at_approval:
+                    type: 'null'
+                  progress:
+                    properties:
+                      approved_quantity:
+                        type: 'null'
+                      remaining_quantity:
+                        type: 'null'
+                      unreserved_quantity:
+                        type: 'null'
+                      issued_quantity:
+                        const: '0'
+                      reserved_quantity:
+                        const: '0'
+                      blocked_reserved_quantity:
+                        const: '0'
+                      canceled_quantity:
+                        const: '0'
+      - if:
+          properties:
+            status:
+              const: approved
+        then:
+          properties:
+            approval:
+              $ref: '#/components/schemas/RfApproval'
+            reference:
+              type: string
+            requesting_unit_id:
+              $ref: '#/components/schemas/Uuid'
+            needed_at:
+              $ref: '#/components/schemas/UtcInstant'
+            justification:
+              type: string
+            lines:
+              minItems: 1
+              items:
+                properties:
+                  identity_at_approval:
+                    type: object
+                  requested_quantity:
+                    allOf:
+                    - $ref: '#/components/schemas/StockQuantity'
+                    - not:
+                        pattern: ^0(?:\.0+)?$
+                  progress:
+                    properties:
+                      approved_quantity:
+                        type: string
+                      remaining_quantity:
+                        type: string
+                      unreserved_quantity:
+                        type: string
+            fulfillment:
+              enum:
+              - outstanding
+              - partially_issued
+              - fulfilled
+    InternalRfResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/InternalRf'
+    InternalRfList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/InternalRf'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    RfMutationName:
+      type: string
+      enum:
+      - createInternalRf
+      - replaceInternalRfDraft
+      - submitInternalRf
+      - approveInternalRf
+      - returnInternalRf
+      - reviseInternalRf
+      - cancelInternalRf
+    RfOperationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - chapter_id
+      - actor_id
+      - operation_name
+      - action_key
+      - rf_id
+      - committed_version
+      - committed_material_version
+      - committed_progress_version
+      - committed_at
+      - outcome
+      - result
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_name:
+          $ref: '#/components/schemas/RfMutationName'
+        action_key:
+          $ref: '#/components/schemas/Uuid'
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        committed_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        outcome:
+          const: committed
+        result:
+          $ref: '#/components/schemas/InternalRf'
+    RfMutationResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data:
+          $ref: '#/components/schemas/RfOperationReceipt'
     RfConflict:
-      description: Rejected attempt, no partial mutation or accepted key. Only current permitted RF may be included;
-        null for create/key conflicts without an admitted target. Inspect code/setup_blockers, retain input, refetch
-        and explicitly review before a new intent.
-      headers:
-        Cache-Control:
-          $ref: '#/components/headers/NoStore'
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/RfConflict'
-    RfDenied:
-      description: Origin/MFA/current duty denial, or independence_required when the admitted requester is the approver.
-        No protected record fields.
-      headers:
-        Cache-Control:
-          $ref: '#/components/headers/NoStore'
-      content:
-        application/json:
-          schema:
-            allOf:
-            - $ref: '#/components/schemas/Error'
-            - properties:
-                error:
-                  properties:
-                    code:
-                      enum:
-                      - origin_denied
-                      - mfa_incomplete
-                      - duty_denied
-                      - independence_required
+      type: object
+      additionalProperties: false
+      required:
+      - request_id
+      - error
+      - current
+      - setup_blockers
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        error:
+          type: object
+          additionalProperties: false
+          required:
+          - code
+          - message
+          properties:
+            code:
+              enum:
+              - material_version_conflict
+              - progress_version_conflict
+              - state_conflict
+              - action_key_conflict
+              - setup_blocked
+              - resource_retired
+              - commitment_conflict
+              - handover_unresolved
+              - approval_authority_revoked
+              - snapshot_stale
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: \S
+        current:
+          anyOf:
+          - $ref: '#/components/schemas/InternalRf'
+          - type: 'null'
+        setup_blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+    RfHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - material_version
+      - progress_version
+      - action
+      - actor
+      - reason
+      - reference
+      - occurred_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        action:
+          enum:
+          - createInternalRf
+          - replaceInternalRfDraft
+          - submitInternalRf
+          - approveInternalRf
+          - returnInternalRf
+          - reviseInternalRf
+          - cancelInternalRf
+          - reservation_changed
+          - issue_posted
+          - approval_invalidated
+        actor:
+          $ref: '#/components/schemas/RfActor'
+        reason:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 500
+            pattern: \S
+          - type: 'null'
+        reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+            pattern: \S
+          - type: 'null'
+        occurred_at:
+          $ref: '#/components/schemas/UtcInstant'
+    RfHistoryList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfHistoryEntry'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+    RfRelatedRecord:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - id
+      - rf_line_id
+      - reference
+      - material_version
+      - state
+      properties:
+        kind:
+          enum:
+          - reservation
+          - hold
+          - actual_issue
+          - inventory_movement
+        id:
+          $ref: '#/components/schemas/Uuid'
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        reference:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 80
+            pattern: \S
+          - type: 'null'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: \S
+    RfRelatedList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RfRelatedRecord'
+        page:
+          $ref: '#/components/schemas/CataloguePage'
+  responses:
     CatalogueNotFound:
       description: chapter_not_found for unknown/foreign/inactive chapter or missing membership; otherwise resource_not_found
         uniformly for unknown/foreign/inaccessible resource, related ID, version or outcome within an admitted chapter.
@@ -8667,6 +12551,144 @@ components:
               - properties: {error: {properties: {code: {const: unavailable}}}}
           example: {error: {code: unavailable, message: Authentication service is unavailable.}, request_id: 50000000-0000-4000-8000-000000000001}
 
+    OpeningNotFound:
+      description: Uniform current chapter/record visibility denial. An absent accepted action is operation_not_found,
+        never proof of rollback during an in-flight attempt.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      type: string
+                      enum:
+                      - chapter_not_found
+                      - resource_not_found
+                      - operation_not_found
+    OpeningDenied:
+      description: Current full session, origin, scoped duty or required independent counter is absent. No protected
+        state or accepted action result.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      type: string
+                      enum:
+                      - mfa_incomplete
+                      - duty_denied
+                      - origin_denied
+                      - independence_required
+    OpeningConflict:
+      description: No partial source/stock/reference/result change. Preserve edits and reconcile authorized current
+        state. Accepted replay precedes new-intent stale/lock checks.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      type: string
+                      enum:
+                      - version_conflict
+                      - action_key_conflict
+                      - snapshot_stale
+                      - invalid_transition
+                      - invalid_source
+                      - source_incomplete
+                      - source_not_authorized
+                      - count_mismatch
+                      - baseline_already_posted
+                      - target_locked
+                      - evidence_missing
+                      - evidence_invalid
+                      - evidence_mismatch
+                      - acknowledgment_missing
+    OpeningSetupBlocked:
+      description: Missing/unapproved/non-effective required chapter inputs. Draft saving remains allowed.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required:
+            - error
+            - request_id
+            properties:
+              error:
+                type: object
+                additionalProperties: false
+                required:
+                - code
+                - message
+                - blockers
+                properties:
+                  code:
+                    const: setup_blocked
+                  message:
+                    type: string
+                    minLength: 1
+                    maxLength: 500
+                  blockers:
+                    type: array
+                    minItems: 1
+                    items:
+                      $ref: '#/components/schemas/SetupBlocker'
+              request_id:
+                $ref: '#/components/schemas/Uuid'
+    RfConflict:
+      description: Rejected attempt, no partial mutation or accepted key. Only current permitted RF may be included;
+        null for create/key conflicts without an admitted target. Inspect code/setup_blockers, retain input, refetch
+        and explicitly review before a new intent.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RfConflict'
+    RfDenied:
+      description: Origin/MFA/current duty denial, or independence_required when the admitted requester is the approver.
+        No protected record fields.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - origin_denied
+                      - mfa_incomplete
+                      - duty_denied
+                      - independence_required
   examples:
     RecoveryDelivery:
       value:
@@ -8750,6 +12772,24 @@ x-stage1-action-duties:
   - RF_APPROVER
   - INVENTORY
   - DISPATCH
+  ipc.read:
+  - INVENTORY
+  - INDEPENDENT_REVIEWER
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
+  ipc.count:
+  - INVENTORY
+  - INDEPENDENT_REVIEWER
+  opening_rm.read:
+  - INVENTORY
+  - RECEIVING
+  opening.result.read:
+  - INVENTORY
+  - INDEPENDENT_REVIEWER
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
   catalogue.read:
   - INVENTORY
   - RECEIVING
@@ -8806,7 +12846,6 @@ x-stage1-action-duties:
   - RECEIVING
   - DISPATCH
   - RF_APPROVER
-
 x-evidence-participants:
   checkEvidenceBinding:
     owner: Leader
@@ -8845,14 +12884,43 @@ x-catalogue-policy-values:
     schema:
       $ref: '#/components/schemas/CataloguePricePolicyValue'
 
+x-opening-inventory-participants:
+  prepareOpeningInventory:
+    owner: Efren
+    caller: Leader postOpeningRm
+    input:
+      $ref: '#/components/schemas/PrepareOpeningInventoryInput'
+    output:
+      $ref: '#/components/schemas/PrepareOpeningInventoryResult'
+    description: Internal synchronous validated opening-receipt participant, no public posting route. Ready stages
+      results only; Leader owns the outer MySQL commit. Current authority/setup, approved source, exact evidence,
+      source quantities and chapter uniqueness are fenced again at commit. See agreement.md ticket05.
+
+x-opening-policy-values:
+  ipc_authorization:
+    schema:
+      $ref: '#/components/schemas/IpcAuthorizationPolicyValue'
+    ownership: operational
+    subject_scope: ipc
+  valuation_rounding:
+    schema:
+      $ref: '#/components/schemas/OpeningValuationPolicyValue'
+    ownership: financial
+    subject_scope: chapter
+  reference_series:
+    schema:
+      $ref: '#/components/schemas/OpeningReferencePolicyValue'
+    ownership: operational
+    subject_scope: chapter
+
 x-rf-policy-values:
   rf_approval_route:
     subject_kind: chapter
     ownership: operational
     schema:
-      $ref: "#/components/schemas/RfApprovalRoutePolicyValue"
+      $ref: '#/components/schemas/RfApprovalRoutePolicyValue'
   reference_series:
     subject_kind: chapter
     ownership: operational
     schema:
-      $ref: "#/components/schemas/RfReferenceSeriesPolicyValue"
+      $ref: '#/components/schemas/RfReferenceSeriesPolicyValue'

@@ -224,7 +224,9 @@ def main():
                     case.get("input_valid", True))
         if procedure_id == "recordPolicy" and case.get("input_valid", True):
             policy = case["input"]["input"]
-            policy_definition = document.get("x-catalogue-policy-values", {}).get(policy["setting_key"])
+            catalogue_policy = document.get("x-catalogue-policy-values", {}).get(policy["setting_key"])
+            opening_policy = document.get("x-opening-policy-values", {}).get(policy["setting_key"])
+            policy_definition = catalogue_policy or opening_policy
             rf_policy = document.get("x-rf-policy-values", {}).get(policy["setting_key"])
             if rf_policy and (policy["setting_key"] == "rf_approval_route" or
                               policy["value_schema_reference"] == rf_policy["schema"]["$ref"]):
@@ -233,10 +235,11 @@ def main():
                 value_pointer = policy_definition["schema"]["$ref"]
                 if policy["value_schema_reference"] != value_pointer:
                     raise ValueError(f"{name}: policy value reference differs from canonical setting schema")
-                chapter_policy = policy_definition.get("subject_kind") == "chapter"
+                subject_scope = policy_definition.get("subject_scope", policy_definition.get("subject_kind"))
+                chapter_policy = subject_scope == "chapter"
                 if ((policy["subject_id"] is None) != chapter_policy or
                         policy["ownership"] != policy_definition["ownership"]):
-                    raise ValueError(f"{name}: policy subject/ownership does not match its catalogue setting")
+                    raise ValueError(f"{name}: policy subject/ownership does not match its setting")
                 value = json.loads(policy["value"])
                 if json.dumps(value, sort_keys=True, separators=(",", ":")) != policy["value"]:
                     raise ValueError(f"{name}: policy value is not canonical compact JSON")
@@ -249,9 +252,13 @@ def main():
             procedure_coverage.add(procedure_id)
     if procedure_coverage != procedures.keys():
         raise ValueError(f"Missing worked controlled success: {sorted(procedures.keys() - procedure_coverage)}")
-    participants = document.get("x-evidence-participants", {})
+    evidence_participants = document.get("x-evidence-participants", {})
+    inventory_participants = document.get("x-opening-inventory-participants", {})
+    if evidence_participants.keys() & inventory_participants.keys():
+        raise ValueError("Duplicate internal participant ID")
+    participants = evidence_participants | inventory_participants
     participant_coverage = set()
-    for case in examples.get("participant_cases", []):
+    for case in examples.get("participant_cases", []) + examples.get("opening_inventory_cases", []):
         name = case["name"]
         if name in names:
             raise ValueError(f"Duplicate consumer case: {name}")
@@ -264,12 +271,13 @@ def main():
         if case["output"]["outcome"] == "ready" and case.get("input_valid", True):
             participant_coverage.add(participant_id)
     if participant_coverage != participants.keys():
-        raise ValueError(f"Missing worked evidence success: {sorted(participants.keys() - participant_coverage)}")
+        raise ValueError(f"Missing worked participant success: {sorted(participants.keys() - participant_coverage)}")
     print("Versions: " + ", ".join(f"{name}={version(name)}" for name in
                                     ("openapi-spec-validator", "jsonschema", "PyYAML")))
     print(f"PASS OpenAPI 3.1.1; local references; {len(operations)} operations; "
           f"{len(procedures)} controlled procedures; {len(names)} consumer cases; "
-          f"{len(participants)} evidence participants; {checked} schema/example checks")
+          f"{len(evidence_participants)} evidence participants; "
+          f"{len(inventory_participants)} opening Inventory participants; {checked} schema/example checks")
     if args.invalid_example:
         pointer, _ = operations["completeRecoveryChallenge"]
         check_value(pointer + "/requestBody/content/application~1json/schema",
