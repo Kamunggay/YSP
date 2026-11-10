@@ -6968,12 +6968,13 @@ paths:
   /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/actual-issues:
     post:
       operationId: prepareActualIssue
-      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read']
+      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: issue.prepare
       summary: prepareActualIssue
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Exact same-origin Origin, session+CSRF and X-Action-Key required. Full current individual session/MFA,
         chapter membership, action and requesting-unit/record scope required on every call, including result replay/lookup.
         Immutable chapter in URL; no body on GET. Uniform404 for foreign/unknown identities after admission. No-store
@@ -7032,12 +7033,13 @@ paths:
               $ref: '#/components/schemas/PrepareActualIssue'
     get:
       operationId: listActualIssues
-      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read']
+      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: issue.prepare
       summary: listActualIssues
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Full current individual session/MFA, chapter membership, action and requesting-unit/record scope
         required on every call, including result replay/lookup. Immutable chapter in URL; no body on GET. Uniform404
         for foreign/unknown identities after admission. No-store all responses. New specification only; absent in
@@ -7076,12 +7078,13 @@ paths:
   /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}:
     get:
       operationId: readActualIssue
-      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read']
+      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: issue.prepare
       summary: readActualIssue
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Full current individual session/MFA, chapter membership, action and requesting-unit/record scope
         required on every call, including result replay/lookup. Immutable chapter in URL; no body on GET. Uniform404
         for foreign/unknown identities after admission. No-store all responses. New specification only; absent in
@@ -7117,12 +7120,13 @@ paths:
           $ref: '#/components/responses/Unavailable'
     put:
       operationId: reviseActualIssue
-      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read']
+      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: issue.prepare
       summary: reviseActualIssue
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Exact same-origin Origin, session+CSRF and X-Action-Key required. Full current individual session/MFA,
         chapter membership, action and requesting-unit/record scope required on every call, including result replay/lookup.
         Immutable chapter in URL; no body on GET. Uniform404 for foreign/unknown identities after admission. No-store
@@ -7184,12 +7188,13 @@ paths:
   /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/print:
     get:
       operationId: printActualIssue
-      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read']
+      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: issue.prepare
       summary: printActualIssue
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: Full current individual session/MFA, chapter membership, action and requesting-unit/record scope
         required on every call, including result replay/lookup. Immutable chapter in URL; no body on GET. Uniform404
         for foreign/unknown identities after admission. No-store all responses. New specification only; absent in
@@ -7235,6 +7240,7 @@ paths:
       x-existence: new
       x-required-action: issue.prepare
       summary: matchActualIssueAcknowledgment
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Exact same-origin Origin, session+CSRF and X-Action-Key required. Full current individual session/MFA,
         chapter membership, action and requesting-unit/record scope required on every call, including result replay/lookup.
         Immutable chapter in URL; no body on GET. Uniform404 for foreign/unknown identities after admission. No-store
@@ -7302,6 +7308,7 @@ paths:
       x-existence: new
       x-required-action: issue.post
       summary: postActualIssue
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Exact same-origin Origin, session+CSRF and X-Action-Key required. Full current individual session/MFA,
         chapter membership, action and requesting-unit/record scope required on every call, including result replay/lookup.
         Immutable chapter in URL; no body on GET. Uniform404 for foreign/unknown identities after admission. No-store
@@ -7364,12 +7371,13 @@ paths:
   /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/history:
     get:
       operationId: listActualIssueHistory
-      x-required-actions: ['history.read', 'rf.read', 'stock.read', 'issue.prepare']
+      x-required-actions: ['history.read', 'rf.read', 'stock.read', 'issue.prepare', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: history.read
       summary: listActualIssueHistory
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Full current individual session/MFA, chapter membership, action and requesting-unit/record scope
         required on every call, including result replay/lookup. Immutable chapter in URL; no body on GET. Uniform404
         for foreign/unknown identities after admission. No-store all responses. New specification only; absent in
@@ -7408,12 +7416,13 @@ paths:
   /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/movements:
     get:
       operationId: listActualIssueMovements
-      x-required-actions: ['stock.read', 'rf.read', 'issue.prepare']
+      x-required-actions: ['stock.read', 'rf.read', 'issue.prepare', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: stock.read
       summary: listActualIssueMovements
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Full current individual session/MFA, chapter membership, action and requesting-unit/record scope
         required on every call, including result replay/lookup. Immutable chapter in URL; no body on GET. Uniform404
         for foreign/unknown identities after admission. No-store all responses. New specification only; absent in
@@ -7452,12 +7461,13 @@ paths:
   /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/related:
     get:
       operationId: listActualIssueRelatedRecords
-      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read']
+      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: issue.prepare
       summary: listActualIssueRelatedRecords
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Full current individual session/MFA, chapter membership, action and requesting-unit/record scope
         required on every call, including result replay/lookup. Immutable chapter in URL; no body on GET. Uniform404
         for foreign/unknown identities after admission. No-store all responses. New specification only; absent in
@@ -7502,6 +7512,7 @@ paths:
       x-existence: new
       x-required-action: issue.post
       summary: readIssueReconciliation
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Full current individual session/MFA, chapter membership, action and requesting-unit/record scope
         required on every call, including result replay/lookup. Immutable chapter in URL; no body on GET. Uniform404
         for foreign/unknown identities after admission. No-store all responses. New specification only; absent in
@@ -7544,6 +7555,7 @@ paths:
       x-existence: new
       x-required-action: issue.post
       summary: recordIssueReconciliation
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: 'Exact same-origin Origin, session+CSRF and X-Action-Key required. Full current individual session/MFA,
         chapter membership, action and requesting-unit/record scope required on every call, including result replay/lookup.
         Immutable chapter in URL; no body on GET. Uniform404 for foreign/unknown identities after admission. No-store
@@ -7605,12 +7617,13 @@ paths:
   /api/v1/chapters/{chapter_id}/actual-issue-operations/by-key:
     get:
       operationId: findActualIssueOperation
-      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read']
+      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: issue.prepare
       summary: findActualIssueOperation
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: Full current individual session/MFA, chapter membership, action and requesting-unit/record scope
         required on every call, including result replay/lookup. Immutable chapter in URL; no body on GET. Uniform404
         for foreign/unknown identities after admission. No-store all responses. New specification only; absent in
@@ -7650,12 +7663,13 @@ paths:
   /api/v1/chapters/{chapter_id}/actual-issue-operations/{operation_id}:
     get:
       operationId: readActualIssueOperation
-      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read']
+      x-required-actions: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read']
       tags:
       - Actual issue
       x-existence: new
       x-required-action: issue.prepare
       summary: readActualIssueOperation
+      x-evidence-disclosure: evidence.read on all full snapshots; additionally history.read for embedded historical or superseded evidence, including receipts/conflicts; check before serialization.
       description: Full current individual session/MFA, chapter membership, action and requesting-unit/record scope
         required on every call, including result replay/lookup. Immutable chapter in URL; no body on GET. Uniform404
         for foreign/unknown identities after admission. No-store all responses. New specification only; absent in

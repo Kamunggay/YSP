@@ -7073,6 +7073,547 @@ cases:
             code: invalid_type
             message: Use positive decimal string at approved unit scale.
     request_valid: false
+  - name: issue08-reconciled-unposted-refreshed-version-retry
+    operationId: postActualIssue
+    before: 'Independent certain-unposted recovery branch: original post action key has no accepted/inflight result
+      under shared fences; authorized reconciliation advanced issue3 to4 with retry_authorized. Fresh explicit post
+      uses expected_version4/new key, unchanged material2/recipient/ack/ranges and same physical four; never another
+      handover.'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        issue_id: 98000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 4
+        expected_material_version: 2
+        expected_rf_version: 5
+        expected_rf_material_version: 2
+        expected_rf_progress_version: 2
+        acknowledgment_id: 98000000-0000-4000-8000-000000000063
+        current_sources:
+        - reservation_id: 98000000-0000-4000-8000-000000000040
+          expected_version: 1
+          expected_material_version: 1
+          targets:
+          - stock_lot_id: 95000000-0000-4000-8000-000000000090
+            basis_segment_id: 95000000-0000-4000-8000-000000000100
+            offset_quantity: '0'
+            quantity: '4'
+            expected_lot_material_version: 2
+            expected_stock_version: 3
+      headers:
+        X-Action-Key: 98000000-0000-4000-8000-000000001901
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 98000000-0000-4000-8000-000000002901
+          operation_name: postActualIssue
+          action_key: 98000000-0000-4000-8000-000000001901
+          actor_id: 98000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-10T03:12:00.000000Z'
+          http_status: 200
+          result:
+            id: 98000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rf_id: 81000000-0000-4000-8000-000000000001
+            reference: CEBISAR-2026-000001
+            version: 5
+            material_version: 2
+            status: posted
+            material:
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              issue_id: 98000000-0000-4000-8000-000000000010
+              reference: CEBISAR-2026-000001
+              reference_policy_id: 98000000-0000-4000-8000-000000000090
+              reference_policy_version: 1
+              rf_id: 81000000-0000-4000-8000-000000000001
+              rf_reference: CEB-RF-2026-000001
+              rf_material_version: 2
+              approval:
+                actor:
+                  user_id: 10000001-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 86000001-0000-4000-8000-000000000001
+                  duty_grant_id: 87000001-0000-4000-8000-000000000001
+                  duty: RF_APPROVER
+                  unit_id: 85000000-0000-4000-8000-000000000001
+                  acted_at: '2026-11-09T07:00:00.000000Z'
+                material_version: 2
+                route_policy_id: 88000000-0000-4000-8000-000000000001
+                route_policy_version: 1
+                alternate_authorization_id: null
+              issuing_officer:
+                user_id: 98000000-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 98000000-0000-4000-8000-000000000002
+                duty_grant_id: 98000000-0000-4000-8000-000000000003
+                duty: INVENTORY
+                unit_id: null
+                acted_at: '2026-11-10T03:00:00.000000Z'
+              recipient:
+                user_id: 10000000-0000-4000-8000-000000000001
+                membership_id: 86000000-0000-4000-8000-000000000001
+                duty_grant_id: 87000000-0000-4000-8000-000000000001
+                requesting_unit_id: 85000000-0000-4000-8000-000000000001
+                display_name: Synthetic committee recipient
+              lines:
+              - rf_line_id: 82000000-0000-4000-8000-000000000001
+                reservation_id: 98000000-0000-4000-8000-000000000040
+                reservation_material_version: 1
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                historical_variant_label: Example shirt / M
+                location_id: 95000000-0000-4000-8000-000000000053
+                source:
+                  kind: ipc_rm
+                  source_id: 95000000-0000-4000-8000-000000000010
+                  source_reference: CEB-IPC-000001
+                  source_material_version: 2
+                  accepted_rm_id: 95000000-0000-4000-8000-000000000011
+                  accepted_rm_reference: CEB-RM-000001
+                  accepted_rm_version: 2
+                  donor_id: null
+                ranges:
+                - stock_lot_id: 95000000-0000-4000-8000-000000000090
+                  basis_segment_id: 95000000-0000-4000-8000-000000000100
+                  offset_quantity: '0'
+                  quantity: '4'
+                quantity: '4'
+              handed_over_at: '2026-11-10T03:05:00.000000Z'
+              acknowledged_at: '2026-11-10T03:06:00.000000Z'
+              recipient_accepts_partial: true
+            snapshot:
+              target:
+                purpose: actual_issue
+                record_id: 98000000-0000-4000-8000-000000000010
+              material_version: 2
+              sha256: c587d51fd00115cb740a37f179a0292a30d7ee04e9e1b17fa5f05893888cfc02
+            acknowledgment:
+              acknowledgment_id: 98000000-0000-4000-8000-000000000063
+              matched_by: 98000000-0000-4000-8000-000000000001
+              matched_at: '2026-11-10T03:08:00.000000Z'
+              recipient_id: 10000000-0000-4000-8000-000000000001
+              acknowledged_at: '2026-11-10T03:06:00.000000Z'
+              snapshot:
+                target:
+                  purpose: actual_issue
+                  record_id: 98000000-0000-4000-8000-000000000010
+                material_version: 2
+                sha256: c587d51fd00115cb740a37f179a0292a30d7ee04e9e1b17fa5f05893888cfc02
+              bytes:
+                evidence_id: 98000000-0000-4000-8000-000000000060
+                version_id: 98000000-0000-4000-8000-000000000061
+                attachments:
+                - attachment_id: 98000000-0000-4000-8000-000000000062
+                  sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            created_by:
+              user_id: 98000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 98000000-0000-4000-8000-000000000002
+              duty_grant_id: 98000000-0000-4000-8000-000000000003
+              duty: INVENTORY
+              unit_id: null
+              acted_at: '2026-11-10T03:00:00.000000Z'
+            created_at: '2026-11-10T03:00:00.000000Z'
+            entered_at: '2026-11-10T03:07:00.000000Z'
+            updated_at: '2026-11-10T03:12:00.000000Z'
+            handover_fence: committed
+            posting:
+              id: 98000000-0000-4000-8000-000000000071
+              issue_id: 98000000-0000-4000-8000-000000000010
+              rf_id: 81000000-0000-4000-8000-000000000001
+              rf_version: 6
+              rf_progress_version: 3
+              rf_fulfillment: partially_issued
+              posted_at: '2026-11-10T03:12:00.000000Z'
+              posted_by:
+                user_id: 98000000-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 98000000-0000-4000-8000-000000000002
+                duty_grant_id: 98000000-0000-4000-8000-000000000003
+                duty: INVENTORY
+                unit_id: null
+                acted_at: '2026-11-10T03:12:00.000000Z'
+              acknowledgment_id: 98000000-0000-4000-8000-000000000063
+              movements:
+              - id: 98000000-0000-4000-8000-000000000070
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                issue_id: 98000000-0000-4000-8000-000000000010
+                issue_reference: CEBISAR-2026-000001
+                issue_material_version: 2
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                reservation_id: 98000000-0000-4000-8000-000000000040
+                kind: internal_issue
+                direction: out
+                source:
+                  kind: ipc_rm
+                  source_id: 95000000-0000-4000-8000-000000000010
+                  source_reference: CEB-IPC-000001
+                  source_material_version: 2
+                  accepted_rm_id: 95000000-0000-4000-8000-000000000011
+                  accepted_rm_reference: CEB-RM-000001
+                  accepted_rm_version: 2
+                  donor_id: null
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                location_id: 95000000-0000-4000-8000-000000000053
+                ranges:
+                - stock_lot_id: 95000000-0000-4000-8000-000000000090
+                  basis_segment_id: 95000000-0000-4000-8000-000000000100
+                  offset_quantity: '0'
+                  quantity: '4'
+                quantity: '4'
+                handed_over_at: '2026-11-10T03:05:00.000000Z'
+                posted_at: '2026-11-10T03:12:00.000000Z'
+                posted_by:
+                  user_id: 98000000-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 98000000-0000-4000-8000-000000000002
+                  duty_grant_id: 98000000-0000-4000-8000-000000000003
+                  duty: INVENTORY
+                  unit_id: null
+                  acted_at: '2026-11-10T03:12:00.000000Z'
+              lines:
+              - rf_line_id: 82000000-0000-4000-8000-000000000001
+                reservation_id: 98000000-0000-4000-8000-000000000040
+                consumed_quantity: '4'
+                progress:
+                  approved_quantity: '10'
+                  issued_quantity: '4'
+                  reserved_quantity: '2'
+                  blocked_reserved_quantity: '0'
+                  canceled_quantity: '0'
+                  remaining_quantity: '6'
+                  unreserved_quantity: '4'
+                reservation_version: 2
+                reservation_material_version: 1
+                stock_lot_ids:
+                - 95000000-0000-4000-8000-000000000090
+            reconciliation:
+              id: 98000000-0000-4000-8000-000000000130
+              issue_id: 98000000-0000-4000-8000-000000000010
+              observed_by:
+                user_id: 98000000-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 98000000-0000-4000-8000-000000000002
+                duty_grant_id: 98000000-0000-4000-8000-000000000003
+                duty: INVENTORY
+                unit_id: null
+                acted_at: '2026-11-10T03:11:00.000000Z'
+              observed_at: '2026-11-10T03:11:00.000000Z'
+              finding: handed_over_unposted
+              reason: Accountable paper/recipient and server outcome reconciliation; no accepted or inflight post.
+              evidence:
+                evidence_id: 98000000-0000-4000-8000-000000000060
+                version_id: 98000000-0000-4000-8000-000000000061
+                attachments:
+                - attachment_id: 98000000-0000-4000-8000-000000000062
+                  sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+              accepted_post_operation_id: null
+              retry_permitted: true
+            setup_blockers: []
+  - name: issue08-final-four-completes-approved-ten
+    operationId: postActualIssue
+    before: 'Joined complete-success continuation: after issued4+2, remaining4; explicitly reserve remaining eligible[6,10)
+      into new reservation41 (RF8/progress5, stock6, lotmaterial4). Third accepted handover4 has its own issue12/reference3/material2/ready
+      bytes/ack76. Atomic post leaves onhand2,reserved0,available2,cumulativeissued10,remaining0,RFfulfilled.'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        issue_id: 98000000-0000-4000-8000-000000000012
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        expected_rf_version: 8
+        expected_rf_material_version: 2
+        expected_rf_progress_version: 5
+        acknowledgment_id: 98000000-0000-4000-8000-000000000076
+        current_sources:
+        - reservation_id: 98000000-0000-4000-8000-000000000041
+          expected_version: 1
+          expected_material_version: 1
+          targets:
+          - stock_lot_id: 95000000-0000-4000-8000-000000000090
+            basis_segment_id: 95000000-0000-4000-8000-000000000100
+            offset_quantity: '6'
+            quantity: '4'
+            expected_lot_material_version: 4
+            expected_stock_version: 6
+      headers:
+        X-Action-Key: 98000000-0000-4000-8000-000000001902
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 98000000-0000-4000-8000-000000002902
+          operation_name: postActualIssue
+          action_key: 98000000-0000-4000-8000-000000001902
+          actor_id: 98000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-10T05:09:00.000000Z'
+          http_status: 200
+          result:
+            id: 98000000-0000-4000-8000-000000000012
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rf_id: 81000000-0000-4000-8000-000000000001
+            reference: CEBISAR-2026-000003
+            version: 4
+            material_version: 2
+            status: posted
+            material:
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              issue_id: 98000000-0000-4000-8000-000000000012
+              reference: CEBISAR-2026-000003
+              reference_policy_id: 98000000-0000-4000-8000-000000000090
+              reference_policy_version: 1
+              rf_id: 81000000-0000-4000-8000-000000000001
+              rf_reference: CEB-RF-2026-000001
+              rf_material_version: 2
+              approval:
+                actor:
+                  user_id: 10000001-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 86000001-0000-4000-8000-000000000001
+                  duty_grant_id: 87000001-0000-4000-8000-000000000001
+                  duty: RF_APPROVER
+                  unit_id: 85000000-0000-4000-8000-000000000001
+                  acted_at: '2026-11-09T07:00:00.000000Z'
+                material_version: 2
+                route_policy_id: 88000000-0000-4000-8000-000000000001
+                route_policy_version: 1
+                alternate_authorization_id: null
+              issuing_officer:
+                user_id: 98000000-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 98000000-0000-4000-8000-000000000002
+                duty_grant_id: 98000000-0000-4000-8000-000000000003
+                duty: INVENTORY
+                unit_id: null
+                acted_at: '2026-11-10T05:00:00.000000Z'
+              recipient:
+                user_id: 10000000-0000-4000-8000-000000000001
+                membership_id: 86000000-0000-4000-8000-000000000001
+                duty_grant_id: 87000000-0000-4000-8000-000000000001
+                requesting_unit_id: 85000000-0000-4000-8000-000000000001
+                display_name: Synthetic committee recipient
+              lines:
+              - rf_line_id: 82000000-0000-4000-8000-000000000001
+                reservation_id: 98000000-0000-4000-8000-000000000041
+                reservation_material_version: 1
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                historical_variant_label: Example shirt / M
+                location_id: 95000000-0000-4000-8000-000000000053
+                source:
+                  kind: ipc_rm
+                  source_id: 95000000-0000-4000-8000-000000000010
+                  source_reference: CEB-IPC-000001
+                  source_material_version: 2
+                  accepted_rm_id: 95000000-0000-4000-8000-000000000011
+                  accepted_rm_reference: CEB-RM-000001
+                  accepted_rm_version: 2
+                  donor_id: null
+                ranges:
+                - stock_lot_id: 95000000-0000-4000-8000-000000000090
+                  basis_segment_id: 95000000-0000-4000-8000-000000000100
+                  offset_quantity: '6'
+                  quantity: '4'
+                quantity: '4'
+              handed_over_at: '2026-11-10T05:05:00.000000Z'
+              acknowledged_at: '2026-11-10T05:06:00.000000Z'
+              recipient_accepts_partial: true
+            snapshot:
+              target:
+                purpose: actual_issue
+                record_id: 98000000-0000-4000-8000-000000000012
+              material_version: 2
+              sha256: 573b1467f5d86a6595e6502ef673b0dd3f5fc567ba95f5a17bf00f10fb93639e
+            acknowledgment:
+              acknowledgment_id: 98000000-0000-4000-8000-000000000076
+              matched_by: 98000000-0000-4000-8000-000000000001
+              matched_at: '2026-11-10T05:08:00.000000Z'
+              recipient_id: 10000000-0000-4000-8000-000000000001
+              acknowledged_at: '2026-11-10T05:06:00.000000Z'
+              snapshot:
+                target:
+                  purpose: actual_issue
+                  record_id: 98000000-0000-4000-8000-000000000012
+                material_version: 2
+                sha256: 573b1467f5d86a6595e6502ef673b0dd3f5fc567ba95f5a17bf00f10fb93639e
+              bytes:
+                evidence_id: 98000000-0000-4000-8000-000000000077
+                version_id: 98000000-0000-4000-8000-000000000078
+                attachments:
+                - attachment_id: 98000000-0000-4000-8000-000000000079
+                  sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+            created_by:
+              user_id: 98000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 98000000-0000-4000-8000-000000000002
+              duty_grant_id: 98000000-0000-4000-8000-000000000003
+              duty: INVENTORY
+              unit_id: null
+              acted_at: '2026-11-10T05:00:00.000000Z'
+            created_at: '2026-11-10T05:00:00.000000Z'
+            entered_at: '2026-11-10T05:07:00.000000Z'
+            updated_at: '2026-11-10T05:09:00.000000Z'
+            handover_fence: committed
+            posting:
+              id: 98000000-0000-4000-8000-000000000083
+              issue_id: 98000000-0000-4000-8000-000000000012
+              rf_id: 81000000-0000-4000-8000-000000000001
+              rf_version: 9
+              rf_progress_version: 6
+              rf_fulfillment: fulfilled
+              posted_at: '2026-11-10T05:09:00.000000Z'
+              posted_by:
+                user_id: 98000000-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 98000000-0000-4000-8000-000000000002
+                duty_grant_id: 98000000-0000-4000-8000-000000000003
+                duty: INVENTORY
+                unit_id: null
+                acted_at: '2026-11-10T05:09:00.000000Z'
+              acknowledgment_id: 98000000-0000-4000-8000-000000000076
+              movements:
+              - id: 98000000-0000-4000-8000-000000000084
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                issue_id: 98000000-0000-4000-8000-000000000012
+                issue_reference: CEBISAR-2026-000003
+                issue_material_version: 2
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                reservation_id: 98000000-0000-4000-8000-000000000041
+                kind: internal_issue
+                direction: out
+                source:
+                  kind: ipc_rm
+                  source_id: 95000000-0000-4000-8000-000000000010
+                  source_reference: CEB-IPC-000001
+                  source_material_version: 2
+                  accepted_rm_id: 95000000-0000-4000-8000-000000000011
+                  accepted_rm_reference: CEB-RM-000001
+                  accepted_rm_version: 2
+                  donor_id: null
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                location_id: 95000000-0000-4000-8000-000000000053
+                ranges:
+                - stock_lot_id: 95000000-0000-4000-8000-000000000090
+                  basis_segment_id: 95000000-0000-4000-8000-000000000100
+                  offset_quantity: '6'
+                  quantity: '4'
+                quantity: '4'
+                handed_over_at: '2026-11-10T05:05:00.000000Z'
+                posted_at: '2026-11-10T05:09:00.000000Z'
+                posted_by:
+                  user_id: 98000000-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 98000000-0000-4000-8000-000000000002
+                  duty_grant_id: 98000000-0000-4000-8000-000000000003
+                  duty: INVENTORY
+                  unit_id: null
+                  acted_at: '2026-11-10T05:09:00.000000Z'
+              lines:
+              - rf_line_id: 82000000-0000-4000-8000-000000000001
+                reservation_id: 98000000-0000-4000-8000-000000000041
+                consumed_quantity: '4'
+                progress:
+                  approved_quantity: '10'
+                  issued_quantity: '10'
+                  reserved_quantity: '0'
+                  blocked_reserved_quantity: '0'
+                  canceled_quantity: '0'
+                  remaining_quantity: '0'
+                  unreserved_quantity: '0'
+                reservation_version: 2
+                reservation_material_version: 1
+                stock_lot_ids:
+                - 95000000-0000-4000-8000-000000000090
+            reconciliation: null
+            setup_blockers: []
+  - name: issue08-rf-ten-issued-fulfilled
+    operationId: readInternalRf
+    before: 'Joined complete-success continuation: after issued4+2, remaining4; explicitly reserve remaining eligible[6,10)
+      into new reservation41 (RF8/progress5, stock6, lotmaterial4). Third accepted handover4 has its own issue12/reference3/material2/ready
+      bytes/ack76. Atomic post leaves onhand2,reserved0,available2,cumulativeissued10,remaining0,RFfulfilled.'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: approved
+          version: 9
+          material_version: 2
+          progress_version: 6
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            requested_quantity: '10'
+            identity_at_approval:
+              variant_id: 95000000-0000-4000-8000-000000000051
+              variant_material_version: 1
+              item_id: 95000000-0000-4000-8000-000000000050
+              item_code: SHIRT
+              variant_code: SHIRT-M
+              display_name: Example shirt / M
+              unit_id: 95000000-0000-4000-8000-000000000052
+              unit_code: EA
+              unit_material_version: 1
+              quantity_scale: 0
+            progress:
+              approved_quantity: '10'
+              issued_quantity: '10'
+              reserved_quantity: '0'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '0'
+              unreserved_quantity: '0'
+          approval:
+            actor:
+              user_id: 10000001-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000001-0000-4000-8000-000000000001
+              duty_grant_id: 87000001-0000-4000-8000-000000000001
+              duty: RF_APPROVER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            material_version: 2
+            route_policy_id: 88000000-0000-4000-8000-000000000001
+            route_policy_version: 1
+            alternate_authorization_id: null
+          fulfillment: fulfilled
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-10T05:09:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
   - name: real-scaffold-connected
     operationId: readScaffoldHealth
     response: {status: '200', body: {database: connected}}
