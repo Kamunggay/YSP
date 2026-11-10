@@ -33,6 +33,143 @@ def read_yaml(path):
     return yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueKeysLoader)
 
 
+def validate_notifications(root, document, examples, operations):
+    """Check the separate event agreement against its schemas and canonical HTTP reads."""
+    agreement = read_yaml(root / "events.yaml")
+    schema = read_yaml(root / "events.schema.yaml")
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    definitions = agreement["definitions"]
+    schema_names = {part["$ref"].removeprefix("#/$defs/") for part in schema["oneOf"]}
+    if {item["schema"].removeprefix("#/$defs/") for item in definitions.values()} != schema_names:
+        raise ValueError("Event registry/schema coverage differs")
+    methods = {operation["operationId"]: method
+               for item in document["paths"].values() for method, operation in item.items()
+               if isinstance(operation, dict) and "operationId" in operation}
+    for name, definition in definitions.items():
+        short = definition["schema"].removeprefix("#/$defs/")
+        payload = schema["$defs"][short]["properties"]
+        if payload["event_name"] != {"const": name} or not name.endswith(".v1"):
+            raise ValueError(f"Event name/version mismatch: {name}")
+        if definition["channel"] not in {"session", "chapter"}:
+            raise ValueError(f"Unknown event channel: {name}")
+        for operation_id in definition["refresh_operations"]:
+            if methods.get(operation_id) != "get":
+                raise ValueError(f"Event refresh is not a canonical safe read: {operation_id}")
+        if definition["subject_schema"] is not None:
+            subject = document["components"]["schemas"][definition["subject_schema"]]
+            for field in ("id_field", "resource_version_field", "material_version_field"):
+                path = definition[field]
+                if path is None:
+                    continue
+                node = subject
+                for part in path.split("."):
+                    node = node["properties"][part]
+                if field != "id_field" and node.get("type") != "integer":
+                    raise ValueError(f"Event version differs from HTTP subject: {name}")
+    dispositions = agreement["operation_disposition"]
+    procedures = agreement["procedure_disposition"]
+    if dispositions.keys() != operations.keys():
+        raise ValueError("Event disposition does not cover exact HTTP operation inventory")
+    if procedures.keys() != document.get("x-controlled-procedures", {}).keys():
+        raise ValueError("Event disposition does not cover controlled procedure inventory")
+    emitted = set()
+    for operation_id, disposition in (dispositions | procedures).items():
+        for name in disposition["events"]:
+            if name not in definitions:
+                raise ValueError(f"Undefined emitted event: {operation_id}")
+            emitted.add(name)
+        if not disposition["events"] and not (disposition.get("reason") or disposition.get("when")):
+            raise ValueError(f"Missing no-notification reason: {operation_id}")
+        if methods.get(operation_id) == "get" and disposition["events"]:
+            raise ValueError(f"Safe read cannot emit a committed change: {operation_id}")
+    if emitted != definitions.keys():
+        raise ValueError("Event definitions include an undispositioned subject")
+    http_cases = {case["name"]: case for case in examples["cases"]}
+    positive, negative, names = set(), set(), set()
+    for case in agreement["examples"]:
+        if case["name"] in names:
+            raise ValueError("Duplicate event example")
+        names.add(case["name"])
+        name = case["definition"]
+        if name not in definitions or case["payload"].get("event_name") != name:
+            raise ValueError(f"Event example identity mismatch: {case['name']}")
+        valid = validator.is_valid(case["payload"])
+        if valid != case["valid"]:
+            raise ValueError(f"Event example validation mismatch: {case['name']}")
+        if "current_http_case" in case:
+            current = http_cases[case["current_http_case"]]
+            if (not current["response"]["status"].startswith("2") or
+                    current["operationId"] not in definitions[name]["refresh_operations"]):
+                raise ValueError(f"Notice binding is not an authorized current read: {case['name']}")
+            subject = current["response"]["body"]["data"]
+            for payload_field, subject_field in (
+                    ("resource_id", "id_field"), ("resource_version", "resource_version_field"),
+                    ("material_version", "material_version_field")):
+                field = definitions[name][subject_field]
+                node = subject
+                if field is not None:
+                    for part in field.split("."):
+                        node = node[part]
+                else:
+                    node = None
+                if case["payload"][payload_field] != node:
+                    raise ValueError(f"Notice version/identity differs from current read: {case['name']}")
+            if case["payload"]["chapter_id"] != subject["chapter_id"]:
+                raise ValueError(f"Notice chapter differs from current read: {case['name']}")
+        (positive if valid else negative).add(name)
+    if positive != definitions.keys() or negative != definitions.keys():
+        raise ValueError("Every event needs valid and rejected examples")
+    case_names = {case["name"] for case in examples["cases"]}
+    scenarios = set()
+    for scenario in agreement["scenarios"]:
+        if scenario["name"] in scenarios:
+            raise ValueError("Duplicate notification scenario")
+        scenarios.add(scenario["name"])
+        if not set(scenario["http_cases"]) <= case_names or not set(scenario["events"]) <= definitions.keys():
+            raise ValueError(f"Unknown scenario HTTP case/event: {scenario['name']}")
+        if not set(scenario.get("notice_examples", [])) <= names:
+            raise ValueError(f"Unknown scenario notice example: {scenario['name']}")
+        if "principal_case" in scenario:
+            principal = http_cases[scenario["principal_case"]]["response"]["body"]["data"]
+            context = http_cases[scenario["context_case"]]["response"]["body"]["data"]
+            access = http_cases[scenario["access_case"]]["response"]["body"]["data"]
+            memberships = http_cases[scenario["membership_case"]]["response"]["body"]["data"]
+            if (principal["state"] != "authenticated" or
+                    principal["user"]["id"] != context["user_id"] or
+                    context["user_id"] != access["user_id"] or
+                    context["membership"] not in memberships or
+                    context["membership"]["chapter"]["id"] != access["chapter_id"]):
+                raise ValueError(f"Reconnect principal/current authority differs: {scenario['name']}")
+            action_states = {action["action"]: action["state"] for action in access["actions"]}
+            for case_name in scenario["http_cases"]:
+                current = http_cases[case_name]
+                if not current["response"]["status"].startswith("2"):
+                    continue
+                chapter = current.get("request", {}).get("path", {}).get("chapter_id")
+                if chapter is not None and chapter != access["chapter_id"]:
+                    raise ValueError(f"Reconnect reads another chapter: {case_name}")
+                _, operation = operations[current["operationId"]]
+                required_action = operation.get("x-required-action", "")
+                for action in required_action.split(" AND "):
+                    if action and action_states.get(action) == "duty_denied":
+                        raise ValueError(f"Reconnect read contradicts current duties: {case_name}")
+                if current["operationId"] in {"authorizeSessionNotifications", "authorizeChapterNotifications"}:
+                    channel = current["request"]["body"]["channel_name"]
+                    prefix = "private-stage1."
+                    if chapter is not None:
+                        prefix += f"chapter.{chapter}."
+                    if channel != prefix + "user." + principal["user"]["id"]:
+                        raise ValueError(f"Reconnect authorizes another user: {case_name}")
+    required = {"committed-change", "failed-command", "duplicate-or-delayed", "missed-event-reconnect",
+                "chapter-change", "revocation", "disabled-or-other-user", "preserved-edit"}
+    if not required <= scenarios:
+        raise ValueError("Missing required notification/reconnect scenario")
+    print(f"PASS {len(definitions)} exact events; {len(names)} event examples; "
+          f"{len(dispositions)} HTTP/{len(procedures)} procedure dispositions; "
+          f"{len(scenarios)} worked notification scenarios")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--invalid-example", action="store_true")
@@ -288,6 +425,7 @@ def main():
             participant_coverage.add(participant_id)
     if participant_coverage != participants.keys():
         raise ValueError(f"Missing worked participant success: {sorted(participants.keys() - participant_coverage)}")
+    validate_notifications(root, document, examples, operations)
     print("Versions: " + ", ".join(f"{name}={version(name)}" for name in
                                     ("openapi-spec-validator", "jsonschema", "PyYAML")))
     print(f"PASS OpenAPI 3.1.1; local references; {len(operations)} operations; "

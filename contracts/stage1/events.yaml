@@ -1,0 +1,1364 @@
+contract_version: 1.0.0
+status: candidate; specified only, no WebSocket runtime
+definitions:
+  stage1.authority.changed.v1:
+    schema: '#/$defs/authority'
+    subject_schema: null
+    id_field: user_id
+    resource_version_field: null
+    material_version_field: null
+    owner: Leader
+    channel: session
+    audience: Current user only; no protected resource identifiers.
+    refresh_operations:
+    - readCurrentSession
+    - listMyChapterMemberships
+    - readChapterContext
+    - readChapterAccess
+  stage1.chapter-setup.changed.v1:
+    schema: '#/$defs/chapter-setup'
+    subject_schema: ChapterAccessResult
+    id_field: data.chapter_id
+    resource_version_field: data.setup_version
+    material_version_field: null
+    owner: Leader
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readChapterContext
+    - readChapterAccess
+    - listCatalogueItems
+    - readCatalogueItem
+    - listCatalogueVariants
+    - readCatalogueVariant
+    - listCatalogueUnits
+    - readCatalogueUnit
+    - listCatalogueLocations
+    - readCatalogueLocation
+    - listStockSummaries
+    - readVariantStock
+    - listStockLots
+    - readStockLot
+    - readStockEligibility
+    - listStockLotHistory
+    - listInternalRfs
+    - readInternalRf
+    - readRfAllocationReview
+    - listIpcs
+    - readIpc
+    - listOpeningRms
+    - readOpeningRm
+    - listActualIssues
+    - readActualIssue
+    dependent_refresh_rule: Only current permitted mounted queries in this chapter; policy identity is omitted deliberately,
+      so invalidate affected catalogue/settings/history, stock/eligibility/shortage and domain blockers conservatively.
+      Each GET retains its own contextual permission and selector requirements. No read privilege derives from setup
+      notice admission.
+  stage1.catalogue-item.changed.v1:
+    schema: '#/$defs/catalogue-item'
+    subject_schema: CatalogueItem
+    id_field: id
+    resource_version_field: null
+    material_version_field: material_version
+    owner: Glenn
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readCatalogueItem
+    - listCatalogueItems
+    - listCatalogueItemHistory
+    - readChapterAccess
+    - listStockSummaries
+    - listInternalRfs
+  stage1.catalogue-variant.changed.v1:
+    schema: '#/$defs/catalogue-variant'
+    subject_schema: CatalogueVariant
+    id_field: id
+    resource_version_field: null
+    material_version_field: material_version
+    owner: Glenn
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readCatalogueVariant
+    - listCatalogueVariants
+    - listCatalogueVariantHistory
+    - readChapterAccess
+    - listStockSummaries
+    - listInternalRfs
+  stage1.catalogue-unit.changed.v1:
+    schema: '#/$defs/catalogue-unit'
+    subject_schema: CatalogueUnit
+    id_field: id
+    resource_version_field: null
+    material_version_field: material_version
+    owner: Glenn
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readCatalogueUnit
+    - listCatalogueUnits
+    - listCatalogueUnitHistory
+    - readChapterAccess
+    - listStockSummaries
+    - listInternalRfs
+  stage1.catalogue-location.changed.v1:
+    schema: '#/$defs/catalogue-location'
+    subject_schema: CatalogueLocation
+    id_field: id
+    resource_version_field: null
+    material_version_field: material_version
+    owner: Glenn
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readCatalogueLocation
+    - listCatalogueLocations
+    - listCatalogueLocationHistory
+    - readChapterAccess
+    - listStockSummaries
+    - listInternalRfs
+  stage1.paper-evidence.changed.v1:
+    schema: '#/$defs/paper-evidence'
+    subject_schema: PaperEvidenceVersion
+    id_field: evidence_id
+    resource_version_field: version
+    material_version_field: null
+    owner: Leader
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readPaperEvidence
+    - listPaperEvidenceVersions
+    - readPaperEvidenceVersion
+  stage1.ipc.changed.v1:
+    schema: '#/$defs/ipc'
+    subject_schema: IpcRecord
+    id_field: id
+    resource_version_field: revision
+    material_version_field: material_version
+    owner: Leader
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readIpc
+    - listIpcs
+    - listIpcHistory
+    - readIpcRelated
+  stage1.opening-rm.changed.v1:
+    schema: '#/$defs/opening-rm'
+    subject_schema: OpeningRmRecord
+    id_field: id
+    resource_version_field: revision
+    material_version_field: material_version
+    owner: Leader
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readOpeningRm
+    - listOpeningRms
+    - listOpeningRmHistory
+    - readOpeningRmRelated
+    - listOpeningRmMovements
+    - listOpeningRmFindings
+  stage1.internal-rf.changed.v1:
+    schema: '#/$defs/internal-rf'
+    subject_schema: InternalRf
+    id_field: id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Glenn
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readInternalRf
+    - listInternalRfs
+    - listInternalRfHistory
+    - listInternalRfRelatedRecords
+    - readRfAllocationReview
+  stage1.reservation-preparation.changed.v1:
+    schema: '#/$defs/reservation-preparation'
+    subject_schema: ReservationPreparation
+    id_field: id
+    resource_version_field: version
+    material_version_field: null
+    owner: Glenn
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readRfReservationPreparation
+  stage1.rf-reservation.changed.v1:
+    schema: '#/$defs/rf-reservation'
+    subject_schema: RfReservation
+    id_field: id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Glenn
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readRfReservation
+    - listRfReservations
+    - listRfReservationHistory
+    - readRfAllocationReview
+  stage1.stock-hold.changed.v1:
+    schema: '#/$defs/stock-hold'
+    subject_schema: StockHold
+    id_field: id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Glenn
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readStockHold
+    - listStockHolds
+    - listStockHoldHistory
+  stage1.actual-issue.changed.v1:
+    schema: '#/$defs/actual-issue'
+    subject_schema: ActualIssue
+    id_field: id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Efren
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readActualIssue
+    - listActualIssues
+    - listActualIssueHistory
+    - listActualIssueRelatedRecords
+    - listActualIssueMovements
+  stage1.stock-lot.changed.v1:
+    schema: '#/$defs/stock-lot'
+    subject_schema: StockLot
+    id_field: id
+    resource_version_field: stock_version
+    material_version_field: material_version
+    owner: Efren
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readStockLot
+    - listStockLots
+    - readVariantStock
+    - listStockSummaries
+    - readStockEligibility
+    - listStockLotHistory
+  stage1.opening-baseline.changed.v1:
+    schema: '#/$defs/opening-baseline'
+    subject_schema: null
+    id_field: chapter_id
+    resource_version_field: null
+    material_version_field: null
+    owner: Leader
+    channel: chapter
+    audience: Current enabled full-session user with active URL-chapter membership AND the exact subject detail-read
+      scope, including unit, requester/approver, evidence target and combined duties. Re-evaluate before each delivery.
+    refresh_operations:
+    - readChapterOpeningBaseline
+operation_disposition:
+  listCatalogueItems:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  createCatalogueItem:
+    events:
+    - stage1.catalogue-item.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readCatalogueItem:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  replaceCatalogueItem:
+    events:
+    - stage1.catalogue-item.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listCatalogueItemHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readCatalogueItemVersion:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listCatalogueVariants:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  createCatalogueVariant:
+    events:
+    - stage1.catalogue-variant.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readCatalogueVariant:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  replaceCatalogueVariant:
+    events:
+    - stage1.catalogue-variant.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listCatalogueVariantHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readCatalogueVariantVersion:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listCatalogueUnits:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  createCatalogueUnit:
+    events:
+    - stage1.catalogue-unit.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readCatalogueUnit:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  replaceCatalogueUnit:
+    events:
+    - stage1.catalogue-unit.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listCatalogueUnitHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readCatalogueUnitVersion:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listCatalogueLocations:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  createCatalogueLocation:
+    events:
+    - stage1.catalogue-location.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readCatalogueLocation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  replaceCatalogueLocation:
+    events:
+    - stage1.catalogue-location.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listCatalogueLocationHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readCatalogueLocationVersion:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listStockSummaries:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readVariantStock:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listStockLots:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readStockLot:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readStockEligibility:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listStockLotHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  findCatalogueOperation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readCatalogueOperation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readScaffoldHealth:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  initializeBrowserCsrf:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  signInWithPassword:
+    events: []
+    reason: 'Authentication-only: invalidate/recheck affected session sockets; no secrets or authentication activity
+      broadcast. Other unaffected browsers keep their own sessions.'
+  readCurrentSession:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  signOutCurrentBrowser:
+    events: []
+    reason: 'Authentication-only: invalidate/recheck affected session sockets; no secrets or authentication activity
+      broadcast. Other unaffected browsers keep their own sessions.'
+  beginAuthenticatorEnrollment:
+    events: []
+    reason: 'Authentication-only: invalidate/recheck affected session sockets; no secrets or authentication activity
+      broadcast. Other unaffected browsers keep their own sessions.'
+  confirmAuthenticatorEnrollment:
+    events: []
+    reason: 'Authentication-only: invalidate/recheck affected session sockets; no secrets or authentication activity
+      broadcast. Other unaffected browsers keep their own sessions.'
+  completeAuthenticatorChallenge:
+    events: []
+    reason: 'Authentication-only: invalidate/recheck affected session sockets; no secrets or authentication activity
+      broadcast. Other unaffected browsers keep their own sessions.'
+  completeRecoveryChallenge:
+    events: []
+    reason: 'Authentication-only: invalidate/recheck affected session sockets; no secrets or authentication activity
+      broadcast. Other unaffected browsers keep their own sessions.'
+  readRecoveryCodeStatus:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  rotateRecoveryCodes:
+    events: []
+    reason: 'Authentication-only: invalidate/recheck affected session sockets; no secrets or authentication activity
+      broadcast. Other unaffected browsers keep their own sessions.'
+  listMyChapterMemberships:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readChapterContext:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readChapterAccess:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  uploadPaperEvidence:
+    events:
+    - stage1.paper-evidence.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readPaperEvidence:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listPaperEvidenceVersions:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  replacePaperEvidence:
+    events:
+    - stage1.paper-evidence.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readPaperEvidenceVersion:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  retrievePaperEvidenceAttachment:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listIpcs:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  createIpc:
+    events:
+    - stage1.ipc.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readIpc:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  replaceIpc:
+    events:
+    - stage1.ipc.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listIpcHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readIpcRevision:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readIpcRelated:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  printIpc:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listOpeningRms:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  createOpeningRm:
+    events:
+    - stage1.opening-rm.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readOpeningRm:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  replaceOpeningRm:
+    events:
+    - stage1.opening-rm.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listOpeningRmHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readOpeningRmRevision:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readOpeningRmRelated:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  printOpeningRm:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  saveMyIpcCount:
+    events:
+    - stage1.ipc.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  submitIpc:
+    events:
+    - stage1.ipc.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  authorizeIpc:
+    events:
+    - stage1.ipc.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  inspectOpeningRm:
+    events:
+    - stage1.opening-rm.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  matchOpeningRmEvidence:
+    events:
+    - stage1.opening-rm.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  postOpeningRm:
+    events:
+    - stage1.opening-rm.changed.v1
+    - stage1.ipc.changed.v1
+    - stage1.stock-lot.changed.v1
+    - stage1.opening-baseline.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listOpeningRmMovements:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listOpeningRmFindings:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readChapterOpeningBaseline:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  findOpeningActionByKey:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readOpeningAction:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listInternalRfs:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  createInternalRf:
+    events:
+    - stage1.internal-rf.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readInternalRf:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  replaceInternalRfDraft:
+    events:
+    - stage1.internal-rf.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  submitInternalRf:
+    events:
+    - stage1.internal-rf.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  approveInternalRf:
+    events:
+    - stage1.internal-rf.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  returnInternalRf:
+    events:
+    - stage1.internal-rf.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  reviseInternalRf:
+    events:
+    - stage1.internal-rf.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  cancelInternalRf:
+    events:
+    - stage1.internal-rf.changed.v1
+    - stage1.rf-reservation.changed.v1
+    - stage1.stock-lot.changed.v1
+    - stage1.reservation-preparation.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listInternalRfHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readInternalRfVersion:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listInternalRfRelatedRecords:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readInternalRfOperationResult:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  findInternalRfOperationResult:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  prepareRfReservation:
+    events:
+    - stage1.reservation-preparation.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readRfReservationPreparation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  commitRfReservation:
+    events:
+    - stage1.reservation-preparation.changed.v1
+    - stage1.rf-reservation.changed.v1
+    - stage1.internal-rf.changed.v1
+    - stage1.stock-lot.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listRfReservations:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readRfReservation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listRfReservationHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  releaseRfReservation:
+    events:
+    - stage1.rf-reservation.changed.v1
+    - stage1.internal-rf.changed.v1
+    - stage1.stock-lot.changed.v1
+    - stage1.actual-issue.changed.v1
+    - stage1.reservation-preparation.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  reallocateRfReservation:
+    events:
+    - stage1.rf-reservation.changed.v1
+    - stage1.internal-rf.changed.v1
+    - stage1.stock-lot.changed.v1
+    - stage1.actual-issue.changed.v1
+    - stage1.reservation-preparation.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  readRfAllocationReview:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listStockHolds:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  placeStockHold:
+    events:
+    - stage1.stock-hold.changed.v1
+    - stage1.rf-reservation.changed.v1
+    - stage1.stock-lot.changed.v1
+    - stage1.actual-issue.changed.v1
+    - stage1.reservation-preparation.changed.v1
+    - stage1.internal-rf.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents. Include scoped RF notice whenever its effective blocked projection/version
+      changes; RF-only requesters need no stock permission to refresh their own RF.
+  readStockHold:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listStockHoldHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  proposeStockHoldClearance:
+    events:
+    - stage1.stock-hold.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  clearStockHold:
+    events:
+    - stage1.stock-hold.changed.v1
+    - stage1.rf-reservation.changed.v1
+    - stage1.stock-lot.changed.v1
+    - stage1.actual-issue.changed.v1
+    - stage1.reservation-preparation.changed.v1
+    - stage1.internal-rf.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents. Include scoped RF notice whenever its effective blocked projection/version
+      changes; RF-only requesters need no stock permission to refresh their own RF.
+  findReservationOperation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readReservationOperation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  prepareActualIssue:
+    events:
+    - stage1.actual-issue.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listActualIssues:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readActualIssue:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  reviseActualIssue:
+    events:
+    - stage1.actual-issue.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  printActualIssue:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  matchActualIssueAcknowledgment:
+    events:
+    - stage1.actual-issue.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  postActualIssue:
+    events:
+    - stage1.actual-issue.changed.v1
+    - stage1.internal-rf.changed.v1
+    - stage1.rf-reservation.changed.v1
+    - stage1.stock-lot.changed.v1
+    - stage1.reservation-preparation.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  listActualIssueHistory:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listActualIssueMovements:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  listActualIssueRelatedRecords:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readIssueReconciliation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  recordIssueReconciliation:
+    events:
+    - stage1.actual-issue.changed.v1
+    when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
+      no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
+      queries for local pending intents.
+  findActualIssueOperation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  readActualIssueOperation:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  authorizeSessionNotifications:
+    events: []
+    reason: Read/print/authorization has no domain change.
+  authorizeChapterNotifications:
+    events: []
+    reason: Read/print/authorization has no domain change.
+procedure_disposition:
+  prepareAccount:
+    events: []
+    when: Committed affected existing identities only; account/MFA revocation disconnects affected sockets before
+      further delivery, even if its notice is dropped. Setup notices only to admitted members, never provider-only
+      accounts. prepareAccount has no admitted consumer.
+  setAccountStatus:
+    events:
+    - stage1.authority.changed.v1
+    when: Committed affected existing identities only; account/MFA revocation disconnects affected sockets before
+      further delivery, even if its notice is dropped. Setup notices only to admitted members, never provider-only
+      accounts. prepareAccount has no admitted consumer.
+  prepareChapter:
+    events:
+    - stage1.chapter-setup.changed.v1
+    when: Committed affected existing identities only; account/MFA revocation disconnects affected sockets before
+      further delivery, even if its notice is dropped. Setup notices only to admitted members, never provider-only
+      accounts. prepareAccount has no admitted consumer.
+  setMembership:
+    events:
+    - stage1.authority.changed.v1
+    when: Committed affected existing identities only; account/MFA revocation disconnects affected sockets before
+      further delivery, even if its notice is dropped. Setup notices only to admitted members, never provider-only
+      accounts. prepareAccount has no admitted consumer.
+  setDuty:
+    events:
+    - stage1.authority.changed.v1
+    when: Committed affected existing identities only; account/MFA revocation disconnects affected sockets before
+      further delivery, even if its notice is dropped. Setup notices only to admitted members, never provider-only
+      accounts. prepareAccount has no admitted consumer.
+  setAlternate:
+    events:
+    - stage1.authority.changed.v1
+    when: Committed affected existing identities only; account/MFA revocation disconnects affected sockets before
+      further delivery, even if its notice is dropped. Setup notices only to admitted members, never provider-only
+      accounts. prepareAccount has no admitted consumer.
+  recordPolicy:
+    events:
+    - stage1.chapter-setup.changed.v1
+    - stage1.authority.changed.v1
+    when: Committed affected existing identities only; account/MFA revocation disconnects affected sockets before
+      further delivery, even if its notice is dropped. Setup notices only to admitted members, never provider-only
+      accounts. prepareAccount has no admitted consumer.
+  resetMfa:
+    events:
+    - stage1.authority.changed.v1
+    when: Committed affected existing identities only; account/MFA revocation disconnects affected sockets before
+      further delivery, even if its notice is dropped. Setup notices only to admitted members, never provider-only
+      accounts. prepareAccount has no admitted consumer.
+examples:
+- name: authority-committed
+  definition: stage1.authority.changed.v1
+  payload:
+    event_name: stage1.authority.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000001
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: null
+    resource_kind: account
+    resource_id: 98000000-0000-4000-8000-000000000001
+    resource_version: null
+    material_version: null
+  valid: true
+- name: authority-private-payload-rejected
+  definition: stage1.authority.changed.v1
+  payload:
+    event_name: stage1.authority.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000001
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: null
+    resource_kind: account
+    resource_id: 98000000-0000-4000-8000-000000000001
+    resource_version: null
+    material_version: null
+    quantity: '4'
+  valid: false
+- name: chapter-setup-committed
+  definition: stage1.chapter-setup.changed.v1
+  payload:
+    event_name: stage1.chapter-setup.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000002
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: chapter
+    resource_id: 60000000-0000-4000-8000-000000000001
+    resource_version: 3
+    material_version: null
+  valid: true
+- name: chapter-setup-private-payload-rejected
+  definition: stage1.chapter-setup.changed.v1
+  payload:
+    event_name: stage1.chapter-setup.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000002
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: chapter
+    resource_id: 60000000-0000-4000-8000-000000000001
+    resource_version: 3
+    material_version: null
+    quantity: '4'
+  valid: false
+- name: catalogue-item-committed
+  definition: stage1.catalogue-item.changed.v1
+  payload:
+    event_name: stage1.catalogue-item.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000003
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: item
+    resource_id: 99000000-0000-4000-8000-000000000003
+    resource_version: null
+    material_version: 2
+  valid: true
+- name: catalogue-item-private-payload-rejected
+  definition: stage1.catalogue-item.changed.v1
+  payload:
+    event_name: stage1.catalogue-item.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000003
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: item
+    resource_id: 99000000-0000-4000-8000-000000000003
+    resource_version: null
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: catalogue-variant-committed
+  definition: stage1.catalogue-variant.changed.v1
+  payload:
+    event_name: stage1.catalogue-variant.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000004
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: variant
+    resource_id: 99000000-0000-4000-8000-000000000004
+    resource_version: null
+    material_version: 2
+  valid: true
+- name: catalogue-variant-private-payload-rejected
+  definition: stage1.catalogue-variant.changed.v1
+  payload:
+    event_name: stage1.catalogue-variant.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000004
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: variant
+    resource_id: 99000000-0000-4000-8000-000000000004
+    resource_version: null
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: catalogue-unit-committed
+  definition: stage1.catalogue-unit.changed.v1
+  payload:
+    event_name: stage1.catalogue-unit.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000005
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: unit
+    resource_id: 99000000-0000-4000-8000-000000000005
+    resource_version: null
+    material_version: 2
+  valid: true
+- name: catalogue-unit-private-payload-rejected
+  definition: stage1.catalogue-unit.changed.v1
+  payload:
+    event_name: stage1.catalogue-unit.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000005
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: unit
+    resource_id: 99000000-0000-4000-8000-000000000005
+    resource_version: null
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: catalogue-location-committed
+  definition: stage1.catalogue-location.changed.v1
+  payload:
+    event_name: stage1.catalogue-location.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000006
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: location
+    resource_id: 99000000-0000-4000-8000-000000000006
+    resource_version: null
+    material_version: 2
+  valid: true
+- name: catalogue-location-private-payload-rejected
+  definition: stage1.catalogue-location.changed.v1
+  payload:
+    event_name: stage1.catalogue-location.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000006
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: location
+    resource_id: 99000000-0000-4000-8000-000000000006
+    resource_version: null
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: paper-evidence-committed
+  definition: stage1.paper-evidence.changed.v1
+  payload:
+    event_name: stage1.paper-evidence.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000007
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: paper_evidence
+    resource_id: 99000000-0000-4000-8000-000000000007
+    resource_version: 5
+    material_version: null
+  valid: true
+- name: paper-evidence-private-payload-rejected
+  definition: stage1.paper-evidence.changed.v1
+  payload:
+    event_name: stage1.paper-evidence.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000007
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: paper_evidence
+    resource_id: 99000000-0000-4000-8000-000000000007
+    resource_version: 5
+    material_version: null
+    quantity: '4'
+  valid: false
+- name: ipc-committed
+  definition: stage1.ipc.changed.v1
+  payload:
+    event_name: stage1.ipc.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000008
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: ipc
+    resource_id: 95000000-0000-4000-8000-000000000010
+    resource_version: 5
+    material_version: 2
+  valid: true
+- name: ipc-private-payload-rejected
+  definition: stage1.ipc.changed.v1
+  payload:
+    event_name: stage1.ipc.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000008
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: ipc
+    resource_id: 95000000-0000-4000-8000-000000000010
+    resource_version: 5
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: opening-rm-committed
+  definition: stage1.opening-rm.changed.v1
+  payload:
+    event_name: stage1.opening-rm.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000009
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: opening_rm
+    resource_id: 95000000-0000-4000-8000-000000000011
+    resource_version: 5
+    material_version: 2
+  valid: true
+- name: opening-rm-private-payload-rejected
+  definition: stage1.opening-rm.changed.v1
+  payload:
+    event_name: stage1.opening-rm.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000009
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: opening_rm
+    resource_id: 95000000-0000-4000-8000-000000000011
+    resource_version: 5
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: internal-rf-committed
+  definition: stage1.internal-rf.changed.v1
+  payload:
+    event_name: stage1.internal-rf.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000010
+    committed_at: '2026-11-10T03:09:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: internal_rf
+    resource_id: 81000000-0000-4000-8000-000000000001
+    resource_version: 6
+    material_version: 2
+  valid: true
+  current_http_case: notifications09-refresh-readInternalRf
+- name: internal-rf-private-payload-rejected
+  definition: stage1.internal-rf.changed.v1
+  payload:
+    event_name: stage1.internal-rf.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000010
+    committed_at: '2026-11-10T03:09:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: internal_rf
+    resource_id: 81000000-0000-4000-8000-000000000001
+    resource_version: 6
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: reservation-preparation-committed
+  definition: stage1.reservation-preparation.changed.v1
+  payload:
+    event_name: stage1.reservation-preparation.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000011
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: reservation_preparation
+    resource_id: 99000000-0000-4000-8000-000000000011
+    resource_version: 5
+    material_version: null
+  valid: true
+- name: reservation-preparation-private-payload-rejected
+  definition: stage1.reservation-preparation.changed.v1
+  payload:
+    event_name: stage1.reservation-preparation.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000011
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: reservation_preparation
+    resource_id: 99000000-0000-4000-8000-000000000011
+    resource_version: 5
+    material_version: null
+    quantity: '4'
+  valid: false
+- name: rf-reservation-committed
+  definition: stage1.rf-reservation.changed.v1
+  payload:
+    event_name: stage1.rf-reservation.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000012
+    committed_at: '2026-11-10T03:09:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: rf_reservation
+    resource_id: 98000000-0000-4000-8000-000000000040
+    resource_version: 2
+    material_version: 1
+  valid: true
+  current_http_case: notifications09-refresh-readRfReservation
+- name: rf-reservation-private-payload-rejected
+  definition: stage1.rf-reservation.changed.v1
+  payload:
+    event_name: stage1.rf-reservation.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000012
+    committed_at: '2026-11-10T03:09:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: rf_reservation
+    resource_id: 98000000-0000-4000-8000-000000000040
+    resource_version: 2
+    material_version: 1
+    quantity: '4'
+  valid: false
+- name: stock-hold-committed
+  definition: stage1.stock-hold.changed.v1
+  payload:
+    event_name: stage1.stock-hold.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000013
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: stock_hold
+    resource_id: 99000000-0000-4000-8000-000000000013
+    resource_version: 5
+    material_version: 2
+  valid: true
+- name: stock-hold-private-payload-rejected
+  definition: stage1.stock-hold.changed.v1
+  payload:
+    event_name: stage1.stock-hold.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000013
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: stock_hold
+    resource_id: 99000000-0000-4000-8000-000000000013
+    resource_version: 5
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: actual-issue-committed
+  definition: stage1.actual-issue.changed.v1
+  payload:
+    event_name: stage1.actual-issue.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000014
+    committed_at: '2026-11-10T03:09:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: actual_issue
+    resource_id: 98000000-0000-4000-8000-000000000010
+    resource_version: 4
+    material_version: 2
+  valid: true
+  current_http_case: notifications09-refresh-readActualIssue
+- name: actual-issue-private-payload-rejected
+  definition: stage1.actual-issue.changed.v1
+  payload:
+    event_name: stage1.actual-issue.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000014
+    committed_at: '2026-11-10T03:09:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: actual_issue
+    resource_id: 98000000-0000-4000-8000-000000000010
+    resource_version: 4
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: stock-lot-committed
+  definition: stage1.stock-lot.changed.v1
+  payload:
+    event_name: stage1.stock-lot.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000015
+    committed_at: '2026-11-10T03:09:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: stock_lot
+    resource_id: 95000000-0000-4000-8000-000000000090
+    resource_version: 4
+    material_version: 2
+  valid: true
+  current_http_case: notifications09-refresh-readStockLot
+- name: stock-lot-private-payload-rejected
+  definition: stage1.stock-lot.changed.v1
+  payload:
+    event_name: stage1.stock-lot.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000015
+    committed_at: '2026-11-10T03:09:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: stock_lot
+    resource_id: 95000000-0000-4000-8000-000000000090
+    resource_version: 4
+    material_version: 2
+    quantity: '4'
+  valid: false
+- name: opening-baseline-committed
+  definition: stage1.opening-baseline.changed.v1
+  payload:
+    event_name: stage1.opening-baseline.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000016
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: opening_baseline
+    resource_id: 60000000-0000-4000-8000-000000000001
+    resource_version: null
+    material_version: null
+  valid: true
+- name: opening-baseline-private-payload-rejected
+  definition: stage1.opening-baseline.changed.v1
+  payload:
+    event_name: stage1.opening-baseline.changed.v1
+    event_id: 99000000-0000-4000-8001-000000000016
+    committed_at: '2026-11-10T02:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: opening_baseline
+    resource_id: 60000000-0000-4000-8000-000000000001
+    resource_version: null
+    material_version: null
+    quantity: '4'
+  valid: false
+scenarios:
+- name: committed-change
+  http_cases:
+  - issue08-post-four-once
+  - notifications09-refresh-readVariantStock
+  - notifications09-refresh-readInternalRf
+  - notifications09-refresh-readRfReservation
+  - notifications09-refresh-readStockLot
+  events:
+  - stage1.actual-issue.changed.v1
+  - stage1.rf-reservation.changed.v1
+  - stage1.stock-lot.changed.v1
+  - stage1.internal-rf.changed.v1
+  expectation: One committed issue4 from opening12 gives onhand8. Separate minimal subject notices; only authorized
+    reads update displays, never infer quantities from event counts. All joined notice and current-read identities/versions
+    refer to the first committed4 at03:09Z, with onhand8/reserved2/available6 and RF issued4.
+  notice_examples:
+  - internal-rf-committed
+  - rf-reservation-committed
+  - actual-issue-committed
+  - stock-lot-committed
+- name: failed-command
+  http_cases:
+  - reservation-exact-ten-only-six-zero-commit
+  events: []
+  expectation: Exact-ten reservation with only6 rejects and creates no domain intent/event; same holds for failed
+    source/evidence/stale/hold-first issue. Existing authoritative state and unsaved exact-ten input remain.
+- name: duplicate-or-delayed
+  http_cases:
+  - notifications09-refresh-readInternalRf
+  events:
+  - stage1.internal-rf.changed.v1
+  expectation: 'Deliver same event_id twice, then an older version after a newer one: deduplicate/invalidate as
+    needed; current GET wins. Never decrement versions, reservations or stock from notice ordering; no command is
+    invoked.'
+- name: missed-event-reconnect
+  http_cases:
+  - notifications09-session-authorized
+  - notifications09-chapter-authorized
+  - notifications09-refresh-readCurrentSession
+  - notifications09-refresh-listMyChapterMemberships
+  - notifications09-refresh-readChapterContext
+  - notifications09-refresh-readChapterAccess
+  - notifications09-refresh-readInternalRf
+  - notifications09-refresh-readActualIssue
+  - notifications09-refresh-findActualIssueOperation
+  - notifications09-refresh-readVariantStock
+  - notifications09-refresh-readRfReservation
+  - notifications09-refresh-readStockLot
+  events: []
+  expectation: Subscribe and acknowledge first, buffer notices, current authority then permitted mounted/list/pending-result
+    reads; drain dirty subjects with another GET. A dropped notice is covered by complete current resync, with existing
+    uncertain action key kept private. No replay cursor, posting or physical handover. All joined notice and current-read
+    identities/versions refer to the first committed4 at03:09Z, with onhand8/reserved2/available6 and RF issued4.
+    One current authenticated Inventory actor9800...0001 throughout session, private channels, membership/context/access
+    and original-actor outcome lookup; no continuation session or denied protected read.
+  notice_examples:
+  - internal-rf-committed
+  - rf-reservation-committed
+  - actual-issue-committed
+  - stock-lot-committed
+  principal_case: notifications09-refresh-readCurrentSession
+  membership_case: notifications09-refresh-listMyChapterMemberships
+  context_case: notifications09-refresh-readChapterContext
+  access_case: notifications09-refresh-readChapterAccess
+- name: chapter-change
+  http_cases:
+  - notifications09-new-chapter-authorized
+  - notifications09-new-chapter-readChapterContext
+  - notifications09-new-chapter-readChapterAccess
+  - notifications09-unadmitted-chapter-denied
+  events: []
+  expectation: Cancel old generation reads/handlers, leave old chapter socket subscription, retain draft(user,origin
+    chapter,resource,base material) separately. Explicitly select admitted new chapter, authorize its new channel
+    and refresh. Ignore late old-chapter GET/event responses. Never relabel or submit the retained draft to the
+    new chapter.
+- name: revocation
+  http_cases:
+  - notifications09-chapter-revoked
+  - notifications09-old-result-revoked
+  events:
+  - stage1.authority.changed.v1
+  expectation: Membership/duty revocation invalidates current server delivery scopes before any subsequent dispatch;
+    close affected subscriptions. Lost control notice cannot preserve access. Refetch current authority, remove
+    newly forbidden protected outputs and stop commands; older committed result remains committed but now denied.
+- name: disabled-or-other-user
+  http_cases:
+  - notifications09-disabled-session
+  - notifications09-session-copied-channel
+  events: []
+  expectation: Server disconnects all disabled user sessions. Purge protected cache and identity-bound edit buffers
+    on sign-out/disable/identity replacement. An expired session may retain an inaccessible same-person buffer until
+    identity is verified; another user never sees it. No cross-user storage or automatic restoration.
+- name: preserved-edit
+  http_cases:
+  - notifications09-refresh-readInternalRf
+  events:
+  - stage1.internal-rf.changed.v1
+  expectation: 'Same enabled user, same permitted chapter: retain unsaved line quantity and original base material
+    version. Stage newer server state beside the edit; show stale/conflict and require explicit comparison/reconfirmation.
+    A current GET cannot overwrite the form or turn a failed attempt into automatic reservation/issue.'
