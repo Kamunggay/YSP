@@ -24920,6 +24920,184 @@ cases:
           code: notification_subscription_denied
           message: Private subscription unavailable.
         request_id: 50000000-0000-4000-8000-000000000001
+  - name: combined10-prepare-six-new-intent
+    operationId: prepareRfReservation
+    before: 'Fixture B continuation after exact-ten409: explicit six is a NEW immutable preparation and action key,
+      never an edit/replay of the rejected ten intent. Synthetic only; no runtime approved stock or handover.'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+      body:
+        expected_rf_version: 4
+        expected_rf_material_version: 2
+        expected_rf_progress_version: 1
+        rf_line_id: 82000000-0000-4000-8000-000000000001
+        targets:
+        - stock_lot_id: 97000000-0000-4000-8000-000000000010
+          basis_segment_id: 97000000-0000-4000-8000-000000000110
+          offset_quantity: '0'
+          quantity: '6'
+          expected_lot_material_version: 1
+          expected_stock_version: 1
+        override_policy_id: null
+        reason: Explicit six after reviewing current shortage.
+      headers:
+        X-Action-Key: 97000000-0000-4000-8000-000000003010
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 97000000-0000-4000-8000-000000004010
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 97000000-0000-4000-8000-000000000001
+          operation_name: prepareRfReservation
+          action_key: 97000000-0000-4000-8000-000000003010
+          resource_kind: preparation
+          resource_id: 97000000-0000-4000-8000-000000000032
+          committed_at: '2026-11-10T02:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000032
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rf_id: 81000000-0000-4000-8000-000000000001
+            rf_line_id: 82000000-0000-4000-8000-000000000001
+            version: 1
+            prepared_by:
+              user_id: 97000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 97000000-0000-4000-8000-000000000002
+              duty_grant_id: 97000000-0000-4000-8000-000000000003
+              duty: INVENTORY
+              unit_id: null
+              acted_at: '2026-11-10T02:00:00.000000Z'
+            prepared_at: '2026-11-10T02:00:00.000000Z'
+            selection:
+              expected_rf_version: 4
+              expected_rf_material_version: 2
+              expected_rf_progress_version: 1
+              rf_line_id: 82000000-0000-4000-8000-000000000001
+              targets:
+              - stock_lot_id: 97000000-0000-4000-8000-000000000010
+                basis_segment_id: 97000000-0000-4000-8000-000000000110
+                offset_quantity: '0'
+                quantity: '6'
+                expected_lot_material_version: 1
+                expected_stock_version: 1
+              override_policy_id: null
+              reason: Explicit six after reviewing current shortage.
+            review:
+              rf_id: 81000000-0000-4000-8000-000000000001
+              rf_line_id: 82000000-0000-4000-8000-000000000001
+              rf_version: 4
+              rf_material_version: 2
+              rf_progress_version: 1
+              progress:
+                approved_quantity: '10'
+                issued_quantity: '0'
+                reserved_quantity: '0'
+                blocked_reserved_quantity: '0'
+                canceled_quantity: '0'
+                remaining_quantity: '10'
+                unreserved_quantity: '10'
+              free_eligible_quantity: '6'
+              uncovered_quantity: '4'
+              allocation_policy:
+                policy_id: 97000000-0000-4000-8000-000000000020
+                material_version: 1
+                approval_id: 97000000-0000-4000-8000-000000000021
+                approved_by: 97000000-0000-4000-8000-000000000022
+              ordered_demands:
+              - rf_id: 81000000-0000-4000-8000-000000000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                priority_rank: 1
+                needed_at: '2026-11-12T01:00:00.000000Z'
+                approved_at: '2026-11-09T07:00:00.000000Z'
+                unreserved_quantity: '10'
+              queue_next_cursor: null
+              setup_blockers: []
+              observed_at: '2026-11-10T02:00:00.000000Z'
+              is_commit_authorization: false
+            state: prepared
+            reservation_id: null
+          rf_changes: []
+  - name: combined10-commit-six-new-intent
+    operationId: commitRfReservation
+    before: 'Fixture B continuation after exact-ten409: explicit six is a NEW immutable preparation and action key,
+      never an edit/replay of the rejected ten intent. Synthetic only; no runtime approved stock or handover.'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+        preparation_id: 97000000-0000-4000-8000-000000000032
+      body:
+        expected_preparation_version: 1
+        expected_rf_version: 4
+        expected_rf_material_version: 2
+        expected_rf_progress_version: 1
+      headers:
+        X-Action-Key: 97000000-0000-4000-8000-000000003011
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 97000000-0000-4000-8000-000000004011
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 97000000-0000-4000-8000-000000000001
+          operation_name: commitRfReservation
+          action_key: 97000000-0000-4000-8000-000000003011
+          resource_kind: reservation
+          resource_id: 97000000-0000-4000-8000-000000000040
+          committed_at: '2026-11-10T02:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000040
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rf_id: 81000000-0000-4000-8000-000000000001
+            rf_line_id: 82000000-0000-4000-8000-000000000001
+            version: 1
+            material_version: 1
+            approved_rf_material_version: 2
+            variant_id: 83000000-0000-4000-8000-000000000001
+            unit_id: 84000000-0000-4000-8000-000000000001
+            quantity_scale: 0
+            status: active
+            committed_quantity: '6'
+            active_quantity: '6'
+            blocked_quantity: '0'
+            fulfilled_quantity: '0'
+            released_quantity: '0'
+            allocations:
+            - stock_lot_id: 97000000-0000-4000-8000-000000000010
+              basis_segment_id: 97000000-0000-4000-8000-000000000110
+              offset_quantity: '0'
+              quantity: '6'
+            active_hold_ids: []
+            created_by:
+              user_id: 97000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 97000000-0000-4000-8000-000000000002
+              duty_grant_id: 97000000-0000-4000-8000-000000000003
+              duty: INVENTORY
+              unit_id: null
+              acted_at: '2026-11-10T02:00:00.000000Z'
+            created_at: '2026-11-10T02:00:00.000000Z'
+            updated_at: '2026-11-10T02:00:00.000000Z'
+            expires_at: null
+            rf_version: 5
+            rf_progress_version: 2
+            demand:
+              approved_quantity: '10'
+              issued_quantity: '0'
+              reserved_quantity: '6'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '10'
+              unreserved_quantity: '4'
+          rf_changes:
+          - rf_id: 81000000-0000-4000-8000-000000000001
+            version: 5
+            progress_version: 2
 procedure_cases:
 - name: issue08-isar-family-coexists
   procedureId: recordPolicy
