@@ -85,6 +85,7 @@ def validate_notifications(root, document, examples, operations):
             raise ValueError(f"Safe read cannot emit a committed change: {operation_id}")
     if emitted != definitions.keys():
         raise ValueError("Event definitions include an undispositioned subject")
+    http_cases = {case["name"]: case for case in examples["cases"]}
     positive, negative, names = set(), set(), set()
     for case in agreement["examples"]:
         if case["name"] in names:
@@ -96,6 +97,26 @@ def validate_notifications(root, document, examples, operations):
         valid = validator.is_valid(case["payload"])
         if valid != case["valid"]:
             raise ValueError(f"Event example validation mismatch: {case['name']}")
+        if "current_http_case" in case:
+            current = http_cases[case["current_http_case"]]
+            if (not current["response"]["status"].startswith("2") or
+                    current["operationId"] not in definitions[name]["refresh_operations"]):
+                raise ValueError(f"Notice binding is not an authorized current read: {case['name']}")
+            subject = current["response"]["body"]["data"]
+            for payload_field, subject_field in (
+                    ("resource_id", "id_field"), ("resource_version", "resource_version_field"),
+                    ("material_version", "material_version_field")):
+                field = definitions[name][subject_field]
+                node = subject
+                if field is not None:
+                    for part in field.split("."):
+                        node = node[part]
+                else:
+                    node = None
+                if case["payload"][payload_field] != node:
+                    raise ValueError(f"Notice version/identity differs from current read: {case['name']}")
+            if case["payload"]["chapter_id"] != subject["chapter_id"]:
+                raise ValueError(f"Notice chapter differs from current read: {case['name']}")
         (positive if valid else negative).add(name)
     if positive != definitions.keys() or negative != definitions.keys():
         raise ValueError("Every event needs valid and rejected examples")
@@ -107,6 +128,8 @@ def validate_notifications(root, document, examples, operations):
         scenarios.add(scenario["name"])
         if not set(scenario["http_cases"]) <= case_names or not set(scenario["events"]) <= definitions.keys():
             raise ValueError(f"Unknown scenario HTTP case/event: {scenario['name']}")
+        if not set(scenario.get("notice_examples", [])) <= names:
+            raise ValueError(f"Unknown scenario notice example: {scenario['name']}")
     required = {"committed-change", "failed-command", "duplicate-or-delayed", "missed-event-reconnect",
                 "chapter-change", "revocation", "disabled-or-other-user", "preserved-edit"}
     if not required <= scenarios:

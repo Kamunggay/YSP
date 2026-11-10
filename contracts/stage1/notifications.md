@@ -52,7 +52,7 @@ Exact supported channels are `private-stage1.user.{current_user_uuid}` and
 canonical lowercase. No arbitrary target user, public/presence/client-event room,
 wildcard or chapter-wide payload channel is allowed. Channel names are never grants.
 
-Origin then enabled full session/current MFA then CSRF precede admission. Chapter
+Origin then CSRF then enabled full session/current MFA precede admission. Chapter
 channels require active chapter/current membership; a member with no domain duty
 can receive only permitted setup invalidations. Domain delivery additionally
 requires the exact subject detail-read predicate: requester/approver/unit, IPC
@@ -119,6 +119,8 @@ Print/current/history/result reads and authorization have no domain notification
 Authentication secrets/activity are not broadcast; affected session lifecycle is
 enforced directly without signing out unrelated browsers. Controlled setup names
 its affected-user/setup events; new account creation has no admitted consumer.
+
+Approved setup/policy invalidations also refresh currently permitted mounted catalogue/settings/history, stock/eligibility/shortage and domain blockers using the exact setup-event refresh IDs; the notice grants no dependent read access. Hold changes also notify scoped RF-only readers when blocked RF projections change.
 
 Opening post invalidates IPC/RM/accepted lots/baseline; rejected/quarantined findings
 remain in authorized finding reads, never fabricated usable stock. Cancellation,

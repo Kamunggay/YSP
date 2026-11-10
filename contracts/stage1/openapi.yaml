@@ -7728,7 +7728,7 @@ paths:
       - TR-16
       - TR-17
       summary: Authorize the current individual session notification channel
-      description: 'Full enabled individual session and current MFA required. Origin then session then CSRF precede
+      description: 'Full enabled individual session and current MFA required. Origin then CSRF then session precede
         channel admission. Exact channel must equal the server-derived current user. Socket must belong to this authenticated
         browser session and live connection; copied IDs, signatures, channels or another session of the same user
         do not authorize a new socket. Recheck current authority at subscribe and each delivery. No presence/public/client-event
@@ -7738,7 +7738,11 @@ paths:
         to this socket/session/channel until disconnect or revocation, never transferable. No action key, durable
         business result, resource version, evidence or stock effect. Safe identical authorization retry only while
         the same socket remains live. No-store on all outcomes. See notifications.md for lifecycle and resynchronization
-        through existing GETs.'
+        through existing GETs. Malformed chapter UUID after full admission returns 400 invalid_selector; malformed
+        JSON/repeated/unknown query input returns 400 malformed_request. Use the existing sliding 60-second budget
+        of 60 requests per trusted IP across notification authorization calls and 60 per admitted account; errors
+        consume applicable budgets, 429 uses the larger remaining positive integer Retry-After. No notification latency
+        promise follows from this technical throttle.'
       security:
       - browserSession: []
         csrfProof: []
@@ -7825,7 +7829,7 @@ paths:
       - TR-16
       - TR-17
       summary: Authorize the current individual chapter notification channel
-      description: 'Full enabled individual session and current MFA required. Origin then session then CSRF precede
+      description: 'Full enabled individual session and current MFA required. Origin then CSRF then session precede
         channel admission. Exact channel must equal the server-derived current user and URL chapter with active membership.
         Socket must belong to this authenticated browser session and live connection; copied IDs, signatures, channels
         or another session of the same user do not authorize a new socket. Recheck current authority at subscribe
@@ -7835,7 +7839,11 @@ paths:
         are shape examples, not valid credentials. The grant is bound to this socket/session/channel until disconnect
         or revocation, never transferable. No action key, durable business result, resource version, evidence or stock
         effect. Safe identical authorization retry only while the same socket remains live. No-store on all outcomes.
-        See notifications.md for lifecycle and resynchronization through existing GETs.'
+        See notifications.md for lifecycle and resynchronization through existing GETs. Malformed chapter UUID after
+        full admission returns 400 invalid_selector; malformed JSON/repeated/unknown query input returns 400 malformed_request.
+        Use the existing sliding 60-second budget of 60 requests per trusted IP across notification authorization
+        calls and 60 per admitted account; errors consume applicable budgets, 429 uses the larger remaining positive
+        integer Retry-After. No notification latency promise follows from this technical throttle.'
       security:
       - browserSession: []
         csrfProof: []
@@ -7864,7 +7872,28 @@ paths:
               example:
                 auth: synthetic_app_key:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Malformed JSON/request or invalid chapter selector after full admission.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Error'
+                - properties:
+                    error:
+                      properties:
+                        code:
+                          enum:
+                          - malformed_request
+                          - invalid_selector
+              example:
+                error:
+                  code: invalid_selector
+                  message: invalid_selector for unknown/repeated/malformed query, malformed chapter UUID after admission
+                    or mismatched cursor.
+                request_id: 50000000-0000-4000-8000-000000000001
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':

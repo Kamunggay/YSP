@@ -28,6 +28,33 @@ definitions:
     refresh_operations:
     - readChapterContext
     - readChapterAccess
+    - listCatalogueItems
+    - readCatalogueItem
+    - listCatalogueVariants
+    - readCatalogueVariant
+    - listCatalogueUnits
+    - readCatalogueUnit
+    - listCatalogueLocations
+    - readCatalogueLocation
+    - listStockSummaries
+    - readVariantStock
+    - listStockLots
+    - readStockLot
+    - readStockEligibility
+    - listStockLotHistory
+    - listInternalRfs
+    - readInternalRf
+    - readRfAllocationReview
+    - listIpcs
+    - readIpc
+    - listOpeningRms
+    - readOpeningRm
+    - listActualIssues
+    - readActualIssue
+    dependent_refresh_rule: Only current permitted mounted queries in this chapter; policy identity is omitted deliberately,
+      so invalidate affected catalogue/settings/history, stock/eligibility/shortage and domain blockers conservatively.
+      Each GET retains its own contextual permission and selector requirements. No read privilege derives from setup
+      notice admission.
   stage1.catalogue-item.changed.v1:
     schema: '#/$defs/catalogue-item'
     subject_schema: CatalogueItem
@@ -678,9 +705,11 @@ operation_disposition:
     - stage1.stock-lot.changed.v1
     - stage1.actual-issue.changed.v1
     - stage1.reservation-preparation.changed.v1
+    - stage1.internal-rf.changed.v1
     when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
       no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
-      queries for local pending intents.
+      queries for local pending intents. Include scoped RF notice whenever its effective blocked projection/version
+      changes; RF-only requesters need no stock permission to refresh their own RF.
   readStockHold:
     events: []
     reason: Read/print/authorization has no domain change.
@@ -700,9 +729,11 @@ operation_disposition:
     - stage1.stock-lot.changed.v1
     - stage1.actual-issue.changed.v1
     - stage1.reservation-preparation.changed.v1
+    - stage1.internal-rf.changed.v1
     when: Only affected committed subjects whose represented state/version changes. Persist intent with commit;
       no event on rejection, rollback, identical replay or no-op. Also invalidate current operation-result/history
-      queries for local pending intents.
+      queries for local pending intents. Include scoped RF notice whenever its effective blocked projection/version
+      changes; RF-only requesters need no stock permission to refresh their own RF.
   findReservationOperation:
     events: []
     reason: Read/print/authorization has no domain change.
@@ -1056,23 +1087,24 @@ examples:
   payload:
     event_name: stage1.internal-rf.changed.v1
     event_id: 99000000-0000-4000-8001-000000000010
-    committed_at: '2026-11-10T02:00:00.000000Z'
+    committed_at: '2026-11-10T03:09:00.000000Z'
     chapter_id: 60000000-0000-4000-8000-000000000001
     resource_kind: internal_rf
     resource_id: 81000000-0000-4000-8000-000000000001
-    resource_version: 5
+    resource_version: 6
     material_version: 2
   valid: true
+  current_http_case: notifications09-refresh-readInternalRf
 - name: internal-rf-private-payload-rejected
   definition: stage1.internal-rf.changed.v1
   payload:
     event_name: stage1.internal-rf.changed.v1
     event_id: 99000000-0000-4000-8001-000000000010
-    committed_at: '2026-11-10T02:00:00.000000Z'
+    committed_at: '2026-11-10T03:09:00.000000Z'
     chapter_id: 60000000-0000-4000-8000-000000000001
     resource_kind: internal_rf
     resource_id: 81000000-0000-4000-8000-000000000001
-    resource_version: 5
+    resource_version: 6
     material_version: 2
     quantity: '4'
   valid: false
@@ -1106,24 +1138,25 @@ examples:
   payload:
     event_name: stage1.rf-reservation.changed.v1
     event_id: 99000000-0000-4000-8001-000000000012
-    committed_at: '2026-11-10T02:00:00.000000Z'
+    committed_at: '2026-11-10T03:09:00.000000Z'
     chapter_id: 60000000-0000-4000-8000-000000000001
     resource_kind: rf_reservation
-    resource_id: 99000000-0000-4000-8000-000000000012
-    resource_version: 5
-    material_version: 2
+    resource_id: 98000000-0000-4000-8000-000000000040
+    resource_version: 2
+    material_version: 1
   valid: true
+  current_http_case: notifications09-refresh-readRfReservation
 - name: rf-reservation-private-payload-rejected
   definition: stage1.rf-reservation.changed.v1
   payload:
     event_name: stage1.rf-reservation.changed.v1
     event_id: 99000000-0000-4000-8001-000000000012
-    committed_at: '2026-11-10T02:00:00.000000Z'
+    committed_at: '2026-11-10T03:09:00.000000Z'
     chapter_id: 60000000-0000-4000-8000-000000000001
     resource_kind: rf_reservation
-    resource_id: 99000000-0000-4000-8000-000000000012
-    resource_version: 5
-    material_version: 2
+    resource_id: 98000000-0000-4000-8000-000000000040
+    resource_version: 2
+    material_version: 1
     quantity: '4'
   valid: false
 - name: stock-hold-committed
@@ -1156,23 +1189,24 @@ examples:
   payload:
     event_name: stage1.actual-issue.changed.v1
     event_id: 99000000-0000-4000-8001-000000000014
-    committed_at: '2026-11-10T02:00:00.000000Z'
+    committed_at: '2026-11-10T03:09:00.000000Z'
     chapter_id: 60000000-0000-4000-8000-000000000001
     resource_kind: actual_issue
-    resource_id: 99000000-0000-4000-8000-000000000014
-    resource_version: 5
+    resource_id: 98000000-0000-4000-8000-000000000010
+    resource_version: 4
     material_version: 2
   valid: true
+  current_http_case: notifications09-refresh-readActualIssue
 - name: actual-issue-private-payload-rejected
   definition: stage1.actual-issue.changed.v1
   payload:
     event_name: stage1.actual-issue.changed.v1
     event_id: 99000000-0000-4000-8001-000000000014
-    committed_at: '2026-11-10T02:00:00.000000Z'
+    committed_at: '2026-11-10T03:09:00.000000Z'
     chapter_id: 60000000-0000-4000-8000-000000000001
     resource_kind: actual_issue
-    resource_id: 99000000-0000-4000-8000-000000000014
-    resource_version: 5
+    resource_id: 98000000-0000-4000-8000-000000000010
+    resource_version: 4
     material_version: 2
     quantity: '4'
   valid: false
@@ -1181,23 +1215,24 @@ examples:
   payload:
     event_name: stage1.stock-lot.changed.v1
     event_id: 99000000-0000-4000-8001-000000000015
-    committed_at: '2026-11-10T02:00:00.000000Z'
+    committed_at: '2026-11-10T03:09:00.000000Z'
     chapter_id: 60000000-0000-4000-8000-000000000001
     resource_kind: stock_lot
     resource_id: 95000000-0000-4000-8000-000000000090
-    resource_version: 5
+    resource_version: 4
     material_version: 2
   valid: true
+  current_http_case: notifications09-refresh-readStockLot
 - name: stock-lot-private-payload-rejected
   definition: stage1.stock-lot.changed.v1
   payload:
     event_name: stage1.stock-lot.changed.v1
     event_id: 99000000-0000-4000-8001-000000000015
-    committed_at: '2026-11-10T02:00:00.000000Z'
+    committed_at: '2026-11-10T03:09:00.000000Z'
     chapter_id: 60000000-0000-4000-8000-000000000001
     resource_kind: stock_lot
     resource_id: 95000000-0000-4000-8000-000000000090
-    resource_version: 5
+    resource_version: 4
     material_version: 2
     quantity: '4'
   valid: false
@@ -1232,13 +1267,21 @@ scenarios:
   - issue08-post-four-once
   - notifications09-refresh-readVariantStock
   - notifications09-refresh-readInternalRf
+  - notifications09-refresh-readRfReservation
+  - notifications09-refresh-readStockLot
   events:
   - stage1.actual-issue.changed.v1
   - stage1.rf-reservation.changed.v1
   - stage1.stock-lot.changed.v1
   - stage1.internal-rf.changed.v1
   expectation: One committed issue4 from opening12 gives onhand8. Separate minimal subject notices; only authorized
-    reads update displays, never infer quantities from event counts.
+    reads update displays, never infer quantities from event counts. All joined notice and current-read identities/versions
+    refer to the first committed4 at03:09Z, with onhand8/reserved2/available6 and RF issued4.
+  notice_examples:
+  - internal-rf-committed
+  - rf-reservation-committed
+  - actual-issue-committed
+  - stock-lot-committed
 - name: failed-command
   http_cases:
   - reservation-exact-ten-only-six-zero-commit
@@ -1265,10 +1308,18 @@ scenarios:
   - notifications09-refresh-readActualIssue
   - notifications09-refresh-findActualIssueOperation
   - notifications09-refresh-readVariantStock
+  - notifications09-refresh-readRfReservation
+  - notifications09-refresh-readStockLot
   events: []
   expectation: Subscribe and acknowledge first, buffer notices, current authority then permitted mounted/list/pending-result
     reads; drain dirty subjects with another GET. A dropped notice is covered by complete current resync, with existing
-    uncertain action key kept private. No replay cursor, posting or physical handover.
+    uncertain action key kept private. No replay cursor, posting or physical handover. All joined notice and current-read
+    identities/versions refer to the first committed4 at03:09Z, with onhand8/reserved2/available6 and RF issued4.
+  notice_examples:
+  - internal-rf-committed
+  - rf-reservation-committed
+  - actual-issue-committed
+  - stock-lot-committed
 - name: chapter-change
   http_cases:
   - notifications09-refresh-readChapterContext
