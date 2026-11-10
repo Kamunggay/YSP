@@ -311,9 +311,6 @@ profiles:
       retrievePaperEvidenceAttachment:
         method: GET
         path: /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content
-      matchOpeningRmEvidence:
-        method: POST
-        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/evidence-match
   opening:
     owner: Leader
     ui_consumer: Glenn
@@ -434,6 +431,9 @@ profiles:
       inspectOpeningRm:
         method: POST
         path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/inspection
+      matchOpeningRmEvidence:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/evidence-match
       postOpeningRm:
         method: POST
         path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/post
