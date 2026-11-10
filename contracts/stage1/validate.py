@@ -170,7 +170,8 @@ def main():
             covered.add(case["operationId"])
             rf_mutations = document["components"]["schemas"].get("RfMutationName", {}).get("enum", [])
             reservation_mutations = document["components"]["schemas"].get("ReservationMutationName", {}).get("enum", [])
-            if case["operationId"] in rf_mutations + reservation_mutations:
+            issue_mutations = document["components"]["schemas"].get("IssueMutationName", {}).get("enum", [])
+            if case["operationId"] in rf_mutations + reservation_mutations + issue_mutations:
                 receipt = response["body"]["data"]
                 if (receipt["operation_name"] != case["operationId"] or
                         receipt["action_key"] != request_headers["X-Action-Key"]):
@@ -230,11 +231,14 @@ def main():
             policy_definition = catalogue_policy or opening_policy
             rf_policy = document.get("x-rf-policy-values", {}).get(policy["setting_key"])
             reservation_policy = document.get("x-reservation-policy-values", {}).get(policy["setting_key"])
+            issue_policy = document.get("x-issue-policy-values", {}).get(policy["setting_key"])
             if reservation_policy:
                 policy_definition = reservation_policy
             if rf_policy and (policy["setting_key"] == "rf_approval_route" or
                               policy["value_schema_reference"] == rf_policy["schema"]["$ref"]):
                 policy_definition = rf_policy
+            if issue_policy and policy["value_schema_reference"] == issue_policy["schema"]["$ref"]:
+                policy_definition = issue_policy
             if policy_definition:
                 value_pointer = policy_definition["schema"]["$ref"]
                 if policy["value_schema_reference"] != value_pointer:
@@ -259,13 +263,18 @@ def main():
     evidence_participants = document.get("x-evidence-participants", {})
     inventory_participants = document.get("x-opening-inventory-participants", {})
     reservation_participants = document.get("x-reservation-participants", {})
+    issue_participants = document.get("x-actual-issue-participants", {})
     if (evidence_participants.keys() & inventory_participants.keys() or
             (evidence_participants.keys() | inventory_participants.keys()) & reservation_participants.keys()):
         raise ValueError("Duplicate internal participant ID")
     participants = evidence_participants | inventory_participants | reservation_participants
+    if participants.keys() & issue_participants.keys():
+        raise ValueError("Duplicate internal participant ID")
+    participants |= issue_participants
     participant_coverage = set()
     for case in (examples.get("participant_cases", []) + examples.get("opening_inventory_cases", []) +
-                 examples.get("reservation_participant_cases", [])):
+                 examples.get("reservation_participant_cases", []) +
+                 examples.get("actual_issue_inventory_cases", [])):
         name = case["name"]
         if name in names:
             raise ValueError(f"Duplicate consumer case: {name}")
@@ -285,7 +294,8 @@ def main():
           f"{len(procedures)} controlled procedures; {len(names)} consumer cases; "
           f"{len(evidence_participants)} evidence participants; "
           f"{len(inventory_participants)} opening Inventory participants; "
-          f"{len(reservation_participants)} reservation participants; {checked} schema/example checks")
+          f"{len(reservation_participants)} reservation participants; "
+          f"{len(issue_participants)} actual issue Inventory participants; {checked} schema/example checks")
     if args.invalid_example:
         pointer, _ = operations["completeRecoveryChallenge"]
         check_value(pointer + "/requestBody/content/application~1json/schema",
