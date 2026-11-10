@@ -130,6 +130,37 @@ def validate_notifications(root, document, examples, operations):
             raise ValueError(f"Unknown scenario HTTP case/event: {scenario['name']}")
         if not set(scenario.get("notice_examples", [])) <= names:
             raise ValueError(f"Unknown scenario notice example: {scenario['name']}")
+        if "principal_case" in scenario:
+            principal = http_cases[scenario["principal_case"]]["response"]["body"]["data"]
+            context = http_cases[scenario["context_case"]]["response"]["body"]["data"]
+            access = http_cases[scenario["access_case"]]["response"]["body"]["data"]
+            memberships = http_cases[scenario["membership_case"]]["response"]["body"]["data"]
+            if (principal["state"] != "authenticated" or
+                    principal["user"]["id"] != context["user_id"] or
+                    context["user_id"] != access["user_id"] or
+                    context["membership"] not in memberships or
+                    context["membership"]["chapter"]["id"] != access["chapter_id"]):
+                raise ValueError(f"Reconnect principal/current authority differs: {scenario['name']}")
+            action_states = {action["action"]: action["state"] for action in access["actions"]}
+            for case_name in scenario["http_cases"]:
+                current = http_cases[case_name]
+                if not current["response"]["status"].startswith("2"):
+                    continue
+                chapter = current.get("request", {}).get("path", {}).get("chapter_id")
+                if chapter is not None and chapter != access["chapter_id"]:
+                    raise ValueError(f"Reconnect reads another chapter: {case_name}")
+                _, operation = operations[current["operationId"]]
+                required_action = operation.get("x-required-action", "")
+                for action in required_action.split(" AND "):
+                    if action and action_states.get(action) == "duty_denied":
+                        raise ValueError(f"Reconnect read contradicts current duties: {case_name}")
+                if current["operationId"] in {"authorizeSessionNotifications", "authorizeChapterNotifications"}:
+                    channel = current["request"]["body"]["channel_name"]
+                    prefix = "private-stage1."
+                    if chapter is not None:
+                        prefix += f"chapter.{chapter}."
+                    if channel != prefix + "user." + principal["user"]["id"]:
+                        raise ValueError(f"Reconnect authorizes another user: {case_name}")
     required = {"committed-change", "failed-command", "duplicate-or-delayed", "missed-event-reconnect",
                 "chapter-change", "revocation", "disabled-or-other-user", "preserved-edit"}
     if not required <= scenarios:

@@ -23313,12 +23313,14 @@ cases:
           advancement_blockers: []
   - name: notifications09-session-authorized
     operationId: authorizeSessionNotifications
-    before: Synthetic current enabled full-MFA individual; own live socket; chapter membership where required. No
-      runtime execution.
+    before: Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Synthetic current enabled
+      full-MFA individual; own live socket; chapter membership where required. No runtime execution.
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
     response:
       status: '200'
       body:
@@ -23329,7 +23331,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000002
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000099
     response:
       status: '403'
       body:
@@ -23343,7 +23345,7 @@ cases:
     request:
       body:
         socket_id: '999.999'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
     response:
       status: '403'
       body:
@@ -23358,7 +23360,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
     response:
       status: '403'
       body:
@@ -23371,7 +23373,7 @@ cases:
     request:
       body:
         socket_id: 42
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
     request_valid: false
     response:
       status: '422'
@@ -23390,7 +23392,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
     response:
       status: '401'
       body:
@@ -23404,7 +23406,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
     response:
       status: '419'
       body:
@@ -23418,7 +23420,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
     response:
       status: '429'
       body:
@@ -23434,7 +23436,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
     response:
       status: '503'
       body:
@@ -23444,12 +23446,14 @@ cases:
         request_id: 50000000-0000-4000-8000-000000000001
   - name: notifications09-chapter-authorized
     operationId: authorizeChapterNotifications
-    before: Synthetic current enabled full-MFA individual; own live socket; chapter membership where required. No
-      runtime execution.
+    before: Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Synthetic current enabled
+      full-MFA individual; own live socket; chapter membership where required. No runtime execution.
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     response:
@@ -23462,7 +23466,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000002
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000099
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     response:
@@ -23478,7 +23482,7 @@ cases:
     request:
       body:
         socket_id: '999.999'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     response:
@@ -23495,7 +23499,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     response:
@@ -23510,7 +23514,7 @@ cases:
     request:
       body:
         socket_id: 42
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     request_valid: false
@@ -23531,7 +23535,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     response:
@@ -23547,7 +23551,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     response:
@@ -23563,7 +23567,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     response:
@@ -23581,7 +23585,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     response:
@@ -23593,56 +23597,62 @@ cases:
         request_id: 50000000-0000-4000-8000-000000000001
   - name: notifications09-refresh-readCurrentSession
     operationId: readCurrentSession
-    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
-      mutation, repost or second handover.
+    before: Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Authorized reconnect/current
+      read only. The original schema-valid domain snapshot is illustrative; no mutation, repost or second handover.
     response:
       status: '200'
       body:
         data:
-          state: continuation
+          state: authenticated
           user:
-            id: 10000000-0000-4000-8000-000000000001
-            display_name: Synthetic approver
-          next_step: enroll_authenticator
-          expires_at: '2026-11-08T02:10:00.000000Z'
+            id: 98000000-0000-4000-8000-000000000001
+            display_name: Synthetic issuing Inventory officer
+          authentication_method: authenticator
+          mfa_required: true
+          authenticated_at: '2026-11-10T03:00:00.000000Z'
+          expires_at: '2026-11-10T11:00:00.000000Z'
   - name: notifications09-refresh-listMyChapterMemberships
     operationId: listMyChapterMemberships
-    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
-      mutation, repost or second handover.
+    before: Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Authorized reconnect/current
+      read only. The original schema-valid domain snapshot is illustrative; no mutation, repost or second handover.
     request: {}
     response:
       status: '200'
       body:
         data:
-        - id: 70000000-0000-4000-8000-000000000001
+        - id: 98000000-0000-4000-8000-000000000002
           chapter:
             id: 60000000-0000-4000-8000-000000000001
             reference: SYN-A
             display_name: Synthetic chapter A
             created_at: '2026-11-09T02:00:00.000000Z'
           duties:
-          - COMMITTEE_REQUESTER
+          - INVENTORY
           authority_version: 3
           duty_grants:
-          - id: 90000000-0000-4000-8000-000000000001
-            duty: COMMITTEE_REQUESTER
+          - id: 98000000-0000-4000-8000-000000000003
+            duty: INVENTORY
             scope:
               unit_id: null
               limit_php: null
             effective_from: '2026-11-09T02:00:00.000000Z'
             effective_until: null
-        - id: 70000000-0000-4000-8000-000000000002
+        - id: 99000000-0000-4000-8000-000000000202
           chapter:
             id: 60000000-0000-4000-8000-000000000002
             reference: SYN-B
             display_name: Synthetic chapter B
             created_at: '2026-11-09T02:00:00.000000Z'
           duties:
-          - COMMITTEE_REQUESTER
+          - INVENTORY
           authority_version: 3
           duty_grants:
-          - id: 90000000-0000-4000-8000-000000000001
-            duty: COMMITTEE_REQUESTER
+          - id: 99000000-0000-4000-8000-000000000203
+            duty: INVENTORY
             scope:
               unit_id: null
               limit_php: null
@@ -23652,8 +23662,10 @@ cases:
           next_cursor: null
   - name: notifications09-refresh-readChapterContext
     operationId: readChapterContext
-    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
-      mutation, repost or second handover.
+    before: Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Authorized reconnect/current
+      read only. The original schema-valid domain snapshot is illustrative; no mutation, repost or second handover.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -23661,30 +23673,32 @@ cases:
       status: '200'
       body:
         data:
-          user_id: 10000000-0000-4000-8000-000000000002
+          user_id: 98000000-0000-4000-8000-000000000001
           membership:
-            id: 70000000-0000-4000-8000-000000000001
+            id: 98000000-0000-4000-8000-000000000002
             chapter:
               id: 60000000-0000-4000-8000-000000000001
               reference: SYN-A
               display_name: Synthetic chapter A
               created_at: '2026-11-09T02:00:00.000000Z'
             duties:
-            - COMMITTEE_REQUESTER
+            - INVENTORY
             authority_version: 3
             duty_grants:
-            - id: 90000000-0000-4000-8000-000000000001
-              duty: COMMITTEE_REQUESTER
+            - id: 98000000-0000-4000-8000-000000000003
+              duty: INVENTORY
               scope:
                 unit_id: null
                 limit_php: null
               effective_from: '2026-11-09T02:00:00.000000Z'
               effective_until: null
-          checked_at: '2026-11-09T02:00:00.000000Z'
+          checked_at: '2026-11-10T03:10:00.000000Z'
   - name: notifications09-refresh-readChapterAccess
     operationId: readChapterAccess
-    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
-      mutation, repost or second handover.
+    before: Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Authorized reconnect/current
+      read only. The original schema-valid domain snapshot is illustrative; no mutation, repost or second handover.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -23693,10 +23707,10 @@ cases:
       body:
         data:
           chapter_id: 60000000-0000-4000-8000-000000000001
-          user_id: 10000000-0000-4000-8000-000000000002
+          user_id: 98000000-0000-4000-8000-000000000001
           authority_version: 3
           setup_version: 2
-          checked_at: '2026-11-09T02:00:00.000000Z'
+          checked_at: '2026-11-10T03:10:00.000000Z'
           actions:
           - action: rf.read
             state: context_required
@@ -23716,19 +23730,19 @@ cases:
             - RF_APPROVER
             blockers: []
           - action: catalogue.maintain
-            state: duty_denied
+            state: allowed
             required_duties:
             - INVENTORY
             blockers: []
           - action: stock.read
-            state: duty_denied
+            state: allowed
             required_duties:
             - INVENTORY
             - RECEIVING
             - DISPATCH
             blockers: []
           - action: evidence.read
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             - RECEIVING
@@ -23736,14 +23750,14 @@ cases:
             - RF_APPROVER
             blockers: []
           - action: evidence.prepare
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             - RECEIVING
             - DISPATCH
             blockers: []
           - action: ipc.draft
-            state: duty_denied
+            state: allowed
             required_duties:
             - INVENTORY
             blockers: []
@@ -23764,53 +23778,48 @@ cases:
             - RECEIVING
             blockers: []
           - action: rf.draft
-            state: allowed
+            state: duty_denied
             required_duties:
             - COMMITTEE_REQUESTER
             blockers: []
           - action: rf.submit
-            state: setup_blocked
+            state: duty_denied
             required_duties:
             - COMMITTEE_REQUESTER
-            blockers:
-            - setting_key: rf_approval_route
-              subject_id: null
-              state: unapproved
-              approval_owner: CHAPTER_HEAD
-              message: Approve the chapter RF decision route before submission.
+            blockers: []
           - action: rf.approve
             state: duty_denied
             required_duties:
             - RF_APPROVER
             blockers: []
           - action: rf.reserve
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             blockers: []
           - action: rf.reallocate
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             blockers: []
           - action: hold.place
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             blockers: []
           - action: hold.clear
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             blockers: []
           - action: issue.prepare
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             - DISPATCH
             blockers: []
           - action: issue.post
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             - DISPATCH
@@ -23825,7 +23834,7 @@ cases:
             - RF_APPROVER
             blockers: []
           - action: ipc.read
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             - INDEPENDENT_REVIEWER
@@ -23834,19 +23843,19 @@ cases:
             - FINANCE
             blockers: []
           - action: ipc.count
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             - INDEPENDENT_REVIEWER
             blockers: []
           - action: opening_rm.read
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             - RECEIVING
             blockers: []
           - action: opening.result.read
-            state: duty_denied
+            state: context_required
             required_duties:
             - INVENTORY
             - INDEPENDENT_REVIEWER
@@ -23856,8 +23865,11 @@ cases:
             blockers: []
   - name: notifications09-refresh-readInternalRf
     operationId: readInternalRf
-    before: 'Same committed first-issue4 snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6,
-      RF approved10 issued4 remaining6/unreserved4. Independent currently scoped reader; no second handover.'
+    before: 'Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Same committed first-issue4
+      snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6, RF approved10 issued4 remaining6/unreserved4.
+      Independent currently scoped reader; no second handover.'
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -23932,8 +23944,11 @@ cases:
           advancement_blockers: []
   - name: notifications09-refresh-readActualIssue
     operationId: readActualIssue
-    before: 'Same committed first-issue4 snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6,
-      RF approved10 issued4 remaining6/unreserved4. Independent currently scoped reader; no second handover.'
+    before: 'Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Same committed first-issue4
+      snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6, RF approved10 issued4 remaining6/unreserved4.
+      Independent currently scoped reader; no second handover.'
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -24124,8 +24139,10 @@ cases:
           setup_blockers: []
   - name: notifications09-refresh-findActualIssueOperation
     operationId: findActualIssueOperation
-    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
-      mutation, repost or second handover.
+    before: Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Authorized reconnect/current
+      read only. The original schema-valid domain snapshot is illustrative; no mutation, repost or second handover.
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -24412,8 +24429,11 @@ cases:
             unreserved_outstanding: '4'
             uncovered_need: '0'
           procurement_commitment_created: false
-    before: 'Same committed first-issue4 snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6,
-      RF approved10 issued4 remaining6/unreserved4. Independent currently scoped reader; no second handover.'
+    before: 'Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Same committed first-issue4
+      snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6, RF approved10 issued4 remaining6/unreserved4.
+      Independent currently scoped reader; no second handover.'
   - name: notifications09-old-result-revoked
     operationId: readActualIssueOperation
     before: Original issue committed while permitted; current actor has lost required issue authority. Deny older
@@ -24446,7 +24466,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
     response:
       status: '403'
       body:
@@ -24461,7 +24481,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
     response:
@@ -24478,7 +24498,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.user.98000000-0000-4000-8000-000000000001
       headers:
         X-XSRF-TOKEN: ''
     response:
@@ -24494,7 +24514,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
       headers:
@@ -24513,7 +24533,7 @@ cases:
     request:
       body:
         socket_id: '123.456'
-        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.98000000-0000-4000-8000-000000000001
       path:
         chapter_id: not-a-uuid
     response:
@@ -24528,8 +24548,11 @@ cases:
     - path.chapter_id
   - name: notifications09-refresh-readRfReservation
     operationId: readRfReservation
-    before: 'Same committed first-issue4 snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6,
-      RF approved10 issued4 remaining6/unreserved4. Independent currently scoped reader; no second handover.'
+    before: 'Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Same committed first-issue4
+      snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6, RF approved10 issued4 remaining6/unreserved4.
+      Independent currently scoped reader; no second handover.'
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -24584,8 +24607,11 @@ cases:
             unreserved_quantity: '4'
   - name: notifications09-refresh-readStockLot
     operationId: readStockLot
-    before: 'Same committed first-issue4 snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6,
-      RF approved10 issued4 remaining6/unreserved4. Independent currently scoped reader; no second handover.'
+    before: 'Same enabled full-authenticator Inventory actor9800...0001 (original issue actor), current chapter6000...0001
+      membership9800...0002 and unbounded INVENTORY grant9800...0003. Independently approved synthetic setup; no COMMITTEE_REQUESTER/RF_APPROVER
+      impersonation. First committed issue4 at03:09Z, refreshed03:10Z; no further commits. Same committed first-issue4
+      snapshot at2026-11-10T03:09Z: accepted12, remaining usable8, reserved2, available6, RF approved10 issued4 remaining6/unreserved4.
+      Independent currently scoped reader; no second handover.'
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -24664,6 +24690,236 @@ cases:
             offset_quantity: '6'
           created_at: '2026-11-09T01:00:00.000000Z'
           observed_at: '2026-11-10T03:09:00.000000Z'
+  - name: notifications09-new-chapter-readChapterContext
+    operationId: readChapterContext
+    before: Explicitly selected second admitted chapter6000...0002, same full Inventory actor; original A edits remain
+      parked underA. Fresh current permission check, no cross-chapter stock reads.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000002
+    response:
+      status: '200'
+      body:
+        data:
+          user_id: 98000000-0000-4000-8000-000000000001
+          membership:
+            id: 99000000-0000-4000-8000-000000000202
+            chapter:
+              id: 60000000-0000-4000-8000-000000000002
+              reference: SYN-B
+              display_name: Synthetic chapter B
+              created_at: '2026-11-09T02:00:00.000000Z'
+            duties:
+            - INVENTORY
+            authority_version: 3
+            duty_grants:
+            - id: 99000000-0000-4000-8000-000000000203
+              duty: INVENTORY
+              scope:
+                unit_id: null
+                limit_php: null
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+          checked_at: '2026-11-10T03:10:00.000000Z'
+  - name: notifications09-new-chapter-readChapterAccess
+    operationId: readChapterAccess
+    before: Explicitly selected second admitted chapter6000...0002, same full Inventory actor; original A edits remain
+      parked underA. Fresh current permission check, no cross-chapter stock reads.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000002
+    response:
+      status: '200'
+      body:
+        data:
+          chapter_id: 60000000-0000-4000-8000-000000000002
+          user_id: 98000000-0000-4000-8000-000000000001
+          authority_version: 3
+          setup_version: 2
+          checked_at: '2026-11-10T03:10:00.000000Z'
+          actions:
+          - action: rf.read
+            state: context_required
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: catalogue.read
+            state: allowed
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            blockers: []
+          - action: catalogue.maintain
+            state: allowed
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: stock.read
+            state: allowed
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: evidence.read
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+          - action: evidence.prepare
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: ipc.draft
+            state: allowed
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: ipc.authorize
+            state: duty_denied
+            required_duties:
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: opening_rm.prepare
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: opening_rm.post
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: rf.draft
+            state: duty_denied
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.submit
+            state: duty_denied
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.approve
+            state: duty_denied
+            required_duties:
+            - RF_APPROVER
+            blockers: []
+          - action: rf.reserve
+            state: context_required
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: rf.reallocate
+            state: context_required
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.place
+            state: context_required
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.clear
+            state: context_required
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: issue.prepare
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: issue.post
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: history.read
+            state: context_required
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+          - action: ipc.read
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: ipc.count
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            blockers: []
+          - action: opening_rm.read
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            blockers: []
+          - action: opening.result.read
+            state: context_required
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+  - name: notifications09-new-chapter-authorized
+    operationId: authorizeChapterNotifications
+    before: New owned socket after chapter change, same admitted full Inventory actor. LeaveA subscription, preserveA
+      edit origin; explicit newB admission.
+    request:
+      body:
+        socket_id: '123.457'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000002.user.98000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000002
+    response:
+      status: '200'
+      body:
+        auth: synthetic_app_key:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: notifications09-unadmitted-chapter-denied
+    operationId: authorizeChapterNotifications
+    before: Current full Inventory actor has no membership in this requested chapter; copied URL/channel cannot admit
+      it.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000003.user.98000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000003
+    response:
+      status: '403'
+      body:
+        error:
+          code: notification_subscription_denied
+          message: Private subscription unavailable.
+        request_id: 50000000-0000-4000-8000-000000000001
 procedure_cases:
 - name: issue08-isar-family-coexists
   procedureId: recordPolicy

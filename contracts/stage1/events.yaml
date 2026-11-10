@@ -865,7 +865,7 @@ examples:
     committed_at: '2026-11-10T02:00:00.000000Z'
     chapter_id: null
     resource_kind: account
-    resource_id: 10000000-0000-4000-8000-000000000001
+    resource_id: 98000000-0000-4000-8000-000000000001
     resource_version: null
     material_version: null
   valid: true
@@ -877,7 +877,7 @@ examples:
     committed_at: '2026-11-10T02:00:00.000000Z'
     chapter_id: null
     resource_kind: account
-    resource_id: 10000000-0000-4000-8000-000000000001
+    resource_id: 98000000-0000-4000-8000-000000000001
     resource_version: null
     material_version: null
     quantity: '4'
@@ -1315,16 +1315,23 @@ scenarios:
     reads; drain dirty subjects with another GET. A dropped notice is covered by complete current resync, with existing
     uncertain action key kept private. No replay cursor, posting or physical handover. All joined notice and current-read
     identities/versions refer to the first committed4 at03:09Z, with onhand8/reserved2/available6 and RF issued4.
+    One current authenticated Inventory actor9800...0001 throughout session, private channels, membership/context/access
+    and original-actor outcome lookup; no continuation session or denied protected read.
   notice_examples:
   - internal-rf-committed
   - rf-reservation-committed
   - actual-issue-committed
   - stock-lot-committed
+  principal_case: notifications09-refresh-readCurrentSession
+  membership_case: notifications09-refresh-listMyChapterMemberships
+  context_case: notifications09-refresh-readChapterContext
+  access_case: notifications09-refresh-readChapterAccess
 - name: chapter-change
   http_cases:
-  - notifications09-refresh-readChapterContext
-  - notifications09-refresh-readChapterAccess
-  - notifications09-chapter-copied-channel
+  - notifications09-new-chapter-authorized
+  - notifications09-new-chapter-readChapterContext
+  - notifications09-new-chapter-readChapterAccess
+  - notifications09-unadmitted-chapter-denied
   events: []
   expectation: Cancel old generation reads/handlers, leave old chapter socket subscription, retain draft(user,origin
     chapter,resource,base material) separately. Explicitly select admitted new chapter, authorize its new channel
