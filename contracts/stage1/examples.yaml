@@ -23311,6 +23311,1074 @@ cases:
           submitted_at: '2026-11-09T07:00:00.000000Z'
           setup_blockers: []
           advancement_blockers: []
+  - name: notifications09-session-authorized
+    operationId: authorizeSessionNotifications
+    before: Synthetic current enabled full-MFA individual; own live socket; chapter membership where required. No
+      runtime execution.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        auth: synthetic_app_key:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: notifications09-session-copied-channel
+    operationId: authorizeSessionNotifications
+    before: Another user channel. No authorization signature or business effect.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000002
+    response:
+      status: '403'
+      body:
+        error:
+          code: notification_subscription_denied
+          message: Private subscription unavailable.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-session-unowned-socket
+    operationId: authorizeSessionNotifications
+    before: Socket belongs to another browser session. No authorization signature or business effect.
+    request:
+      body:
+        socket_id: '999.999'
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        error:
+          code: notification_subscription_denied
+          message: Private subscription unavailable.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-session-revoked
+    operationId: authorizeSessionNotifications
+    before: Current membership/duty changed; prior grant confers no access. No authorization signature or business
+      effect.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        error:
+          code: notification_subscription_denied
+          message: Private subscription unavailable.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-session-invalid-socket
+    operationId: authorizeSessionNotifications
+    request:
+      body:
+        socket_id: 42
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+    request_valid: false
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated fields.
+          fields:
+          - pointer: /socket_id
+            code: invalid_type
+            message: Socket identity must be a string.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-session-401
+    operationId: authorizeSessionNotifications
+    before: Disabled/expired identity, CSRF failure, throttled or unavailable as indicated; no new subscription.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+    response:
+      status: '401'
+      body:
+        error:
+          code: unauthenticated
+          message: Sign in again.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-session-419
+    operationId: authorizeSessionNotifications
+    before: Disabled/expired identity, CSRF failure, throttled or unavailable as indicated; no new subscription.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+    response:
+      status: '419'
+      body:
+        error:
+          code: csrf_mismatch
+          message: Refresh browser CSRF protection.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-session-429
+    operationId: authorizeSessionNotifications
+    before: Disabled/expired identity, CSRF failure, throttled or unavailable as indicated; no new subscription.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+    response:
+      status: '429'
+      body:
+        error:
+          code: throttled
+          message: Try again after the indicated delay.
+        request_id: 50000000-0000-4000-8000-000000000001
+      headers:
+        Retry-After: '30'
+  - name: notifications09-session-503
+    operationId: authorizeSessionNotifications
+    before: Disabled/expired identity, CSRF failure, throttled or unavailable as indicated; no new subscription.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+    response:
+      status: '503'
+      body:
+        error:
+          code: unavailable
+          message: Authentication service is unavailable.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-chapter-authorized
+    operationId: authorizeChapterNotifications
+    before: Synthetic current enabled full-MFA individual; own live socket; chapter membership where required. No
+      runtime execution.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        auth: synthetic_app_key:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - name: notifications09-chapter-copied-channel
+    operationId: authorizeChapterNotifications
+    before: Another user channel. No authorization signature or business effect.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000002
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        error:
+          code: notification_subscription_denied
+          message: Private subscription unavailable.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-chapter-unowned-socket
+    operationId: authorizeChapterNotifications
+    before: Socket belongs to another browser session. No authorization signature or business effect.
+    request:
+      body:
+        socket_id: '999.999'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        error:
+          code: notification_subscription_denied
+          message: Private subscription unavailable.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-chapter-revoked
+    operationId: authorizeChapterNotifications
+    before: Current membership/duty changed; prior grant confers no access. No authorization signature or business
+      effect.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        error:
+          code: notification_subscription_denied
+          message: Private subscription unavailable.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-chapter-invalid-socket
+    operationId: authorizeChapterNotifications
+    request:
+      body:
+        socket_id: 42
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    request_valid: false
+    response:
+      status: '422'
+      body:
+        error:
+          code: invalid_input
+          message: Correct the indicated fields.
+          fields:
+          - pointer: /socket_id
+            code: invalid_type
+            message: Socket identity must be a string.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-chapter-401
+    operationId: authorizeChapterNotifications
+    before: Disabled/expired identity, CSRF failure, throttled or unavailable as indicated; no new subscription.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '401'
+      body:
+        error:
+          code: unauthenticated
+          message: Sign in again.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-chapter-419
+    operationId: authorizeChapterNotifications
+    before: Disabled/expired identity, CSRF failure, throttled or unavailable as indicated; no new subscription.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '419'
+      body:
+        error:
+          code: csrf_mismatch
+          message: Refresh browser CSRF protection.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-chapter-429
+    operationId: authorizeChapterNotifications
+    before: Disabled/expired identity, CSRF failure, throttled or unavailable as indicated; no new subscription.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '429'
+      body:
+        error:
+          code: throttled
+          message: Try again after the indicated delay.
+        request_id: 50000000-0000-4000-8000-000000000001
+      headers:
+        Retry-After: '30'
+  - name: notifications09-chapter-503
+    operationId: authorizeChapterNotifications
+    before: Disabled/expired identity, CSRF failure, throttled or unavailable as indicated; no new subscription.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '503'
+      body:
+        error:
+          code: unavailable
+          message: Authentication service is unavailable.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-refresh-readCurrentSession
+    operationId: readCurrentSession
+    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
+      mutation, repost or second handover.
+    response:
+      status: '200'
+      body:
+        data:
+          state: continuation
+          user:
+            id: 10000000-0000-4000-8000-000000000001
+            display_name: Synthetic approver
+          next_step: enroll_authenticator
+          expires_at: '2026-11-08T02:10:00.000000Z'
+  - name: notifications09-refresh-listMyChapterMemberships
+    operationId: listMyChapterMemberships
+    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
+      mutation, repost or second handover.
+    request: {}
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 70000000-0000-4000-8000-000000000001
+          chapter:
+            id: 60000000-0000-4000-8000-000000000001
+            reference: SYN-A
+            display_name: Synthetic chapter A
+            created_at: '2026-11-09T02:00:00.000000Z'
+          duties:
+          - COMMITTEE_REQUESTER
+          authority_version: 3
+          duty_grants:
+          - id: 90000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            scope:
+              unit_id: null
+              limit_php: null
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+        - id: 70000000-0000-4000-8000-000000000002
+          chapter:
+            id: 60000000-0000-4000-8000-000000000002
+            reference: SYN-B
+            display_name: Synthetic chapter B
+            created_at: '2026-11-09T02:00:00.000000Z'
+          duties:
+          - COMMITTEE_REQUESTER
+          authority_version: 3
+          duty_grants:
+          - id: 90000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            scope:
+              unit_id: null
+              limit_php: null
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+        page:
+          next_cursor: null
+  - name: notifications09-refresh-readChapterContext
+    operationId: readChapterContext
+    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
+      mutation, repost or second handover.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          user_id: 10000000-0000-4000-8000-000000000002
+          membership:
+            id: 70000000-0000-4000-8000-000000000001
+            chapter:
+              id: 60000000-0000-4000-8000-000000000001
+              reference: SYN-A
+              display_name: Synthetic chapter A
+              created_at: '2026-11-09T02:00:00.000000Z'
+            duties:
+            - COMMITTEE_REQUESTER
+            authority_version: 3
+            duty_grants:
+            - id: 90000000-0000-4000-8000-000000000001
+              duty: COMMITTEE_REQUESTER
+              scope:
+                unit_id: null
+                limit_php: null
+              effective_from: '2026-11-09T02:00:00.000000Z'
+              effective_until: null
+          checked_at: '2026-11-09T02:00:00.000000Z'
+  - name: notifications09-refresh-readChapterAccess
+    operationId: readChapterAccess
+    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
+      mutation, repost or second handover.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          user_id: 10000000-0000-4000-8000-000000000002
+          authority_version: 3
+          setup_version: 2
+          checked_at: '2026-11-09T02:00:00.000000Z'
+          actions:
+          - action: rf.read
+            state: context_required
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: catalogue.read
+            state: allowed
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - COMMITTEE_REQUESTER
+            - RF_APPROVER
+            blockers: []
+          - action: catalogue.maintain
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: stock.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: evidence.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+          - action: evidence.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            blockers: []
+          - action: ipc.draft
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: ipc.authorize
+            state: duty_denied
+            required_duties:
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: opening_rm.prepare
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: opening_rm.post
+            state: duty_denied
+            required_duties:
+            - RECEIVING
+            blockers: []
+          - action: rf.draft
+            state: allowed
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers: []
+          - action: rf.submit
+            state: setup_blocked
+            required_duties:
+            - COMMITTEE_REQUESTER
+            blockers:
+            - setting_key: rf_approval_route
+              subject_id: null
+              state: unapproved
+              approval_owner: CHAPTER_HEAD
+              message: Approve the chapter RF decision route before submission.
+          - action: rf.approve
+            state: duty_denied
+            required_duties:
+            - RF_APPROVER
+            blockers: []
+          - action: rf.reserve
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: rf.reallocate
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.place
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: hold.clear
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            blockers: []
+          - action: issue.prepare
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: issue.post
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - DISPATCH
+            blockers: []
+          - action: history.read
+            state: context_required
+            required_duties:
+            - COMMITTEE_REQUESTER
+            - INVENTORY
+            - RECEIVING
+            - DISPATCH
+            - RF_APPROVER
+            blockers: []
+          - action: ipc.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+          - action: ipc.count
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            blockers: []
+          - action: opening_rm.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - RECEIVING
+            blockers: []
+          - action: opening.result.read
+            state: duty_denied
+            required_duties:
+            - INVENTORY
+            - INDEPENDENT_REVIEWER
+            - RECEIVING
+            - CHAPTER_HEAD
+            - FINANCE
+            blockers: []
+  - name: notifications09-refresh-readInternalRf
+    operationId: readInternalRf
+    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
+      mutation, repost or second handover.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rf_id: 81000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          id: 81000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          reference: CEB-RF-2026-000001
+          status: approved
+          version: 5
+          material_version: 2
+          progress_version: 2
+          requester_id: 10000000-0000-4000-8000-000000000001
+          purpose: internal_use
+          requesting_unit_id: 85000000-0000-4000-8000-000000000001
+          event_id: null
+          needed_at: '2026-11-12T01:00:00.000000Z'
+          justification: Committee internal training materials.
+          lines:
+          - id: 82000000-0000-4000-8000-000000000001
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            requested_quantity: '10'
+            identity_at_approval:
+              variant_id: 95000000-0000-4000-8000-000000000051
+              variant_material_version: 1
+              item_id: 95000000-0000-4000-8000-000000000050
+              item_code: SHIRT
+              variant_code: SHIRT-M
+              display_name: Example shirt / M
+              unit_id: 95000000-0000-4000-8000-000000000052
+              unit_code: EA
+              unit_material_version: 1
+              quantity_scale: 0
+            progress:
+              approved_quantity: '10'
+              issued_quantity: '0'
+              reserved_quantity: '6'
+              blocked_reserved_quantity: '0'
+              canceled_quantity: '0'
+              remaining_quantity: '10'
+              unreserved_quantity: '4'
+          approval:
+            actor:
+              user_id: 10000001-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 86000001-0000-4000-8000-000000000001
+              duty_grant_id: 87000001-0000-4000-8000-000000000001
+              duty: RF_APPROVER
+              unit_id: 85000000-0000-4000-8000-000000000001
+              acted_at: '2026-11-09T07:00:00.000000Z'
+            material_version: 2
+            route_policy_id: 88000000-0000-4000-8000-000000000001
+            route_policy_version: 1
+            alternate_authorization_id: null
+          fulfillment: outstanding
+          created_by:
+            user_id: 10000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 86000000-0000-4000-8000-000000000001
+            duty_grant_id: 87000000-0000-4000-8000-000000000001
+            duty: COMMITTEE_REQUESTER
+            unit_id: 85000000-0000-4000-8000-000000000001
+            acted_at: '2026-11-09T07:00:00.000000Z'
+          created_at: '2026-11-09T07:00:00.000000Z'
+          updated_at: '2026-11-09T07:00:00.000000Z'
+          submitted_at: '2026-11-09T07:00:00.000000Z'
+          setup_blockers: []
+          advancement_blockers: []
+  - name: notifications09-refresh-readActualIssue
+    operationId: readActualIssue
+    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
+      mutation, repost or second handover.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        issue_id: 98000000-0000-4000-8000-000000000010
+    response:
+      status: '200'
+      body:
+        data:
+          id: 98000000-0000-4000-8000-000000000010
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          rf_id: 81000000-0000-4000-8000-000000000001
+          reference: CEBISAR-2026-000001
+          version: 1
+          material_version: 1
+          status: prepared
+          material:
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            issue_id: 98000000-0000-4000-8000-000000000010
+            reference: CEBISAR-2026-000001
+            reference_policy_id: 98000000-0000-4000-8000-000000000090
+            reference_policy_version: 1
+            rf_id: 81000000-0000-4000-8000-000000000001
+            rf_reference: CEB-RF-2026-000001
+            rf_material_version: 2
+            approval:
+              actor:
+                user_id: 10000001-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 86000001-0000-4000-8000-000000000001
+                duty_grant_id: 87000001-0000-4000-8000-000000000001
+                duty: RF_APPROVER
+                unit_id: 85000000-0000-4000-8000-000000000001
+                acted_at: '2026-11-09T07:00:00.000000Z'
+              material_version: 2
+              route_policy_id: 88000000-0000-4000-8000-000000000001
+              route_policy_version: 1
+              alternate_authorization_id: null
+            issuing_officer:
+              user_id: 98000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 98000000-0000-4000-8000-000000000002
+              duty_grant_id: 98000000-0000-4000-8000-000000000003
+              duty: INVENTORY
+              unit_id: null
+              acted_at: '2026-11-10T03:00:00.000000Z'
+            recipient:
+              user_id: 10000000-0000-4000-8000-000000000001
+              membership_id: 86000000-0000-4000-8000-000000000001
+              duty_grant_id: 87000000-0000-4000-8000-000000000001
+              requesting_unit_id: 85000000-0000-4000-8000-000000000001
+              display_name: Synthetic committee recipient
+            lines:
+            - rf_line_id: 82000000-0000-4000-8000-000000000001
+              reservation_id: 98000000-0000-4000-8000-000000000040
+              reservation_material_version: 1
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              historical_variant_label: Example shirt / M
+              location_id: 95000000-0000-4000-8000-000000000053
+              source:
+                kind: ipc_rm
+                source_id: 95000000-0000-4000-8000-000000000010
+                source_reference: CEB-IPC-000001
+                source_material_version: 2
+                accepted_rm_id: 95000000-0000-4000-8000-000000000011
+                accepted_rm_reference: CEB-RM-000001
+                accepted_rm_version: 2
+                donor_id: null
+              ranges:
+              - stock_lot_id: 95000000-0000-4000-8000-000000000090
+                basis_segment_id: 95000000-0000-4000-8000-000000000100
+                offset_quantity: '0'
+                quantity: '4'
+              quantity: '4'
+            handed_over_at: null
+            acknowledged_at: null
+            recipient_accepts_partial: true
+          snapshot:
+            target:
+              purpose: actual_issue
+              record_id: 98000000-0000-4000-8000-000000000010
+            material_version: 1
+            sha256: 9ec426d51a6cf27354d797db27dd669cd82e2edf1bf91f646d8b15f166191e1d
+          acknowledgment: null
+          created_by:
+            user_id: 98000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            membership_id: 98000000-0000-4000-8000-000000000002
+            duty_grant_id: 98000000-0000-4000-8000-000000000003
+            duty: INVENTORY
+            unit_id: null
+            acted_at: '2026-11-10T03:00:00.000000Z'
+          created_at: '2026-11-10T03:00:00.000000Z'
+          entered_at: '2026-11-10T03:00:00.000000Z'
+          updated_at: '2026-11-10T03:00:00.000000Z'
+          handover_fence: none
+          posting: null
+          reconciliation: null
+          setup_blockers: []
+  - name: notifications09-refresh-findActualIssueOperation
+    operationId: findActualIssueOperation
+    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
+      mutation, repost or second handover.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        operation_name: postActualIssue
+        action_key: 98000000-0000-4000-8000-000000001009
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 98000000-0000-4000-8000-000000002009
+          operation_name: postActualIssue
+          action_key: 98000000-0000-4000-8000-000000001009
+          actor_id: 98000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-10T03:09:00.000000Z'
+          http_status: 200
+          result:
+            id: 98000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rf_id: 81000000-0000-4000-8000-000000000001
+            reference: CEBISAR-2026-000001
+            version: 4
+            material_version: 2
+            status: posted
+            material:
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              issue_id: 98000000-0000-4000-8000-000000000010
+              reference: CEBISAR-2026-000001
+              reference_policy_id: 98000000-0000-4000-8000-000000000090
+              reference_policy_version: 1
+              rf_id: 81000000-0000-4000-8000-000000000001
+              rf_reference: CEB-RF-2026-000001
+              rf_material_version: 2
+              approval:
+                actor:
+                  user_id: 10000001-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 86000001-0000-4000-8000-000000000001
+                  duty_grant_id: 87000001-0000-4000-8000-000000000001
+                  duty: RF_APPROVER
+                  unit_id: 85000000-0000-4000-8000-000000000001
+                  acted_at: '2026-11-09T07:00:00.000000Z'
+                material_version: 2
+                route_policy_id: 88000000-0000-4000-8000-000000000001
+                route_policy_version: 1
+                alternate_authorization_id: null
+              issuing_officer:
+                user_id: 98000000-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 98000000-0000-4000-8000-000000000002
+                duty_grant_id: 98000000-0000-4000-8000-000000000003
+                duty: INVENTORY
+                unit_id: null
+                acted_at: '2026-11-10T03:00:00.000000Z'
+              recipient:
+                user_id: 10000000-0000-4000-8000-000000000001
+                membership_id: 86000000-0000-4000-8000-000000000001
+                duty_grant_id: 87000000-0000-4000-8000-000000000001
+                requesting_unit_id: 85000000-0000-4000-8000-000000000001
+                display_name: Synthetic committee recipient
+              lines:
+              - rf_line_id: 82000000-0000-4000-8000-000000000001
+                reservation_id: 98000000-0000-4000-8000-000000000040
+                reservation_material_version: 1
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                historical_variant_label: Example shirt / M
+                location_id: 95000000-0000-4000-8000-000000000053
+                source:
+                  kind: ipc_rm
+                  source_id: 95000000-0000-4000-8000-000000000010
+                  source_reference: CEB-IPC-000001
+                  source_material_version: 2
+                  accepted_rm_id: 95000000-0000-4000-8000-000000000011
+                  accepted_rm_reference: CEB-RM-000001
+                  accepted_rm_version: 2
+                  donor_id: null
+                ranges:
+                - stock_lot_id: 95000000-0000-4000-8000-000000000090
+                  basis_segment_id: 95000000-0000-4000-8000-000000000100
+                  offset_quantity: '0'
+                  quantity: '4'
+                quantity: '4'
+              handed_over_at: '2026-11-10T03:05:00.000000Z'
+              acknowledged_at: '2026-11-10T03:06:00.000000Z'
+              recipient_accepts_partial: true
+            snapshot:
+              target:
+                purpose: actual_issue
+                record_id: 98000000-0000-4000-8000-000000000010
+              material_version: 2
+              sha256: c587d51fd00115cb740a37f179a0292a30d7ee04e9e1b17fa5f05893888cfc02
+            acknowledgment:
+              acknowledgment_id: 98000000-0000-4000-8000-000000000063
+              matched_by: 98000000-0000-4000-8000-000000000001
+              matched_at: '2026-11-10T03:08:00.000000Z'
+              recipient_id: 10000000-0000-4000-8000-000000000001
+              acknowledged_at: '2026-11-10T03:06:00.000000Z'
+              snapshot:
+                target:
+                  purpose: actual_issue
+                  record_id: 98000000-0000-4000-8000-000000000010
+                material_version: 2
+                sha256: c587d51fd00115cb740a37f179a0292a30d7ee04e9e1b17fa5f05893888cfc02
+              bytes:
+                evidence_id: 98000000-0000-4000-8000-000000000060
+                version_id: 98000000-0000-4000-8000-000000000061
+                attachments:
+                - attachment_id: 98000000-0000-4000-8000-000000000062
+                  sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            created_by:
+              user_id: 98000000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              membership_id: 98000000-0000-4000-8000-000000000002
+              duty_grant_id: 98000000-0000-4000-8000-000000000003
+              duty: INVENTORY
+              unit_id: null
+              acted_at: '2026-11-10T03:00:00.000000Z'
+            created_at: '2026-11-10T03:00:00.000000Z'
+            entered_at: '2026-11-10T03:07:00.000000Z'
+            updated_at: '2026-11-10T03:09:00.000000Z'
+            handover_fence: committed
+            posting:
+              id: 98000000-0000-4000-8000-000000000071
+              issue_id: 98000000-0000-4000-8000-000000000010
+              rf_id: 81000000-0000-4000-8000-000000000001
+              rf_version: 6
+              rf_progress_version: 3
+              rf_fulfillment: partially_issued
+              posted_at: '2026-11-10T03:09:00.000000Z'
+              posted_by:
+                user_id: 98000000-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                membership_id: 98000000-0000-4000-8000-000000000002
+                duty_grant_id: 98000000-0000-4000-8000-000000000003
+                duty: INVENTORY
+                unit_id: null
+                acted_at: '2026-11-10T03:09:00.000000Z'
+              acknowledgment_id: 98000000-0000-4000-8000-000000000063
+              movements:
+              - id: 98000000-0000-4000-8000-000000000070
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                issue_id: 98000000-0000-4000-8000-000000000010
+                issue_reference: CEBISAR-2026-000001
+                issue_material_version: 2
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                reservation_id: 98000000-0000-4000-8000-000000000040
+                kind: internal_issue
+                direction: out
+                source:
+                  kind: ipc_rm
+                  source_id: 95000000-0000-4000-8000-000000000010
+                  source_reference: CEB-IPC-000001
+                  source_material_version: 2
+                  accepted_rm_id: 95000000-0000-4000-8000-000000000011
+                  accepted_rm_reference: CEB-RM-000001
+                  accepted_rm_version: 2
+                  donor_id: null
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                location_id: 95000000-0000-4000-8000-000000000053
+                ranges:
+                - stock_lot_id: 95000000-0000-4000-8000-000000000090
+                  basis_segment_id: 95000000-0000-4000-8000-000000000100
+                  offset_quantity: '0'
+                  quantity: '4'
+                quantity: '4'
+                handed_over_at: '2026-11-10T03:05:00.000000Z'
+                posted_at: '2026-11-10T03:09:00.000000Z'
+                posted_by:
+                  user_id: 98000000-0000-4000-8000-000000000001
+                  chapter_id: 60000000-0000-4000-8000-000000000001
+                  membership_id: 98000000-0000-4000-8000-000000000002
+                  duty_grant_id: 98000000-0000-4000-8000-000000000003
+                  duty: INVENTORY
+                  unit_id: null
+                  acted_at: '2026-11-10T03:09:00.000000Z'
+              lines:
+              - rf_line_id: 82000000-0000-4000-8000-000000000001
+                reservation_id: 98000000-0000-4000-8000-000000000040
+                consumed_quantity: '4'
+                progress:
+                  approved_quantity: '10'
+                  issued_quantity: '4'
+                  reserved_quantity: '2'
+                  blocked_reserved_quantity: '0'
+                  canceled_quantity: '0'
+                  remaining_quantity: '6'
+                  unreserved_quantity: '4'
+                reservation_version: 2
+                reservation_material_version: 1
+                stock_lot_ids:
+                - 95000000-0000-4000-8000-000000000090
+            reconciliation: null
+            setup_blockers: []
+  - name: notifications09-refresh-readVariantStock
+    operationId: readVariantStock
+    setup: 'Illustrative state only, not posted balances/approval or acceptance: 10 usable; RF reserves 4, of which
+      2 have two overlapping holds; a separate unreserved 2 is held. Union(reserved, held)=6, availability=4, on-hand=10.
+      Approved synthetic ROP 10 makes low at equality. RF 10=0 issued+0 canceled+4 reserved+6 unreserved. Blocked
+      reserved 2 is a subset of reserved 4, not extra shortage. Later-stage categories zero. Ticket 05 owns real opening
+      path.'
+    request:
+      path:
+        chapter_id: 70000000-0000-4000-8000-000000000001
+        variant_id: 70000000-0000-4000-8000-000000000004
+      query:
+        intended_use: internal_use
+        needed_at: '2026-11-09T02:00:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          variant_id: 70000000-0000-4000-8000-000000000004
+          chapter_id: 70000000-0000-4000-8000-000000000001
+          stock_version: 1
+          variant_material_version: 1
+          unit_id: 70000000-0000-4000-8000-000000000005
+          quantity_scale: 0
+          intended_use:
+            use: internal_use
+            requesting_unit_id: null
+            event_id: null
+            needed_at: '2026-11-09T02:00:00.000000Z'
+          observed_at: '2026-11-09T02:00:00.000000Z'
+          views:
+            usable_stockroom_on_hand:
+              label: Usable stockroom on-hand
+              quantity: '10'
+            available_to_allocate:
+              label: Available-to-allocate
+              quantity: '4'
+            rf_reserved:
+              label: RF-reserved
+              quantity: '4'
+            so_reserved:
+              label: SO-reserved
+              quantity: '0'
+            booth_custody:
+              label: Booth custody
+              quantity: '0'
+            quarantined_rejected:
+              label: Quarantined/rejected
+              quantity: '0'
+            inbound_open_po:
+              label: Inbound open PO
+              quantity: '0'
+          views_are_additive: false
+          item_usable_stockroom_on_hand: '10'
+          approved_rop:
+            policy_id: 70000000-0000-4000-8000-000000000020
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000021
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '10'
+            unit_id: 70000000-0000-4000-8000-000000000005
+            currency: null
+          approved_target:
+            policy_id: 70000000-0000-4000-8000-000000000023
+            material_version: 1
+            approval_id: 70000000-0000-4000-8000-000000000024
+            approved_by: 70000000-0000-4000-8000-000000000022
+            effective_from: '2026-11-09T02:00:00.000000Z'
+            effective_until: null
+            value: '20'
+            unit_id: 70000000-0000-4000-8000-000000000005
+            currency: null
+          low_stock: low
+          setup_blockers: []
+          outstanding_need:
+          - rf_id: 70000000-0000-4000-8000-000000000041
+            line_id: 70000000-0000-4000-8000-000000000042
+            material_version: 1
+            requested: '10'
+            issued: '0'
+            canceled: '0'
+            reserved: '4'
+            blocked_reserved: '2'
+            unreserved_outstanding: '6'
+            uncovered_need: '6'
+          procurement_commitment_created: false
+    before: Authorized reconnect/current read only. The original schema-valid domain snapshot is illustrative; no
+      mutation, repost or second handover.
+  - name: notifications09-old-result-revoked
+    operationId: readActualIssueOperation
+    before: Original issue committed while permitted; current actor has lost required issue authority. Deny older
+      outcome; retain physical uncertainty for an authorized reconciliation officer. Do not repeat handover.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        operation_id: 98000000-0000-4000-8000-000000002100
+    response:
+      status: '403'
+      body:
+        request_id: 98000000-0000-4000-8000-000000000500
+        error:
+          code: duty_denied
+          message: Current authorized access required.
+  - name: notifications09-disabled-session
+    operationId: readCurrentSession
+    before: 'Account disabled: session invalidated; all sockets closed, protected memory purged, no automatic draft
+      transfer to another account.'
+    response:
+      status: '401'
+      body:
+        error:
+          code: unauthenticated
+          message: Sign in again.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-session-mfa-incomplete
+    operationId: authorizeSessionNotifications
+    before: Password accepted but MFA continuation is incomplete; no notification grant.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body: &id001
+        error:
+          code: mfa_incomplete
+          message: mfa_incomplete for limited authentication; duty_denied for a visible chapter with insufficient
+            duty.
+        request_id: 50000000-0000-4000-8000-000000000001
+  - name: notifications09-chapter-mfa-incomplete
+    operationId: authorizeChapterNotifications
+    before: Password accepted but MFA continuation is incomplete; no notification grant.
+    request:
+      body:
+        socket_id: '123.456'
+        channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body: *id001
 procedure_cases:
 - name: issue08-isar-family-coexists
   procedureId: recordPolicy

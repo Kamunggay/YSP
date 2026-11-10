@@ -1,0 +1,458 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://ysp.example.invalid/contracts/stage1/events.schema.json
+title: Minimal committed Stage 1 notices v1
+oneOf:
+- $ref: '#/$defs/authority'
+- $ref: '#/$defs/chapter-setup'
+- $ref: '#/$defs/catalogue-item'
+- $ref: '#/$defs/catalogue-variant'
+- $ref: '#/$defs/catalogue-unit'
+- $ref: '#/$defs/catalogue-location'
+- $ref: '#/$defs/paper-evidence'
+- $ref: '#/$defs/ipc'
+- $ref: '#/$defs/opening-rm'
+- $ref: '#/$defs/internal-rf'
+- $ref: '#/$defs/reservation-preparation'
+- $ref: '#/$defs/rf-reservation'
+- $ref: '#/$defs/stock-hold'
+- $ref: '#/$defs/actual-issue'
+- $ref: '#/$defs/stock-lot'
+- $ref: '#/$defs/opening-baseline'
+$defs:
+  authority:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.authority.changed.v1
+      event_id: &id001
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id:
+        type: 'null'
+      resource_kind:
+        const: account
+      resource_id: *id001
+      resource_version:
+        type: 'null'
+      material_version:
+        type: 'null'
+  chapter-setup:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.chapter-setup.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: chapter
+      resource_id: *id001
+      resource_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+      material_version:
+        type: 'null'
+  catalogue-item:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.catalogue-item.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: item
+      resource_id: *id001
+      resource_version:
+        type: 'null'
+      material_version: &id002
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+  catalogue-variant:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.catalogue-variant.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: variant
+      resource_id: *id001
+      resource_version:
+        type: 'null'
+      material_version: *id002
+  catalogue-unit:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.catalogue-unit.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: unit
+      resource_id: *id001
+      resource_version:
+        type: 'null'
+      material_version: *id002
+  catalogue-location:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.catalogue-location.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: location
+      resource_id: *id001
+      resource_version:
+        type: 'null'
+      material_version: *id002
+  paper-evidence:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.paper-evidence.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: paper_evidence
+      resource_id: *id001
+      resource_version: *id002
+      material_version:
+        type: 'null'
+  ipc:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.ipc.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: ipc
+      resource_id: *id001
+      resource_version: *id002
+      material_version: *id002
+  opening-rm:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.opening-rm.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: opening_rm
+      resource_id: *id001
+      resource_version: *id002
+      material_version: *id002
+  internal-rf:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.internal-rf.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: internal_rf
+      resource_id: *id001
+      resource_version: *id002
+      material_version: *id002
+  reservation-preparation:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.reservation-preparation.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: reservation_preparation
+      resource_id: *id001
+      resource_version: *id002
+      material_version:
+        type: 'null'
+  rf-reservation:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.rf-reservation.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: rf_reservation
+      resource_id: *id001
+      resource_version: *id002
+      material_version: *id002
+  stock-hold:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.stock-hold.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: stock_hold
+      resource_id: *id001
+      resource_version: *id002
+      material_version: *id002
+  actual-issue:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.actual-issue.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: actual_issue
+      resource_id: *id001
+      resource_version: *id002
+      material_version: *id002
+  stock-lot:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.stock-lot.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: stock_lot
+      resource_id: *id001
+      resource_version: *id002
+      material_version: *id002
+  opening-baseline:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage1.opening-baseline.changed.v1
+      event_id: *id001
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id: *id001
+      resource_kind:
+        const: opening_baseline
+      resource_id: *id001
+      resource_version:
+        type: 'null'
+      material_version:
+        type: 'null'

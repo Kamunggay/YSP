@@ -2,9 +2,9 @@ openapi: 3.1.1
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: YSP Stage 1 canonical HTTP agreement
-  version: 0.8.0
+  version: 0.9.0
   description: >-
-    Tickets stage1-contracts-01/02/03/04/05/06/07/08, specification 19. Contract candidate, not implemented
+    Tickets stage1-contracts-01/02/03/04/05/06/07/08/09, specification 19. Contract candidate, not implemented
     authentication. agreement.md defines normative security, retry and ownership rules.
     Only /api/health exists in scaffold 7287aa439876e7280075206b77f5f2a62b44de0a.
     Authentication and chapter discovery/context/action reads are specified. Controlled
@@ -23,6 +23,7 @@ tags:
   - name: Opening stock
   - name: Reservations and holds
   - name: Actual issue
+  - name: Committed notifications
 paths:
   /api/v1/chapters/{chapter_id}/catalogue/items:
     get:
@@ -7701,6 +7702,201 @@ paths:
           $ref: '#/components/responses/CatalogueNotFound'
         '409':
           $ref: '#/components/responses/IssueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/auth/notification-subscriptions/authorize:
+    post:
+      operationId: authorizeSessionNotifications
+      tags:
+      - Committed notifications
+      x-existence: new
+      x-owner: Leader
+      x-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected domain owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - SEC-01
+      - SEC-02
+      - SEC-03
+      - DOC-10
+      - DOC-11
+      - TR-16
+      - TR-17
+      summary: Authorize the current individual session notification channel
+      description: 'Full enabled individual session and current MFA required. Origin then session then CSRF precede
+        channel admission. Exact channel must equal the server-derived current user. Socket must belong to this authenticated
+        browser session and live connection; copied IDs, signatures, channels or another session of the same user
+        do not authorize a new socket. Recheck current authority at subscribe and each delivery. No presence/public/client-event
+        channels, user-selected audiences, business data or bearer token. JSON auth is the private-channel protocol
+        exception to the domain data envelope: app_key:lowercase HMAC-SHA256(socket_id:channel_name), with the application
+        secret server-only. Synthetic signature examples are shape examples, not valid credentials. The grant is bound
+        to this socket/session/channel until disconnect or revocation, never transferable. No action key, durable
+        business result, resource version, evidence or stock effect. Safe identical authorization retry only while
+        the same socket remains live. No-store on all outcomes. See notifications.md for lifecycle and resynchronization
+        through existing GETs.'
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionNotificationAuthorizationRequest'
+            example:
+              socket_id: '123.456'
+              channel_name: private-stage1.user.10000000-0000-4000-8000-000000000001
+      responses:
+        '200':
+          description: Private connection authorization; no domain commit or membership grant.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationAuthorization'
+              example:
+                auth: synthetic_app_key:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: Origin denied, full/MFA session required, or uniform private subscription denial; evaluate
+            in that order.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Error'
+                - properties:
+                    error:
+                      properties:
+                        code:
+                          enum:
+                          - origin_denied
+                          - mfa_incomplete
+                          - notification_subscription_denied
+              example:
+                error:
+                  code: notification_subscription_denied
+                  message: Private subscription unavailable.
+                request_id: 50000000-0000-4000-8000-000000000001
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/chapters/{chapter_id}/notification-subscriptions/authorize:
+    post:
+      operationId: authorizeChapterNotifications
+      tags:
+      - Committed notifications
+      x-existence: new
+      x-owner: Leader
+      x-consumer: Glenn
+      x-reviewers:
+      - Efren
+      - affected domain owners
+      x-requirements:
+      - GOV-01
+      - GOV-02
+      - SEC-01
+      - SEC-02
+      - SEC-03
+      - DOC-10
+      - DOC-11
+      - TR-16
+      - TR-17
+      summary: Authorize the current individual chapter notification channel
+      description: 'Full enabled individual session and current MFA required. Origin then session then CSRF precede
+        channel admission. Exact channel must equal the server-derived current user and URL chapter with active membership.
+        Socket must belong to this authenticated browser session and live connection; copied IDs, signatures, channels
+        or another session of the same user do not authorize a new socket. Recheck current authority at subscribe
+        and each delivery. No presence/public/client-event channels, user-selected audiences, business data or bearer
+        token. JSON auth is the private-channel protocol exception to the domain data envelope: app_key:lowercase
+        HMAC-SHA256(socket_id:channel_name), with the application secret server-only. Synthetic signature examples
+        are shape examples, not valid credentials. The grant is bound to this socket/session/channel until disconnect
+        or revocation, never transferable. No action key, durable business result, resource version, evidence or stock
+        effect. Safe identical authorization retry only while the same socket remains live. No-store on all outcomes.
+        See notifications.md for lifecycle and resynchronization through existing GETs.'
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - $ref: '#/components/parameters/ChapterId'
+      - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChapterNotificationAuthorizationRequest'
+            example:
+              socket_id: '123.456'
+              channel_name: private-stage1.chapter.60000000-0000-4000-8000-000000000001.user.10000000-0000-4000-8000-000000000001
+      responses:
+        '200':
+          description: Private connection authorization; no domain commit or membership grant.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationAuthorization'
+              example:
+                auth: synthetic_app_key:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: Origin denied, full/MFA session required, or uniform private subscription denial; evaluate
+            in that order.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/Error'
+                - properties:
+                    error:
+                      properties:
+                        code:
+                          enum:
+                          - origin_denied
+                          - mfa_incomplete
+                          - notification_subscription_denied
+              example:
+                error:
+                  code: notification_subscription_denied
+                  message: Private subscription unavailable.
+                request_id: 50000000-0000-4000-8000-000000000001
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
         '429':
           $ref: '#/components/responses/Throttled'
         '503':
@@ -16401,6 +16597,46 @@ components:
             - already_posted
             - handover_unresolved
 
+    SessionNotificationAuthorizationRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - socket_id
+      - channel_name
+      properties:
+        socket_id:
+          type: string
+          pattern: ^[0-9]{1,20}\.[0-9]{1,20}$
+          maxLength: 41
+        channel_name:
+          type: string
+          pattern: ^private-stage1\.user\.[0-9a-f-]{36}$
+          maxLength: 128
+    ChapterNotificationAuthorizationRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - socket_id
+      - channel_name
+      properties:
+        socket_id:
+          type: string
+          pattern: ^[0-9]{1,20}\.[0-9]{1,20}$
+          maxLength: 41
+        channel_name:
+          type: string
+          pattern: ^private-stage1\.chapter\.[0-9a-f-]{36}\.user\.[0-9a-f-]{36}$
+          maxLength: 128
+    NotificationAuthorization:
+      type: object
+      additionalProperties: false
+      required:
+      - auth
+      properties:
+        auth:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,100}:[0-9a-f]{64}$
+          maxLength: 165
   responses:
     CatalogueNotFound:
       description: chapter_not_found for unknown/foreign/inactive chapter or missing membership; otherwise resource_not_found
@@ -17113,6 +17349,27 @@ components:
           schema:
             $ref: '#/components/schemas/IssueConflict'
 
+    NotificationDenied:
+      description: Uniform denial for wrong user/chapter/channel, unowned or expired socket, missing membership or current
+        channel admission. Never reveal existence, channel names, signature or target authority.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+            - $ref: '#/components/schemas/Error'
+            - properties:
+                error:
+                  properties:
+                    code:
+                      const: notification_subscription_denied
+          example:
+            error:
+              code: notification_subscription_denied
+              message: Private subscription unavailable.
+            request_id: 50000000-0000-4000-8000-000000000001
   examples:
     RecoveryDelivery:
       value:
