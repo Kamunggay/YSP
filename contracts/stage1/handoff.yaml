@@ -1,0 +1,1577 @@
+status: candidate; required combined human review pending; not a passed prerequisite
+spec: https://github.com/Kamunggay/YSP/issues/19
+scaffold_revision: 7287aa439876e7280075206b77f5f2a62b44de0a
+profiles:
+  health:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Glenn
+    - Efren
+    existence: existing
+    agreement: agreement.md#operation-coordination
+    requirements:
+    - DOC-03
+    source_nodes:
+    - '#9'
+    coverage_limit: Existing scaffold connectivity only; no Stage 1 business control.
+    operations:
+      readScaffoldHealth:
+        method: GET
+        path: /api/health
+  access:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Glenn
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#browser-and-authentication-state
+    requirements:
+    - SEC-01
+    - SEC-02
+    - GOV-03
+    - GOV-04
+    - DOC-10
+    - DOC-11
+    source_nodes:
+    - cross-cutting-access
+    - APP-FLOW:Q17
+    - APP-FLOW:UI-Q26
+    coverage_limit: Identity/MFA/recovery interfaces; no chapter grant or runtime security proof.
+    operations:
+      initializeBrowserCsrf:
+        method: GET
+        path: /api/v1/auth/csrf
+      signInWithPassword:
+        method: POST
+        path: /api/v1/auth/sign-in
+      readCurrentSession:
+        method: GET
+        path: /api/v1/auth/session
+      signOutCurrentBrowser:
+        method: POST
+        path: /api/v1/auth/sign-out
+      beginAuthenticatorEnrollment:
+        method: POST
+        path: /api/v1/auth/authenticator/enrollments
+      confirmAuthenticatorEnrollment:
+        method: POST
+        path: /api/v1/auth/authenticator/enrollments/confirm
+      completeAuthenticatorChallenge:
+        method: POST
+        path: /api/v1/auth/authenticator/challenge
+      completeRecoveryChallenge:
+        method: POST
+        path: /api/v1/auth/recovery/challenge
+      readRecoveryCodeStatus:
+        method: GET
+        path: /api/v1/auth/recovery-codes
+      rotateRecoveryCodes:
+        method: POST
+        path: /api/v1/auth/recovery-codes/rotate
+  authority:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Glenn
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#ticket-02-chapter-authority-and-controlled-setup
+    requirements:
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - DOC-10
+    source_nodes:
+    - cross-cutting-setup
+    - APP-FLOW:UI-Q26
+    coverage_limit: Current membership/duty/blocker reads; commands below own attributed approved setup.
+    operations:
+      listMyChapterMemberships:
+        method: GET
+        path: /api/v1/auth/memberships
+      readChapterContext:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/context
+      readChapterAccess:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/access
+  catalogue:
+    owner: Glenn
+    ui_consumer: Glenn
+    reviewers:
+    - Leader
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#ticket-03-catalogue-maintenance-and-current-stock-eligibility
+    requirements:
+    - GOV-01
+    - GOV-02
+    - GOV-08
+    - GOV-09
+    - SEC-03
+    - DOC-01
+    - DOC-03
+    - DOC-05
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - INV-01
+    source_nodes:
+    - S1-14
+    - S3-22
+    - T-20
+    coverage_limit: Descriptive maintenance/history; approved prices/ROP/target use controlled policy, no in-place
+      used unit change.
+    operations:
+      listCatalogueItems:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/items
+      createCatalogueItem:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/catalogue/items
+      readCatalogueItem:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/items/{resource_id}
+      replaceCatalogueItem:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/catalogue/items/{resource_id}
+      listCatalogueItemHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/items/{resource_id}/history
+      readCatalogueItemVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/items/{resource_id}/versions/{material_version}
+      listCatalogueVariants:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/variants
+      createCatalogueVariant:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/catalogue/variants
+      readCatalogueVariant:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/variants/{resource_id}
+      replaceCatalogueVariant:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/catalogue/variants/{resource_id}
+      listCatalogueVariantHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/variants/{resource_id}/history
+      readCatalogueVariantVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/variants/{resource_id}/versions/{material_version}
+      listCatalogueUnits:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/units
+      createCatalogueUnit:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/catalogue/units
+      readCatalogueUnit:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/units/{resource_id}
+      replaceCatalogueUnit:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/catalogue/units/{resource_id}
+      listCatalogueUnitHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/units/{resource_id}/history
+      readCatalogueUnitVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/units/{resource_id}/versions/{material_version}
+      listCatalogueLocations:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/locations
+      createCatalogueLocation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/catalogue/locations
+      readCatalogueLocation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/locations/{resource_id}
+      replaceCatalogueLocation:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/catalogue/locations/{resource_id}
+      listCatalogueLocationHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/locations/{resource_id}/history
+      readCatalogueLocationVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/locations/{resource_id}/versions/{material_version}
+      findCatalogueOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/operations/by-key
+      readCatalogueOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/catalogue/operations/{operation_id}
+  stock:
+    owner: Glenn
+    ui_consumer: Glenn
+    reviewers:
+    - Leader
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#seven-views-eligibility-and-retained-need
+    requirements:
+    - GOV-01
+    - SEC-03
+    - INV-01
+    - INV-02
+    - INV-03
+    - INV-04
+    - INV-06
+    - INV-09
+    - INV-10
+    - INV-11
+    - INV-12
+    - INV-13
+    - INV-14
+    - RF-05
+    - RF-07
+    source_nodes:
+    - S1-14
+    - S1-15
+    - S1-20
+    - S2-19
+    - S3-22
+    - S3-23
+    - T-02
+    - T-20
+    coverage_limit: Read-only seven overlapping views/eligibility/shortage; purchasing, ADJ and later stock producers
+      absent.
+    operations:
+      listStockSummaries:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/stock
+      readVariantStock:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/stock/variants/{variant_id}
+      listStockLots:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/stock/lots
+      readStockLot:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/stock/lots/{stock_lot_id}
+      readStockEligibility:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/stock/lots/{stock_lot_id}/eligibility
+      listStockLotHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/stock/lots/{stock_lot_id}/history
+  evidence:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Glenn
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#ticket-04-protected-signed-paper-evidence
+    requirements:
+    - GOV-01
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - DOC-03
+    - DOC-05
+    - DOC-07
+    - DOC-08
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    source_nodes:
+    - S2-11
+    - S3-13
+    - S3-19
+    - T-16
+    - T-30
+    coverage_limit: Private paper upload/readiness/version history; hash is not signatory verification or domain
+      posting.
+    operations:
+      uploadPaperEvidence:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/evidence
+      readPaperEvidence:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/evidence/{evidence_id}
+      listPaperEvidenceVersions:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions
+      replacePaperEvidence:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions
+      readPaperEvidenceVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions/{version_id}
+      retrievePaperEvidenceAttachment:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content
+      matchOpeningRmEvidence:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/evidence-match
+  opening:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Glenn
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#ticket-05-ipc-through-one-accepted-opening-rm
+    requirements:
+    - GOV-01
+    - GOV-02
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-08
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - INV-07
+    - INV-08
+    - INV-13
+    - INV-14
+    - RCV-01
+    - RCV-02
+    - RCV-03
+    - RCV-04
+    - RCV-06
+    - RCV-07
+    - RCV-08
+    - RCV-09
+    - RCV-10
+    - MIG-04
+    source_nodes:
+    - S3-12
+    - S3-13
+    - S3-14
+    - S3-15
+    - S3-16
+    - S3-17
+    - S3-18
+    - S3-19
+    - S3-20
+    - S3-21
+    - S3-22
+    - S3-23
+    - T-16
+    - T-17
+    - T-18
+    - T-29
+    coverage_limit: IPC-only single atomic baseline; PO/DA receiving, supplier resolution and live MIG acceptance
+      excluded.
+    operations:
+      listIpcs:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/ipcs
+      createIpc:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/ipcs
+      readIpc:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}
+      replaceIpc:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}
+      listIpcHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/history
+      readIpcRevision:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/versions/{revision}
+      readIpcRelated:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/related
+      printIpc:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/print
+      listOpeningRms:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-rms
+      createOpeningRm:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/opening-rms
+      readOpeningRm:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}
+      replaceOpeningRm:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}
+      listOpeningRmHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/history
+      readOpeningRmRevision:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/versions/{revision}
+      readOpeningRmRelated:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/related
+      printOpeningRm:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/print
+      saveMyIpcCount:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/my-count
+      submitIpc:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/submit
+      authorizeIpc:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/authorizations
+      inspectOpeningRm:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/inspection
+      postOpeningRm:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/post
+      listOpeningRmMovements:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/movements
+      listOpeningRmFindings:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/findings
+      readChapterOpeningBaseline:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-baseline
+      findOpeningActionByKey:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-actions/by-key
+      readOpeningAction:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/opening-actions/{operation_id}
+  rf:
+    owner: Glenn
+    ui_consumer: Glenn
+    reviewers:
+    - Leader
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#ticket-06-internal-rf-preparation-and-independent-review
+    requirements:
+    - GOV-01
+    - GOV-02
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - SEC-03
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - RF-01
+    - RF-02
+    - RF-03
+    - RF-04
+    - RF-05
+    - RF-06
+    - RF-07
+    - RF-08
+    source_nodes:
+    - S1-01
+    - S1-02
+    - S1-03
+    - S1-04
+    - S1-05
+    - S1-06
+    - S1-14
+    - S1-19
+    - S2-10
+    - T-01
+    - T-03
+    coverage_limit: Internal-use lifecycle only; approval is neither reservation nor handover; booth/procurement
+      excluded.
+    operations:
+      listInternalRfs:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs
+      createInternalRf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs
+      readInternalRf:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}
+      replaceInternalRfDraft:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}
+      submitInternalRf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/submit
+      approveInternalRf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/approve
+      returnInternalRf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/return
+      reviseInternalRf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/revise
+      cancelInternalRf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/cancel
+      listInternalRfHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/history
+      readInternalRfVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/versions/{version}
+      listInternalRfRelatedRecords:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/related-records
+      readInternalRfOperationResult:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/operation-results/{operation_id}
+      findInternalRfOperationResult:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/operation-results
+  reservation:
+    owner: Glenn
+    ui_consumer: Glenn
+    reviewers:
+    - Leader
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#ticket-07-exact-reservations-overlapping-holds-and-explicit-reallocation
+    requirements:
+    - GOV-01
+    - GOV-02
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - SEC-03
+    - DOC-02
+    - DOC-03
+    - DOC-05
+    - DOC-07
+    - DOC-08
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - INV-02
+    - INV-03
+    - INV-04
+    - INV-05
+    - INV-06
+    - INV-09
+    - INV-10
+    - INV-11
+    - INV-12
+    - INV-13
+    - INV-14
+    - RF-04
+    - RF-05
+    - RF-06
+    - RF-07
+    - RF-08
+    source_nodes:
+    - S1-14
+    - S1-15
+    - S1-16
+    - S1-19
+    - S1-20
+    - S2-19
+    - S3-18
+    - S3-22
+    - S3-23
+    - T-02
+    - T-03
+    - T-20
+    coverage_limit: Exact reserve/release/reallocate and overlapping holds; no movement from reservation/clearance,
+      no procurement.
+    operations:
+      prepareRfReservation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservation-preparations
+      readRfReservationPreparation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}
+      commitRfReservation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}/commit
+      listRfReservations:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations
+      readRfReservation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}
+      listRfReservationHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/history
+      releaseRfReservation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/release
+      reallocateRfReservation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/reallocate
+      readRfAllocationReview:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/allocation-review
+      listStockHolds:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/stock-holds
+      placeStockHold:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/stock-holds
+      readStockHold:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/stock-holds/{hold_id}
+      listStockHoldHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/stock-holds/{hold_id}/history
+      proposeStockHoldClearance:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/stock-holds/{hold_id}/clearance-proposal
+      clearStockHold:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/stock-holds/{hold_id}/clear
+      findReservationOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/reservation-operations/by-key
+      readReservationOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/reservation-operations/{operation_id}
+  issue:
+    owner: Efren
+    ui_consumer: Glenn
+    reviewers:
+    - Leader
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#ticket-08-signed-actual-issue-and-uncertain-result-recovery
+    requirements:
+    - GOV-01
+    - GOV-02
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-08
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - INV-02
+    - INV-04
+    - INV-05
+    - INV-06
+    - INV-07
+    - INV-08
+    - INV-09
+    - INV-14
+    - RF-04
+    - RF-06
+    - RF-07
+    - RF-08
+    source_nodes:
+    - S1-19
+    - S2-10
+    - S2-11
+    - S2-12
+    - S2-18
+    - T-03
+    - T-16
+    - T-30
+    coverage_limit: Signed actual internal issue only; recipient acceptance per partial, no sales/financial/booth
+      posting.
+    operations:
+      prepareActualIssue:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/actual-issues
+      listActualIssues:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/actual-issues
+      readActualIssue:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}
+      reviseActualIssue:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}
+      printActualIssue:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/print
+      matchActualIssueAcknowledgment:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/acknowledgments
+      postActualIssue:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/post
+      listActualIssueHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/history
+      listActualIssueMovements:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/movements
+      listActualIssueRelatedRecords:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/related
+      readIssueReconciliation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/reconciliation
+      recordIssueReconciliation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/reconciliations
+      findActualIssueOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/actual-issue-operations/by-key
+      readActualIssueOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/actual-issue-operations/{operation_id}
+  notifications:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Glenn
+    - Efren
+    existence: specified_only
+    agreement: notifications.md#ownership-requirements-and-boundaries
+    requirements:
+    - GOV-01
+    - GOV-02
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - DOC-10
+    - DOC-11
+    source_nodes:
+    - cross-cutting-refresh
+    - S1-14
+    - S2-11
+    - S2-18
+    - S3-19
+    coverage_limit: HTTP authorizes subscriptions; companion events own wire protocol; no transport/timing/browser
+      pass.
+    operations:
+      authorizeSessionNotifications:
+        method: POST
+        path: /api/v1/auth/notification-subscriptions/authorize
+      authorizeChapterNotifications:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/notification-subscriptions/authorize
+controlled_procedures:
+  prepareAccount:
+    canonical: openapi.yaml#/x-controlled-procedures/prepareAccount
+    owner: Leader
+    agreement: agreement.md#controlled-procedure-execution-agreement
+  setAccountStatus:
+    canonical: openapi.yaml#/x-controlled-procedures/setAccountStatus
+    owner: Leader
+    agreement: agreement.md#controlled-procedure-execution-agreement
+  prepareChapter:
+    canonical: openapi.yaml#/x-controlled-procedures/prepareChapter
+    owner: Leader
+    agreement: agreement.md#controlled-procedure-execution-agreement
+  setMembership:
+    canonical: openapi.yaml#/x-controlled-procedures/setMembership
+    owner: Leader
+    agreement: agreement.md#controlled-procedure-execution-agreement
+  setDuty:
+    canonical: openapi.yaml#/x-controlled-procedures/setDuty
+    owner: Leader
+    agreement: agreement.md#controlled-procedure-execution-agreement
+  setAlternate:
+    canonical: openapi.yaml#/x-controlled-procedures/setAlternate
+    owner: Leader
+    agreement: agreement.md#controlled-procedure-execution-agreement
+  recordPolicy:
+    canonical: openapi.yaml#/x-controlled-procedures/recordPolicy
+    owner: Leader
+    agreement: agreement.md#controlled-procedure-execution-agreement
+  resetMfa:
+    canonical: openapi.yaml#/x-controlled-procedures/resetMfa
+    owner: Leader
+    agreement: agreement.md#controlled-procedure-execution-agreement
+internal_participants:
+  checkEvidenceBinding:
+    canonical: openapi.yaml#/x-evidence-participants/checkEvidenceBinding
+    owner: Leader
+    commit: caller_owned_single_mysql_transaction
+    agreement: agreement.md#ticket-04-protected-signed-paper-evidence
+  prepareOpeningInventory:
+    canonical: openapi.yaml#/x-opening-inventory-participants/prepareOpeningInventory
+    owner: Efren
+    commit: caller_owned_single_mysql_transaction
+    agreement: agreement.md#ticket-05-ipc-through-one-accepted-opening-rm
+  prepareRfDemandChange:
+    canonical: openapi.yaml#/x-reservation-participants/prepareRfDemandChange
+    owner: Glenn
+    commit: caller_owned_single_mysql_transaction
+    agreement: agreement.md#ticket-07-exact-reservations-overlapping-holds-and-explicit-reallocation
+  prepareActualIssueInventory:
+    canonical: openapi.yaml#/x-actual-issue-participants/prepareActualIssueInventory
+    owner: Efren
+    commit: caller_owned_single_mysql_transaction
+    agreement: agreement.md#ticket-08-signed-actual-issue-and-uncertain-result-recovery
+requirement_coverage:
+  GOV-01:
+    disposition: stage1_contract
+    profiles:
+    - authority
+    - access
+    - catalogue
+    - opening
+    - rf
+    - reservation
+    - issue
+    - notifications
+    scope: Stage 1 chapter/setup/identity/control agreement only; actual approved inputs and runtime remain prerequisites.
+  GOV-02:
+    disposition: stage1_contract
+    profiles:
+    - authority
+    - access
+    - catalogue
+    - opening
+    - rf
+    - reservation
+    - issue
+    - notifications
+    scope: Stage 1 chapter/setup/identity/control agreement only; actual approved inputs and runtime remain prerequisites.
+  GOV-03:
+    disposition: stage1_contract
+    profiles:
+    - authority
+    - access
+    - catalogue
+    - opening
+    - rf
+    - reservation
+    - issue
+    - notifications
+    scope: Stage 1 chapter/setup/identity/control agreement only; actual approved inputs and runtime remain prerequisites.
+  GOV-04:
+    disposition: stage1_contract
+    profiles:
+    - authority
+    - access
+    - catalogue
+    - opening
+    - rf
+    - reservation
+    - issue
+    - notifications
+    scope: Stage 1 chapter/setup/identity/control agreement only; actual approved inputs and runtime remain prerequisites.
+  GOV-08:
+    disposition: stage1_contract
+    profiles:
+    - authority
+    - access
+    - catalogue
+    - opening
+    - rf
+    - reservation
+    - issue
+    - notifications
+    scope: Stage 1 chapter/setup/identity/control agreement only; actual approved inputs and runtime remain prerequisites.
+  GOV-09:
+    disposition: stage1_contract
+    profiles:
+    - authority
+    - access
+    - catalogue
+    - opening
+    - rf
+    - reservation
+    - issue
+    - notifications
+    scope: Stage 1 chapter/setup/identity/control agreement only; actual approved inputs and runtime remain prerequisites.
+  GOV-05:
+    disposition: partial
+    profiles:
+    - authority
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Independent opening counter and RF/override approval; purchase/ADJ/booth independence later.
+  GOV-06:
+    disposition: later_stage
+    profiles:
+    - authority
+    scope: Count-variance dual independent approval and sales/cash close-out are excluded mutations; overlapping
+      duties never bypass them.
+  GOV-07:
+    disposition: later_stage
+    profiles:
+    - authority
+    scope: Count-variance dual independent approval and sales/cash close-out are excluded mutations; overlapping
+      duties never bypass them.
+  SEC-01:
+    disposition: stage1_contract
+    profiles:
+    - access
+    - authority
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    - notifications
+    scope: Current individual MFA/chapter/duty authority applies at admission/commit/replay/output; no runtime security
+      certification.
+  SEC-02:
+    disposition: stage1_contract
+    profiles:
+    - access
+    - authority
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    - notifications
+    scope: Current individual MFA/chapter/duty authority applies at admission/commit/replay/output; no runtime security
+      certification.
+  SEC-03:
+    disposition: stage1_contract
+    profiles:
+    - access
+    - authority
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    - notifications
+    scope: Current individual MFA/chapter/duty authority applies at admission/commit/replay/output; no runtime security
+      certification.
+  DOC-01:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-02:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-03:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-04:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-05:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-06:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-07:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-09:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-10:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-11:
+    disposition: partial
+    profiles:
+    - catalogue
+    - evidence
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Stage 1 references, related records, validation, lifecycle, HTML forms, history and atomic outcomes;
+      later financial/external document families and PDF/CSV excluded.
+  DOC-08:
+    disposition: partial
+    profiles:
+    - evidence
+    - opening
+    - issue
+    scope: Paper-only upload and exact domain matching per signed partial; on-device signature and customer DR are
+      deferred.
+  INV-01:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-02:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-03:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-04:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-05:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-06:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-07:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-08:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-09:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-10:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-14:
+    disposition: partial
+    profiles:
+    - catalogue
+    - stock
+    - opening
+    - reservation
+    - issue
+    scope: Stage 1 identity, seven nonadditive views, eligibility, exact commitments, IPC receipt and signed issue;
+      SO/booth/DA/PO/ADJ mutation producers later.
+  INV-11:
+    disposition: partial
+    profiles:
+    - stock
+    - reservation
+    scope: Uncovered RF need/current supply reads only; no RepF/PO proposal, purchasing connector or procurement
+      deduplication implementation.
+  INV-12:
+    disposition: partial
+    profiles:
+    - stock
+    - reservation
+    scope: Uncovered RF need/current supply reads only; no RepF/PO proposal, purchasing connector or procurement
+      deduplication implementation.
+  INV-13:
+    disposition: partial
+    profiles:
+    - opening
+    - reservation
+    scope: Opening independent counts and retained holds/investigation; routine count-variance/ADJ approval and
+      posting later.
+  RF-01:
+    disposition: partial
+    profiles:
+    - rf
+    - reservation
+    - issue
+    scope: Internal RF intake/independence/correction/reserve/repeated signed partials/closure; booth branches and
+      later accepted-supply producers excluded.
+  RF-02:
+    disposition: partial
+    profiles:
+    - rf
+    - reservation
+    - issue
+    scope: Internal RF intake/independence/correction/reserve/repeated signed partials/closure; booth branches and
+      later accepted-supply producers excluded.
+  RF-03:
+    disposition: partial
+    profiles:
+    - rf
+    - reservation
+    - issue
+    scope: Internal RF intake/independence/correction/reserve/repeated signed partials/closure; booth branches and
+      later accepted-supply producers excluded.
+  RF-04:
+    disposition: partial
+    profiles:
+    - rf
+    - reservation
+    - issue
+    scope: Internal RF intake/independence/correction/reserve/repeated signed partials/closure; booth branches and
+      later accepted-supply producers excluded.
+  RF-06:
+    disposition: partial
+    profiles:
+    - rf
+    - reservation
+    - issue
+    scope: Internal RF intake/independence/correction/reserve/repeated signed partials/closure; booth branches and
+      later accepted-supply producers excluded.
+  RF-07:
+    disposition: partial
+    profiles:
+    - rf
+    - reservation
+    - issue
+    scope: Internal RF intake/independence/correction/reserve/repeated signed partials/closure; booth branches and
+      later accepted-supply producers excluded.
+  RF-08:
+    disposition: partial
+    profiles:
+    - rf
+    - reservation
+    - issue
+    scope: Internal RF intake/independence/correction/reserve/repeated signed partials/closure; booth branches and
+      later accepted-supply producers excluded.
+  RF-05:
+    disposition: partial
+    profiles:
+    - stock
+    - rf
+    - reservation
+    scope: Explicit partial allocation plus retained four outstanding; chapter-budget purchasing/RepF pathway later,
+      no buyer deposit prerequisite invented.
+  RCV-01:
+    disposition: partial
+    profiles:
+    - opening
+    - stock
+    scope: IPC source/inspection/accepted-only quantities/eligible read and discrepancy retention; PO/DA/supplier
+      resolution branches later.
+  RCV-02:
+    disposition: partial
+    profiles:
+    - opening
+    - stock
+    scope: IPC source/inspection/accepted-only quantities/eligible read and discrepancy retention; PO/DA/supplier
+      resolution branches later.
+  RCV-03:
+    disposition: partial
+    profiles:
+    - opening
+    - stock
+    scope: IPC source/inspection/accepted-only quantities/eligible read and discrepancy retention; PO/DA/supplier
+      resolution branches later.
+  RCV-04:
+    disposition: partial
+    profiles:
+    - opening
+    - stock
+    scope: IPC source/inspection/accepted-only quantities/eligible read and discrepancy retention; PO/DA/supplier
+      resolution branches later.
+  RCV-06:
+    disposition: partial
+    profiles:
+    - opening
+    - stock
+    scope: IPC source/inspection/accepted-only quantities/eligible read and discrepancy retention; PO/DA/supplier
+      resolution branches later.
+  RCV-07:
+    disposition: partial
+    profiles:
+    - opening
+    - stock
+    scope: IPC source/inspection/accepted-only quantities/eligible read and discrepancy retention; PO/DA/supplier
+      resolution branches later.
+  RCV-05:
+    disposition: later_stage
+    profiles:
+    - opening
+    scope: Open PO completion, DA intake and cash distinction retained requirements; no Stage 1 producer/API.
+  RCV-11:
+    disposition: later_stage
+    profiles:
+    - opening
+    scope: Open PO completion, DA intake and cash distinction retained requirements; no Stage 1 producer/API.
+  RCV-13:
+    disposition: later_stage
+    profiles:
+    - opening
+    scope: Open PO completion, DA intake and cash distinction retained requirements; no Stage 1 producer/API.
+  RCV-08:
+    disposition: stage1_contract
+    profiles:
+    - opening
+    - evidence
+    scope: Approved cutoff, independent count, Head/Finance signatures, one complete inspected accepted baseline;
+      actual approvals/stock and live activation not established.
+  RCV-09:
+    disposition: stage1_contract
+    profiles:
+    - opening
+    - evidence
+    scope: Approved cutoff, independent count, Head/Finance signatures, one complete inspected accepted baseline;
+      actual approvals/stock and live activation not established.
+  RCV-10:
+    disposition: stage1_contract
+    profiles:
+    - opening
+    - evidence
+    scope: Approved cutoff, independent count, Head/Finance signatures, one complete inspected accepted baseline;
+      actual approvals/stock and live activation not established.
+  RCV-12:
+    disposition: partial
+    profiles:
+    - stock
+    - reservation
+    - issue
+    scope: Existing provenance/bounded restrictions must govern eligibility and handover; new DA intake/restriction
+      resolution producer later.
+  MIG-04:
+    disposition: partial
+    profiles:
+    - authority
+    - opening
+    scope: Functional contract demonstration obligations only; live setup/count/physical match/independent-signature
+      approval remains unpassed.
+  AC-01:
+    disposition: partial
+    profiles:
+    - reservation
+    - issue
+    scope: Future real-MySQL last-unit/issue race specified; schema checks do not execute contention.
+  AC-02:
+    disposition: partial
+    profiles:
+    - opening
+    - rf
+    - reservation
+    - issue
+    scope: Linked internal issue trace only; customer sale/payment and runtime trace later.
+  AC-04:
+    disposition: partial
+    profiles:
+    - opening
+    - evidence
+    scope: Signed accepted baseline/damaged exclusion/duplicate protection contract; physical-to-record runtime
+      demonstration later.
+  AC-19:
+    disposition: partial
+    profiles:
+    - access
+    - authority
+    - evidence
+    - notifications
+    scope: Chapter/provider/revocation/history controls specified; future financial record and actual runtime checks
+      later.
+  ADD-AC-01:
+    disposition: partial
+    profiles:
+    - stock
+    - reservation
+    scope: Seven views and union of held/reserved ranges specified; SO producer later.
+  ADD-AC-02:
+    disposition: later_stage
+    profiles:
+    - reservation
+    scope: RF reservations have no invented 48-hour expiry; unpaid SO/payment/deposit expiry later.
+  ADD-AC-03:
+    disposition: partial
+    profiles:
+    - rf
+    - issue
+    scope: Scoped queues/outcomes/blockers specified; browser loading/error/accessibility verification later.
+  ADD-AC-04:
+    disposition: stage1_contract
+    profiles:
+    - authority
+    - catalogue
+    - rf
+    - issue
+    - notifications
+    scope: Preserved unsaved edits bound to original identity/chapter; explicit stale review; no browser proof.
+  ADD-AC-05:
+    disposition: partial
+    profiles:
+    - evidence
+    - issue
+    scope: Paper readiness/exact changed-batch binding and uncertain-result recovery specified; on-device capture
+      and physical reconciliation certification deferred.
+  ADD-AC-06:
+    disposition: partial
+    profiles:
+    - evidence
+    - issue
+    scope: Paper readiness/exact changed-batch binding and uncertain-result recovery specified; on-device capture
+      and physical reconciliation certification deferred.
+  ADD-AC-07:
+    disposition: later_stage
+    profiles:
+    - stock
+    scope: Booth sale/reset and float/cash reconciliation excluded.
+  ADD-AC-10:
+    disposition: later_stage
+    profiles:
+    - stock
+    scope: Booth sale/reset and float/cash reconciliation excluded.
+  ADD-AC-08:
+    disposition: later_stage
+    profiles:
+    - authority
+    - opening
+    scope: GOV-06 count-variance distinct independent approvals retained for ADJ, not confused with RCV-09 opening
+      signatures.
+  ADD-AC-09:
+    disposition: stage1_contract
+    profiles:
+    - access
+    - authority
+    scope: Provider without membership denied; separately approved operational membership only; commands retain
+      attribution/history.
+  ADD-AC-11:
+    disposition: partial
+    profiles:
+    - stock
+    - reservation
+    scope: RF retained need/read only; chapter-budget procurement and SO funding gate later.
+  ADD-AC-12:
+    disposition: later_stage
+    profiles:
+    - authority
+    scope: Map/tracer/export UI deferred; no scope expansion from linked identities.
+journeys:
+  accepted-opening-to-repeated-issue:
+    fixture: 'A: accepted source 9500, variant9500...0051/unit9500...0052; not fixture B'
+    cases:
+    - opening-postOpeningRm
+    - opening-stock-summary-reconciles
+    - opening-read-stock-lot-usable
+    - issue08-approved-rf-matches-opening-variant
+    - issue08-exact-reservation-on-accepted-opening
+    - issue08-prepare-four-no-movement
+    - issue08-print-exact-four
+    - issue08-match-ready-paper-recipient-four
+    - issue08-post-four-once
+    - issue08-lost-response-find-original-result
+    - issue08-recover-operation-id
+    - issue08-authorized-same-key-replay-four-only
+    - issue08-second-partial-two-own-paper
+    - issue08-rf-six-issued-four-outstanding
+    - issue08-final-four-completes-approved-ten
+    - issue08-rf-ten-issued-fulfilled
+  exact-ten-then-explicit-six:
+    fixture: 'B: variant8300...0001/unit8400...0001, lot9700...0010/basis9700...0110; alternative synthetic accepted-stock
+      fixture'
+    cases:
+    - rf-independent-approval-without-reservation
+    - reservation-review-ten-before-availability-race
+    - reservation-exact-ten-only-six-zero-commit
+    - combined10-prepare-six-new-intent
+    - combined10-commit-six-new-intent
+    - reservation-shortage-review-four-uncovered
+  full-reservation-alternative:
+    fixture: B alternative with ten eligible, not continuation after six already reserved
+    cases:
+    - reservation-full-ten-prepared
+    - reservation-full-ten-committed
+  overlapping-holds-clearance-branch:
+    fixture: B after reserve6 on usable10; holds [0,4),[2,6), unchanged material after all clear
+    cases:
+    - hold-place-first-four-no-movement
+    - hold-place-overlapping-four-count-union-six
+    - reservation-stock-overlap-union-once
+    - hold-propose-resolution-before-matching-paper
+    - hold-clear-one-retains-other-hold
+    - reservation-after-one-clear-still-blocked-four
+    - reservation-after-every-hold-clear-unchanged-material
+  explicit-reallocation-alternative:
+    fixture: B branch retaining six demand units, from lot9700...0010 to eligible lot9700...0011; not same goods
+      as clearance branch
+    cases:
+    - reservation-explicit-reallocation-same-six-demand
+    - reservation-reallocation-ineligible-target
+    - reservation-reallocation-stale-target
+  changed-signed-batch-and-uncertainty:
+    fixture: 'A alternatives: held-first denial, changed allocation fresh paper, unposted physical dispute versus
+      authorized committed lookup'
+    cases:
+    - issue08-hold-after-match
+    - issue08-reallocated-material-needs-fresh-match
+    - issue08-fresh-paper-after-reallocation
+    - issue08-changed-batch-old-match
+    - issue08-post-503-indeterminate
+    - issue08-lookup-inflight-unknown
+    - issue08-result-authority-lost
+    - issue08-revoked-replay
+    - issue08-observe-handed_over_unposted
+    - issue08-reconciled-unposted-refreshed-version-retry
+example_categories:
+  chapter_denial:
+  - provider-without-membership
+  - reservation-cross-chapter-not-found
+  duty_denial:
+  - issue08-provider-no-duty
+  - catalogue-maintenance-wrong-duty
+  mfa_denial:
+  - issue08-mfa-continuation
+  - reservation-mfa-continuation-denied
+  provider_without_membership:
+  - provider-without-membership
+  - provider-without-membership-catalogue
+  missing_settings:
+  - read-actions-missing-approval-keeps-draft
+  - issue08-missing-isar-policy
+  self_approval:
+  - rf-self-approval-denied
+  - reservation-override-same-person-denied
+  invalid_input_evidence:
+  - issue08-numeric-quantity-rejected
+  - upload-paper-unsafe-content
+  - issue08-wrong-batch-paper
+  historical_identity:
+  - stock-lot-retains-original-variant-label
+  - issue08-history-distinct-times-and-snapshots
+  stale_versions:
+  - issue08-stale-material
+  - reservation-stale-rf-progress-zero-commit
+  replay_and_changed_payload:
+  - issue08-authorized-same-key-replay-four-only
+  - issue08-same-key-different-payload
+  uncertain_result:
+  - issue08-post-503-indeterminate
+  - issue08-lost-response-find-original-result
+  revoked_access:
+  - issue08-revoked-replay
+  - paper-revoked-duty-link

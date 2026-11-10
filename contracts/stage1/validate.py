@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from openapi_spec_validator import OpenAPIV31SpecValidator, validate
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
+from validate_handoff import validate_handoff
 
 
 class UniqueKeysLoader(yaml.SafeLoader):
@@ -426,6 +427,7 @@ def main():
     if participant_coverage != participants.keys():
         raise ValueError(f"Missing worked participant success: {sorted(participants.keys() - participant_coverage)}")
     validate_notifications(root, document, examples, operations)
+    validate_handoff(read_yaml(root / 'handoff.yaml'), document, examples, operations)
     print("Versions: " + ", ".join(f"{name}={version(name)}" for name in
                                     ("openapi-spec-validator", "jsonschema", "PyYAML")))
     print(f"PASS OpenAPI 3.1.1; local references; {len(operations)} operations; "
