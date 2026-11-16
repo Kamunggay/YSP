@@ -12,7 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'chapter.context' => \App\Http\Middleware\EnforceChapterContext::class,
+            'duty.authority' => \App\Http\Middleware\EnforceDutyAuthority::class,
+            'idempotent' => \App\Http\Middleware\IdempotentOperation::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
