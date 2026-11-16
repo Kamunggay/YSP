@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\ActualIssueController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\CatalogueController;
 use App\Http\Controllers\ChapterAccessController;
+use App\Http\Controllers\HandoverController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\NotificationSubscriptionController;
 use App\Http\Controllers\PaperEvidenceController;
@@ -95,4 +97,33 @@ Route::prefix('v1/chapters/{chapter_id}')->group(function () {
     Route::post('/sales-orders/{id}/review', [SalesOrderController::class, 'review']);
     Route::post('/sales-orders/{id}/revise', [SalesOrderController::class, 'revise']);
     Route::post('/sales-orders/{id}/cancel', [SalesOrderController::class, 'cancel']);
+
+    // Handover & Actual Issue routes
+    Route::get('/handovers', [HandoverController::class, 'index']);
+    Route::post('/handovers', [HandoverController::class, 'store']);
+    Route::get('/handovers/{id}', [HandoverController::class, 'show']);
+    Route::get('/operations/by-idempotency-key/{key}', [HandoverController::class, 'showByIdempotencyKey']);
+
+    Route::post('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'prepare']);
+    Route::get('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'index']);
+    Route::get('/actual-issues/{issue_id}', [ActualIssueController::class, 'show']);
+    Route::put('/actual-issues/{issue_id}', [ActualIssueController::class, 'revise']);
+    Route::get('/actual-issues/{issue_id}/print', [ActualIssueController::class, 'print']);
+    Route::post('/actual-issues/{issue_id}/acknowledgments', [ActualIssueController::class, 'matchAcknowledgment']);
+    Route::post('/actual-issues/{issue_id}/post', [ActualIssueController::class, 'post']);
+    Route::get('/actual-issues/{issue_id}/history', [ActualIssueController::class, 'history']);
+    Route::get('/actual-issues/{issue_id}/movements', [ActualIssueController::class, 'movements']);
+    Route::get('/actual-issues/{issue_id}/related', [ActualIssueController::class, 'related']);
+    Route::post('/actual-issues/{issue_id}/reconciliations', [ActualIssueController::class, 'reconciliations']);
+    Route::get('/actual-issues/{issue_id}/reconciliation', [ActualIssueController::class, 'showReconciliation']);
+    Route::get('/actual-issue-operations/by-key', [ActualIssueController::class, 'operationsByKey']);
+    Route::get('/actual-issue-operations/{operation_id}', [ActualIssueController::class, 'operationsById']);
+});
+
+// Global Handover & Operations routes (Stage 3/4 proposal endpoints per DELIVERY-INTEGRATION-CONTRACT.md)
+Route::prefix('v1')->group(function () {
+    Route::post('/handovers', [HandoverController::class, 'store']);
+    Route::get('/handovers', [HandoverController::class, 'index']);
+    Route::get('/handovers/{id}', [HandoverController::class, 'show']);
+    Route::get('/operations/by-idempotency-key/{key}', [HandoverController::class, 'showByIdempotencyKey']);
 });
