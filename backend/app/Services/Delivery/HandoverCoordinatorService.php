@@ -3,6 +3,7 @@
 namespace App\Services\Delivery;
 
 use App\Models\IdempotencyRecord;
+use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class HandoverCoordinatorService
@@ -12,11 +13,13 @@ class HandoverCoordinatorService
         protected ?SalesReleaseService $salesReleaseService = null,
         protected ?BoothHandoverService $boothHandoverService = null,
         protected ?AdjustmentHandoverService $adjustmentHandoverService = null,
+        protected ?CheckEvidenceBindingParticipant $checkEvidenceBindingParticipant = null,
     ) {
         $this->requisitionIssueService = $requisitionIssueService ?? app(RequisitionIssueService::class);
         $this->salesReleaseService = $salesReleaseService ?? app(SalesReleaseService::class);
         $this->boothHandoverService = $boothHandoverService ?? app(BoothHandoverService::class);
         $this->adjustmentHandoverService = $adjustmentHandoverService ?? app(AdjustmentHandoverService::class);
+        $this->checkEvidenceBindingParticipant = $checkEvidenceBindingParticipant ?? app(CheckEvidenceBindingParticipant::class);
     }
 
     /**
@@ -55,6 +58,22 @@ class HandoverCoordinatorService
                     'replayed' => true,
                 ];
             }
+        }
+
+        // Evidence verification gate (DOC-08, T-16)
+        $evidenceId = $data['evidence_id'] ?? $data['evidence']['evidence_id'] ?? $data['evidence']['id'] ?? null;
+        $bindingId = $data['acknowledgment_binding_id'] ?? $data['binding_id'] ?? null;
+
+        if ($evidenceId || $bindingId) {
+            $this->checkEvidenceBindingParticipant->check([
+                'chapter_id' => $chapterId ?? $data['chapter_id'] ?? '',
+                'evidence_id' => $evidenceId,
+                'binding_id' => $bindingId,
+                'source_type' => $data['source']['kind'] ?? '',
+                'source_id' => $data['source']['id'] ?? '',
+                'recipient_name' => $data['recipient_name'] ?? '',
+                'lines' => $data['lines'] ?? [],
+            ], strict: true);
         }
 
         // Dispatch based on source.kind

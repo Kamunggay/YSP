@@ -154,7 +154,7 @@ flowchart TD
 ---
 
 ### Day 2: Evidence Binding Integration & Handover Validation Enforcement (Efren - integrating checkEvidenceBinding participant into handover transactions)
-- [ ] **2.1 Backend Evidence Controller & Secure Storage Integration (Efren)**
+- [x] **2.1 Backend Evidence Controller & Secure Storage Integration (Efren)**
   - Integrate evidence storage disk in `backend/config/filesystems.php`: files stored in non-public storage directory; access gated through authenticated streaming controller (`DOC-06`, `SEC-03`).
   - Implement all 6 exact `openapi.yaml` evidence operations in `App\Http\Controllers\PaperEvidenceController`:
     1. `uploadPaperEvidence` (`POST /api/v1/chapters/{chapter_id}/evidence` — server computes SHA-256; rejects client hashes/URLs/readiness flags)
@@ -164,16 +164,16 @@ flowchart TD
     5. `readPaperEvidenceVersion` (`GET /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions/{version_id}`)
     6. `retrievePaperEvidenceAttachment` (`GET /api/v1/chapters/{chapter_id}/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content`)
   - Validates file MIME type: strictly restricts to `image/jpeg`, `image/png`, `application/pdf`; rejects uploads $> 10\text{MB}$ or empty files ($0\text{ bytes}$).
-- [ ] **2.2 Integration of checkEvidenceBinding Participant into Handover Flow (Efren)**
+- [x] **2.2 Integration of checkEvidenceBinding Participant into Handover Flow (Efren)**
   - Integrate `App\Services\Evidence\Participants\CheckEvidenceBindingParticipant` (`contracts/stage1/handoff.yaml#/internal_participants/checkEvidenceBinding`, `agreement.md#ticket-04`) into all handover execution paths:
     - Synchronously called inside caller's database transaction.
     - Validates that `evidence_id` exists, is marked valid, and matches active chapter context.
     - Validates that `bound_recipient_name` strictly matches the handover recipient name.
     - Validates `bound_batch_fingerprint`: computes SHA-256 of sorted tuple: `(source_type, source_id, recipient_name, sorted [variant_id, unit_id, lot/batch, quantity])`.
-- [ ] **2.3 Handover Mutation Rejection & Stale Evidence Invalidation Engine (Efren)**
+- [x] **2.3 Handover Mutation Rejection & Stale Evidence Invalidation Engine (Efren)**
   - **CRITICAL INVARIANT (Mutation Rejection)**: If a user modifies any quantity, replaces an item variant, or changes the recipient, the prior evidence binding is invalidated immediately; system blocks commit until new matching paper evidence is uploaded and bound (`DOC-08`, `T-16`).
   - Upload or printing alone NEVER alters stock balances or updates demand progress (`MVP-DELIVERY-SCOPE.md §2`).
-- [ ] **Day 2 Exit Gate & Verification Command**:
+- [x] **Day 2 Exit Gate & Verification Command**:
   - Run: `docker compose exec -T backend php artisan test tests/Feature/Stage1B/EvidenceValidationTest.php`
   - MIME Validation Test: Attempt upload of `.exe` or `.txt` file disguised as JPEG; assert 422 Unprocessable Content.
   - Changed-Batch Invalidation Test: Match signed paper to batch of 4 units. Update batch quantity to 5 units; attempt `postActualIssue`; assert `checkEvidenceBinding` throws exception rejecting the mismatch (`DOC-08`).

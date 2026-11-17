@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Chapter;
+use App\Models\ChapterMembership;
 use App\Models\EvidenceBinding;
 use App\Models\EvidenceBlob;
 use App\Models\EvidenceRecord;
+use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,6 +21,82 @@ class PaperEvidenceController extends Controller
         'image/png',
         'application/pdf',
     ];
+
+    /**
+     * Strictly validate file integrity, non-emptiness, maximum size, and authentic magic bytes.
+     */
+    private function validateFile($file): ?JsonResponse
+    {
+        if (! $file || ! $file->isValid()) {
+            return response()->json([
+                'error' => [
+                    'code' => 'invalid_file_upload',
+                    'message' => 'Uploaded file is invalid or corrupted.',
+                ],
+            ], 422);
+        }
+
+        $size = $file->getSize();
+        if ($size === false || $size === 0) {
+            return response()->json([
+                'error' => [
+                    'code' => 'file_empty',
+                    'message' => 'Uploaded file is empty (0 bytes).',
+                ],
+            ], 422);
+        }
+
+        if ($size > 10 * 1024 * 1024) {
+            return response()->json([
+                'error' => [
+                    'code' => 'file_too_large',
+                    'message' => 'Uploaded file exceeds the maximum allowed size of 10MB.',
+                ],
+            ], 422);
+        }
+
+        $realPath = $file->getRealPath();
+        if (! $realPath || ! file_exists($realPath)) {
+            return response()->json([
+                'error' => [
+                    'code' => 'file_read_error',
+                    'message' => 'Unable to read uploaded file.',
+                ],
+            ], 422);
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $detectedMime = $finfo->file($realPath);
+
+        if (! in_array($detectedMime, self::ALLOWED_MIME_TYPES)) {
+            return response()->json([
+                'error' => [
+                    'code' => 'unsupported_media_type',
+                    'message' => "File media type '{$detectedMime}' is not allowed. Disguised or unsupported files are rejected.",
+                ],
+            ], 422);
+        }
+
+        // Verify magic byte signatures for JPEG, PNG, PDF
+        $handle = fopen($realPath, 'rb');
+        $header = fread($handle, 16);
+        fclose($handle);
+
+        $isPdf = str_starts_with($header, '%PDF-');
+        $isPng = str_starts_with($header, "\x89PNG\r\n\x1a\n");
+        $isJpg = str_starts_with($header, "\xFF\xD8\xFF");
+
+        if (! $isPdf && ! $isPng && ! $isJpg) {
+            return response()->json([
+                'error' => [
+                    'code' => 'disguised_file_rejected',
+                    'message' => 'File signature (magic bytes) does not match expected JPEG, PNG, or PDF format.',
+                ],
+            ], 422);
+        }
+
+        return null;
+    }
 
     public function upload(Request $request, string $chapter_id): JsonResponse
     {
@@ -55,6 +133,13 @@ class PaperEvidenceController extends Controller
             ], 422);
         }
 
+        // Strict file validation across all attachments
+        foreach ($files as $file) {
+            if ($err = $this->validateFile($file)) {
+                return $err;
+            }
+        }
+
         $userId = $request->header('X-User-Id') ?? session('user_id') ?? (string) Str::uuid();
         $evidenceId = (string) Str::uuid();
         $versionId = (string) Str::uuid();
@@ -73,15 +158,8 @@ class PaperEvidenceController extends Controller
         $position = 1;
 
         foreach ($files as $file) {
-            $mimeType = $file->getMimeType();
-            if (! in_array($mimeType, self::ALLOWED_MIME_TYPES)) {
-                return response()->json([
-                    'error' => [
-                        'code' => 'unsupported_media_type',
-                        'message' => "Unsupported media type {$mimeType}. Allowed: JPEG, PNG, PDF.",
-                    ],
-                ], 415);
-            }
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->file($file->getRealPath()) ?: $file->getMimeType();
 
             $rawContent = file_get_contents($file->getRealPath());
             $sha256 = hash('sha256', $rawContent);
@@ -89,7 +167,7 @@ class PaperEvidenceController extends Controller
             $attachmentId = (string) Str::uuid();
 
             $path = "evidence/{$targetChapterId}/{$evidenceId}/{$versionId}/{$attachmentId}";
-            Storage::disk('local')->put($path, $rawContent);
+            Storage::disk('evidence')->put($path, $rawContent);
 
             EvidenceBlob::create([
                 'id' => $attachmentId,
@@ -136,7 +214,12 @@ class PaperEvidenceController extends Controller
 
     public function show(string $chapter_id, string $evidence_id): JsonResponse
     {
-        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)->first();
+        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
+        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
+
+        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)
+            ->where('chapter_id', $targetChapterId)
+            ->first();
         if (! $evidenceRecord) {
             return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence not found.']], 404);
         }
@@ -193,7 +276,12 @@ class PaperEvidenceController extends Controller
 
     public function versions(string $chapter_id, string $evidence_id): JsonResponse
     {
-        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)->first();
+        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
+        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
+
+        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)
+            ->where('chapter_id', $targetChapterId)
+            ->first();
         if (! $evidenceRecord) {
             return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence not found.']], 404);
         }
@@ -241,7 +329,12 @@ class PaperEvidenceController extends Controller
 
     public function replace(Request $request, string $chapter_id, string $evidence_id): JsonResponse
     {
-        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)->first();
+        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
+        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
+
+        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)
+            ->where('chapter_id', $targetChapterId)
+            ->first();
         if (! $evidenceRecord) {
             return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence not found.']], 404);
         }
@@ -257,6 +350,13 @@ class PaperEvidenceController extends Controller
 
         if (empty($files)) {
             return response()->json(['error' => ['code' => 'invalid_input', 'message' => 'Attachments are required.']], 422);
+        }
+
+        // Strict file validation across all replacement attachments
+        foreach ($files as $file) {
+            if ($err = $this->validateFile($file)) {
+                return $err;
+            }
         }
 
         $latestBlob = EvidenceBlob::where('evidence_id', $evidence_id)->orderBy('version', 'desc')->first();
@@ -276,14 +376,16 @@ class PaperEvidenceController extends Controller
         $pos = 1;
 
         foreach ($files as $file) {
-            $mimeType = $file->getMimeType();
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $finfo->file($file->getRealPath()) ?: $file->getMimeType();
+
             $rawContent = file_get_contents($file->getRealPath());
             $sha256 = hash('sha256', $rawContent);
             $fileSize = strlen($rawContent);
             $attachmentId = (string) Str::uuid();
 
-            $path = "evidence/{$chapter_id}/{$evidence_id}/{$newVersionId}/{$attachmentId}";
-            Storage::disk('local')->put($path, $rawContent);
+            $path = "evidence/{$targetChapterId}/{$evidence_id}/{$newVersionId}/{$attachmentId}";
+            Storage::disk('evidence')->put($path, $rawContent);
 
             EvidenceBlob::create([
                 'id' => $attachmentId,
@@ -310,7 +412,7 @@ class PaperEvidenceController extends Controller
 
         return response()->json([
             'data' => [
-                'evidence_id' => $evidenceId = $evidenceRecord->id,
+                'evidence_id' => $evidenceRecord->id,
                 'chapter_id' => $evidenceRecord->chapter_id,
                 'target' => [
                     'purpose' => $evidenceRecord->purpose ?? 'actual_issue',
@@ -332,7 +434,12 @@ class PaperEvidenceController extends Controller
 
     public function showVersion(string $chapter_id, string $evidence_id, string $version_id): JsonResponse
     {
-        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)->first();
+        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
+        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
+
+        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)
+            ->where('chapter_id', $targetChapterId)
+            ->first();
         if (! $evidenceRecord) {
             return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence not found.']], 404);
         }
@@ -385,19 +492,59 @@ class PaperEvidenceController extends Controller
         ]);
     }
 
-    public function retrieveAttachment(string $chapter_id, string $evidence_id, string $version_id, string $attachment_id): Response
+    public function retrieveAttachment(Request $request, string $chapter_id, string $evidence_id, string $version_id, string $attachment_id): Response|JsonResponse
     {
+        $userId = $request->header('X-User-Id') ?? session('user_id');
+        if (! $userId) {
+            return response()->json([
+                'error' => 'AUTHENTICATION_REQUIRED',
+                'message' => 'Caller identity or active session is required to retrieve evidence attachments.',
+            ], 401);
+        }
+
+        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
+        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
+
+        // Verify chapter membership
+        $membership = ChapterMembership::where('chapter_id', $targetChapterId)
+            ->where('user_id', $userId)
+            ->where('membership_status', 'active')
+            ->first();
+
+        if (! $membership) {
+            return response()->json([
+                'error' => 'MEMBERSHIP_REQUIRED',
+                'message' => "User does not have an active membership in chapter {$targetChapterId}.",
+            ], 403);
+        }
+
+        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)
+            ->where('chapter_id', $targetChapterId)
+            ->first();
+
+        if (! $evidenceRecord) {
+            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence record not found.']], 404);
+        }
+
         $blob = EvidenceBlob::where('evidence_id', $evidence_id)
             ->where('id', $attachment_id)
             ->first();
 
         if (! $blob) {
-            return response('Attachment not found', 404);
+            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Attachment not found.']], 404);
         }
 
-        $content = $blob->raw_content;
-        if (! $content && Storage::disk('local')->exists($blob->payload_path)) {
+        $content = null;
+        if (Storage::disk('evidence')->exists($blob->payload_path)) {
+            $content = Storage::disk('evidence')->get($blob->payload_path);
+        } elseif ($blob->raw_content) {
+            $content = $blob->raw_content;
+        } elseif (Storage::disk('local')->exists($blob->payload_path)) {
             $content = Storage::disk('local')->get($blob->payload_path);
+        }
+
+        if ($content === null) {
+            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Attachment content not found.']], 404);
         }
 
         return response($content, 200, [
@@ -414,28 +561,26 @@ class PaperEvidenceController extends Controller
         string $recipientName,
         array $items
     ): bool {
-        // Sort items by variant_id, unit_id, lot_or_batch, quantity
-        usort($items, function ($a, $b) {
-            $k1 = ($a['variant_id'] ?? '').($a['unit_id'] ?? '').($a['lot_or_batch'] ?? '').($a['quantity'] ?? '');
-            $k2 = ($b['variant_id'] ?? '').($b['unit_id'] ?? '').($b['lot_or_batch'] ?? '').($b['quantity'] ?? '');
-
-            return strcmp($k1, $k2);
-        });
-
-        $fingerprint = hash('sha256', json_encode([
-            'source_type' => $sourceType,
-            'source_id' => $sourceId,
-            'recipient_name' => $recipientName,
-            'items' => $items,
-        ]));
-
+        $participant = app(CheckEvidenceBindingParticipant::class);
         $binding = EvidenceBinding::where('chapter_id', $chapterId)
             ->where('source_type', $sourceType)
             ->where('source_id', $sourceId)
-            ->where('recipient_name', $recipientName)
-            ->where('item_fingerprint', $fingerprint)
             ->first();
 
-        return (bool) $binding;
+        if (! $binding) {
+            return false;
+        }
+
+        $result = $participant->check([
+            'chapter_id' => $chapterId,
+            'evidence_id' => $binding->evidence_id,
+            'binding_id' => $binding->id,
+            'source_type' => $sourceType,
+            'source_id' => $sourceId,
+            'recipient_name' => $recipientName,
+            'lines' => $items,
+        ], strict: false);
+
+        return ($result['outcome'] ?? '') === 'ready';
     }
 }

@@ -264,7 +264,8 @@ class InventoryStage1ATest extends TestCase
             ->assertJsonPath('data.replacement_reason', 'Clearer scan attached.');
 
         // Retrieve attachment content
-        $contentResponse = $this->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/1/attachments/{$attachmentId}/content");
+        $contentResponse = $this->withHeaders(['X-User-Id' => $this->userId])
+            ->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/1/attachments/{$attachmentId}/content");
         $contentResponse->assertStatus(200)
             ->assertHeader('Content-Type', 'application/pdf');
         $this->assertEquals($rawBytes, $contentResponse->getContent());

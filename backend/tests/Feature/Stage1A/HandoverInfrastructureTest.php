@@ -5,6 +5,7 @@ namespace Tests\Feature\Stage1A;
 use App\Models\ActualIssue;
 use App\Models\ActualIssueLine;
 use App\Models\Buyer;
+use App\Models\EvidenceRecord;
 use App\Models\Handover;
 use App\Models\HandoverLine;
 use App\Models\HandoverReceipt;
@@ -14,6 +15,7 @@ use App\Models\SalesOrder;
 use App\Models\SalesOrderLine;
 use App\Services\Delivery\HandoverCoordinatorService;
 use App\Services\Delivery\SalesReleaseService;
+use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -122,6 +124,28 @@ class HandoverInfrastructureTest extends TestCase
         $soId = (string) Str::uuid();
         $sourceLineId = (string) Str::uuid();
 
+        $evidence = EvidenceRecord::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'technical_state' => 'ready',
+            'created_by' => $this->userId,
+        ]);
+
+        $binding = app(CheckEvidenceBindingParticipant::class)->createOrUpdateBinding(
+            $this->chapterId,
+            $evidence->id,
+            (string) Str::uuid(),
+            'sales_order',
+            $soId,
+            'Alice Recipient',
+            [
+                [
+                    'source_line_id' => $sourceLineId,
+                    'actual_quantity' => '2.000',
+                ],
+            ]
+        );
+
         $payload = [
             'source' => [
                 'kind' => 'sales_order',
@@ -136,7 +160,7 @@ class HandoverInfrastructureTest extends TestCase
             ],
             'recipient_name' => 'Alice Recipient',
             'actual_handover_at' => '2026-10-22T09:30:00+08:00',
-            'acknowledgment_binding_id' => (string) Str::uuid(),
+            'acknowledgment_binding_id' => $binding->id,
         ];
 
         // First attempt: should succeed and create record

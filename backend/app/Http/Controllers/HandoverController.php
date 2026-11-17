@@ -34,10 +34,14 @@ class HandoverController extends Controller
             'source.id' => 'required|string',
             'source.expected_version' => 'nullable|integer',
             'lines' => 'required|array|min:1',
-            'lines.*.source_line_id' => 'required|string',
-            'lines.*.actual_quantity' => 'required',
+            'lines.*.source_line_id' => 'nullable|string',
+            'lines.*.variant_id' => 'nullable|string',
+            'lines.*.unit_id' => 'nullable|string',
+            'lines.*.actual_quantity' => 'nullable',
+            'lines.*.quantity' => 'nullable',
             'recipient_name' => 'required|string',
             'actual_handover_at' => 'nullable',
+            'evidence_id' => 'nullable|string',
             'acknowledgment_binding_id' => 'nullable|string',
         ]);
 
@@ -64,6 +68,14 @@ class HandoverController extends Controller
                 'code' => 'action_key_conflict',
                 'message' => $e->getMessage(),
             ], $e->getStatusCode(), [
+                'Cache-Control' => 'no-store',
+            ]);
+        } catch (\DomainException $e) {
+            return response()->json([
+                'error' => 'EVIDENCE_MISMATCH',
+                'code' => 'evidence_binding_invalid',
+                'message' => $e->getMessage(),
+            ], 422, [
                 'Cache-Control' => 'no-store',
             ]);
         }
