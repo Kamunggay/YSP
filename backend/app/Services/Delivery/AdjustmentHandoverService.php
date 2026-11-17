@@ -22,7 +22,7 @@ class AdjustmentHandoverService
 
             $handover = Handover::create([
                 'chapter_id' => $chapter,
-                'handover_reference' => 'HO-ADJ-' . strtoupper(Str::random(8)),
+                'handover_reference' => 'HO-ADJ-'.strtoupper(Str::random(8)),
                 'source_type' => 'ADJUSTMENT',
                 'source_id' => $sourceId,
                 'recipient_name' => $data['recipient_name'],

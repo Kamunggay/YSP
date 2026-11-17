@@ -13,7 +13,6 @@ use App\Models\IssueReconciliation;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderLine;
 use App\Services\Delivery\HandoverCoordinatorService;
-use App\Services\Delivery\RequisitionIssueService;
 use App\Services\Delivery\SalesReleaseService;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,7 +24,9 @@ class HandoverInfrastructureTest extends TestCase
     use RefreshDatabase;
 
     private string $chapterId = 'chap-cebu-01';
+
     private string $otherChapterId = 'chap-davao-02';
+
     private string $userId = 'user-officer-01';
 
     /**
@@ -388,7 +389,7 @@ class HandoverInfrastructureTest extends TestCase
      */
     public function test_transaction_rollback_safety(): void
     {
-        $mockSalesService = $this->createMock(SalesReleaseService::class);
+        $mockSalesService = $this->createStub(SalesReleaseService::class);
         $mockSalesService->method('postCustomerRelease')
             ->willThrowException(new Exception('Simulated inventory stock movement failure during release'));
 

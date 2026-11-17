@@ -30,6 +30,7 @@ class PrepareAccountCommand extends BaseControlledCommand
 
         if ($replayed = $this->checkReplay($actionKey, 'prepareAccount')) {
             $this->line(json_encode($replayed, JSON_PRETTY_PRINT));
+
             return 0;
         }
 
@@ -57,6 +58,7 @@ class PrepareAccountCommand extends BaseControlledCommand
         );
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
+
         return 0;
     }
 }

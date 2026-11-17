@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnforceChapterContext;
+use App\Http\Middleware\EnforceDutyAuthority;
+use App\Http\Middleware\IdempotentOperation;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,9 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'chapter.context' => \App\Http\Middleware\EnforceChapterContext::class,
-            'duty.authority' => \App\Http\Middleware\EnforceDutyAuthority::class,
-            'idempotent' => \App\Http\Middleware\IdempotentOperation::class,
+            'chapter.context' => EnforceChapterContext::class,
+            'duty.authority' => EnforceDutyAuthority::class,
+            'idempotent' => IdempotentOperation::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

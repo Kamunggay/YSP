@@ -34,6 +34,7 @@ class RecordPolicyCommand extends BaseControlledCommand
 
         if ($replayed = $this->checkReplay($actionKey, 'recordPolicy')) {
             $this->line(json_encode($replayed, JSON_PRETTY_PRINT));
+
             return 0;
         }
 
@@ -64,6 +65,7 @@ class RecordPolicyCommand extends BaseControlledCommand
         );
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
+
         return 0;
     }
 }

@@ -24,7 +24,7 @@ class BoothHandoverService
 
             $handover = Handover::create([
                 'chapter_id' => $chapter,
-                'handover_reference' => 'HO-BOOTH-' . strtoupper(Str::random(8)),
+                'handover_reference' => 'HO-BOOTH-'.strtoupper(Str::random(8)),
                 'source_type' => $sourceKind, // BOOTH_CHECKOUT or BOOTH_RETURN
                 'source_id' => $sourceId,
                 'recipient_name' => $data['recipient_name'],
@@ -60,7 +60,7 @@ class BoothHandoverService
             HandoverReceipt::create([
                 'handover_id' => $handover->id,
                 'receipt_type' => 'BOOTH_CHECKOUT_RECEIPT',
-                'receipt_number' => 'BCR-' . strtoupper(Str::random(8)),
+                'receipt_number' => 'BCR-'.strtoupper(Str::random(8)),
                 'printed_at' => now(),
                 'printed_by' => $officerId,
             ]);

@@ -27,7 +27,7 @@ class RequisitionIssueService
             $actualIssue = ActualIssue::create([
                 'chapter_id' => $chapter,
                 'requisition_id' => $sourceId,
-                'issue_number' => 'IS-' . strtoupper(Str::random(8)),
+                'issue_number' => 'IS-'.strtoupper(Str::random(8)),
                 'status' => 'posted',
                 'recipient_name' => $data['recipient_name'],
                 'prepared_by_user_id' => $officerId,
@@ -39,7 +39,7 @@ class RequisitionIssueService
             // Create Handover record
             $handover = Handover::create([
                 'chapter_id' => $chapter,
-                'handover_reference' => 'HO-REQ-' . strtoupper(Str::random(8)),
+                'handover_reference' => 'HO-REQ-'.strtoupper(Str::random(8)),
                 'source_type' => 'REQUISITION',
                 'source_id' => $sourceId,
                 'recipient_name' => $data['recipient_name'],
@@ -89,7 +89,7 @@ class RequisitionIssueService
             HandoverReceipt::create([
                 'handover_id' => $handover->id,
                 'receipt_type' => 'IS_AR',
-                'receipt_number' => 'AR-' . strtoupper(Str::random(8)),
+                'receipt_number' => 'AR-'.strtoupper(Str::random(8)),
                 'printed_at' => now(),
                 'printed_by' => $officerId,
             ]);

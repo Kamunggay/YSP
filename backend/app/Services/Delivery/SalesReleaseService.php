@@ -38,7 +38,7 @@ class SalesReleaseService
             // Create Handover record
             $handover = Handover::create([
                 'chapter_id' => $chapter,
-                'handover_reference' => 'HO-SO-' . strtoupper(Str::random(8)),
+                'handover_reference' => 'HO-SO-'.strtoupper(Str::random(8)),
                 'source_type' => 'SALES_ORDER',
                 'source_id' => $sourceId,
                 'recipient_name' => $data['recipient_name'],
@@ -87,7 +87,7 @@ class SalesReleaseService
             HandoverReceipt::create([
                 'handover_id' => $handover->id,
                 'receipt_type' => 'CUSTOMER_DR',
-                'receipt_number' => 'DR-' . strtoupper(Str::random(8)),
+                'receipt_number' => 'DR-'.strtoupper(Str::random(8)),
                 'printed_at' => now(),
                 'printed_by' => $officerId,
             ]);

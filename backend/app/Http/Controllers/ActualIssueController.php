@@ -45,7 +45,7 @@ class ActualIssueController extends Controller
             $issue = ActualIssue::create([
                 'chapter_id' => $chapterId,
                 'requisition_id' => $rfId,
-                'issue_number' => 'IS-' . strtoupper(Str::random(8)),
+                'issue_number' => 'IS-'.strtoupper(Str::random(8)),
                 'status' => 'prepared',
                 'recipient_name' => $recipientName,
                 'prepared_by_user_id' => $userId,
@@ -216,7 +216,7 @@ class ActualIssueController extends Controller
             // Create corresponding handover record
             $handover = Handover::create([
                 'chapter_id' => $chapterId,
-                'handover_reference' => 'HO-' . $issue->issue_number,
+                'handover_reference' => 'HO-'.$issue->issue_number,
                 'source_type' => 'REQUISITION',
                 'source_id' => $issue->requisition_id,
                 'recipient_name' => $issue->recipient_name,
@@ -240,7 +240,7 @@ class ActualIssueController extends Controller
             HandoverReceipt::create([
                 'handover_id' => $handover->id,
                 'receipt_type' => 'IS_AR',
-                'receipt_number' => 'AR-' . strtoupper(Str::random(8)),
+                'receipt_number' => 'AR-'.strtoupper(Str::random(8)),
                 'printed_at' => now(),
                 'printed_by' => $issue->prepared_by_user_id,
             ]);
@@ -362,6 +362,7 @@ class ActualIssueController extends Controller
         }
 
         $decoded = json_decode($record->response_body, true);
+
         return response()->json($decoded ?? $record->response_body, $record->response_code, [
             'X-Action-Replayed' => 'true',
             'Cache-Control' => 'no-store',
@@ -379,6 +380,7 @@ class ActualIssueController extends Controller
         }
 
         $decoded = json_decode($record->response_body, true);
+
         return response()->json($decoded ?? $record->response_body, $record->response_code, [
             'Cache-Control' => 'no-store',
         ]);

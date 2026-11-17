@@ -18,6 +18,7 @@ class AuthController extends Controller
     public function csrf(): Response
     {
         $token = Str::random(40);
+
         return response('', 204)
             ->cookie('XSRF-TOKEN', $token, 120, '/', null, false, false)
             ->header('X-CSRF-TOKEN', $token);
@@ -183,6 +184,7 @@ class AuthController extends Controller
     public function signOut(Request $request): Response
     {
         session()->flush();
+
         return response('', 204);
     }
 

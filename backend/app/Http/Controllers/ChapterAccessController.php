@@ -133,7 +133,7 @@ class ChapterAccessController extends Controller
                 'required_duties' => array_values(array_intersect($requiredDuties, [
                     'COMMITTEE_REQUESTER', 'RF_APPROVER', 'SALES_OFFICER', 'SALES_REVIEWER',
                     'FINANCE', 'INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'RECEIVING',
-                    'DISPATCH', 'BOOTH_CUSTODIAN', 'BOOTH_CASHIER', 'INDEPENDENT_REVIEWER', 'CHAPTER_HEAD'
+                    'DISPATCH', 'BOOTH_CUSTODIAN', 'BOOTH_CASHIER', 'INDEPENDENT_REVIEWER', 'CHAPTER_HEAD',
                 ])) ?: ['INVENTORY'],
                 'blockers' => [],
             ];

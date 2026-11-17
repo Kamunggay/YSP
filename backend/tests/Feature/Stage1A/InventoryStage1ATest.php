@@ -2,19 +2,10 @@
 
 namespace Tests\Feature\Stage1A;
 
-use App\Models\AuditLog;
-use App\Models\CatalogueItem;
-use App\Models\CatalogueLocation;
-use App\Models\CatalogueOperation;
 use App\Models\CatalogueUnit;
-use App\Models\CatalogueVariant;
-use App\Models\CatalogueVersionHistory;
 use App\Models\Chapter;
 use App\Models\ChapterMembership;
 use App\Models\DutyGrant;
-use App\Models\EvidenceBlob;
-use App\Models\EvidenceRecord;
-use App\Models\PolicyRecord;
 use App\Models\User;
 use App\Models\UserMfaCredential;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,6 +19,7 @@ class InventoryStage1ATest extends TestCase
     use RefreshDatabase;
 
     private string $chapterId;
+
     private string $userId;
 
     protected function setUp(): void

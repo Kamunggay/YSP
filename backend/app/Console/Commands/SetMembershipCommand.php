@@ -34,6 +34,7 @@ class SetMembershipCommand extends BaseControlledCommand
 
         if ($replayed = $this->checkReplay($actionKey, 'setMembership')) {
             $this->line(json_encode($replayed, JSON_PRETTY_PRINT));
+
             return 0;
         }
 
@@ -60,6 +61,7 @@ class SetMembershipCommand extends BaseControlledCommand
         );
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
+
         return 0;
     }
 }

@@ -418,6 +418,7 @@ class PaperEvidenceController extends Controller
         usort($items, function ($a, $b) {
             $k1 = ($a['variant_id'] ?? '').($a['unit_id'] ?? '').($a['lot_or_batch'] ?? '').($a['quantity'] ?? '');
             $k2 = ($b['variant_id'] ?? '').($b['unit_id'] ?? '').($b['lot_or_batch'] ?? '').($b['quantity'] ?? '');
+
             return strcmp($k1, $k2);
         });
 

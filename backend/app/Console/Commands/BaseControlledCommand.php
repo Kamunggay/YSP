@@ -37,9 +37,11 @@ abstract class BaseControlledCommand extends Command
             $decoded = json_decode($existing->response_body, true);
             if (is_array($decoded)) {
                 $decoded['outcome'] = 'replayed';
+
                 return $decoded;
             }
         }
+
         return null;
     }
 

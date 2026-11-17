@@ -30,6 +30,7 @@ class SetAccountStatusCommand extends BaseControlledCommand
 
         if ($replayed = $this->checkReplay($actionKey, 'setAccountStatus')) {
             $this->line(json_encode($replayed, JSON_PRETTY_PRINT));
+
             return 0;
         }
 
@@ -54,6 +55,7 @@ class SetAccountStatusCommand extends BaseControlledCommand
         );
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
+
         return 0;
     }
 }

@@ -29,6 +29,7 @@ class ResetMfaCommand extends BaseControlledCommand
 
         if ($replayed = $this->checkReplay($actionKey, 'resetMfa')) {
             $this->line(json_encode($replayed, JSON_PRETTY_PRINT));
+
             return 0;
         }
 
@@ -54,6 +55,7 @@ class ResetMfaCommand extends BaseControlledCommand
         );
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
+
         return 0;
     }
 }

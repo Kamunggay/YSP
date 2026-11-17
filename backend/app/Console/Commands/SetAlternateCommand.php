@@ -37,6 +37,7 @@ class SetAlternateCommand extends BaseControlledCommand
 
         if ($replayed = $this->checkReplay($actionKey, 'setAlternate')) {
             $this->line(json_encode($replayed, JSON_PRETTY_PRINT));
+
             return 0;
         }
 
@@ -78,6 +79,7 @@ class SetAlternateCommand extends BaseControlledCommand
         );
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
+
         return 0;
     }
 }

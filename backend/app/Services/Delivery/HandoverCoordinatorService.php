@@ -48,6 +48,7 @@ class HandoverCoordinatorService
                 }
 
                 $decoded = json_decode($existing->response_body, true);
+
                 return [
                     'status' => $existing->response_code,
                     'body' => $decoded !== null ? $decoded : $existing->response_body,
@@ -59,7 +60,7 @@ class HandoverCoordinatorService
         // Dispatch based on source.kind
         $sourceKind = $data['source']['kind'] ?? null;
         if (! $sourceKind) {
-            throw new \InvalidArgumentException("Missing source.kind in handover payload.");
+            throw new \InvalidArgumentException('Missing source.kind in handover payload.');
         }
 
         $result = match ($sourceKind) {
@@ -96,6 +97,7 @@ class HandoverCoordinatorService
             return hash('sha256', $payload);
         }
         $normalized = $this->recursiveKsort($payload);
+
         return hash('sha256', json_encode($normalized));
     }
 
@@ -108,6 +110,7 @@ class HandoverCoordinatorService
         foreach ($value as $k => $v) {
             $value[$k] = $this->recursiveKsort($v);
         }
+
         return $value;
     }
 }

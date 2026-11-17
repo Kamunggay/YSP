@@ -18,6 +18,7 @@ class CatalogueController extends Controller
     private function resolveChapterId(string $param): string
     {
         $chapter = Chapter::where('id', $param)->orWhere('code', $param)->first();
+
         return $chapter ? $chapter->id : $param;
     }
 
