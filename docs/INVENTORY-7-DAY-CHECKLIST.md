@@ -149,7 +149,7 @@ flowchart TD
 ---
 
 ### Day 2: Stage 1B Physical Stock Ledger Schema, Coordinate Locking, Seven Non-Additive Stock Views & Opening Baseline Movement Posting (prepareOpeningInventory) (Efren)
-- [ ] **2.1 Physical Stock Ledger Schema, Coordinate Locking & Shared Reservations (Efren)**
+- [x] **2.1 Physical Stock Ledger Schema, Coordinate Locking & Shared Reservations (Efren)**
   - Create migration `2026_11_03_000001_create_inventory_ledger_tables.php` defining:
     - `inventory_postings`: `id` (UUID), `chapter_id`, `posting_reference`, `source_type` (`IPC`, `PO_DR`, `DA`, `RF_ISSUE`, `SO_DR`, `BOOTH_CHECKOUT`, `BOOTH_RETURN`, `ADJ`), `source_id`, `actor_id`, `notes`, `created_at`.
     - `inventory_movements`: `id`, `posting_id`, `chapter_id`, `variant_id`, `unit_id`, `location_id`, `condition` (`USABLE`, `QUARANTINE`, `REJECTED`), `quantity` (DECIMAL 12,4, signed), `balance_after` (DECIMAL 12,4).
@@ -158,7 +158,7 @@ flowchart TD
     - Unique coordinate constraint on `(chapter_id, variant_id, unit_id, location_id, condition, custody, lot_code)`.
     - `stock_reservations`: `id`, `chapter_id`, `source_type` (`RF`, `SO`), `source_id`, `source_line_id`, `lot_id`, `quantity`, `status` (`ACTIVE`, `CONSUMED`, `RELEASED`), `expires_at` (nullable for SO, null for RF). Created on Day 2 to provide unblocked shared access for Sales Day 2!
   - Implement posting service `App\Services\Inventory\PhysicalPostingService` (`INV-05`, `INV-07`, `INV-08`, `T-16`). Enforce invariant: zero arbitrary balance setters; all stock updates occur via signed movements within caller-owned DB transactions.
-- [ ] **2.2 Seven Non-Additive Stock Views & Query Service (Efren)**
+- [x] **2.2 Seven Non-Additive Stock Views & Query Service (Efren)**
   - Implement query service `App\Services\Inventory\StockViewQueryService` computing the seven non-additive stock views (`usable on-hand`, `available-to-allocate`, `RF-reserved`, `SO-reserved`, `booth custody`, `quarantine/rejected`, and `inbound PO`).
   - Implement exact Stage 1 Stock endpoints in `App\Http\Controllers\StockQueryController`:
     - `listStockSummaries` (`GET /api/v1/chapters/{chapter_id}/stock`)
@@ -167,7 +167,7 @@ flowchart TD
     - `readStockLot` (`GET /api/v1/chapters/{chapter_id}/stock/lots/{stock_lot_id}`)
     - `readStockEligibility` (`GET /api/v1/chapters/{chapter_id}/stock/lots/{stock_lot_id}/eligibility`)
     - `listStockLotHistory` (`GET /api/v1/chapters/{chapter_id}/stock/lots/{stock_lot_id}/history`)
-- [ ] **2.3 Opening Baseline Physical Movement Posting (prepareOpeningInventory) & Singleton RM Fence (Efren)**
+- [x] **2.3 Opening Baseline Physical Movement Posting (prepareOpeningInventory) & Singleton RM Fence (Efren)**
   - Create migration `2026_11_03_000002_create_opening_inventory_tables.php` defining `opening_counts` (IPC) and `opening_rms` (`RCV-08`–`RCV-10`, `MIG-01`, `MIG-04`, `S3-12`, `S3-13`).
   - Enforce singleton constraint: `UNIQUE KEY unique_chapter_opening (chapter_id)` on `opening_rms` to guarantee exactly one opening baseline per chapter (`T-18`, `A-18`).
   - Implement internal participant `prepareOpeningInventory` (`App\Services\Inventory\Participants\PrepareOpeningInventoryParticipant`, `contracts/stage1/handoff.yaml#/internal_participants/prepareOpeningInventory`): prepares initial lot coordinates and staging movements.
@@ -175,7 +175,7 @@ flowchart TD
     - IPC endpoints: `listIpcs`, `createIpc`, `readIpc`, `replaceIpc`, `listIpcHistory`, `readIpcRevision`, `readIpcRelated`, `printIpc`, `saveMyIpcCount`, `submitIpc`, `authorizeIpc`.
     - Opening RM endpoints: `listOpeningRms`, `createOpeningRm`, `readOpeningRm`, `replaceOpeningRm`, `listOpeningRmHistory`, `readOpeningRmRevision`, `readOpeningRmRelated`, `printOpeningRm`, `inspectOpeningRm`, `matchOpeningRmEvidence`, `postOpeningRm`, `listOpeningRmMovements`, `listOpeningRmFindings`, `readChapterOpeningBaseline`, `findOpeningActionByKey`, `readOpeningAction`.
     - `postOpeningRm`: atomic commit of `prepareOpeningInventory` + `checkEvidenceBinding` $\to$ writes `inventory_postings`, creates initial `inventory_lots`, and locks opening baseline fence (`RCV-10`, `S3-19`).
-- [ ] **Day 2 Exit Gate & Verification Command**:
+- [x] **Day 2 Exit Gate & Verification Command**:
   - Run: `docker compose exec -T backend php artisan test tests/Feature/Stage1B/OpeningInventoryTest.php`
   - Concurrency Test: Race two concurrent `postOpeningRm` requests for the same chapter; assert exactly one commits (201 Created) and second fails with 409 Conflict (`RCV-10`, `T-18`, `A-18`).
   - Negative Test: Attempt IPC sign-off where Chapter Head and Finance are the same person without authorized alternate; assert 422 Unprocessable Content (`GOV-05`, `GOV-06`).

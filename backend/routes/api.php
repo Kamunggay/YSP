@@ -8,9 +8,11 @@ use App\Http\Controllers\ChapterAccessController;
 use App\Http\Controllers\HandoverController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\NotificationSubscriptionController;
+use App\Http\Controllers\OpeningInventoryController;
 use App\Http\Controllers\PaperEvidenceController;
 use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
+use App\Http\Controllers\StockQueryController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -84,6 +86,48 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware(['chapter.context'])->grou
         Route::post('/catalogue/locations', [CatalogueController::class, 'createLocation']);
         Route::put('/catalogue/locations/{resource_id}', [CatalogueController::class, 'replaceLocation']);
     });
+
+    // ================= STOCK QUERIES =================
+    Route::get('/stock', [StockQueryController::class, 'listStockSummaries']);
+    Route::get('/stock/variants/{variant_id}', [StockQueryController::class, 'readVariantStock']);
+    Route::get('/stock/lots', [StockQueryController::class, 'listStockLots']);
+    Route::get('/stock/lots/{stock_lot_id}', [StockQueryController::class, 'readStockLot']);
+    Route::get('/stock/lots/{stock_lot_id}/eligibility', [StockQueryController::class, 'readStockEligibility']);
+    Route::get('/stock/lots/{stock_lot_id}/history', [StockQueryController::class, 'listStockLotHistory']);
+
+    // ================= OPENING INVENTORY (IPC & OPENING RM) =================
+    // IPC
+    Route::get('/ipcs', [OpeningInventoryController::class, 'listIpcs']);
+    Route::post('/ipcs', [OpeningInventoryController::class, 'createIpc']);
+    Route::get('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'readIpc']);
+    Route::put('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'replaceIpc']);
+    Route::put('/ipcs/{ipc_id}/my-count', [OpeningInventoryController::class, 'saveMyIpcCount']);
+    Route::post('/ipcs/{ipc_id}/submit', [OpeningInventoryController::class, 'submitIpc']);
+    Route::post('/ipcs/{ipc_id}/authorizations', [OpeningInventoryController::class, 'authorizeIpc']);
+    Route::get('/ipcs/{ipc_id}/history', [OpeningInventoryController::class, 'listIpcHistory']);
+    Route::get('/ipcs/{ipc_id}/versions/{revision}', [OpeningInventoryController::class, 'readIpcRevision']);
+    Route::get('/ipcs/{ipc_id}/related', [OpeningInventoryController::class, 'readIpcRelated']);
+    Route::get('/ipcs/{ipc_id}/print', [OpeningInventoryController::class, 'printIpc']);
+
+    // Opening RM
+    Route::get('/opening-rms', [OpeningInventoryController::class, 'listOpeningRms']);
+    Route::post('/opening-rms', [OpeningInventoryController::class, 'createOpeningRm']);
+    Route::get('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'readOpeningRm']);
+    Route::put('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'replaceOpeningRm']);
+    Route::post('/opening-rms/{rm_id}/inspection', [OpeningInventoryController::class, 'inspectOpeningRm']);
+    Route::post('/opening-rms/{rm_id}/evidence-match', [OpeningInventoryController::class, 'matchOpeningRmEvidence']);
+    Route::post('/opening-rms/{rm_id}/post', [OpeningInventoryController::class, 'postOpeningRm']);
+    Route::get('/opening-rms/{rm_id}/movements', [OpeningInventoryController::class, 'listOpeningRmMovements']);
+    Route::get('/opening-rms/{rm_id}/findings', [OpeningInventoryController::class, 'listOpeningRmFindings']);
+    Route::get('/opening-rms/{rm_id}/history', [OpeningInventoryController::class, 'listOpeningRmHistory']);
+    Route::get('/opening-rms/{rm_id}/versions/{revision}', [OpeningInventoryController::class, 'readOpeningRmRevision']);
+    Route::get('/opening-rms/{rm_id}/related', [OpeningInventoryController::class, 'readOpeningRmRelated']);
+    Route::get('/opening-rms/{rm_id}/print', [OpeningInventoryController::class, 'printOpeningRm']);
+
+    // Baseline & Opening Actions
+    Route::get('/opening-baseline', [OpeningInventoryController::class, 'readChapterOpeningBaseline']);
+    Route::get('/opening-actions/by-key', [OpeningInventoryController::class, 'findOpeningActionByKey']);
+    Route::get('/opening-actions/{operation_id}', [OpeningInventoryController::class, 'readOpeningAction']);
 });
 
 // Sales Order & Buyer routes (without chapter context enforcement)
