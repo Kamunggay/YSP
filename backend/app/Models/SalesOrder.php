@@ -21,6 +21,7 @@ class SalesOrder extends Model
         'order_date',
         'target_delivery_date',
         'status',
+        'buyer_acceptance_status',
         'rejection_reason',
         'terms_conditions',
         'terms_version',
@@ -52,5 +53,15 @@ class SalesOrder extends Model
     public function revisions(): HasMany
     {
         return $this->hasMany(SalesOrderRevision::class, 'so_id');
+    }
+
+    public function contactLogs(): HasMany
+    {
+        return $this->hasMany(CustomerContactLog::class, 'so_id');
+    }
+
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(StockReservation::class, 'source_id')->where('source_type', 'SO');
     }
 }

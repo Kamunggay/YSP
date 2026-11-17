@@ -9,6 +9,7 @@ use App\Http\Controllers\HandoverController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\NotificationSubscriptionController;
 use App\Http\Controllers\PaperEvidenceController;
+use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
 use Illuminate\Support\Facades\Route;
 
@@ -97,6 +98,11 @@ Route::prefix('v1/chapters/{chapter_id}')->group(function () {
     Route::post('/sales-orders/{id}/review', [SalesOrderController::class, 'review']);
     Route::post('/sales-orders/{id}/revise', [SalesOrderController::class, 'revise']);
     Route::post('/sales-orders/{id}/cancel', [SalesOrderController::class, 'cancel']);
+
+    // Day 2 Sales Acceptance & Demand Splitting routes
+    Route::post('/sales-orders/{so_id}/contact-logs', [SalesOrderAcceptanceController::class, 'recordCustomerContact']);
+    Route::post('/sales-orders/{so_id}/acceptance', [SalesOrderAcceptanceController::class, 'recordBuyerAcceptance']);
+    Route::post('/sales-orders/{so_id}/split-demand', [SalesOrderAcceptanceController::class, 'splitDemand']);
 
     // Handover & Actual Issue routes
     Route::get('/handovers', [HandoverController::class, 'index']);

@@ -156,26 +156,26 @@ flowchart TD
 ---
 
 ### Day 2: Stage 1B / Stage 3 Stock Availability Checks & Demand Splitting Backend (Efren)
-- [ ] **2.1 Buyer Acceptance Logging & Customer Contact Engine (Efren)**
+- [x] **2.1 Buyer Acceptance Logging & Customer Contact Engine (Efren)**
   - Add buyer acceptance tracking to `sales_orders` schema:
     - `buyer_acceptance_status` (`PENDING`, `FULL_ACCEPTED`, `PARTIAL_ACCEPTED`, `BACKORDER_ACCEPTED`, `DECLINED`).
     - `customer_contact_logs`: `id`, `so_id`, `contact_timestamp`, `contact_method` (`PHONE`, `EMAIL`, `IN_PERSON`), `officer_id`, `buyer_response`, `notes`.
   - Implement endpoints in `App\Http\Controllers\SalesOrderAcceptanceController` (`SO-04`, `SO-05`, `T-04`):
     - `recordCustomerContact`: log customer communication timestamp, method, and response notes.
     - `recordBuyerAcceptance`: record buyer decision on available vs backorder terms; if buyer declines, cancel SO and release reservations immediately (`T-04`).
-- [ ] **2.2 Stock Availability Check & Demand Splitting Service (Efren)**
+- [x] **2.2 Stock Availability Check & Demand Splitting Service (Efren)**
   - Implement `App\Services\Sales\DemandSplitterService` (`INV-06`, `SO-04`, `SO-05`, `S1-14`–`S1-16`, `S1-20`):
     - Queries central inventory 7-view stock via `StockViewQueryService`.
     - If available stock $\ge$ ordered quantity: marks entire line as `reserved_quantity = ordered_quantity`, `backordered_quantity = 0`.
     - If available stock $<$ ordered quantity: reserves available portion `reserved_quantity = available_stock`; allocates remaining shortage to `backordered_quantity = ordered_quantity - available_stock`.
     - Atomic reservation: consumes Inventory Day 2 `stock_reservations` to lock reserved lot coordinates under `source_type = 'SO'`.
     - Starts the 48-hour unpaid reservation clock (`RSV-01`, `RSV-03`).
-- [ ] **2.3 Decline Cancellation & Reservation Release Workflow (Efren)**
+- [x] **2.3 Decline Cancellation & Reservation Release Workflow (Efren)**
   - Implement transactional cancellation workflow when buyer rejects backorder or partial terms (`T-04`):
     - Transitions SO status to `CANCELLED`.
     - Releases all active `stock_reservations` bound to the SO back to central availability via `Connector A`.
     - Records cancellation audit trail with reason `BUYER_DECLINED_TERMS`.
-- [ ] **Day 2 Exit Gate & Verification Command**:
+- [x] **Day 2 Exit Gate & Verification Command**:
   - Run: `docker compose exec -T backend php artisan test tests/Feature/Stage3/DemandSplitTest.php`
   - Stock Splitting Test: Order 10 shirts when available stock is 6. Assert 6 units are reserved in `stock_reservations`, 4 units are recorded as backordered shortage, and unpaid 48h expiry is set on the 6 units.
   - Decline Release Test: Record buyer declining backorder; assert SO status transitions to `CANCELLED` and the 6 reserved units are released back to central availability (`T-04`).

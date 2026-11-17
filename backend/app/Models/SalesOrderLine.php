@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SalesOrderLine extends Model
 {
@@ -43,5 +44,10 @@ class SalesOrderLine extends Model
     public function salesOrder(): BelongsTo
     {
         return $this->belongsTo(SalesOrder::class, 'so_id');
+    }
+
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(StockReservation::class, 'source_line_id')->where('source_type', 'SO');
     }
 }
