@@ -335,4 +335,226 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     await expect(page.locator('#officer-email-input')).toHaveClass(/input-invalid/);
     await expect(page.getByRole('heading', { name: 'Invite New Chapter Officer' })).toBeVisible();
   });
+
+  test('executes P03 record return-revise-approve lifecycle, idempotency, stale comparison, and uncertain lookup recovery', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p03');
+    await expect(
+      page.getByRole('heading', { name: 'Record, Version & Durable Operation' })
+    ).toBeVisible();
+
+    await expect(page.locator('#p03-state-header-title')).toHaveText('(Draft)');
+    await expect(page.getByTestId('p03-material-version-pill')).toContainText('Draft');
+    await expect(page.getByTestId('p03-axis-approval')).toHaveText('draft');
+    await expect(page.getByTestId('p03-submit-card')).toHaveClass(/is-needs-action/);
+
+    // 1. Incomplete draft increments row version without creating material version
+    await page.locator('#p03-save-draft-btn').click();
+    await expect(page.getByTestId('p03-row-version-pill')).toContainText('v2');
+    await expect(page.getByTestId('p03-material-version-pill')).toContainText('Draft');
+
+    // 2. Submit Material v1 + check Version History tab + idempotency replay & mismatch
+    await page.locator('#p03-purpose-input').fill('Initial v1 physical count');
+    await page.locator('#p03-submit-material-btn').click();
+    await expect(page.getByTestId('p03-material-version-pill')).toContainText('v1');
+    await expect(page.getByTestId('p03-review-card')).toHaveClass(/is-needs-action/);
+
+    await page.getByTestId('p03-filter-version-history').click();
+    await expect(page.getByTestId('p03-history-v1')).toBeVisible();
+    await expect(page.getByTestId('p03-history-v1')).toContainText('COUNT-SHEET-CEB-2026-01');
+    await expect(page.getByTestId('p03-history-v1')).toContainText('CFG-2026-0001 v1');
+    await page.getByTestId('p03-filter-submission-approval').click();
+    await expect(page.locator('#p03-review-decision option[value="cancel"]')).toHaveCount(1);
+    await expect(page.getByTestId('p03-external-ref-input')).toBeVisible();
+
+    // Replay exact same attempt (original key + original expected versions + same payload)
+    await page.locator('#p03-expected-row').fill('2');
+    await page.locator('#p03-expected-material').fill('');
+    await page.locator('#p03-submit-material-btn').click();
+    await expect(page.getByTestId('p03-material-version-pill')).toContainText('v1');
+    await page.getByTestId('p03-filter-idempotency-lookup').click();
+    await expect(page.getByTestId('p03-latest-outcome')).toContainText('replayed: true');
+    await page.getByTestId('p03-filter-submission-approval').click();
+
+    // Reuse same key with changed payload -> blocked mismatch + red serious attention border
+    await page.locator('#p03-purpose-input').fill('Changed payload on reused key');
+    await page.locator('#p03-submit-material-btn').click();
+    await expect(page.getByTestId('p03-blocker-panel')).toContainText('IDEMPOTENCY_PAYLOAD_MISMATCH');
+    await expect(page.getByTestId('p03-submit-card')).toHaveClass(/is-serious-attention/);
+
+    // 3. Return v1 -> Revise to v2 -> Check Version History -> Dual independent approval
+    await page.locator('#p03-review-persona').selectOption('finance_22');
+    await page.locator('#p03-review-decision').selectOption('return');
+    await page.locator('#p03-review-reason').fill('Clarify valuation basis before final sign-off');
+    await page.locator('#p03-record-decision-btn').click();
+    await expect(page.getByTestId('p03-axis-approval')).toHaveText('returned');
+    await expect(page.getByTestId('p03-review-card')).toHaveClass(/is-serious-attention/);
+
+    await page.locator('#p03-new-key-btn').click();
+    await page.locator('#p03-purpose-input').fill('Revised v2 clarified count');
+    await page.locator('#p03-submit-material-btn').click();
+    await expect(page.getByTestId('p03-material-version-pill')).toContainText('v2');
+
+    await page.getByTestId('p03-filter-version-history').click();
+    await expect(page.getByTestId('p03-history-v2')).toContainText('Active · Pending Review');
+    await expect(page.getByTestId('p03-history-v1')).toContainText('Superseded by Version 2');
+    await expect(page.getByTestId('p03-history-v1')).toContainText('RETURNED FOR REVISION');
+
+    // Hash copy button & Material Version hash search bar
+    await expect(page.getByTestId('p03-hash-chip-v2')).toBeVisible();
+    await page.getByTestId('p03-copy-hash-v1').click();
+    await expect(page.getByTestId('p03-copy-hash-v1')).toHaveClass(/copied/);
+    const v1HashTitle = await page.getByTestId('p03-hash-chip-v1').getAttribute('title');
+    const v1HashHex = v1HashTitle?.split(': ').pop()?.trim() ?? '';
+    expect(v1HashHex.length).toBeGreaterThanOrEqual(16);
+    await page.getByTestId('p03-version-search-input').fill(v1HashHex.slice(0, 16));
+    await expect(page.getByTestId('p03-search-match-pill')).toContainText('1 match · Material v1');
+    await expect(page.getByTestId('p03-history-v1')).toBeVisible();
+    await expect(page.getByTestId('p03-history-v2')).toHaveCount(0);
+    await page.getByTestId('p03-search-clear-btn').click();
+    await expect(page.getByTestId('p03-history-v2')).toBeVisible();
+
+    await page.getByTestId('p03-filter-submission-approval').click();
+
+    // Distinct approvals on v2 (Chapter Head + Finance)
+    await page.locator('#p03-review-persona').selectOption('head_21');
+    await page.locator('#p03-review-decision').selectOption('approve');
+    await page.locator('#p03-review-reason').fill('Head sign-off on v2');
+    await page.locator('#p03-record-decision-btn').click();
+
+    await page.locator('#p03-review-persona').selectOption('finance_22');
+    await page.locator('#p03-review-reason').fill('Finance sign-off on v2');
+    await page.locator('#p03-record-decision-btn').click();
+    await expect(page.getByTestId('p03-axis-approval')).toHaveText('approved');
+
+    // 4. Stale version comparison preserves local draft and syncs cleanly
+    await page.locator('#p03-new-key-btn').click();
+    await page.locator('#p03-expected-row').fill('1');
+    await page.locator('#p03-purpose-input').fill('Preserved local edit during conflict');
+    await page.locator('#p03-submit-material-btn').click();
+    await expect(page.getByTestId('p03-blocker-panel')).toContainText('STALE_ROW_VERSION');
+    await expect(page.getByTestId('p03-stale-comparison')).toContainText(
+      'Preserved local edit during conflict'
+    );
+    await page.getByRole('button', { name: 'Sync Expected Versions & Review' }).click();
+    await expect(page.locator('#p03-purpose-input')).toHaveValue(
+      'Preserved local edit during conflict'
+    );
+
+    // 5. Idempotency Lookup tab & back to Submission & Approval
+    await page.getByTestId('p03-filter-idempotency-lookup').click();
+    await expect(page.getByTestId('p03-lookup-card')).toBeVisible();
+    await page.locator('#p03-lookup-key-input').fill('submit-ipc-v1-01');
+    await page.locator('#p03-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p03-lookup-result')).toContainText('Recovered Committed Result');
+    await expect(page.getByTestId('p03-lookup-result')).toContainText('IPC-2026-0001');
+
+    await page.getByTestId('p03-filter-submission-approval').click();
+    await expect(page.getByTestId('p03-submit-card')).toBeVisible();
+    await expect(page.getByTestId('p03-review-card')).toBeVisible();
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('executes P02 chapter context switch, provider boundary, S-21 membership/duty/policy controls, and S-22 provisioning', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p02');
+    await expect(
+      page.getByRole('heading', { name: 'P02 Chapter Administration, Readiness & Provider Surface' })
+    ).toBeVisible();
+
+    // 1. Provider-only isolation (ADD-AC-09) + S-22 provisioning & 503 global disable boundary
+    await page.locator('#p02-persona-select').selectOption('provider_90');
+    await expect(page.getByTestId('p02-chapter-state')).toContainText('no_authorized_memberships');
+    await expect(page.getByTestId('p02-next-action')).toContainText('no_chapter_work');
+    await expect(page.getByTestId('p02-no-chapter-access-notice')).toBeVisible();
+
+    await page.locator('#p02-chapter-select').selectOption('1');
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText(
+      'PROVIDER_ONLY_NO_CHAPTER_ACCESS'
+    );
+
+    await page.locator('#p02-tab-provider').click();
+    await page.locator('#p02-prov-code-input').fill('DVO-03');
+    await page.locator('#p02-prov-name-input').fill('YSP Davao Chapter');
+    await page.locator('#p02-prov-create-btn').click();
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText(
+      'PROVISIONED_CHAPTER_CREATED'
+    );
+
+    await page.locator('#p02-global-disable-btn').click();
+    await expect(page.getByTestId('p02-global-disable-result')).toContainText('HTTP 503');
+    await expect(page.getByTestId('p02-global-disable-result')).toContainText(
+      'original_outcome: uncertain'
+    );
+
+    // 2. Switch to CHAPTER_HEAD -> disable Pedro (session revoke) & separately authorize Sam (ADD-AC-09)
+    await page.locator('#p02-persona-select').selectOption('head_21');
+    await page.locator('#p02-tab-memberships').click();
+    await page.getByTestId('p02-disable-31').click();
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText('MEMBERSHIP_DISABLED');
+    await expect(page.getByTestId('p02-member-31')).toContainText('status: disabled');
+    await expect(page.getByTestId('p02-member-31')).toContainText('sessions: 0');
+
+    await page.locator('#p02-preset-sam-btn').click();
+    await page.locator('#p02-authorize-member-btn').click();
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText('MEMBERSHIP_AUTHORIZED');
+    await expect(page.getByTestId('p02-member-90')).toBeVisible();
+
+    // 3. Duty grant & distinct alternate substitution
+    await page.locator('#p02-tab-duties').click();
+    await page.locator('#p02-grant-member-select').selectOption('111');
+    await page.locator('#p02-grant-duty-select').selectOption('RF_APPROVER');
+    await page.locator('#p02-authorize-grant-btn').click();
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText('DUTY_GRANT_AUTHORIZED');
+
+    await page.locator('#p02-alternate-member-select').selectOption('221');
+    await page.getByTestId('p02-substitute-1003').click();
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText('ALTERNATE_DESIGNATED');
+
+    // 4. Operational vs Financial policy gate enforcement
+    await page.locator('#p02-tab-policies').click();
+    await page.getByTestId('p02-gate-commit-RETURN_REFUND_VALUATION_POLICY').click();
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText('POLICY_NOT_EFFECTIVE');
+
+    // CHAPTER_HEAD cannot approve FINANCIAL policy
+    await page.getByTestId('p02-policy-approve-RETURN_REFUND_VALUATION_POLICY').click();
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText('POLICY_DUTY_FORBIDDEN');
+
+    // FINANCE approves financial policy -> commit gate unblocks
+    await page.locator('#p02-persona-select').selectOption('finance_22');
+    await page.getByTestId('p02-policy-approve-RETURN_REFUND_VALUATION_POLICY').click();
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText('POLICY_APPROVED');
+
+    await page.getByTestId('p02-gate-commit-RETURN_REFUND_VALUATION_POLICY').click();
+    await expect(page.getByTestId('p02-feedback-banner')).toContainText('POLICY_EFFECTIVE');
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

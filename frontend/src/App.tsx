@@ -11,6 +11,8 @@ import { NavFlowHeader } from './NavFlowHeader';
 import { getInitialSoundsEnabled, playClickPen } from './batcaveAudio';
 import { HalftoneWaveCanvas } from './HalftoneWaveCanvas';
 import { useBatCaveTheme } from './batcaveTheme';
+import { P03RecordWorkspace } from './P03RecordWorkspace';
+import { P02AdminWorkspace } from './P02AdminWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -18,7 +20,13 @@ const messages = {
   unavailable: { title: 'Connection unavailable', description: 'Connectivity could not be confirmed. Check that the local services are running, then try again.' },
 };
 
-export type AppRouteMode = 'login-flow' | 'create-chapter' | 'dashboard' | 'health';
+export type AppRouteMode =
+  | 'login-flow'
+  | 'create-chapter'
+  | 'dashboard'
+  | 'p02-admin'
+  | 'p03-records'
+  | 'health';
 
 interface ResolvedRoute {
   mode: AppRouteMode;
@@ -36,6 +44,12 @@ function resolveInitialRoute(): ResolvedRoute {
 
   if (view === 'health' || path === '/health') {
     return { mode: 'health', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p02' || view === 'admin' || path === '/p02' || path === '/admin') {
+    return { mode: 'p02-admin', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p03' || view === 'records' || path === '/p03' || path === '/records') {
+    return { mode: 'p03-records', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -200,6 +214,30 @@ export function App() {
 
               <button
                 type="button"
+                id="open-p02-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p02-admin');
+                }}
+              >
+                Open P02 Chapter Admin &amp; Setup (S-21 / S-22)
+              </button>
+
+              <button
+                type="button"
+                id="open-p03-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p03-records');
+                }}
+              >
+                Open P03 Record &amp; Operation Workspace
+              </button>
+
+              <button
+                type="button"
                 disabled={isSigningOut}
                 className="btn-batcave-primary"
                 onClick={() => void handleDashboardSignOut()}
@@ -209,6 +247,42 @@ export function App() {
             </div>
           </section>
         </main>
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p02-admin') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P02AdminWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p03-records') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P03RecordWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
       </BatCaveShell>
     );
   }
