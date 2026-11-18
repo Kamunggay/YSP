@@ -1,593 +1,861 @@
-/* 3OfClubs Night Login, Auth & Recovery Styles — Pure Photo Elements & Roboto Font */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+/* ==========================================================================
+   BatCave v1.4.0 + YSP Cebu Palette — Login Showcase & Frosted Auth Cards
+   ========================================================================== */
 
-* {
-  box-sizing: border-box;
-}
-
-.kamunggay-viewport {
+.login-workspace {
   position: relative;
-  width: 100vw;
-  height: 100vh;
-  min-height: 640px;
-  overflow: hidden;
-  font-family: 'Roboto', sans-serif;
-  background-color: #120e0b;
-  background-image: url('/assets/kamunggay/bg-night-forest.png');
-  background-size: cover;
-  background-position: center left;
-  background-repeat: no-repeat;
-  user-select: none;
-  color: #ffffff;
+  z-index: 1;
+  flex: 1;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  padding: 1.5rem 1rem 2.5rem;
+  align-items: center;
+  justify-items: center;
 }
 
-/* Atmospheric bottom & right-edge vignette matching Login Page */
-.kamunggay-viewport::before {
-  content: '';
+@media (min-width: 1024px) {
+  .login-workspace {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    grid-template-columns: minmax(0, 1fr) clamp(430px, 35vw, 620px);
+    gap: 0;
+    align-items: stretch;
+    justify-items: stretch;
+  }
+}
+
+/* Left Brand Showcase Column (3D Cold-Carbon Crystal & Cryo Vapor Stage) */
+.login-brand-stage {
+  position: relative;
+  width: 100%;
+  min-height: calc(100dvh - 61px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .login-workspace {
+    min-height: calc(100dvh - 61px);
+  }
+
+  .login-brand-stage {
+    padding: 0;
+    height: 100%;
+    min-height: calc(100dvh - 61px);
+  }
+}
+
+.login-characters-frame {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(20, 15, 12, 0) 68%, rgba(20, 15, 12, 0.86) 94%, #140f0c 100%),
-    linear-gradient(90deg, rgba(18, 18, 17, 0) 62%, rgba(18, 18, 17, 0.84) 86%, #121211 100%);
-  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-crystal-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  overflow: hidden;
+}
+
+.login-crystal-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.login-card-col {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 1024px) {
+  .login-card-col {
+    max-width: none;
+    width: 100%;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .login-card-col .surface-card {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
+    border-left: 1px solid var(--glass-border);
+    box-shadow:
+      inset 1px 0 0 rgba(255, 255, 255, 0.45),
+      -16px 0 42px -12px rgba(0, 0, 0, 0.10);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(2rem, 4vh, 3.5rem) clamp(2rem, 3.2vw, 3.5rem);
+  }
+
+  html.dark .login-card-col .surface-card {
+    box-shadow:
+      inset 1px 0 0 rgba(255, 255, 255, 0.08),
+      -18px 0 48px -12px rgba(0, 0, 0, 0.72);
+  }
+
+  .login-card-col .surface-card > * {
+    width: 100%;
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .login-workspace {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100dvh - 61px);
+    padding: 1.5rem 1rem 2rem;
+    overflow: hidden;
+  }
+
+  .login-brand-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .login-characters-frame {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    max-width: none;
+    transform: none;
+  }
+
+  .login-card-col {
+    position: relative;
+    z-index: 1;
+    max-width: 460px;
+  }
+
+  .login-card-col .surface-card {
+    background: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.80) 0%,
+      rgba(241, 245, 255, 0.72) 52%,
+      rgba(246, 244, 255, 0.78) 100%
+    );
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+  }
+
+  html.dark .login-card-col .surface-card {
+    background: linear-gradient(
+      145deg,
+      rgba(18, 20, 29, 0.78) 0%,
+      rgba(14, 15, 23, 0.72) 52%,
+      rgba(20, 21, 32, 0.76) 100%
+    );
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+  }
+}
+
+@media (min-width: 1024px) {
+  .login-card-col .form-card-header {
+    margin-bottom: clamp(1.1rem, 2.2vh, 1.75rem);
+    padding-bottom: clamp(0.85rem, 1.6vh, 1.25rem);
+  }
+
+  .login-card-col .form-card-title {
+    font-size: clamp(1.3rem, 1.45vw, 1.6rem);
+  }
+
+  .login-card-col .form-card-subtitle {
+    font-size: clamp(0.85rem, 0.9vw, 0.95rem);
+  }
+
+  .login-card-col .form-stack {
+    gap: clamp(1.1rem, 2vh, 1.5rem);
+  }
+
+  .login-card-col .form-label {
+    font-size: 0.9375rem;
+  }
+
+  .login-card-col .form-control {
+    min-height: clamp(48px, 6vh, 54px);
+    padding: 0.75rem 1.125rem;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  .login-card-col .form-control.has-toggle {
+    padding-right: 4.75rem;
+  }
+
+  .login-card-col .password-toggle-btn {
+    padding: 5px 10px;
+    font-size: 0.6875rem;
+  }
+
+  .login-card-col #btn-submit-request {
+    min-height: clamp(48px, 6vh, 54px);
+    font-size: 1.0625rem;
+    border-radius: var(--radius-full);
+  }
+
+  .login-card-col .btn-batcave-secondary {
+    min-height: clamp(44px, 5.2vh, 50px);
+    font-size: 0.9375rem;
+    border-radius: var(--radius-full);
+  }
+
+  .login-card-col .card-emblem-footer {
+    margin-top: clamp(1.15rem, 2.2vh, 1.75rem);
+    padding-top: clamp(0.9rem, 1.6vh, 1.25rem);
+  }
+
+  .login-card-col .card-clubs-emblem {
+    height: 12px;
+  }
+}
+
+/* Open Centered Navigation Flow for MFA, Recovery, Revoked & Verified (matches ref flow) */
+.auth-centered-stage {
+  position: relative;
   z-index: 1;
-}
-
-/* Edge vignette matching Auth & Recovery Page */
-.kamunggay-viewport.centered-mode {
-  background-position: center center;
-}
-
-.kamunggay-viewport.centered-mode::before {
-  background:
-    radial-gradient(ellipse at 50% 48%, rgba(18, 14, 11, 0.02) 38%, rgba(10, 9, 12, 0.72) 86%, rgba(8, 7, 9, 0.94) 100%),
-    linear-gradient(180deg, rgba(12, 10, 14, 0.35) 0%, rgba(12, 10, 14, 0) 18%, rgba(12, 10, 14, 0) 76%, rgba(10, 8, 10, 0.88) 100%);
-}
-
-/* Top-Left YSP Cebu Logo (Login Page only) */
-.kamunggay-ysp-logo {
-  position: absolute;
-  top: 2.6%;
-  left: 2.5%;
-  width: clamp(96px, 6.7vw, 130px);
-  height: auto;
-  z-index: 3;
-  pointer-events: none;
-  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
-}
-
-/* Left-Center Characters Collage */
-.kamunggay-characters-collage {
-  position: absolute;
-  left: 11.2%;
-  top: 19.5%;
-  width: clamp(340px, 39.2vw, 752px);
-  height: auto;
-  z-index: 2;
-  pointer-events: none;
-  filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.55));
-}
-
-/* Bottom-Left Hero Tagline in Roboto ("EMPOWER YOUR CHAPTER OPERATIONS.") */
-.kamunggay-hero-tagline {
-  position: absolute;
-  left: 2.6%;
-  bottom: 11.2%;
-  z-index: 3;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 900;
-  font-size: clamp(24px, 2.08vw, 40px);
-  line-height: 0.94;
-  letter-spacing: 0.015em;
-  text-transform: uppercase;
-  color: #ffffff;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
-}
-
-.kamunggay-hero-tagline .line {
-  display: block;
-}
-
-.kamunggay-hero-tagline .operations-orange {
-  color: #fb4701;
-}
-
-.kamunggay-hero-tagline .operations-dot {
-  color: #ffffff;
-}
-
-/* Right-Side Dark Login Card (#1D1611) */
-.kamunggay-login-card {
-  position: absolute;
-  right: 5.73%;
-  top: 50%;
-  transform: translateY(-50%);
-  width: clamp(380px, 38.28vw, 735px);
-  height: clamp(560px, 75.74vh, 818px);
-  background-color: #1d1611;
-  border-radius: clamp(24px, 1.98vw, 38px);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.72);
-  z-index: 4;
+  flex: 1;
+  width: 100%;
+  padding: clamp(2rem, 5vh, 3.5rem) clamp(1.25rem, 3vw, 2.5rem) 4rem;
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: flex-start;
-  padding: clamp(36px, 9.6vh, 104px) clamp(28px, 2.86vw, 55px) clamp(24px, 4.2vh, 46px);
 }
 
-.kamunggay-card-body {
+.auth-centered-card {
   width: 100%;
+  max-width: 660px;
+}
+
+.nav-flow-header {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
-/* Interactive Input Box using User-Provided Artwork */
-.kamunggay-input-artwork-container {
-  position: relative;
-  width: 100%;
-  margin-bottom: clamp(14px, 2.1vh, 22px);
-  line-height: 0;
-}
-
-.kamunggay-input-bg-img {
-  width: 100%;
-  height: auto;
-  display: block;
-  user-select: none;
-  -webkit-user-drag: none;
-  pointer-events: none;
-}
-
-/* Transparent HTML inputs overlaid precisely over the artwork pills */
-.kamunggay-overlay-input {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 36%;
-  background: transparent;
+.nav-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-left: -0.45rem;
+  border-radius: var(--radius-full);
   border: none;
-  outline: none;
-  padding: 0 clamp(16px, 1.5vw, 28px);
-  font-family: 'Roboto', sans-serif;
-  font-weight: 900;
-  font-size: clamp(16px, 1.35vw, 26px);
-  color: #2b1d14;
-  letter-spacing: 0.01em;
-  z-index: 2;
-}
-
-.kamunggay-overlay-email {
-  top: 22.2%;
-}
-
-.kamunggay-overlay-password {
-  top: 64%;
-}
-
-/*
- * Tactile 3D Photo Button — Fixed-Height Slot + Bottom-Anchored Depressed State
- * - Unclicked image (1200x94) stays in flow so total button height NEVER collapses.
- * - Clicked image (1200x80) is anchored to bottom: 0 of the same slot so pressing
- *   the button physically pushes the top face DOWN into the 3D bottom lip while
- *   keeping the bottom edge and surrounding layout 100% stationary.
- * - Strictly NO hover color/filter.
- */
-.kamunggay-btn-stack {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(9px, 1.15vh, 13px);
-  width: 100%;
-}
-
-.kamunggay-photo-btn {
-  position: relative;
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  background: transparent;
+  color: rgb(var(--g600));
   cursor: pointer;
-  outline: none !important;
-  display: block;
-  width: 100%;
-  line-height: 0;
-  box-shadow: none !important;
-  transition: none !important;
-  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 
-.kamunggay-photo-btn:hover,
-.kamunggay-photo-btn:hover img,
-.kamunggay-photo-btn:focus,
-.kamunggay-photo-btn:focus img,
-.kamunggay-photo-btn:focus-visible {
-  filter: none !important;
-  background: transparent !important;
-  outline: none !important;
-  box-shadow: none !important;
+.nav-back-btn:hover:not(:disabled) {
+  background-color: var(--glass-hover-bg);
+  color: rgb(var(--ink));
+  transform: translateX(-1px);
 }
 
-.kamunggay-photo-btn .btn-unclicked {
-  width: 100%;
-  height: auto;
-  display: block;
-  visibility: visible;
-  user-select: none;
-  -webkit-user-drag: none;
-  pointer-events: none;
+.nav-back-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.kamunggay-photo-btn .btn-clicked {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: auto;
-  display: block;
-  visibility: hidden;
-  user-select: none;
-  -webkit-user-drag: none;
-  pointer-events: none;
+html.dark .nav-back-btn {
+  color: rgb(var(--g500));
 }
 
-.kamunggay-photo-btn:active .btn-unclicked,
-.kamunggay-photo-btn.is-active .btn-unclicked {
-  visibility: hidden;
+html.dark .nav-back-btn:hover:not(:disabled) {
+  color: rgb(var(--ink));
 }
 
-.kamunggay-photo-btn:active .btn-clicked,
-.kamunggay-photo-btn.is-active .btn-clicked {
-  visibility: visible;
+.auth-centered-card .form-card-title,
+.onboarding-card .form-card-title {
+  font-family: var(--font-pixel);
+  font-size: clamp(1.45rem, 2.2vw, 1.8rem);
+  font-weight: 400;
+  line-height: 1.2;
+  color: rgb(var(--ink));
 }
 
-/* Busy (request in flight): identical artwork, no tint — only the cursor changes */
-.kamunggay-photo-btn:disabled {
-  cursor: progress;
-  opacity: 1 !important;
-  filter: none !important;
+.auth-centered-card .form-card-subtitle,
+.onboarding-card .form-card-subtitle {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin-top: 0.375rem;
+  color: rgb(var(--g600));
 }
 
-/* Server feedback line (sign-in / verification errors) */
-.kamunggay-auth-error {
-  width: 100%;
-  margin: clamp(6px, 1vh, 12px) 0 clamp(8px, 1.3vh, 14px);
-  font-family: 'Roboto', system-ui, sans-serif;
-  font-weight: 500;
-  font-size: clamp(11px, 0.78vw, 14px);
-  line-height: 1.35;
-  color: #ff8c7a;
-  text-align: center;
+html.dark .auth-centered-card .form-card-subtitle,
+html.dark .onboarding-card .form-card-subtitle {
+  color: rgb(var(--g400));
 }
 
-/* Gap before CREATE ACCOUNT button */
-.kamunggay-photo-btn.btn-create-gap {
-  margin-top: clamp(26px, 4.2vh, 46px) !important;
+.auth-centered-card .form-stack,
+.onboarding-card .form-stack {
+  gap: 1.25rem;
 }
 
-/* Card Footer Logo */
-.kamunggay-card-footer {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: clamp(18px, 2.6vh, 28px);
-  padding-top: 0;
+.auth-centered-card .form-label,
+.onboarding-card .form-label {
+  font-size: 0.9375rem;
 }
 
-.kamunggay-clubs-logo {
-  width: clamp(32px, 2.64vw, 51px);
-  height: auto;
-  object-fit: contain;
-  opacity: 0.98;
+/* Match Login sidebar's opaque frosted field & surface legibility without an outer card box */
+.auth-centered-card .form-control,
+.onboarding-card .form-control,
+.auth-centered-card .otp-digit-input,
+.onboarding-card .otp-digit-input {
+  background-color: rgba(236, 239, 246, 0.88);
+  border-color: rgba(15, 23, 42, 0.13);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
 }
 
-/* Centered Card for Two-Factor Auth & Emergency Recovery Screens (Matches 3OfClubs Night Auth Page) */
-.kamunggay-center-card {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: clamp(360px, 37.6vw, 722px);
-  height: clamp(540px, 74.07vh, 800px);
-  background-color: #1d1611;
-  border-radius: clamp(28px, 2.3vw, 44px);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.78);
-  z-index: 4;
+html.dark .auth-centered-card .form-control,
+html.dark .onboarding-card .form-control,
+html.dark .auth-centered-card .otp-digit-input,
+html.dark .onboarding-card .otp-digit-input {
+  background-color: rgba(31, 33, 45, 0.88);
+  border-color: rgba(255, 255, 255, 0.13);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+.auth-centered-card .form-control:focus,
+.onboarding-card .form-control:focus,
+.auth-centered-card .otp-digit-input:focus,
+.onboarding-card .otp-digit-input:focus {
+  background-color: rgba(255, 255, 255, 0.96);
+}
+
+html.dark .auth-centered-card .form-control:focus,
+html.dark .onboarding-card .form-control:focus,
+html.dark .auth-centered-card .otp-digit-input:focus,
+html.dark .onboarding-card .otp-digit-input:focus {
+  background-color: rgba(22, 24, 35, 0.95);
+}
+
+.auth-centered-card .callout-banner,
+.onboarding-card .callout-banner,
+.onboarding-card .qr-glass-panel,
+.onboarding-card .setup-key-chip,
+.onboarding-card .recovery-code-cell,
+.onboarding-card .duty-checkbox-card,
+.auth-centered-card .session-ledger,
+.auth-centered-card .btn-batcave-secondary,
+.onboarding-card .btn-batcave-secondary {
+  background-color: rgba(242, 245, 252, 0.88);
+  border-color: rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+
+html.dark .auth-centered-card .callout-banner,
+html.dark .onboarding-card .callout-banner,
+html.dark .onboarding-card .qr-glass-panel,
+html.dark .onboarding-card .setup-key-chip,
+html.dark .onboarding-card .recovery-code-cell,
+html.dark .onboarding-card .duty-checkbox-card,
+html.dark .auth-centered-card .session-ledger,
+html.dark .auth-centered-card .btn-batcave-secondary,
+html.dark .onboarding-card .btn-batcave-secondary {
+  background-color: rgba(26, 28, 40, 0.88);
+  border-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+.auth-centered-card .callout-banner.is-error,
+.onboarding-card .callout-banner.is-error {
+  background-color: rgba(254, 242, 242, 0.92);
+  border-color: rgba(220, 38, 38, 0.30);
+}
+
+html.dark .auth-centered-card .callout-banner.is-error,
+html.dark .onboarding-card .callout-banner.is-error {
+  background-color: rgba(54, 18, 22, 0.88);
+  border-color: rgba(220, 38, 38, 0.40);
+}
+
+.onboarding-card .duty-checkbox-card:hover:not(:disabled),
+.onboarding-card .duty-checkbox-card.is-checked,
+.auth-centered-card .btn-batcave-secondary:hover:not(:disabled),
+.onboarding-card .btn-batcave-secondary:hover:not(:disabled) {
+  background-color: rgba(228, 233, 245, 0.94);
+}
+
+html.dark .onboarding-card .duty-checkbox-card:hover:not(:disabled),
+html.dark .onboarding-card .duty-checkbox-card.is-checked,
+html.dark .auth-centered-card .btn-batcave-secondary:hover:not(:disabled),
+html.dark .onboarding-card .btn-batcave-secondary:hover:not(:disabled) {
+  background-color: rgba(38, 41, 56, 0.94);
+}
+
+.auth-centered-card .form-control,
+.onboarding-card .form-control {
+  min-height: 52px;
+  padding: 0.75rem 1.0625rem;
+  font-size: 1rem;
+  border-radius: 14px;
+}
+
+.auth-centered-card .btn-batcave-primary,
+.onboarding-card .btn-batcave-primary {
+  min-height: 52px;
+  font-size: 1rem;
+  border-radius: var(--radius-full);
+}
+
+.auth-centered-card .btn-batcave-secondary,
+.onboarding-card .btn-batcave-secondary {
+  min-height: 48px;
+  font-size: 0.9375rem;
+  border-radius: var(--radius-full);
+}
+
+.auth-centered-card .otp-digit-input,
+.onboarding-card .otp-digit-input {
+  height: 58px;
+  font-size: 1.35rem;
+  border-radius: 14px;
+}
+
+.auth-centered-card .callout-banner,
+.onboarding-card .callout-banner {
+  padding: 0.875rem 1rem;
+  border-radius: 14px;
+  font-size: 0.875rem;
+}
+
+.auth-centered-card .session-ledger {
+  border-radius: 14px;
+}
+
+.auth-centered-card .session-ledger-row {
+  padding: 0.875rem 1.125rem;
+}
+
+.auth-centered-card .session-ledger-key {
+  font-size: 0.6875rem;
+}
+
+.auth-centered-card .session-ledger-val {
+  font-size: 0.9375rem;
+}
+
+/* Form Elements (§7.2) */
+.form-stack {
   display: flex;
   flex-direction: column;
+  gap: 1.125rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.form-label-row {
+  display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding: clamp(46px, 9.2vh, 100px) clamp(24px, 2.45vw, 47px) clamp(24px, 4vh, 44px);
-  text-align: center;
+  justify-content: space-between;
 }
 
-.kamunggay-auth-lock-img {
-  width: clamp(24px, 1.98vw, 38px);
-  height: auto;
-  margin-bottom: clamp(10px, 1.6vh, 18px);
-  pointer-events: none;
+.form-label {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  color: rgb(var(--g700));
 }
 
-.kamunggay-auth-bell-img {
-  width: clamp(28px, 2.3vw, 44px);
-  height: auto;
-  margin-bottom: clamp(10px, 1.6vh, 18px);
-  pointer-events: none;
+.required-star {
+  color: var(--color-error);
+  margin-left: 2px;
 }
 
-.kamunggay-revoked-icon-img {
-  width: clamp(32px, 2.55vw, 49px);
-  height: auto;
-  margin-bottom: clamp(8px, 1.3vh, 14px);
-  pointer-events: none;
+.input-control-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.kamunggay-revoked-heading {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  font-size: clamp(18px, 1.46vw, 28px);
-  line-height: 1.15;
-  color: #ffffff;
-  margin: 0 0 clamp(6px, 0.85vh, 9px) 0;
-}
-
-.kamunggay-revoked-details-img {
+.form-control {
   width: 100%;
-  height: auto;
-  display: block;
-  margin: 0 auto clamp(8px, 1.2vh, 13px) auto;
-  pointer-events: none;
+  min-height: 42px;
+  padding: 0.5625rem 0.875rem;
+  background-color: var(--glass-field-bg);
+  border: 1px solid var(--glass-field-border);
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: rgb(var(--ink));
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+  outline: none;
 }
 
-/* Authentication Verified Page */
-.kamunggay-verified-icon-img {
-  width: clamp(32px, 2.55vw, 49px);
-  height: auto;
-  margin-bottom: clamp(8px, 1.3vh, 14px);
-  pointer-events: none;
+.form-control.has-toggle {
+  padding-right: 4.25rem;
 }
 
-.kamunggay-verified-welcome {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 400;
-  font-size: clamp(10px, 0.78vw, 15px);
-  line-height: 1.22;
-  color: #ffffff;
-  margin: 0 0 clamp(14px, 2.3vh, 25px) 0;
+.form-control.is-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.form-control::placeholder {
+  color: rgb(var(--g400));
+}
+
+.form-control::-ms-reveal,
+.form-control::-ms-clear {
+  display: none;
+}
+
+.form-control:hover:not(:disabled) {
+  border-color: var(--glass-border-hover);
+}
+
+.form-control:focus {
+  border-color: rgb(var(--ink));
+  box-shadow: 0 0 0 1px rgb(var(--ink));
+  background-color: var(--glass-field-focus);
+}
+
+html.dark .form-control:focus {
+  border-color: rgb(var(--ink));
+  box-shadow: 0 0 0 1px rgb(var(--ink));
+}
+
+.form-control:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.form-control.input-invalid {
+  border-color: var(--color-error);
+  background-color: var(--color-error-bg);
+}
+
+.form-control.input-invalid:focus {
+  box-shadow: 0 0 0 1px var(--color-error);
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 0.5rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--glass-field-border);
+  background-color: var(--glass-chip-bg);
+  color: rgb(var(--g600));
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+html.dark .password-toggle-btn {
+  color: rgb(var(--g400));
+}
+
+.password-toggle-btn:hover {
+  color: rgb(var(--ink));
+  border-color: rgb(var(--ink));
+}
+
+/* Inline Server Alert Callout Banner */
+.callout-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.6875rem 0.875rem;
+  background-color: var(--glass-chip-bg);
+  border: 1px solid var(--glass-field-border);
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: rgb(var(--g600));
+}
+
+html.dark .callout-banner {
+  color: rgb(var(--g500));
+}
+
+.callout-banner.is-error {
+  border-color: var(--color-error-border);
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.callout-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 0.375rem;
+}
+
+.callout-dot.dot-error {
+  background-color: var(--color-error);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.55);
+}
+
+.callout-dot.dot-warning {
+  background-color: var(--dot-pending);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.55);
+}
+
+.callout-dot.dot-info {
+  background-color: var(--dot-progress);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.55);
+}
+
+.callout-dot.dot-success {
+  background-color: var(--dot-resolved);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.55);
+}
+
+/* Primary Submit CTA (#btn-submit-request / .btn-batcave-primary) matching BatCave v1.4.0 §7.5 */
+#btn-submit-request,
+.btn-batcave-primary {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  column-gap: 0.32em;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.625rem 1.125rem;
+  background-color: rgb(var(--ink));
+  border: 1px solid rgb(var(--ink));
+  border-radius: var(--radius-full);
+  font-family: var(--font-pixel);
+  font-size: 0.9375rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: rgb(var(--bg));
+  cursor: pointer;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  margin-top: 0.25rem;
+}
+
+#btn-submit-request:hover:not(:disabled),
+.btn-batcave-primary:hover:not(:disabled) {
+  opacity: 0.86;
+  transform: translateY(-1px);
+}
+
+#btn-submit-request:active:not(:disabled),
+.btn-batcave-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+#btn-submit-request:disabled,
+.btn-batcave-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Secondary Frosted Action Buttons */
+.auth-secondary-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.auth-secondary-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.btn-batcave-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 0.45rem 0.875rem;
+  background-color: var(--glass-chip-bg);
+  border: 1px solid var(--glass-field-border);
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--ink));
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-batcave-secondary:hover:not(:disabled) {
+  border-color: rgb(var(--ink));
+  background-color: var(--glass-hover-bg);
+  transform: translateY(-1px);
+}
+
+.btn-batcave-secondary.is-gold {
+  border-color: var(--glass-field-border);
+  color: rgb(var(--ink));
+}
+
+html.dark .btn-batcave-secondary.is-gold {
+  border-color: var(--glass-field-border);
+  color: rgb(var(--ink));
+}
+
+.btn-batcave-secondary.is-gold:hover:not(:disabled) {
+  border-color: rgb(var(--ink));
+  background-color: var(--glass-hover-bg);
+}
+
+.btn-batcave-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Minimalist Card Footer Emblem */
+.card-emblem-footer {
+  margin-top: 1.25rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--glass-divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-clubs-emblem {
+  height: 12px;
+  width: auto;
+  opacity: 0.48;
+  filter: invert(1);
+}
+
+html.dark .card-clubs-emblem {
+  filter: none;
+  opacity: 0.56;
+}
+
+/* 6-Digit Authenticator OTP Row */
+.otp-digit-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.otp-digit-input {
+  width: 100%;
+  height: 48px;
+  padding: 0;
+  text-align: center;
+  background-color: var(--glass-field-bg);
+  border: 1px solid var(--glass-field-border);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--ink));
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+.otp-digit-input:focus {
+  border-color: rgb(var(--ink));
+  box-shadow: 0 0 0 1px rgb(var(--ink));
+  background-color: var(--glass-field-focus);
+}
+
+html.dark .otp-digit-input:focus {
+  border-color: rgb(var(--ink));
+  box-shadow: 0 0 0 1px rgb(var(--ink));
+}
+
+/* Frosted Session Ledger & Status Slots (Preserves Playwright Selectors) */
+.session-ledger {
+  background-color: var(--glass-field-bg);
+  border: 1px solid var(--glass-field-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.session-ledger-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.625rem 0.875rem;
+}
+
+.session-ledger-row + .session-ledger-row {
+  border-top: 1px solid var(--glass-divider);
+}
+
+.session-ledger-key {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgb(var(--g500));
+}
+
+.session-ledger-val {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--ink));
+  word-break: break-word;
 }
 
 .kamunggay-verified-name-slot {
-  display: inline-block;
-  min-width: clamp(64px, 6.4vw, 122px);
-  font-weight: 700;
-  color: #ffffff;
-  text-align: center;
-  padding: 0 4px;
+  display: inline;
+  font-weight: 600;
+  color: rgb(var(--ink));
 }
 
-.kamunggay-verified-banner-wrap {
-  position: relative;
-  width: 90.8%;
-  max-width: 572px;
-  margin: 0 auto clamp(10px, 1.65vh, 18px) auto;
-  line-height: 0;
-}
-
-.kamunggay-verified-banner-img {
-  width: 100%;
-  height: auto;
-  display: block;
-  pointer-events: none;
-}
-
-.kamunggay-verified-banner-slot-user {
-  position: absolute;
-  left: 66.8%;
-  top: 24%;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  font-size: clamp(8.5px, 0.68vw, 13px);
-  line-height: 1;
-  color: #1c5b46;
-  white-space: nowrap;
-}
-
-.kamunggay-verified-banner-slot-tier {
-  position: absolute;
-  left: 21.8%;
-  top: 54%;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  font-size: clamp(8.5px, 0.68vw, 13px);
-  line-height: 1;
-  color: #1c5b46;
-  white-space: nowrap;
-}
-
-.kamunggay-details-box-wrap {
-  position: relative;
-  width: 100%;
-  margin: 0 auto clamp(8px, 1.3vh, 14px) auto;
-  line-height: 0;
-}
-
-.kamunggay-details-box-img {
-  width: 100%;
-  height: auto;
-  display: block;
-  pointer-events: none;
-}
-
-.kamunggay-details-slot {
-  position: absolute;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  font-size: clamp(9.5px, 0.76vw, 14.5px);
-  line-height: 1;
-  color: #d6c8c0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  right: 4%;
-  text-align: left;
-}
-
-.kamunggay-details-slot.slot-chapter {
-  left: 24%;
-  top: 20.5%;
-}
-
-.kamunggay-details-slot.slot-duties {
-  left: 25.5%;
-  top: 46.5%;
-}
-
-.kamunggay-details-slot.slot-constraints {
-  left: 36.5%;
-  top: 72%;
-}
-
-.kamunggay-auth-heading {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  font-size: clamp(20px, 1.88vw, 36px);
-  line-height: 1.15;
-  color: #ffffff;
-  margin: 0 0 clamp(6px, 0.85vh, 10px) 0;
-  letter-spacing: -0.01em;
-}
-
-.kamunggay-auth-sub {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 400;
-  font-size: clamp(10px, 0.78vw, 15px);
-  line-height: 1.22;
-  color: #e9e6e4;
-  margin: 0 0 clamp(16px, 2.7vh, 30px) 0;
-}
-
-.kamunggay-message-banner-img {
-  width: 90.8%;
-  max-width: 572px;
-  height: auto;
-  display: block;
-  margin: 0 auto clamp(16px, 2.7vh, 30px) auto;
-  pointer-events: none;
-}
-
-/* 6 Brown OTP Boxes matching 3OfClubs Night Auth Page */
-.kamunggay-otp-row {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: clamp(6px, 0.52vw, 10px);
-  width: 100%;
-  margin-bottom: clamp(16px, 2.5vh, 27px);
-}
-
-.kamunggay-otp-box {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background-color: #705343;
-  border: none;
-  border-radius: clamp(11px, 0.95vw, 18px);
-  text-align: center;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 900;
-  font-size: clamp(20px, 1.85vw, 35px);
-  color: #2b1d14;
-  outline: none;
-  padding: 0;
-}
-
-.kamunggay-otp-box:focus {
-  outline: none;
-}
-
-.kamunggay-auth-btn-stack {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(6px, 0.85vh, 9px);
-  width: 100%;
-}
-
-.kamunggay-auth-clubs-footer {
-  margin-top: clamp(16px, 2.6vh, 28px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.kamunggay-auth-clubs-logo {
-  width: clamp(28px, 2.3vw, 44px);
-  height: auto;
-  object-fit: contain;
-  opacity: 0.95;
-}
-
-/* Recovery Code Input Field */
-.kamunggay-recovery-field-wrap {
-  width: 100%;
-  text-align: left;
-  margin-bottom: clamp(16px, 2.4vh, 26px);
-}
-
-.kamunggay-recovery-label {
-  display: block;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  font-size: clamp(11px, 0.82vw, 15px);
-  color: #ffffff;
-  margin-bottom: 8px;
-}
-
-.kamunggay-recovery-input {
-  width: 100%;
-  height: clamp(48px, 6.8vh, 74px);
-  background-color: #705343;
-  border: none;
-  border-radius: clamp(11px, 0.95vw, 18px);
-  text-align: center;
-  font-family: 'Roboto', sans-serif;
-  font-weight: 900;
-  font-size: clamp(16px, 1.35vw, 26px);
-  letter-spacing: 0.06em;
-  color: #2b1d14;
-  outline: none;
-}
-
-.kamunggay-recovery-input::placeholder {
-  color: #2b1d14;
-  opacity: 0.75;
-}
-
-@media (max-width: 1024px) {
-  .kamunggay-characters-collage,
-  .kamunggay-hero-tagline {
-    display: none;
+@media (max-width: 520px) {
+  .auth-secondary-row {
+    grid-template-columns: 1fr;
   }
-  .kamunggay-login-card {
-    right: 50%;
-    transform: translate(50%, -50%);
-    width: min(92vw, 520px);
-  }
-}
-
-
-.kamunggay-auth-error {
-  background-color: rgba(220, 38, 38, 0.25);
-  border: 1px solid rgba(239, 68, 68, 0.7);
-  color: #fecaca;
-  border-radius: clamp(8px, 0.73vw, 14px);
-  padding: clamp(6px, 0.83vh, 10px) clamp(10px, 1.04vw, 18px);
-  font-family: 'Roboto', sans-serif;
-  font-size: clamp(11px, 0.78vw, 14.5px);
-  font-weight: 500;
-  line-height: 1.25;
-  text-align: center;
-  margin-bottom: clamp(10px, 1.5vh, 16px);
-  width: 100%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }

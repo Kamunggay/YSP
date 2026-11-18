@@ -2,10 +2,15 @@ import { useEffect, useState } from 'react';
 import { checkHealth } from './health';
 import type { HealthResult } from './health';
 import { LoginPage } from './LoginPage';
-import type { AuthScreenMode, VerifiedSessionData } from './LoginPage';
+import type { AuthScreenMode, ResolvedVerifiedSession, VerifiedSessionData } from './LoginPage';
 import { CreateChapterPage } from './CreateChapterPage';
 import type { SignupStepMode } from './CreateChapterPage';
-import { initializeCsrf } from './authApi';
+import { initializeCsrf, signOut } from './authApi';
+import { BatCaveShell, useBatCaveToast } from './BatCaveShell';
+import { NavFlowHeader } from './NavFlowHeader';
+import { getInitialSoundsEnabled, playClickPen } from './batcaveAudio';
+import { HalftoneWaveCanvas } from './HalftoneWaveCanvas';
+import { useBatCaveTheme } from './batcaveTheme';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -13,7 +18,7 @@ const messages = {
   unavailable: { title: 'Connection unavailable', description: 'Connectivity could not be confirmed. Check that the local services are running, then try again.' },
 };
 
-export type AppRouteMode = 'login-flow' | 'create-chapter' | 'health';
+export type AppRouteMode = 'login-flow' | 'create-chapter' | 'dashboard' | 'health';
 
 interface ResolvedRoute {
   mode: AppRouteMode;
@@ -84,8 +89,13 @@ export function App() {
   const [authScreen, setAuthScreen] = useState<AuthScreenMode>(initial.screen);
   const [signupStep, setSignupStep] = useState<SignupStepMode>(initial.signupStep);
   const [verifiedSession, setVerifiedSession] = useState<VerifiedSessionData | undefined>();
+  const [dashboardSession, setDashboardSession] = useState<ResolvedVerifiedSession | undefined>();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [status, setStatus] = useState<HealthResult['status'] | 'checking'>('checking');
   const [attempt, setAttempt] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => getInitialSoundsEnabled());
+  const { toast, isExiting, showToast, dismissToast } = useBatCaveToast();
+  const { resolvedTheme } = useBatCaveTheme();
 
   useEffect(() => {
     void initializeCsrf();
@@ -100,6 +110,22 @@ export function App() {
     });
     return () => controller.abort();
   }, [attempt, routeMode]);
+
+  async function handleDashboardSignOut() {
+    if (isSigningOut) return;
+    playClickPen(soundEnabled);
+    setIsSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setIsSigningOut(false);
+      setVerifiedSession(undefined);
+      setDashboardSession(undefined);
+      setAuthScreen('login');
+      setRouteMode('login-flow');
+      showToast({ tone: 'info', text: 'Signed out safely' });
+    }
+  }
 
   if (routeMode === 'create-chapter') {
     return (
@@ -119,6 +145,74 @@ export function App() {
     );
   }
 
+  if (routeMode === 'dashboard') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <main className="auth-centered-stage">
+          <section className="auth-centered-card" aria-labelledby="my-work-heading">
+            <NavFlowHeader
+              headingId="my-work-heading"
+              title="My Work — Chapter Workspace"
+              subtitle={
+                <>
+                  Signed in as{' '}
+                  <span className="kamunggay-verified-name-slot">
+                    {dashboardSession?.userName ?? 'Verified Officer'}
+                  </span>
+                </>
+              }
+            />
+
+            <div className="form-stack">
+              <div className="callout-banner">
+                <span className="callout-dot dot-success" aria-hidden="true" />
+                <span>
+                  Authenticated session active. Module operations (Requisitions, Inventory, Finance, Booths) load once chapter readiness &amp; module routes are enabled.
+                </span>
+              </div>
+
+              <div className="session-ledger">
+                <div className="session-ledger-row">
+                  <span className="session-ledger-key">Active Chapter</span>
+                  <span className="session-ledger-val slot-chapter">
+                    {dashboardSession?.activeChapter ?? 'Assigned Chapter'}
+                  </span>
+                </div>
+                <div className="session-ledger-row">
+                  <span className="session-ledger-key">Granted Duties</span>
+                  <span className="session-ledger-val slot-duties">
+                    {dashboardSession?.grantedDuties ?? 'Chapter Operations'}
+                  </span>
+                </div>
+                <div className="session-ledger-row">
+                  <span className="session-ledger-key">Governance Constraints</span>
+                  <span className="session-ledger-val slot-constraints">
+                    {dashboardSession?.governanceConstraints ?? 'Standard chapter governance rules apply'}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isSigningOut}
+                className="btn-batcave-primary"
+                onClick={() => void handleDashboardSignOut()}
+              >
+                <span>{isSigningOut ? 'Signing out...' : 'Sign out & Return to Login'}</span>
+              </button>
+            </div>
+          </section>
+        </main>
+      </BatCaveShell>
+    );
+  }
+
   if (routeMode === 'login-flow') {
     return (
       <LoginPage
@@ -128,6 +222,14 @@ export function App() {
         onNavigateToCreateChapter={() => {
           setSignupStep('create-chapter');
           setRouteMode('create-chapter');
+        }}
+        onMfaEnrollmentRequired={() => {
+          setSignupStep('connect-auth');
+          setRouteMode('create-chapter');
+        }}
+        onEnterDashboard={(resolved) => {
+          setDashboardSession(resolved);
+          setRouteMode('dashboard');
         }}
       />
     );
@@ -139,42 +241,52 @@ export function App() {
   }
 
   return (
-    <main className="status-shell">
-      <section className="status-card" aria-live="polite">
-        <p className="eyebrow">Service status</p>
-        <h1>{messages[status].title}</h1>
-        <p className="message">{messages[status].description}</p>
-        <div className="button-group">
-          <button
-            type="button"
-            className="retry-button"
-            onClick={retry}
-            disabled={status === 'checking'}
-          >
-            Check again
-          </button>
-          <button
-            type="button"
-            className="login-toggle-button"
-            onClick={() => {
-              setRouteMode('login-flow');
-              setAuthScreen('login');
-            }}
-          >
-            Open Sign In
-          </button>
-          <button
-            type="button"
-            className="login-toggle-button"
-            onClick={() => {
-              setSignupStep('create-chapter');
-              setRouteMode('create-chapter');
-            }}
-          >
-            Open Create Chapter
-          </button>
+    <>
+      <div aria-hidden="true" className="backdrop-halftone-container has-canvas">
+        <div className="stitch-flare-layer">
+          <div className="stitch-flare stitch-flare-left" />
+          <div className="stitch-flare stitch-flare-right" />
+          <div className="stitch-flare stitch-flare-ambient" />
         </div>
-      </section>
-    </main>
+        <HalftoneWaveCanvas theme={resolvedTheme} />
+      </div>
+      <main className="status-shell">
+        <section className="surface-card status-card" aria-live="polite">
+          <p className="eyebrow">Service status</p>
+          <h1>{messages[status].title}</h1>
+          <p className="message">{messages[status].description}</p>
+          <div className="button-group">
+            <button
+              type="button"
+              className="retry-button"
+              onClick={retry}
+              disabled={status === 'checking'}
+            >
+              Check again
+            </button>
+            <button
+              type="button"
+              className="login-toggle-button"
+              onClick={() => {
+                setRouteMode('login-flow');
+                setAuthScreen('login');
+              }}
+            >
+              Open Sign In
+            </button>
+            <button
+              type="button"
+              className="login-toggle-button"
+              onClick={() => {
+                setSignupStep('create-chapter');
+                setRouteMode('create-chapter');
+              }}
+            >
+              Open Create Chapter
+            </button>
+          </div>
+        </section>
+      </main>
+    </>
   );
 }

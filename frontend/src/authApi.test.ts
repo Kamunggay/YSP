@@ -83,6 +83,23 @@ describe('authApi', () => {
     }
   });
 
+  it('distinguishes 403 origin_forbidden from revoked membership', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ code: 'origin_forbidden', message: 'This request is not permitted.' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+    const result = await signIn('officer@example.com', 'pass123');
+    expect(result.kind).toBe('forbidden');
+    if (result.kind === 'forbidden') {
+      expect(result.isRevoked).toBe(false);
+    }
+  });
+
   it('handles signIn 429 throttled', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
@@ -127,6 +144,38 @@ describe('authApi', () => {
 
     const result = await verifyMfaChallenge('chl_123', 'authenticator', '000000');
     expect(result.kind).toBe('rejected');
+  });
+
+  it('handles verifyMfaChallenge rejection on 400 and 409 without bypassing', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ code: 'invalid_factor_proof' }), { status: 400 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ code: 'challenge_unavailable' }), { status: 409 })
+      );
+
+    const r400 = await verifyMfaChallenge('chl_live_999', 'authenticator', '000000');
+    expect(r400.kind).toBe('rejected');
+
+    const r409 = await verifyMfaChallenge('chl_live_999', 'recovery_code', 'AAAA-BBBB-CCCC-DDDD');
+    expect(r409.kind).toBe('rejected');
+  });
+
+  it('rejects live enrollment confirmation on 400 and 409 without fake success', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ code: 'invalid_factor_proof' }), { status: 400 })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ code: 'enrollment_conflict' }), { status: 409 })
+      );
+
+    const r400 = await confirmAuthenticatorEnrollment('enr_live_123456', '000000');
+    expect(r400.kind).toBe('rejected');
+
+    const r409 = await confirmAuthenticatorEnrollment('enr_live_123456', '654321');
+    expect(r409.kind).toBe('rejected');
   });
 
   it('handles prepareAuthenticatorEnrollment and confirmAuthenticatorEnrollment', async () => {

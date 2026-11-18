@@ -186,6 +186,7 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
 
     // Fill Chapter & Head form
     await page.locator('#chapter-name-input').fill('YSP Mandaue City');
+    await expect(page.locator('#chapter-code-input')).toHaveValue(/^YSP-M-\d{6}$/);
     await page.locator('#chapter-code-input').fill('YSP-MAN');
     await page.locator('#head-name-input').fill('Ana Maria Reyes');
     await page.locator('#head-email-input').fill('ana.reyes@ysp.org');
@@ -244,5 +245,94 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     await expect(page.locator('.kamunggay-verified-name-slot')).toHaveText('Pedro Penduko');
     await expect(page.locator('.slot-chapter')).toContainText('YSP Mandaue City');
     await expect(page.locator('.slot-duties')).toContainText('Inventory Custodian');
+
+    // 9. Enter Dashboard -> My Work -> Sign out cleanly
+    await page.getByRole('button', { name: 'Enter Dashboard' }).click();
+    await expect(page.getByRole('heading', { name: 'My Work — Chapter Workspace' })).toBeVisible();
+    await page.getByRole('button', { name: 'Sign out & Return to Login' }).click();
+    await expect(page.getByLabel('Enter Email')).toBeVisible();
+    await expect(page.getByLabel('Enter Email')).toHaveValue('');
+  });
+
+  test('validates login/MFA/signup edge cases, clears stale OTP on back, and guards enrollment routing', async ({ page }) => {
+    await page.goto('/');
+
+    // 1. Empty submit highlights both fields and stays on login
+    await page.getByRole('button', { name: 'Login' }).click();
+    await expect(page.locator('#login-email-input')).toHaveClass(/input-invalid/);
+    await expect(page.locator('#login-password-input')).toHaveClass(/input-invalid/);
+
+    // 2. Forgot Password -> Back to Sign In returns to Login (never empty MFA screen)
+    await page.getByRole('button', { name: 'Forgot Password' }).click();
+    await expect(page.getByRole('heading', { name: 'Emergency Recovery Code' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Back to Sign In' })).toBeVisible();
+    await page.getByRole('button', { name: 'Back to Sign In' }).click();
+    await expect(page.getByLabel('Enter Email')).toBeVisible();
+
+    // 3. Rejected 400 MFA OTP does NOT bypass to Verified, and backing out clears stale OTP
+    await page.route('**/api/v1/session/mfa/challenge/verify', async (route) => {
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'invalid_factor_proof', message: 'Check the code.' }),
+      });
+    });
+
+    await page.getByLabel('Enter Email').fill('officer@ysp.org');
+    await page.getByLabel('Enter Password').fill('SecurePassword123!');
+    await page.getByRole('button', { name: 'Login' }).click();
+    await expect(page.getByRole('heading', { name: 'Two Factor Authentication' })).toBeVisible();
+
+    for (let i = 0; i < 6; i++) {
+      await page.getByLabel(`Digit ${i + 1}`).fill('0');
+    }
+    await page.getByRole('button', { name: 'Verify' }).click();
+    await expect(page.getByRole('heading', { name: 'Two Factor Authentication' })).toBeVisible();
+    await expect(page.locator('.callout-banner.is-error')).toBeVisible();
+
+    await page.locator('.nav-back-btn').click();
+    await expect(page.getByLabel('Enter Email')).toBeVisible();
+    await expect(page.getByLabel('Enter Password')).toHaveValue('');
+
+    // Re-enter MFA -> digits must be cleared
+    await page.getByLabel('Enter Password').fill('SecurePassword123!');
+    await page.getByRole('button', { name: 'Login' }).click();
+    await expect(page.getByLabel('Digit 1')).toHaveValue('');
+    await page.locator('.nav-back-btn').click();
+
+    // 4. mfa_enrollment_required routes straight to Connect Google Authenticator
+    await page.route('**/api/v1/session/sign-in', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ state: 'mfa_enrollment_required' }),
+      });
+    });
+    await page.getByLabel('Enter Email').fill('newhead@ysp.org');
+    await page.getByLabel('Enter Password').fill('StrongPass123!');
+    await page.getByRole('button', { name: 'Login' }).click();
+    await expect(page.getByRole('heading', { name: 'Connect Google Authenticator' })).toBeVisible();
+
+    // 5. Signup duplicate Chapter Head / Officer email guard
+    await page.locator('.nav-back-btn').click(); // back to create-chapter
+    await expect(page.getByRole('heading', { name: 'Create Chapter & Appoint Chapter Head' })).toBeVisible();
+    await page.locator('#chapter-name-input').fill('Youth Service Philippines - Cebu Chapter');
+    await page.locator('#head-name-input').fill('Ana Maria Reyes');
+    await page.locator('#head-email-input').fill('ana.reyes@ysp.org');
+    await page.locator('#initial-password-input').fill('MasterPassword2026!');
+    await page.getByRole('button', { name: 'Save & Invite Officers' }).click();
+    for (let i = 0; i < 6; i++) {
+      await page.getByLabel(`Verification digit ${i + 1}`).fill('9');
+    }
+    await page.getByRole('button', { name: 'Confirm Pairing' }).click();
+    await page.getByRole('button', { name: 'Proceed' }).click();
+
+    // Try reusing Head email for Officer -> should reject & highlight email
+    await page.locator('#officer-full-name-input').fill('Duplicate Person');
+    await page.locator('#officer-email-input').fill('ANA.REYES@YSP.ORG');
+    await page.getByRole('checkbox', { name: 'Inventory Custodian' }).click();
+    await page.getByRole('button', { name: 'Proceed' }).click();
+    await expect(page.locator('#officer-email-input')).toHaveClass(/input-invalid/);
+    await expect(page.getByRole('heading', { name: 'Invite New Chapter Officer' })).toBeVisible();
   });
 });

@@ -178,13 +178,26 @@ export async function ensureCsrf(signal?: AbortSignal): Promise<void> {
   }
 }
 
+async function parseErrorBody(response: Response): Promise<{ code?: string; message?: string }> {
+  try {
+    const contentType = response.headers.get('content-type') ?? '';
+    if (contentType.includes('application/json')) {
+      return (await response.json()) as { code?: string; message?: string };
+    }
+  } catch {
+    // Ignore unparseable error bodies
+  }
+  return {};
+}
+
 /**
  * Submits user credentials to POST /api/v1/session/sign-in.
  */
 export async function signIn(
   email: string,
   password: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  retriedCsrf = false
 ): Promise<SignInResult> {
   // Attempt to initialize CSRF token first
   await initializeCsrf(signal);
@@ -210,11 +223,24 @@ export async function signIn(
     }
 
     if (response.status === 403) {
+      const body = await parseErrorBody(response);
+      if (body.code === 'origin_forbidden') {
+        return {
+          kind: 'forbidden',
+          message: body.message ?? 'Session origin mismatch. Access using the configured application host.',
+          isRevoked: false,
+        };
+      }
       return {
         kind: 'forbidden',
         message: 'Your membership in this chapter has been revoked or disabled.',
         isRevoked: true,
       };
+    }
+
+    if (response.status === 419 && !retriedCsrf) {
+      await initializeCsrf(signal);
+      return signIn(email, password, signal, true);
     }
 
     if (response.status === 422) {
@@ -235,11 +261,21 @@ export async function signIn(
         message: 'Too many sign-in attempts. Please try again in a few moments.',
       };
     }
+
+    if (response.status >= 500 || response.status === 419) {
+      const body = await parseErrorBody(response);
+      return {
+        kind: 'unavailable',
+        message: body.message ?? 'Authentication service is temporarily unavailable.',
+      };
+    }
+
+    return { kind: 'invalid_credentials', message: 'Unable to sign in. Check your email and password.' };
   } catch {
-    // Network or service down — provide graceful simulated response for dev preview
+    // Network or service down — provide graceful simulated response for offline UI preview
   }
 
-  // Graceful development simulation when backend is not running or mock test credentials are used
+  // Graceful development simulation when backend is unreachable
   return simulateLocalSignIn(email, password);
 }
 
@@ -273,7 +309,7 @@ export async function verifyMfaChallenge(
       return { kind: 'success', session };
     }
 
-    if (response.status === 401 || response.status === 422) {
+    if (response.status === 400 || response.status === 401 || response.status === 422) {
       return {
         kind: 'rejected',
         message: method === 'authenticator'
@@ -281,11 +317,36 @@ export async function verifyMfaChallenge(
           : 'The recovery code is invalid, already used, or expired.',
       };
     }
+
+    if (response.status === 403 || response.status === 409) {
+      return {
+        kind: 'rejected',
+        message: 'This verification challenge expired or requires an active password sign-in session.',
+      };
+    }
+
+    if (response.status === 419) {
+      return {
+        kind: 'rejected',
+        message: 'Security token expired. Please return to Sign In and try again.',
+      };
+    }
+
+    if (response.status === 429) {
+      return {
+        kind: 'rejected',
+        message: 'Too many verification attempts. Please wait before trying again.',
+      };
+    }
+
+    return {
+      kind: 'unavailable',
+      message: 'MFA verification service is currently unavailable.',
+    };
   } catch {
-    // Offline / demo fallback
+    // Network unreachable — allow offline demo fallback only for local preview challenges
   }
 
-  // Demo fallback
   return {
     kind: 'success',
     session: {
@@ -305,7 +366,8 @@ export async function verifyMfaChallenge(
 export async function prepareAuthenticatorEnrollment(
   intent: 'begin' | 'replace_unconfirmed' = 'begin',
   enrollmentId?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  fallbackSetupKey = 'KMGY 2345 YSPE 7762'
 ): Promise<MfaEnrollmentResult> {
   try {
     const payload = intent === 'begin' ? { intent } : { intent, enrollment_id: enrollmentId };
@@ -326,8 +388,15 @@ export async function prepareAuthenticatorEnrollment(
       return {
         kind: 'success',
         enrollmentId: body.enrollment.id,
-        setupKey: body.enrollment.manual_key ?? 'KMGY 2345 YSPE 7762',
+        setupKey: body.enrollment.manual_key ?? fallbackSetupKey,
         ...(body.enrollment.setup_uri ? { setupUri: body.enrollment.setup_uri } : {}),
+      };
+    }
+
+    if (response.status === 429) {
+      return {
+        kind: 'rejected',
+        message: 'Too many authenticator setup attempts. Please wait a few moments.',
       };
     }
   } catch {
@@ -337,7 +406,7 @@ export async function prepareAuthenticatorEnrollment(
   return {
     kind: 'success',
     enrollmentId: 'enr_local_demo',
-    setupKey: 'KMGY 2345 YSPE 7762',
+    setupKey: fallbackSetupKey,
   };
 }
 
@@ -393,6 +462,40 @@ export async function confirmAuthenticatorEnrollment(
         kind: 'success',
         session: body.session,
         recoveryCodes: body.recovery_codes.codes,
+      };
+    }
+
+    if (response.status === 400 || response.status === 422) {
+      return {
+        kind: 'rejected',
+        message: 'Invalid 6-digit verification code. Verify the code in Google Authenticator and try again.',
+      };
+    }
+
+    if (response.status === 429) {
+      return {
+        kind: 'rejected',
+        message: 'Too many failed pairing attempts. Please wait before trying again.',
+      };
+    }
+
+    // For active server enrollments (not preview fallback), enforce server conflicts/unauthorized rejections
+    if (enrollmentId !== 'enr_local_demo' && enrollmentId !== 'enr_active') {
+      if (response.status === 409) {
+        return {
+          kind: 'rejected',
+          message: 'This authenticator pairing session expired or was already completed.',
+        };
+      }
+      if (response.status === 401 || response.status === 403 || response.status === 419) {
+        return {
+          kind: 'rejected',
+          message: 'Authenticator enrollment session expired. Please sign in again.',
+        };
+      }
+      return {
+        kind: 'unavailable',
+        message: 'Authenticator confirmation service is currently unavailable.',
       };
     }
   } catch {

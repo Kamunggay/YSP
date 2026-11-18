@@ -2,6 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import './login.css';
 import './create-chapter.css';
+import { BatCaveShell, useBatCaveToast } from './BatCaveShell';
+import { NavFlowHeader } from './NavFlowHeader';
+import { generateChapterCode } from './chapterCode';
+import {
+  getInitialSoundsEnabled,
+  handleGuardedHover,
+  playApplePay,
+  playClickPen,
+  playErrorTone,
+  playScribblenauts,
+} from './batcaveAudio';
 import {
   confirmAuthenticatorEnrollment,
   createOfficerAccount,
@@ -56,57 +67,11 @@ interface CreateChapterPageProps {
   onSaveAndInvite?: (data: CreateChapterFormData) => void;
 }
 
-interface PhotoButtonProps {
-  type?: 'button' | 'submit';
-  unclickedSrc: string;
-  clickedSrc: string;
-  alt: string;
-  className?: string;
-  disabled?: boolean;
-  onClick?: (() => void) | undefined;
-}
-
-function PhotoButton({
-  type = 'button',
-  unclickedSrc,
-  clickedSrc,
-  alt,
-  className = '',
-  disabled = false,
-  onClick,
-}: PhotoButtonProps) {
-  const [pressed, setPressed] = useState(false);
-
-  return (
-    <button
-      type={type}
-      disabled={disabled}
-      className={`kamunggay-photo-btn ${pressed ? 'is-active' : ''} ${className}`.trim()}
-      aria-label={alt}
-      onClick={onClick}
-      onPointerDown={() => {
-        if (!disabled) setPressed(true);
-      }}
-      onPointerUp={() => setPressed(false)}
-      onPointerLeave={() => setPressed(false)}
-      onPointerCancel={() => setPressed(false)}
-      onKeyDown={(e) => {
-        if (!disabled && (e.key === ' ' || e.key === 'Enter')) setPressed(true);
-      }}
-      onKeyUp={() => setPressed(false)}
-      onBlur={() => setPressed(false)}
-    >
-      <img src={unclickedSrc} alt={alt} className="btn-unclicked" draggable={false} />
-      <img src={clickedSrc} alt="" aria-hidden="true" className="btn-clicked" draggable={false} />
-    </button>
-  );
-}
-
-const DUTY_ITEMS: { duty: ChapterDuty; slotClass: string }[] = [
-  { duty: 'Inventory Custodian', slotClass: 'duty-slot-top-left' },
-  { duty: 'Committee Requester', slotClass: 'duty-slot-top-right' },
-  { duty: 'Finance Officer', slotClass: 'duty-slot-bottom-left' },
-  { duty: 'Sales & Dispatch', slotClass: 'duty-slot-bottom-right' },
+const DUTY_ITEMS: ChapterDuty[] = [
+  'Inventory Custodian',
+  'Committee Requester',
+  'Finance Officer',
+  'Sales & Dispatch',
 ];
 
 export function CreateChapterPage({
@@ -119,20 +84,31 @@ export function CreateChapterPage({
   const [step, setStep] = useState<SignupStepMode>(initialStep);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => getInitialSoundsEnabled());
+  const { toast, isExiting, showToast, dismissToast } = useBatCaveToast();
 
   // Frame 1: Create Chapter & Appoint Chapter Head state
   const [chapterName, setChapterName] = useState(initialData?.chapterName ?? '');
-  const [chapterCode, setChapterCode] = useState(initialData?.chapterCode ?? '');
+  const [hasCustomChapterCode, setHasCustomChapterCode] = useState<boolean>(() =>
+    Boolean(initialData?.chapterCode?.trim())
+  );
+  const [chapterCode, setChapterCode] = useState(
+    () =>
+      initialData?.chapterCode ??
+      (initialData?.chapterName ? generateChapterCode(initialData.chapterName) : '')
+  );
   const [headName, setHeadName] = useState(initialData?.headName ?? '');
   const [headEmail, setHeadEmail] = useState(initialData?.headEmail ?? '');
   const [initialPassword, setInitialPassword] = useState(initialData?.initialPassword ?? '');
+  const [showInitialPassword, setShowInitialPassword] = useState(false);
 
   // Frame 2: Connect Google Authenticator state (Chapter Head)
-  const [headEnrollmentId, setHeadEnrollmentId] = useState<string>('enr_head_demo');
-  const [headSetupKey, setHeadSetupKey] = useState<string>('KMGY 2345 YSPE 7762');
+  const [headEnrollmentId, setHeadEnrollmentId] = useState<string>('');
+  const [headSetupKey, setHeadSetupKey] = useState<string>('');
   const [headSetupUri, setHeadSetupUri] = useState<string | undefined>();
   const [headOtp, setHeadOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [headRecoveryCodes, setHeadRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
+  const [headPaired, setHeadPaired] = useState(false);
 
   // Frame 4: Invite New Chapter Officer state
   const [officerName, setOfficerName] = useState('');
@@ -144,31 +120,63 @@ export function CreateChapterPage({
   const [officerAccountEmail, setOfficerAccountEmail] = useState('');
   const [officerPassword, setOfficerPassword] = useState('');
   const [officerConfirmPassword, setOfficerConfirmPassword] = useState('');
+  const [showOfficerPassword, setShowOfficerPassword] = useState(false);
+  const [showOfficerConfirm, setShowOfficerConfirm] = useState(false);
 
   // Frame 6: Officer MFA state
-  const [officerEnrollmentId, setOfficerEnrollmentId] = useState<string>('enr_officer_demo');
-  const [officerSetupKey, setOfficerSetupKey] = useState<string>('OFCB 3456 KMGC 7624');
+  const [officerEnrollmentId, setOfficerEnrollmentId] = useState<string>('');
+  const [officerSetupKey, setOfficerSetupKey] = useState<string>('');
   const [officerSetupUri, setOfficerSetupUri] = useState<string | undefined>();
   const [officerOtp, setOfficerOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [officerRecoveryCodes, setOfficerRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
+  const [officerPaired, setOfficerPaired] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('/assets/kamunggay/authenticator-qr.png');
+  const [copiedKey, setCopiedKey] = useState(false);
 
-  // Generate dynamic, valid Base32 scannable QR code
+  // Inline invalid field highlights
+  const [invalidFields, setInvalidFields] = useState<Record<string, boolean>>({});
+
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  function clearInvalid(field?: string) {
+    setErrorMessage(null);
+    if (!field) {
+      setInvalidFields({});
+      return;
+    }
+    setInvalidFields((prev) => (prev[field] ? { ...prev, [field]: false } : prev));
+  }
+
+  function changeStep(
+    next: SignupStepMode,
+    toastInfo?: { tone: 'success' | 'warning' | 'error' | 'info'; text: string }
+  ) {
+    setErrorMessage(null);
+    setInvalidFields({});
+    setStep(next);
+    if (toastInfo) {
+      showToast(toastInfo);
+    }
+  }
+
+  // Generate scannable Base32 QR code for authenticator app pairing
   useEffect(() => {
     const isOfficer = step === 'officer-connect-auth';
     const activeKey = isOfficer ? officerSetupKey : headSetupKey;
-    const activeEmail = isOfficer ? officerAccountEmail || 'officer@ysp.org' : headEmail || 'head@ysp.org';
+    const activeEmail = isOfficer ? officerAccountEmail : headEmail;
     const serverUri = isOfficer ? officerSetupUri : headSetupUri;
+    if (!activeKey && !serverUri) return;
+
     const cleanKey = activeKey.replace(/\s+/g, '').toUpperCase();
     const otpUri =
       serverUri ||
-      encodeURI(`otpauth://totp/Kamunggay YSP:${activeEmail}?secret=${cleanKey}&issuer=Kamunggay YSP`);
+      encodeURI(`otpauth://totp/Kamunggay YSP:${activeEmail || 'account'}?secret=${cleanKey}&issuer=Kamunggay YSP`);
 
     let isMounted = true;
     void QRCode.toDataURL(otpUri, {
       margin: 1,
       width: 500,
-      color: { dark: '#1e1611', light: '#ffffff' },
+      color: { dark: '#0A0A0A', light: '#FFFFFF' },
     })
       .then((url) => {
         if (isMounted) setQrCodeUrl(url);
@@ -184,20 +192,17 @@ export function CreateChapterPage({
     };
   }, [step, headSetupKey, officerSetupKey, headEmail, officerAccountEmail, headSetupUri, officerSetupUri]);
 
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  // Load setup key when entering connect-auth or officer-connect-auth if not yet loaded
   useEffect(() => {
-    if (step === 'connect-auth' && headSetupKey === 'KMGY 2345 YSPE 7762') {
-      void prepareAuthenticatorEnrollment('begin').then((res) => {
+    if (step === 'connect-auth' && !headSetupKey) {
+      void prepareAuthenticatorEnrollment('begin', undefined, undefined, 'KMGY 2345 YSPE 7762').then((res) => {
         if (res.kind === 'success') {
           setHeadEnrollmentId(res.enrollmentId);
           setHeadSetupKey(res.setupKey);
           if (res.setupUri) setHeadSetupUri(res.setupUri);
         }
       });
-    } else if (step === 'officer-connect-auth' && officerSetupKey === 'OFCB 3456 KMGC 7624') {
-      void prepareAuthenticatorEnrollment('begin').then((res) => {
+    } else if (step === 'officer-connect-auth' && !officerSetupKey) {
+      void prepareAuthenticatorEnrollment('begin', undefined, undefined, 'OFCB 3456 KMGC 7624').then((res) => {
         if (res.kind === 'success') {
           setOfficerEnrollmentId(res.enrollmentId);
           setOfficerSetupKey(res.setupKey);
@@ -210,7 +215,7 @@ export function CreateChapterPage({
   async function handleChapterSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isLoading) return;
-    setErrorMessage(null);
+    clearInvalid();
 
     const trimmedName = chapterName.trim();
     const normalizedCode = chapterCode.trim().toUpperCase();
@@ -218,27 +223,46 @@ export function CreateChapterPage({
     const trimmedHeadEmail = headEmail.trim();
 
     if (!trimmedName || !normalizedCode || !trimmedHeadName || !trimmedHeadEmail || !initialPassword) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({
+        chapterName: !trimmedName,
+        chapterCode: !normalizedCode,
+        headName: !trimmedHeadName,
+        headEmail: !trimmedHeadEmail,
+        initialPassword: !initialPassword,
+      });
       setErrorMessage('Please complete all required fields to establish the Chapter entity.');
+      showToast({ tone: 'warning', text: 'Complete all required chapter fields' });
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedHeadEmail)) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ headEmail: true });
       setErrorMessage('Please enter a valid email address for the Chapter Head.');
+      showToast({ tone: 'warning', text: 'Invalid Chapter Head email format' });
       return;
     }
 
     const codeRegex = /^[A-Z][A-Z0-9_-]{0,31}$/;
     if (!codeRegex.test(normalizedCode)) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ chapterCode: true });
       setErrorMessage('Chapter Code must start with an uppercase letter and contain only uppercase letters, numbers, hyphens, or underscores (up to 32 characters).');
+      showToast({ tone: 'warning', text: 'Invalid Chapter Code format' });
       return;
     }
 
-    if (initialPassword.length < 10) {
-      setErrorMessage('Master Password must be at least 10 characters long.');
+    if (initialPassword.length < 10 || !/[A-Z]/.test(initialPassword) || !/[0-9]/.test(initialPassword)) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ initialPassword: true });
+      setErrorMessage('Master Password must be at least 10 characters and include an uppercase letter and a number.');
+      showToast({ tone: 'warning', text: 'Password needs 10+ chars, uppercase & number' });
       return;
     }
 
+    playApplePay(soundEnabled);
     setIsLoading(true);
     try {
       const data: CreateChapterFormData = {
@@ -252,18 +276,24 @@ export function CreateChapterPage({
 
       const provResult = await provisionChapter(data);
       if (provResult.kind === 'success') {
-        const enrollResult = await prepareAuthenticatorEnrollment('begin');
-        if (enrollResult.kind === 'success') {
-          setHeadEnrollmentId(enrollResult.enrollmentId);
-          setHeadSetupKey(enrollResult.setupKey);
-          if (enrollResult.setupUri) setHeadSetupUri(enrollResult.setupUri);
+        if (!headPaired) {
+          const enrollResult = await prepareAuthenticatorEnrollment('begin', undefined, undefined, 'KMGY 2345 YSPE 7762');
+          if (enrollResult.kind === 'success') {
+            setHeadEnrollmentId(enrollResult.enrollmentId);
+            setHeadSetupKey(enrollResult.setupKey);
+            if (enrollResult.setupUri) setHeadSetupUri(enrollResult.setupUri);
+          }
         }
-        setStep('connect-auth');
+        changeStep('connect-auth', { tone: 'success', text: 'Chapter created • Pair Authenticator' });
       } else {
+        playErrorTone(soundEnabled);
         setErrorMessage(provResult.message);
+        showToast({ tone: 'error', text: 'Chapter provisioning rejected' });
       }
     } catch {
+      playErrorTone(soundEnabled);
       setErrorMessage('An unexpected error occurred while provisioning the chapter.');
+      showToast({ tone: 'error', text: 'Provisioning service unavailable' });
     } finally {
       setIsLoading(false);
     }
@@ -271,32 +301,49 @@ export function CreateChapterPage({
 
   async function handleConfirmPairing(isOfficer: boolean) {
     if (isLoading) return;
-    const activeOtp = isOfficer ? officerOtp : headOtp;
-    const enrollmentId = isOfficer ? officerEnrollmentId : headEnrollmentId;
-    const code = activeOtp.join('');
+    if (isOfficer ? officerPaired : headPaired) {
+      playApplePay(soundEnabled);
+      changeStep(isOfficer ? 'officer-save-recovery' : 'save-recovery');
+      return;
+    }
+    const currentOtp = isOfficer ? officerOtp : headOtp;
+    const enrollmentId = (isOfficer ? officerEnrollmentId : headEnrollmentId) || 'enr_active';
+    const code = currentOtp.join('');
 
     if (code.length < 6) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ otp: true });
       setErrorMessage('Please enter all 6 verification digits from Google Authenticator.');
+      showToast({ tone: 'warning', text: 'Enter all 6 verification digits' });
       return;
     }
 
-    setErrorMessage(null);
+    playApplePay(soundEnabled);
+    clearInvalid();
     setIsLoading(true);
     try {
       const result = await confirmAuthenticatorEnrollment(enrollmentId, code);
       if (result.kind === 'success') {
         if (isOfficer) {
+          setOfficerPaired(true);
           setOfficerRecoveryCodes(result.recoveryCodes);
-          setStep('officer-save-recovery');
+          changeStep('officer-save-recovery', { tone: 'success', text: 'Officer 2FA paired • Save recovery codes' });
         } else {
+          setHeadPaired(true);
           setHeadRecoveryCodes(result.recoveryCodes);
-          setStep('save-recovery');
+          changeStep('save-recovery', { tone: 'success', text: 'Chapter Head 2FA paired • Save recovery codes' });
         }
       } else {
+        playErrorTone(soundEnabled);
+        setInvalidFields({ otp: true });
         setErrorMessage(result.message);
+        showToast({ tone: 'error', text: 'TOTP pairing confirmation rejected' });
       }
     } catch {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ otp: true });
       setErrorMessage('Pairing verification failed. Please try again.');
+      showToast({ tone: 'error', text: 'Pairing verification failed' });
     } finally {
       setIsLoading(false);
     }
@@ -306,15 +353,18 @@ export function CreateChapterPage({
     index: number,
     value: string,
     currentOtp: string[],
-    setOtp: React.Dispatch<React.SetStateAction<string[]>>
+    setOtpFn: React.Dispatch<React.SetStateAction<string[]>>
   ) {
-    setErrorMessage(null);
+    clearInvalid('otp');
     const cleaned = value.replace(/\D/g, '').slice(-1);
     const next = [...currentOtp];
     next[index] = cleaned;
-    setOtp(next);
-    if (cleaned && index < 5) {
-      otpRefs.current[index + 1]?.focus();
+    setOtpFn(next);
+    if (cleaned) {
+      playScribblenauts(soundEnabled);
+      if (index < 5) {
+        otpRefs.current[index + 1]?.focus();
+      }
     }
   }
 
@@ -338,9 +388,9 @@ export function CreateChapterPage({
 
   function handleOtpPaste(
     e: React.ClipboardEvent<HTMLInputElement>,
-    setOtp: React.Dispatch<React.SetStateAction<string[]>>
+    setOtpFn: React.Dispatch<React.SetStateAction<string[]>>
   ) {
-    setErrorMessage(null);
+    clearInvalid('otp');
     const pasted = e.clipboardData
       .getData('text')
       .replace(/\D/g, '')
@@ -351,19 +401,22 @@ export function CreateChapterPage({
     for (let i = 0; i < pasted.length; i++) {
       next[i] = pasted[i] ?? '';
     }
-    setOtp(next);
+    setOtpFn(next);
     const focusIdx = Math.min(pasted.length, 5);
     otpRefs.current[focusIdx]?.focus();
   }
 
   function toggleDuty(duty: ChapterDuty) {
-    setErrorMessage(null);
+    playClickPen(soundEnabled);
+    clearInvalid('duties');
     setSelectedDuties((prev) =>
       prev.includes(duty) ? prev.filter((d) => d !== duty) : [...prev, duty]
     );
   }
 
   function handleDownloadRecoveryTxt(targetLabel: string, codes: string[]) {
+    playClickPen(soundEnabled);
+    showToast({ tone: 'success', text: 'Recovery codes (.TXT) downloaded' });
     const content = [
       `Kamunggay Single-Use Recovery Codes${targetLabel ? ` (${targetLabel})` : ''}`,
       '====================================',
@@ -384,7 +437,7 @@ export function CreateChapterPage({
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setTimeout(() => {
+      window.setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 1000);
     }
@@ -408,6 +461,8 @@ export function CreateChapterPage({
   }
 
   function handleCopyRecoveryCodes(codes: string[]) {
+    playScribblenauts(soundEnabled);
+    showToast({ tone: 'info', text: 'Recovery codes copied to clipboard' }, 2200);
     const text = codes.join('\n');
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(text).catch(() => {
@@ -418,30 +473,63 @@ export function CreateChapterPage({
     }
   }
 
+  function handleCopySetupKey(keyValue: string) {
+    playScribblenauts(soundEnabled);
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(keyValue).catch(() => fallbackCopyText(keyValue));
+    } else {
+      fallbackCopyText(keyValue);
+    }
+    setCopiedKey(true);
+    showToast({ tone: 'info', text: `Copied setup key: ${keyValue}` }, 2000);
+    window.setTimeout(() => setCopiedKey(false), 1500);
+  }
+
   async function handleInviteProceed(e: React.FormEvent) {
     e.preventDefault();
     if (isLoading) return;
-    setErrorMessage(null);
+    clearInvalid();
 
     const trimmedOfficerName = officerName.trim();
     const trimmedOfficerEmail = officerEmail.trim();
 
     if (!trimmedOfficerName || !trimmedOfficerEmail) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({
+        officerName: !trimmedOfficerName,
+        officerEmail: !trimmedOfficerEmail,
+      });
       setErrorMessage('Please enter both the Officer Full Name and Email Address.');
+      showToast({ tone: 'warning', text: 'Officer name and email required' });
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedOfficerEmail)) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ officerEmail: true });
       setErrorMessage('Please enter a valid email address for the Officer.');
+      showToast({ tone: 'warning', text: 'Invalid officer email format' });
+      return;
+    }
+
+    if (headEmail.trim() && trimmedOfficerEmail.toLowerCase() === headEmail.trim().toLowerCase()) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ officerEmail: true });
+      setErrorMessage('Officer must use an individual email distinct from the Founding Chapter Head account.');
+      showToast({ tone: 'warning', text: 'Officer email must differ from Chapter Head' });
       return;
     }
 
     if (selectedDuties.length === 0) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ duties: true });
       setErrorMessage('Please select at least one Granted Chapter Duty.');
+      showToast({ tone: 'warning', text: 'Select at least one chapter duty' });
       return;
     }
 
+    playApplePay(soundEnabled);
     setIsLoading(true);
     try {
       await inviteChapterOfficer({
@@ -452,9 +540,11 @@ export function CreateChapterPage({
 
       setOfficerFullName(trimmedOfficerName);
       setOfficerAccountEmail(trimmedOfficerEmail);
-      setStep('create-officer');
+      changeStep('create-officer', { tone: 'success', text: 'Officer membership authorized' });
     } catch {
+      playErrorTone(soundEnabled);
       setErrorMessage('Unable to register officer invitation. Please try again.');
+      showToast({ tone: 'error', text: 'Officer authorization failed' });
     } finally {
       setIsLoading(false);
     }
@@ -463,37 +553,58 @@ export function CreateChapterPage({
   async function handleCreateOfficerSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isLoading) return;
-    setErrorMessage(null);
+    clearInvalid();
 
     const trimmedFullName = officerFullName.trim();
     const trimmedEmail = officerAccountEmail.trim();
 
     if (!trimmedFullName || !trimmedEmail || !officerPassword || !officerConfirmPassword) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({
+        officerFullName: !trimmedFullName,
+        officerAccountEmail: !trimmedEmail,
+        officerPassword: !officerPassword,
+        officerConfirm: !officerConfirmPassword,
+      });
       setErrorMessage('Please fill in all officer account fields.');
+      showToast({ tone: 'warning', text: 'Complete all officer account fields' });
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ officerAccountEmail: true });
       setErrorMessage('Please enter a valid email address.');
+      showToast({ tone: 'warning', text: 'Invalid email address format' });
       return;
     }
 
-    if (officerPassword.length < 10) {
-      setErrorMessage('Password must be at least 10 characters long.');
+    if (headEmail.trim() && trimmedEmail.toLowerCase() === headEmail.trim().toLowerCase()) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ officerAccountEmail: true });
+      setErrorMessage('Officer email must be distinct from the Founding Chapter Head email.');
+      showToast({ tone: 'warning', text: 'Use a distinct officer email' });
       return;
     }
 
-    if (!/[A-Z]/.test(officerPassword) || !/[0-9]/.test(officerPassword)) {
-      setErrorMessage('Password must contain at least one uppercase letter and one number.');
+    if (officerPassword.length < 10 || !/[A-Z]/.test(officerPassword) || !/[0-9]/.test(officerPassword)) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ officerPassword: true });
+      setErrorMessage('Password must be at least 10 characters and contain at least one uppercase letter and one number.');
+      showToast({ tone: 'warning', text: 'Password needs 10+ chars, uppercase & number' });
       return;
     }
 
     if (officerPassword !== officerConfirmPassword) {
+      playErrorTone(soundEnabled);
+      setInvalidFields({ officerConfirm: true });
       setErrorMessage('Passwords do not match. Please re-enter.');
+      showToast({ tone: 'warning', text: 'Passwords do not match' });
       return;
     }
 
+    playApplePay(soundEnabled);
     setIsLoading(true);
     try {
       const result = await createOfficerAccount({
@@ -504,644 +615,732 @@ export function CreateChapterPage({
       });
 
       if (result.kind === 'success') {
-        const enrollResult = await prepareAuthenticatorEnrollment('begin');
-        if (enrollResult.kind === 'success') {
-          setOfficerEnrollmentId(enrollResult.enrollmentId);
-          setOfficerSetupKey(enrollResult.setupKey);
-          if (enrollResult.setupUri) setOfficerSetupUri(enrollResult.setupUri);
+        if (!officerPaired) {
+          const enrollResult = await prepareAuthenticatorEnrollment('begin', undefined, undefined, 'OFCB 3456 KMGC 7624');
+          if (enrollResult.kind === 'success') {
+            setOfficerEnrollmentId(enrollResult.enrollmentId);
+            setOfficerSetupKey(enrollResult.setupKey);
+            if (enrollResult.setupUri) setOfficerSetupUri(enrollResult.setupUri);
+          }
         }
-        setStep('officer-connect-auth');
+        changeStep('officer-connect-auth', { tone: 'success', text: 'Officer account created • Pair Authenticator' });
       } else {
+        playErrorTone(soundEnabled);
         setErrorMessage(result.message);
+        showToast({ tone: 'error', text: 'Officer creation rejected' });
       }
     } catch {
+      playErrorTone(soundEnabled);
       setErrorMessage('Failed to create officer account.');
+      showToast({ tone: 'error', text: 'Failed to create officer account' });
     } finally {
       setIsLoading(false);
     }
   }
 
-  // Render Frame 2 or Frame 6: Connect Google Authenticator
-  if (step === 'connect-auth' || step === 'officer-connect-auth') {
-    const isOfficer = step === 'officer-connect-auth';
-    const activeOtp = isOfficer ? officerOtp : headOtp;
-    const setActiveOtp = isOfficer ? setOfficerOtp : setHeadOtp;
-    const activeSetupKey = isOfficer ? officerSetupKey : headSetupKey;
+  const isOfficerConnect = step === 'officer-connect-auth';
+  const activeOtp = isOfficerConnect ? officerOtp : headOtp;
+  const setActiveOtp = isOfficerConnect ? setOfficerOtp : setHeadOtp;
+  const activeSetupKey = isOfficerConnect ? officerSetupKey : headSetupKey;
+  const activePaired = isOfficerConnect ? officerPaired : headPaired;
 
-    return (
-      <div className="kamunggay-viewport centered-mode">
-        <section
-          className="kamunggay-create-chapter-card card-connect-auth"
-          aria-labelledby="connect-auth-title"
-        >
-          <img
-            src="/assets/kamunggay/lock.png"
-            alt=""
-            aria-hidden="true"
-            className="connect-auth-icon"
-            draggable={false}
-          />
-          <h1 id="connect-auth-title" className="connect-auth-title">
-            Connect Google Authenticator
-          </h1>
-          <p className="connect-auth-subtitle">
-            Scan this QR code using Google Authenticator
-            <br />
-            on your mobile phone.
-          </p>
+  const isOfficerRecovery = step === 'officer-save-recovery';
+  const targetPerson = isOfficerRecovery ? officerFullName || officerName : headName;
+  const activeCodes = isOfficerRecovery ? officerRecoveryCodes : headRecoveryCodes;
 
-          {errorMessage && (
-            <div className="kamunggay-auth-error" role="alert" aria-live="polite">
-              {errorMessage}
-            </div>
-          )}
-
-          <div className="connect-auth-qr-wrap">
-            <img
-              src="/assets/kamunggay/qr-box.png"
-              alt="Scan QR code or enter setup key manually"
-              className="connect-auth-qr-box"
-              draggable={false}
-            />
-            <img
-              src={qrCodeUrl}
-              alt="Scan QR code using Google Authenticator"
-              className="connect-auth-qr-code"
-              draggable={false}
-            />
-            {activeSetupKey && (
-              <span className="connect-auth-setup-key-slot" aria-label={`Manual setup key: ${activeSetupKey}`}>
-                {activeSetupKey}
-              </span>
-            )}
-          </div>
-
-          <label className="connect-auth-otp-label" htmlFor="connect-auth-otp-0">
-            Enter 6-Digits Verification Code from App.
-          </label>
-
-          <div className="connect-auth-otp-row" role="group" aria-label="6-Digit Verification Code">
-            {activeOtp.map((digit, idx) => (
-              <input
-                key={idx}
-                ref={(el) => {
-                  otpRefs.current[idx] = el;
-                }}
-                id={`connect-auth-otp-${idx}`}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                disabled={isLoading}
-                className="connect-auth-otp-input"
-                aria-label={`Verification digit ${idx + 1}`}
-                value={digit}
-                onChange={(e) => handleOtpChange(idx, e.target.value, activeOtp, setActiveOtp)}
-                onKeyDown={(e) => handleOtpKeyDown(idx, e, activeOtp, isOfficer)}
-                onPaste={(e) => handleOtpPaste(e, setActiveOtp)}
-              />
-            ))}
-          </div>
-
-          <div className="connect-auth-btn-row">
-            <PhotoButton
-              type="button"
-              disabled={isLoading}
-              unclickedSrc="/assets/kamunggay/confirm-pairing-btn.png"
-              clickedSrc="/assets/kamunggay/confirm-pairing-btn-clicked.png"
-              alt={isLoading ? 'Verifying...' : 'Confirm Pairing'}
-              className="connect-auth-half-btn"
-              onClick={() => void handleConfirmPairing(isOfficer)}
-            />
-            <PhotoButton
-              type="button"
-              disabled={isLoading}
-              unclickedSrc="/assets/kamunggay/small-return-btn.png"
-              clickedSrc="/assets/kamunggay/small-return-btn-clicked.png"
-              alt="Return"
-              className="connect-auth-half-btn"
-              onClick={() => {
-                setErrorMessage(null);
-                setStep(isOfficer ? 'create-officer' : 'create-chapter');
-              }}
-            />
-          </div>
-        </section>
-      </div>
-    );
-  }
-
-  // Render Frame 3 or Frame 7: Save Recovery Codes
-  if (step === 'save-recovery' || step === 'officer-save-recovery') {
-    const isOfficer = step === 'officer-save-recovery';
-    const targetPerson = isOfficer ? officerFullName || officerName : headName;
-    const activeCodes = isOfficer ? officerRecoveryCodes : headRecoveryCodes;
-
-    return (
-      <div className="kamunggay-viewport centered-mode">
-        <section
-          className="kamunggay-create-chapter-card card-save-recovery"
-          aria-labelledby="save-recovery-title"
-        >
-          <img
-            src="/assets/kamunggay/recovery-code-icon.png"
-            alt=""
-            aria-hidden="true"
-            className="save-recovery-icon"
-            draggable={false}
-          />
-          <h1 id="save-recovery-title" className="save-recovery-title">
-            Save Recovery Codes
-          </h1>
-          <p className="save-recovery-subtitle">
-            <span className="save-recovery-subtitle-prefix">Emergency backup codes for</span>
-            {targetPerson ? <span className="save-recovery-subtitle-name"> {targetPerson}</span> : null}
-          </p>
-
-          <img
-            src="/assets/kamunggay/recovery-code-message.png"
-            alt="Each code is single-use. Store them in a secure password manager or offline safe."
-            className="save-recovery-banner"
-            draggable={false}
-          />
-
-          <div className="save-recovery-grid" aria-label="Emergency backup codes">
-            {activeCodes.map((code, idx) => (
-              <div key={idx} className="save-recovery-code-box" data-code={code}>
-                <span className="save-recovery-code-text">{code}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="save-recovery-utility-row">
-            <PhotoButton
-              type="button"
-              unclickedSrc="/assets/kamunggay/download-txt-btn.png"
-              clickedSrc="/assets/kamunggay/download-txt-btn-clicked.png"
-              alt="Download (.TXT)"
-              className="save-recovery-half-btn"
-              onClick={() => handleDownloadRecoveryTxt(targetPerson, activeCodes)}
-            />
-            <PhotoButton
-              type="button"
-              unclickedSrc="/assets/kamunggay/copy-codes-btn.png"
-              clickedSrc="/assets/kamunggay/copy-codes-btn-clicked.png"
-              alt="Copy Codes"
-              className="save-recovery-half-btn"
-              onClick={() => handleCopyRecoveryCodes(activeCodes)}
-            />
-          </div>
-
-          <div className="save-recovery-btn-stack">
-            <PhotoButton
-              type="button"
-              unclickedSrc="/assets/kamunggay/proceed-btn.png"
-              clickedSrc="/assets/kamunggay/proceed-btn-clicked.png"
-              alt="Proceed"
-              onClick={() => {
-                setErrorMessage(null);
-                if (isOfficer) {
-                  const verifiedData: VerifiedSessionData = {
-                    userName: officerFullName.trim() || officerName.trim() || headName.trim() || 'Chapter Officer',
-                    authenticatedUnder: officerAccountEmail.trim() || officerEmail.trim() || headEmail.trim() || 'officer@ysp.org',
-                    tierSummary: selectedDuties.length > 0 ? selectedDuties.join(', ') : 'Inventory Custodian',
-                    activeChapter: chapterName.trim()
-                      ? `${chapterName.trim()} (${chapterCode.trim() || 'CEBU-01'})`
-                      : 'Cebu Chapter (CEBU-01)',
-                    grantedDuties: selectedDuties.length > 0
-                      ? selectedDuties.join(', ')
-                      : 'Inventory Custodian, Committee Requester',
-                    governanceConstraints: 'Requires dual-custody verification for transactions over PHP 50,000.00',
-                  };
-                  if (onCompleteSignup) {
-                    onCompleteSignup(verifiedData);
-                  } else {
-                    onNavigateToLogin?.();
-                  }
-                } else {
-                  setStep('invite-officer');
-                }
-              }}
-            />
-            <PhotoButton
-              type="button"
-              unclickedSrc="/assets/kamunggay/return.png"
-              clickedSrc="/assets/kamunggay/return-when-clicked.png"
-              alt="Return"
-              onClick={() => {
-                setErrorMessage(null);
-                setStep(isOfficer ? 'officer-connect-auth' : 'connect-auth');
-              }}
-            />
-          </div>
-        </section>
-      </div>
-    );
-  }
-
-  // Render Frame 4: Invite New Chapter Officer
-  if (step === 'invite-officer') {
-    return (
-      <div className="kamunggay-viewport centered-mode">
-        <section
-          className="kamunggay-create-chapter-card card-invite-officer"
-          aria-labelledby="invite-officer-title"
-        >
-          <h1 id="invite-officer-title" className="invite-officer-title">
-            Invite New Chapter Officer
-          </h1>
-          <p className="invite-officer-subtitle">
-            Chapter Head authorizes membership and assigns canonical
-            <br />
-            duties to a new officer.
-          </p>
-
-          {errorMessage && (
-            <div className="kamunggay-auth-error" role="alert" aria-live="polite">
-              {errorMessage}
-            </div>
-          )}
-
-          <div className="invite-officer-banner-wrap">
-            <img
-              src="/assets/kamunggay/assign-member-message.png"
-              alt="Assigning membership to chapter. Officers must use individual accounts."
-              className="invite-officer-banner"
-              draggable={false}
-            />
-            {chapterName ? (
-              <span className="invite-officer-banner-slot">{chapterName}</span>
-            ) : null}
-          </div>
-
-          <form className="invite-officer-form" onSubmit={handleInviteProceed} noValidate>
-            <div className="invite-officer-group group-officer-name">
-              <label className="invite-officer-label" htmlFor="officer-full-name-input">
-                Officer Full Name
-              </label>
-              <input
-                id="officer-full-name-input"
-                type="text"
-                disabled={isLoading}
-                className="invite-officer-input"
-                value={officerName}
-                onChange={(e) => {
-                  setErrorMessage(null);
-                  setOfficerName(e.target.value);
-                }}
-              />
-            </div>
-
-            <div className="invite-officer-group group-officer-email">
-              <label className="invite-officer-label" htmlFor="officer-email-input">
-                Officer Email Address
-              </label>
-              <input
-                id="officer-email-input"
-                type="email"
-                disabled={isLoading}
-                className="invite-officer-input"
-                value={officerEmail}
-                onChange={(e) => {
-                  setErrorMessage(null);
-                  setOfficerEmail(e.target.value);
-                }}
-              />
-            </div>
-
-            <div className="invite-officer-duties-section">
-              <span className="invite-officer-duties-label">Granted Chapter Duties</span>
-              <div className="invite-officer-duties-box" role="group" aria-label="Granted Chapter Duties">
-                <img
-                  src="/assets/kamunggay/assign-member-choices.png"
-                  alt=""
-                  aria-hidden="true"
-                  className="invite-officer-duties-img"
-                  draggable={false}
-                />
-                {DUTY_ITEMS.map(({ duty, slotClass }) => {
-                  const checked = selectedDuties.includes(duty);
-                  return (
-                    <button
-                      key={duty}
-                      type="button"
-                      role="checkbox"
-                      aria-checked={checked}
-                      aria-label={duty}
-                      className={`invite-duty-hitbox ${slotClass}`}
-                      onClick={() => toggleDuty(duty)}
-                    >
-                      {checked ? (
-                        <img
-                          src="/assets/kamunggay/duty-check-icon.png"
-                          alt=""
-                          aria-hidden="true"
-                          className="invite-duty-check-icon"
-                          draggable={false}
-                        />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="invite-officer-btn-stack">
-              <PhotoButton
-                type="submit"
-                disabled={isLoading}
-                unclickedSrc="/assets/kamunggay/proceed-btn.png"
-                clickedSrc="/assets/kamunggay/proceed-btn-clicked.png"
-                alt={isLoading ? 'Processing...' : 'Proceed'}
-              />
-              <PhotoButton
-                type="button"
-                disabled={isLoading}
-                unclickedSrc="/assets/kamunggay/return.png"
-                clickedSrc="/assets/kamunggay/return-when-clicked.png"
-                alt="Return"
-                onClick={() => {
-                  setErrorMessage(null);
-                  setStep('save-recovery');
-                }}
-              />
-            </div>
-          </form>
-        </section>
-      </div>
-    );
-  }
-
-  // Render Frame 5: Create Officer Account
-  if (step === 'create-officer') {
-    return (
-      <div className="kamunggay-viewport centered-mode">
-        <section
-          className="kamunggay-create-chapter-card card-create-officer"
-          aria-labelledby="create-officer-title"
-        >
-          <img
-            src="/assets/kamunggay/create-officer-icon.png"
-            alt=""
-            aria-hidden="true"
-            className="create-officer-icon"
-            draggable={false}
-          />
-          <h1 id="create-officer-title" className="create-officer-title">
-            Create Officer Account
-          </h1>
-
-          {errorMessage && (
-            <div className="kamunggay-auth-error" role="alert" aria-live="polite">
-              {errorMessage}
-            </div>
-          )}
-
-          <div className="create-officer-banner-wrap">
-            <img
-              src="/assets/kamunggay/create-officer-info-message.png"
-              alt="Officer invitation verified"
-              className="create-officer-banner"
-              draggable={false}
-            />
-            {chapterName || selectedDuties.length > 0 ? (
-              <span className="create-officer-banner-text">
-                {chapterName ? `${chapterName}` : 'YSP Chapter'}
-                {selectedDuties.length > 0 ? ` — ${selectedDuties.join(', ')}` : ''}
-              </span>
-            ) : null}
-          </div>
-
-          <form className="create-officer-form" onSubmit={handleCreateOfficerSubmit} noValidate>
-            <div className="create-officer-group group-co-name">
-              <label className="create-officer-label" htmlFor="co-full-name-input">
-                Full Name
-              </label>
-              <input
-                id="co-full-name-input"
-                type="text"
-                disabled={isLoading}
-                className="create-chapter-input"
-                value={officerFullName}
-                onChange={(e) => {
-                  setErrorMessage(null);
-                  setOfficerFullName(e.target.value);
-                }}
-              />
-            </div>
-
-            <div className="create-officer-group group-co-email">
-              <label className="create-officer-label" htmlFor="co-email-input">
-                Email
-              </label>
-              <input
-                id="co-email-input"
-                type="email"
-                disabled={isLoading}
-                className="create-chapter-input"
-                value={officerAccountEmail}
-                onChange={(e) => {
-                  setErrorMessage(null);
-                  setOfficerAccountEmail(e.target.value);
-                }}
-              />
-            </div>
-
-            <div className="create-officer-group group-co-password">
-              <label className="create-officer-label label-co-password" htmlFor="co-password-input">
-                Create Password (Min. 10 chars, uppercase &amp; numbers)
-              </label>
-              <input
-                id="co-password-input"
-                type="password"
-                maxLength={72}
-                disabled={isLoading}
-                className="create-chapter-input"
-                value={officerPassword}
-                onChange={(e) => {
-                  setErrorMessage(null);
-                  setOfficerPassword(e.target.value);
-                }}
-              />
-            </div>
-
-            <div className="create-officer-group group-co-confirm">
-              <label className="create-officer-label label-co-confirm" htmlFor="co-confirm-input">
-                Confirm Password
-              </label>
-              <input
-                id="co-confirm-input"
-                type="password"
-                maxLength={72}
-                disabled={isLoading}
-                className="create-chapter-input"
-                value={officerConfirmPassword}
-                onChange={(e) => {
-                  setErrorMessage(null);
-                  setOfficerConfirmPassword(e.target.value);
-                }}
-              />
-            </div>
-
-            <div className="create-officer-btn-stack">
-              <PhotoButton
-                type="submit"
-                disabled={isLoading}
-                unclickedSrc="/assets/kamunggay/save-setup-2fa-btn.png"
-                clickedSrc="/assets/kamunggay/save-setup-2fa-btn-clicked.png"
-                alt={isLoading ? 'Saving...' : 'Save & Setup 2FA'}
-              />
-              <PhotoButton
-                type="button"
-                disabled={isLoading}
-                unclickedSrc="/assets/kamunggay/return.png"
-                clickedSrc="/assets/kamunggay/return-when-clicked.png"
-                alt="Return"
-                onClick={() => {
-                  setErrorMessage(null);
-                  setStep('invite-officer');
-                }}
-              />
-            </div>
-          </form>
-        </section>
-      </div>
-    );
-  }
-
-  // Default Frame 1: Create Chapter & Appoint Chapter Head
   return (
-    <div className="kamunggay-viewport centered-mode">
-      <section className="kamunggay-create-chapter-card" aria-labelledby="create-chapter-title">
-        <h1 id="create-chapter-title" className="create-chapter-title">
-          Create Chapter &amp; Appoint Chapter Head
-        </h1>
-        <p className="create-chapter-subtitle">
-          Establish a new YSP Chapter entity and designate its founding
-          <br />
-          Chapter Head authority.
-        </p>
+    <BatCaveShell
+      soundEnabled={soundEnabled}
+      onToggleSound={setSoundEnabled}
+      toast={toast}
+      toastExiting={isExiting}
+      onDismissToast={dismissToast}
+    >
+      <main className="onboarding-stage">
+        {/* Frame 2 or Frame 6: Connect Google Authenticator */}
+        {(step === 'connect-auth' || step === 'officer-connect-auth') && (
+          <section
+            className="onboarding-card is-compact"
+            aria-labelledby="connect-auth-title"
+          >
+            <NavFlowHeader
+              headingId="connect-auth-title"
+              title="Connect Google Authenticator"
+              subtitle="Scan this QR code using Google Authenticator on your mobile phone."
+              disabled={isLoading}
+              onBack={() => {
+                playClickPen(soundEnabled);
+                changeStep(isOfficerConnect ? 'create-officer' : 'create-chapter');
+              }}
+            />
 
-        {errorMessage && (
-          <div className="kamunggay-auth-error" role="alert" aria-live="polite">
-            {errorMessage}
-          </div>
+            <div className="form-stack">
+              {errorMessage && (
+                <div className="callout-banner is-error" role="alert" aria-live="polite">
+                  <span className="callout-dot dot-error" aria-hidden="true" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              <div className="qr-glass-panel">
+                <div className="qr-white-frame">
+                  <img
+                    src={qrCodeUrl}
+                    alt="Scan QR code using Google Authenticator"
+                    className="qr-code-image"
+                    draggable={false}
+                  />
+                </div>
+                {activeSetupKey && (
+                  <div className="setup-key-meta">
+                    <span className="setup-key-label">Manual Base32 Setup Key</span>
+                    <span
+                      className="setup-key-chip"
+                      aria-label={`Manual setup key: ${activeSetupKey}`}
+                      onClick={() => handleCopySetupKey(activeSetupKey)}
+                    >
+                      {activeSetupKey}
+                      <button
+                        type="button"
+                        className={`btn-copy-key ${copiedKey ? 'copied' : ''}`}
+                        title="Copy setup key"
+                        aria-label="Copy setup key"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopySetupKey(activeSetupKey);
+                        }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12a1.5 1.5 0 01.439 1.061V16.5A1.5 1.5 0 0115.5 18h-7A1.5 1.5 0 017 16.5v-13z" />
+                          <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-.5h-6A2.5 2.5 0 014.5 13.5V6z" />
+                        </svg>
+                      </button>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="connect-auth-otp-0">
+                    <span>Enter 6-Digits Verification Code from App.</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <div className="otp-digit-grid" role="group" aria-label="6-Digit Verification Code">
+                  {activeOtp.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => {
+                        otpRefs.current[idx] = el;
+                      }}
+                      id={`connect-auth-otp-${idx}`}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      disabled={isLoading}
+                      className={`otp-digit-input ${invalidFields['otp'] ? 'input-invalid' : ''}`}
+                      aria-label={`Verification digit ${idx + 1}`}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(idx, e.target.value, activeOtp, setActiveOtp)}
+                      onKeyDown={(e) => handleOtpKeyDown(idx, e, activeOtp, isOfficerConnect)}
+                      onPaste={(e) => handleOtpPaste(e, setActiveOtp)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isLoading}
+                className="btn-batcave-primary"
+                aria-label={
+                  isLoading
+                    ? 'Verifying...'
+                    : activePaired
+                      ? 'Continue to Recovery Codes'
+                      : 'Confirm Pairing'
+                }
+                onClick={() => void handleConfirmPairing(isOfficerConnect)}
+              >
+                <span>
+                  {isLoading
+                    ? 'Verifying...'
+                    : activePaired
+                      ? 'Continue to Recovery Codes'
+                      : 'Confirm Pairing'}
+                </span>
+              </button>
+            </div>
+          </section>
         )}
 
-        <img
-          src="/assets/kamunggay/the-appointed-message.png"
-          alt="The appointed Chapter Head possesses exclusive operational authority to invite, assign duties, and revoke officer memberships in this chapter."
-          className="create-chapter-banner"
-          draggable={false}
-        />
+        {/* Frame 3 or Frame 7: Save Recovery Codes */}
+        {(step === 'save-recovery' || step === 'officer-save-recovery') && (
+          <section
+            className="onboarding-card is-compact"
+            aria-labelledby="save-recovery-title"
+          >
+            <NavFlowHeader
+              headingId="save-recovery-title"
+              title="Save Recovery Codes"
+              subtitle={
+                <>
+                  <span>Emergency backup codes for</span>
+                  {targetPerson ? <strong> {targetPerson}</strong> : null}
+                </>
+              }
+              disabled={isLoading}
+              onBack={() => {
+                playClickPen(soundEnabled);
+                changeStep(isOfficerRecovery ? 'officer-connect-auth' : 'connect-auth');
+              }}
+            />
 
-        <form className="create-chapter-form" onSubmit={handleChapterSubmit} noValidate>
-          <div className="create-chapter-row">
-            <div className="create-chapter-group group-chapter-name">
-              <label className="create-chapter-label" htmlFor="chapter-name-input">
-                Chapter Name
-              </label>
-              <input
-                id="chapter-name-input"
-                type="text"
-                disabled={isLoading}
-                className="create-chapter-input"
-                value={chapterName}
-                onChange={(e) => {
-                  setErrorMessage(null);
-                  setChapterName(e.target.value);
+            <div className="form-stack">
+              <div className="callout-banner">
+                <span className="callout-dot dot-warning" aria-hidden="true" />
+                <span>
+                  Each code is single-use. Store them in a secure password manager or offline safe.
+                </span>
+              </div>
+
+              <div className="recovery-codes-grid" aria-label="Emergency backup codes">
+                {activeCodes.map((code, idx) => (
+                  <div key={idx} className="recovery-code-cell" data-code={code}>
+                    <span>{code}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="auth-secondary-row">
+                <button
+                  type="button"
+                  className="btn-batcave-secondary"
+                  onClick={() => handleDownloadRecoveryTxt(targetPerson, activeCodes)}
+                >
+                  Download (.TXT)
+                </button>
+                <button
+                  type="button"
+                  className="btn-batcave-secondary"
+                  onClick={() => handleCopyRecoveryCodes(activeCodes)}
+                >
+                  Copy Codes
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="btn-batcave-primary"
+                onClick={() => {
+                  playApplePay(soundEnabled);
+                  if (isOfficerRecovery) {
+                    const verifiedData: VerifiedSessionData = {
+                      userName: officerFullName.trim() || officerName.trim() || headName.trim() || 'Verified Officer',
+                      authenticatedUnder:
+                        officerAccountEmail.trim() || officerEmail.trim() || headEmail.trim() || 'Verified Officer',
+                      tierSummary: selectedDuties.length > 0 ? selectedDuties.join(', ') : 'Chapter Operations',
+                      activeChapter: chapterName.trim()
+                        ? `${chapterName.trim()}${chapterCode.trim() ? ` (${chapterCode.trim()})` : ''}`
+                        : 'Assigned Chapter',
+                      grantedDuties:
+                        selectedDuties.length > 0 ? selectedDuties.join(', ') : 'Chapter Operations',
+                      governanceConstraints:
+                        'Requires dual-custody verification for transactions over PHP 50,000.00',
+                    };
+                    if (onCompleteSignup) {
+                      onCompleteSignup(verifiedData);
+                    } else {
+                      onNavigateToLogin?.();
+                    }
+                  } else {
+                    changeStep('invite-officer');
+                  }
                 }}
-              />
+              >
+                <span>Proceed</span>
+              </button>
             </div>
-            <div className="create-chapter-group group-chapter-code">
-              <label className="create-chapter-label label-chapter-code" htmlFor="chapter-code-input">
-                Chapter Code / Scope
-              </label>
-              <input
-                id="chapter-code-input"
-                type="text"
-                maxLength={32}
+          </section>
+        )}
+
+        {/* Frame 4: Invite New Chapter Officer */}
+        {step === 'invite-officer' && (
+          <section
+            className="onboarding-card"
+            aria-labelledby="invite-officer-title"
+          >
+            <NavFlowHeader
+              headingId="invite-officer-title"
+              title="Invite New Chapter Officer"
+              subtitle="Chapter Head authorizes membership and assigns canonical duties to a new officer."
+              disabled={isLoading}
+              onBack={() => {
+                playClickPen(soundEnabled);
+                changeStep('save-recovery');
+              }}
+            />
+
+            <form className="form-stack" onSubmit={handleInviteProceed} noValidate>
+              {errorMessage && (
+                <div className="callout-banner is-error" role="alert" aria-live="polite">
+                  <span className="callout-dot dot-error" aria-hidden="true" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              <div className="callout-banner">
+                <span className="callout-dot dot-info" aria-hidden="true" />
+                <span>
+                  Assigning membership to{' '}
+                  <strong>{chapterName.trim() || 'your chapter'}</strong>. Officers must use individual accounts.
+                </span>
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="officer-full-name-input">
+                    <span>Officer Full Name</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <input
+                  id="officer-full-name-input"
+                  type="text"
+                  disabled={isLoading}
+                  className={`form-control ${invalidFields['officerName'] ? 'input-invalid' : ''}`}
+                  placeholder="Enter full name"
+                  value={officerName}
+                  onChange={(e) => {
+                    clearInvalid('officerName');
+                    setOfficerName(e.target.value);
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="officer-email-input">
+                    <span>Officer Email Address</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <input
+                  id="officer-email-input"
+                  type="email"
+                  disabled={isLoading}
+                  className={`form-control ${invalidFields['officerEmail'] ? 'input-invalid' : ''}`}
+                  placeholder="name@example.org"
+                  value={officerEmail}
+                  onChange={(e) => {
+                    clearInvalid('officerEmail');
+                    setOfficerEmail(e.target.value);
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <span className="form-label">
+                    Granted Chapter Duties<span className="required-star" aria-hidden="true">*</span>
+                  </span>
+                </div>
+                <div
+                  className={`duties-checkbox-grid ${invalidFields['duties'] ? 'is-invalid' : ''}`}
+                  role="group"
+                  aria-label="Granted Chapter Duties"
+                >
+                  {DUTY_ITEMS.map((duty) => {
+                    const checked = selectedDuties.includes(duty);
+                    return (
+                      <button
+                        key={duty}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={checked}
+                        aria-label={duty}
+                        className={`duty-checkbox-card ${checked ? 'is-checked' : ''}`}
+                        onPointerEnter={(e) => handleGuardedHover(e, soundEnabled)}
+                        onClick={() => toggleDuty(duty)}
+                      >
+                        <span className="duty-check-box" aria-hidden="true">
+                          {checked ? (
+                            <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor">
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          ) : null}
+                        </span>
+                        <span>{duty}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                type="submit"
                 disabled={isLoading}
-                className="create-chapter-input"
-                value={chapterCode}
-                onChange={(e) => {
-                  setErrorMessage(null);
-                  setChapterCode(e.target.value.toUpperCase());
-                }}
-              />
-            </div>
-          </div>
+                className="btn-batcave-primary"
+                aria-label={isLoading ? 'Processing...' : 'Proceed'}
+              >
+                <span>{isLoading ? 'Processing...' : 'Proceed'}</span>
+              </button>
+            </form>
+          </section>
+        )}
 
-          <div className="create-chapter-group">
-            <label className="create-chapter-label" htmlFor="head-name-input">
-              Founding Chapter Head Full Name
-            </label>
-            <input
-              id="head-name-input"
-              type="text"
+        {/* Frame 5: Create Officer Account */}
+        {step === 'create-officer' && (
+          <section
+            className="onboarding-card"
+            aria-labelledby="create-officer-title"
+          >
+            <NavFlowHeader
+              headingId="create-officer-title"
+              title="Create Officer Account"
+              subtitle="Complete personal credentials to activate delegated chapter duties."
               disabled={isLoading}
-              className="create-chapter-input"
-              value={headName}
-              onChange={(e) => {
-                setErrorMessage(null);
-                setHeadName(e.target.value);
+              onBack={() => {
+                playClickPen(soundEnabled);
+                changeStep('invite-officer');
               }}
             />
-          </div>
 
-          <div className="create-chapter-group">
-            <label className="create-chapter-label label-compact" htmlFor="head-email-input">
-              Official Head Email Address
-            </label>
-            <input
-              id="head-email-input"
-              type="email"
+            <form className="form-stack" onSubmit={handleCreateOfficerSubmit} noValidate>
+              {errorMessage && (
+                <div className="callout-banner is-error" role="alert" aria-live="polite">
+                  <span className="callout-dot dot-error" aria-hidden="true" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              <div className="callout-banner">
+                <span className="callout-dot dot-info" aria-hidden="true" />
+                <span>
+                  Authorized under <strong>{chapterName.trim() || 'your chapter'}</strong>
+                  {selectedDuties.length > 0 ? ` — ${selectedDuties.join(', ')}` : ''}
+                </span>
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="co-full-name-input">
+                    <span>Full Name</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <input
+                  id="co-full-name-input"
+                  type="text"
+                  disabled={isLoading}
+                  className={`form-control ${invalidFields['officerFullName'] ? 'input-invalid' : ''}`}
+                  placeholder="Enter full name"
+                  value={officerFullName}
+                  onChange={(e) => {
+                    clearInvalid('officerFullName');
+                    setOfficerFullName(e.target.value);
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="co-email-input">
+                    <span>Email</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <input
+                  id="co-email-input"
+                  type="email"
+                  disabled={isLoading}
+                  className={`form-control ${invalidFields['officerAccountEmail'] ? 'input-invalid' : ''}`}
+                  placeholder="name@example.org"
+                  value={officerAccountEmail}
+                  onChange={(e) => {
+                    clearInvalid('officerAccountEmail');
+                    setOfficerAccountEmail(e.target.value);
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="co-password-input">
+                    <span>Create Password (Min. 10 chars, uppercase &amp; numbers)</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <div className="input-control-wrap">
+                  <input
+                    id="co-password-input"
+                    type={showOfficerPassword ? 'text' : 'password'}
+                    maxLength={72}
+                    disabled={isLoading}
+                    className={`form-control has-toggle ${invalidFields['officerPassword'] ? 'input-invalid' : ''}`}
+                    placeholder="Minimum 10 characters"
+                    value={officerPassword}
+                    onChange={(e) => {
+                      clearInvalid('officerPassword');
+                      setOfficerPassword(e.target.value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    aria-label={showOfficerPassword ? 'Hide officer password' : 'Show officer password'}
+                    onClick={() => {
+                      playClickPen(soundEnabled);
+                      setShowOfficerPassword((prev) => !prev);
+                    }}
+                  >
+                    {showOfficerPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="co-confirm-input">
+                    <span>Confirm Password</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <div className="input-control-wrap">
+                  <input
+                    id="co-confirm-input"
+                    type={showOfficerConfirm ? 'text' : 'password'}
+                    maxLength={72}
+                    disabled={isLoading}
+                    className={`form-control has-toggle ${invalidFields['officerConfirm'] ? 'input-invalid' : ''}`}
+                    placeholder="Re-enter password"
+                    value={officerConfirmPassword}
+                    onChange={(e) => {
+                      clearInvalid('officerConfirm');
+                      setOfficerConfirmPassword(e.target.value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    aria-label={showOfficerConfirm ? 'Hide confirmed password' : 'Show confirmed password'}
+                    onClick={() => {
+                      playClickPen(soundEnabled);
+                      setShowOfficerConfirm((prev) => !prev);
+                    }}
+                  >
+                    {showOfficerConfirm ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="btn-batcave-primary"
+                aria-label={isLoading ? 'Saving...' : 'Save & Setup 2FA'}
+              >
+                <span>{isLoading ? 'Saving...' : 'Save & Setup 2FA'}</span>
+              </button>
+            </form>
+          </section>
+        )}
+
+        {/* Default Frame 1: Create Chapter & Appoint Chapter Head */}
+        {step === 'create-chapter' && (
+          <section
+            className="onboarding-card"
+            aria-labelledby="create-chapter-title"
+          >
+            <NavFlowHeader
+              headingId="create-chapter-title"
+              title="Create Chapter & Appoint Chapter Head"
+              subtitle="Establish your chapter entity and designate its founding Chapter Head."
               disabled={isLoading}
-              className="create-chapter-input"
-              value={headEmail}
-              onChange={(e) => {
-                setErrorMessage(null);
-                setHeadEmail(e.target.value);
+              onBack={() => {
+                playClickPen(soundEnabled);
+                onNavigateToLogin?.();
               }}
             />
-          </div>
 
-          <div className="create-chapter-group group-last-input">
-            <label className="create-chapter-label label-compact" htmlFor="initial-password-input">
-              Create Initial Master Password
-            </label>
-            <input
-              id="initial-password-input"
-              type="password"
-              maxLength={72}
-              disabled={isLoading}
-              className="create-chapter-input"
-              value={initialPassword}
-              onChange={(e) => {
-                setErrorMessage(null);
-                setInitialPassword(e.target.value);
-              }}
-            />
-          </div>
+            <form className="form-stack" onSubmit={handleChapterSubmit} noValidate>
+              {errorMessage && (
+                <div className="callout-banner is-error" role="alert" aria-live="polite">
+                  <span className="callout-dot dot-error" aria-hidden="true" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
 
-          <div className="create-chapter-btn-stack">
-            <PhotoButton
-              type="submit"
-              disabled={isLoading}
-              unclickedSrc="/assets/kamunggay/save-and-invite-officers.png"
-              clickedSrc="/assets/kamunggay/save-and-invite-officers-when-clicked.png"
-              alt={isLoading ? 'Establishing...' : 'Save & Invite Officers'}
-            />
-            <PhotoButton
-              type="button"
-              disabled={isLoading}
-              unclickedSrc="/assets/kamunggay/return.png"
-              clickedSrc="/assets/kamunggay/return-when-clicked.png"
-              alt="Return"
-              onClick={onNavigateToLogin}
-            />
-          </div>
-        </form>
-      </section>
-    </div>
+              <div className="callout-banner">
+                <span className="callout-dot dot-info" aria-hidden="true" />
+                <span>
+                  The appointed Chapter Head possesses authority to invite, assign duties, and manage officer memberships in this chapter.
+                </span>
+              </div>
+
+              <div className="onboarding-row-2col">
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label className="form-label" htmlFor="chapter-name-input">
+                      <span>Chapter Name</span>
+                      <span className="required-star" aria-hidden="true">*</span>
+                    </label>
+                  </div>
+                  <input
+                    id="chapter-name-input"
+                    type="text"
+                    disabled={isLoading}
+                    className={`form-control ${invalidFields['chapterName'] ? 'input-invalid' : ''}`}
+                    placeholder="Enter your chapter name"
+                    value={chapterName}
+                    onChange={(e) => {
+                      const nextName = e.target.value;
+                      clearInvalid('chapterName');
+                      setChapterName(nextName);
+                      if (!hasCustomChapterCode) {
+                        clearInvalid('chapterCode');
+                        setChapterCode(generateChapterCode(nextName));
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <div className="form-label-row">
+                    <label className="form-label" htmlFor="chapter-code-input">
+                      <span>Chapter Code</span>
+                      <span className="required-star" aria-hidden="true">*</span>
+                    </label>
+                    {hasCustomChapterCode && chapterName.trim() ? (
+                      <button
+                        type="button"
+                        className="chapter-code-auto-btn"
+                        disabled={isLoading}
+                        onClick={() => {
+                          playClickPen(soundEnabled);
+                          clearInvalid('chapterCode');
+                          setHasCustomChapterCode(false);
+                          setChapterCode(generateChapterCode(chapterName));
+                        }}
+                      >
+                        Auto
+                      </button>
+                    ) : (
+                      <span className="form-label-hint">Auto</span>
+                    )}
+                  </div>
+                  <input
+                    id="chapter-code-input"
+                    type="text"
+                    maxLength={32}
+                    disabled={isLoading}
+                    className={`form-control is-mono ${invalidFields['chapterCode'] ? 'input-invalid' : ''}`}
+                    placeholder="Auto-generated"
+                    value={chapterCode}
+                    onChange={(e) => {
+                      const nextCode = e.target.value.toUpperCase();
+                      clearInvalid('chapterCode');
+                      setChapterCode(nextCode);
+                      setHasCustomChapterCode(nextCode.trim().length > 0);
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="head-name-input">
+                    <span>Founding Chapter Head Full Name</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <input
+                  id="head-name-input"
+                  type="text"
+                  disabled={isLoading}
+                  className={`form-control ${invalidFields['headName'] ? 'input-invalid' : ''}`}
+                  placeholder="Enter full name"
+                  value={headName}
+                  onChange={(e) => {
+                    clearInvalid('headName');
+                    setHeadName(e.target.value);
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="head-email-input">
+                    <span>Official Head Email Address</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <input
+                  id="head-email-input"
+                  type="email"
+                  disabled={isLoading}
+                  className={`form-control ${invalidFields['headEmail'] ? 'input-invalid' : ''}`}
+                  placeholder="name@example.org"
+                  value={headEmail}
+                  onChange={(e) => {
+                    clearInvalid('headEmail');
+                    setHeadEmail(e.target.value);
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-row">
+                  <label className="form-label" htmlFor="initial-password-input">
+                    <span>Create Initial Master Password (Min. 10 chars, uppercase &amp; numbers)</span>
+                    <span className="required-star" aria-hidden="true">*</span>
+                  </label>
+                </div>
+                <div className="input-control-wrap">
+                  <input
+                    id="initial-password-input"
+                    type={showInitialPassword ? 'text' : 'password'}
+                    maxLength={72}
+                    disabled={isLoading}
+                    className={`form-control has-toggle ${invalidFields['initialPassword'] ? 'input-invalid' : ''}`}
+                    placeholder="Minimum 10 characters"
+                    value={initialPassword}
+                    onChange={(e) => {
+                      clearInvalid('initialPassword');
+                      setInitialPassword(e.target.value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    aria-label={showInitialPassword ? 'Hide master password' : 'Show master password'}
+                    onClick={() => {
+                      playClickPen(soundEnabled);
+                      setShowInitialPassword((prev) => !prev);
+                    }}
+                  >
+                    {showInitialPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="btn-batcave-primary"
+                aria-label={isLoading ? 'Establishing...' : 'Save & Invite Officers'}
+              >
+                <span>{isLoading ? 'Establishing...' : 'Save & Invite Officers'}</span>
+              </button>
+            </form>
+          </section>
+        )}
+      </main>
+    </BatCaveShell>
   );
 }
