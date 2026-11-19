@@ -2,13 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EvidenceBinding;
+use App\Models\IdempotencyRecord;
 use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
 use App\Models\OpeningCount;
 use App\Models\OpeningCountLine;
+use App\Models\OpeningRecordHistory;
 use App\Models\OpeningRm;
+use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Inventory\Participants\PrepareOpeningInventoryParticipant;
 use App\Services\Inventory\StockViewQueryService;
+use App\Services\Notifications\DomainNotificationOutboxService;
+use App\Services\Shared\CanonicalJson;
+use App\Services\Shared\ReferenceSequenceService;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,8 +26,15 @@ class OpeningInventoryController extends Controller
 {
     public function __construct(
         protected PrepareOpeningInventoryParticipant $openingParticipant,
-        protected StockViewQueryService $stockViewService
-    ) {}
+        protected StockViewQueryService $stockViewService,
+        protected ?CheckEvidenceBindingParticipant $checkEvidenceBinding = null,
+        protected ?ReferenceSequenceService $referenceSequences = null,
+        protected ?DomainNotificationOutboxService $outbox = null
+    ) {
+        $this->checkEvidenceBinding = $checkEvidenceBinding ?? app(CheckEvidenceBindingParticipant::class);
+        $this->referenceSequences = $referenceSequences ?? app(ReferenceSequenceService::class);
+        $this->outbox = $outbox ?? app(DomainNotificationOutboxService::class);
+    }
 
     // ==========================================
     // IPC ENDPOINTS
@@ -52,19 +67,24 @@ class OpeningInventoryController extends Controller
     {
         $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
 
-        $ipc = OpeningCount::create([
-            'id' => (string) Str::uuid(),
-            'chapter_id' => $chapterId,
-            'status' => 'DRAFT',
-            'notes' => $request->input('notes'),
-            'revision' => 1,
-            'material_version' => 1,
-            'created_by' => $userId,
-        ]);
+        return DB::transaction(function () use ($chapterId, $userId, $request) {
+            $ipc = OpeningCount::create([
+                'id' => (string) Str::uuid(),
+                'chapter_id' => $chapterId,
+                'status' => 'DRAFT',
+                'notes' => $request->input('notes'),
+                'revision' => 1,
+                'material_version' => 1,
+                'created_by' => $userId,
+            ]);
 
-        return response()->json([
-            'data' => $ipc->load('lines'),
-        ], 201, ['Cache-Control' => 'no-store']);
+            $this->recordOpeningHistory('IPC', $ipc->id, $chapterId, 1, 1, 'created', $userId, $ipc->toArray());
+            $this->outbox->recordIntent('stage1.ipc.changed.v1', $chapterId, $ipc->id, $ipc->revision, $ipc->material_version);
+
+            return response()->json([
+                'data' => $ipc->load('lines'),
+            ], 201, ['Cache-Control' => 'no-store']);
+        });
     }
 
     /**
@@ -115,8 +135,7 @@ class OpeningInventoryController extends Controller
         $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'counter-user';
         $linesInput = $request->input('lines', []);
 
-        return DB::transaction(function () use ($ipc, $userId, $linesInput) {
-            // Delete existing lines for this counter on this IPC
+        return DB::transaction(function () use ($ipc, $chapterId, $userId, $linesInput) {
             OpeningCountLine::where('ipc_id', $ipc->id)
                 ->where('counter_user_id', $userId)
                 ->delete();
@@ -138,8 +157,12 @@ class OpeningInventoryController extends Controller
             $ipc->revision += 1;
             $ipc->save();
 
+            $fresh = $ipc->fresh(['lines']);
+            $this->recordOpeningHistory('IPC', $ipc->id, $chapterId, $ipc->revision, $ipc->material_version, 'count_saved', $userId, $fresh->toArray());
+            $this->outbox->recordIntent('stage1.ipc.changed.v1', $chapterId, $ipc->id, $ipc->revision, $ipc->material_version);
+
             return response()->json([
-                'data' => $ipc->fresh(['lines']),
+                'data' => $fresh,
             ], 200, ['Cache-Control' => 'no-store']);
         });
     }
@@ -175,15 +198,27 @@ class OpeningInventoryController extends Controller
             ], 422, ['Cache-Control' => 'no-store']);
         }
 
-        $ipc->status = 'AWAITING_AUTHORIZATION';
-        $ipc->submitted_at = now();
-        $ipc->ipc_number = $ipc->ipc_number ?? 'IPC-'.date('Ymd').'-'.strtoupper(substr($ipc->id, 0, 6));
-        $ipc->revision += 1;
-        $ipc->save();
+        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
 
-        return response()->json([
-            'data' => $ipc,
-        ], 200, ['Cache-Control' => 'no-store']);
+        return DB::transaction(function () use ($ipc, $chapterId, $userId) {
+            if (! $ipc->ipc_number) {
+                $seq = $this->referenceSequences->nextReference($chapterId, 'IPC');
+                $ipc->ipc_number = $seq['reference'];
+            }
+
+            $ipc->status = 'AWAITING_AUTHORIZATION';
+            $ipc->submitted_at = now();
+            $ipc->revision += 1;
+            $ipc->save();
+
+            $fresh = $ipc->fresh(['lines']);
+            $this->recordOpeningHistory('IPC', $ipc->id, $chapterId, $ipc->revision, $ipc->material_version, 'submitted', $userId, $fresh->toArray());
+            $this->outbox->recordIntent('stage1.ipc.changed.v1', $chapterId, $ipc->id, $ipc->revision, $ipc->material_version);
+
+            return response()->json([
+                'data' => $fresh,
+            ], 200, ['Cache-Control' => 'no-store']);
+        });
     }
 
     /**
@@ -211,9 +246,8 @@ class OpeningInventoryController extends Controller
         }
 
         $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'authorizer-user';
-        $role = strtoupper($request->input('role', $request->input('duty_code', $request->input('slot', ''))));
+        $role = strtoupper((string) $request->input('role', $request->input('duty_code', $request->input('slot', ''))));
 
-        // If direct dual payload provided
         $headUser = $request->input('authorized_head_by');
         $financeUser = $request->input('authorized_finance_by');
 
@@ -224,7 +258,6 @@ class OpeningInventoryController extends Controller
             ], 422, ['Cache-Control' => 'no-store']);
         }
 
-        // Determine which slot is being authorized
         if ($role === 'HEAD' || str_contains($role, 'HEAD')) {
             if ($ipc->authorized_finance_by && $ipc->authorized_finance_by === $userId) {
                 return response()->json([
@@ -244,7 +277,6 @@ class OpeningInventoryController extends Controller
             $ipc->authorized_finance_by = $userId;
             $ipc->authorized_finance_signature = $request->input('signature', 'SIG-FINANCE-'.$userId);
         } else {
-            // If role not explicitly specified, fill head first, then finance
             if (! $ipc->authorized_head_by) {
                 $ipc->authorized_head_by = $userId;
                 $ipc->authorized_head_signature = 'SIG-HEAD-'.$userId;
@@ -260,18 +292,22 @@ class OpeningInventoryController extends Controller
             }
         }
 
-        // If both slots filled, transition to AUTHORIZED
-        if ($ipc->authorized_head_by && $ipc->authorized_finance_by) {
-            $ipc->status = 'AUTHORIZED';
-            $ipc->authorized_at = now();
-        }
+        return DB::transaction(function () use ($ipc, $chapterId, $userId) {
+            if ($ipc->authorized_head_by && $ipc->authorized_finance_by) {
+                $ipc->status = 'AUTHORIZED';
+                $ipc->authorized_at = now();
+            }
 
-        $ipc->revision += 1;
-        $ipc->save();
+            $ipc->revision += 1;
+            $ipc->save();
 
-        return response()->json([
-            'data' => $ipc,
-        ], 200, ['Cache-Control' => 'no-store']);
+            $this->recordOpeningHistory('IPC', $ipc->id, $chapterId, $ipc->revision, $ipc->material_version, 'authorized', $userId, $ipc->toArray());
+            $this->outbox->recordIntent('stage1.ipc.changed.v1', $chapterId, $ipc->id, $ipc->revision, $ipc->material_version);
+
+            return response()->json([
+                'data' => $ipc,
+            ], 200, ['Cache-Control' => 'no-store']);
+        });
     }
 
     /**
@@ -281,16 +317,23 @@ class OpeningInventoryController extends Controller
     {
         $ipc = OpeningCount::where('chapter_id', $chapterId)->where('id', $ipcId)->first();
         if (! $ipc) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
-        $ipc->notes = $request->input('notes', $ipc->notes);
-        $ipc->revision += 1;
-        $ipc->material_version += 1;
-        $ipc->status = 'DRAFT';
-        $ipc->save();
+        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
 
-        return response()->json(['data' => $ipc], 200, ['Cache-Control' => 'no-store']);
+        return DB::transaction(function () use ($ipc, $request, $chapterId, $userId) {
+            $ipc->notes = $request->input('notes', $ipc->notes);
+            $ipc->revision += 1;
+            $ipc->material_version += 1;
+            $ipc->status = 'DRAFT';
+            $ipc->save();
+
+            $this->recordOpeningHistory('IPC', $ipc->id, $chapterId, $ipc->revision, $ipc->material_version, 'replaced', $userId, $ipc->toArray());
+            $this->outbox->recordIntent('stage1.ipc.changed.v1', $chapterId, $ipc->id, $ipc->revision, $ipc->material_version);
+
+            return response()->json(['data' => $ipc], 200, ['Cache-Control' => 'no-store']);
+        });
     }
 
     /**
@@ -300,10 +343,20 @@ class OpeningInventoryController extends Controller
     {
         $ipc = OpeningCount::where('chapter_id', $chapterId)->where('id', $ipcId)->first();
         if (! $ipc) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
-        return response()->json(['data' => [$ipc]], 200, ['Cache-Control' => 'no-store']);
+        $history = OpeningRecordHistory::where('chapter_id', $chapterId)
+            ->where('record_type', 'IPC')
+            ->where('record_id', $ipcId)
+            ->orderBy('revision')
+            ->get();
+
+        if ($history->isEmpty()) {
+            return response()->json(['data' => [$ipc]], 200, ['Cache-Control' => 'no-store']);
+        }
+
+        return response()->json(['data' => $history], 200, ['Cache-Control' => 'no-store']);
     }
 
     /**
@@ -313,10 +366,25 @@ class OpeningInventoryController extends Controller
     {
         $ipc = OpeningCount::where('chapter_id', $chapterId)->where('id', $ipcId)->first();
         if (! $ipc) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
-        return response()->json(['data' => $ipc], 200, ['Cache-Control' => 'no-store']);
+        $revInt = (int) $revision;
+        $record = OpeningRecordHistory::where('chapter_id', $chapterId)
+            ->where('record_type', 'IPC')
+            ->where('record_id', $ipcId)
+            ->where('revision', $revInt)
+            ->first();
+
+        if (! $record) {
+            if ($revInt === (int) $ipc->revision && OpeningRecordHistory::where('record_type', 'IPC')->where('record_id', $ipcId)->doesntExist()) {
+                return response()->json(['data' => $ipc], 200, ['Cache-Control' => 'no-store']);
+            }
+
+            return response()->json(['error' => 'REVISION_NOT_FOUND', 'message' => "IPC revision {$revision} not found."], 404, ['Cache-Control' => 'no-store']);
+        }
+
+        return response()->json(['data' => $record->snapshot_json], 200, ['Cache-Control' => 'no-store']);
     }
 
     /**
@@ -326,10 +394,10 @@ class OpeningInventoryController extends Controller
     {
         $ipc = OpeningCount::where('chapter_id', $chapterId)->where('id', $ipcId)->first();
         if (! $ipc) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
-        $rms = OpeningRm::where('ipc_id', $ipcId)->get();
+        $rms = OpeningRm::where('chapter_id', $chapterId)->where('ipc_id', $ipcId)->get();
 
         return response()->json(['data' => ['rms' => $rms]], 200, ['Cache-Control' => 'no-store']);
     }
@@ -341,13 +409,17 @@ class OpeningInventoryController extends Controller
     {
         $ipc = OpeningCount::where('chapter_id', $chapterId)->where('id', $ipcId)->with('lines')->first();
         if (! $ipc) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
+
+        $escapedNumber = e($ipc->ipc_number ?? 'UNSUBMITTED');
+        $escapedStatus = e($ipc->status);
+        $escapedNotes = e($ipc->notes ?? '');
 
         return response()->json([
             'data' => [
                 'ipc' => $ipc,
-                'printable_html' => "<div><h3>Inventory Physical Count</h3><p>IPC: {$ipc->ipc_number}</p></div>",
+                'printable_html' => "<div><h3>Inventory Physical Count</h3><p>IPC: {$escapedNumber}</p><p>Status: {$escapedStatus}</p><p>{$escapedNotes}</p></div>",
             ],
         ], 200, ['Cache-Control' => 'no-store']);
     }
@@ -380,7 +452,6 @@ class OpeningInventoryController extends Controller
      */
     public function createOpeningRm(Request $request, string $chapterId): JsonResponse
     {
-        // Enforce chapter singleton baseline fence
         $existingPosted = OpeningRm::where('chapter_id', $chapterId)->where('status', 'POSTED')->first();
         if ($existingPosted) {
             return response()->json([
@@ -405,19 +476,26 @@ class OpeningInventoryController extends Controller
             ], 404, ['Cache-Control' => 'no-store']);
         }
 
-        $rm = OpeningRm::create([
-            'id' => (string) Str::uuid(),
-            'chapter_id' => $chapterId,
-            'ipc_id' => $ipc->id,
-            'status' => 'DRAFT',
-            'notes' => $request->input('notes'),
-            'revision' => 1,
-            'material_version' => 1,
-        ]);
+        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
 
-        return response()->json([
-            'data' => $rm,
-        ], 201, ['Cache-Control' => 'no-store']);
+        return DB::transaction(function () use ($chapterId, $ipc, $request, $userId) {
+            $rm = OpeningRm::create([
+                'id' => (string) Str::uuid(),
+                'chapter_id' => $chapterId,
+                'ipc_id' => $ipc->id,
+                'status' => 'DRAFT',
+                'notes' => $request->input('notes'),
+                'revision' => 1,
+                'material_version' => 1,
+            ]);
+
+            $this->recordOpeningHistory('OPENING_RM', $rm->id, $chapterId, 1, 1, 'created', $userId, $rm->toArray());
+            $this->outbox->recordIntent('stage1.opening-rm.changed.v1', $chapterId, $rm->id, $rm->revision, $rm->material_version);
+
+            return response()->json([
+                'data' => $rm,
+            ], 201, ['Cache-Control' => 'no-store']);
+        });
     }
 
     /**
@@ -467,20 +545,25 @@ class OpeningInventoryController extends Controller
         $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'inspector-user';
         $lines = $request->input('lines', []);
 
-        $rm->status = 'INSPECTED';
-        $rm->inspector_user_id = $userId;
-        $rm->lines_data = $lines;
-        $rm->inspection_data = [
-            'inspector_id' => $userId,
-            'inspected_at' => now()->toIso8601String(),
-            'notes' => $request->input('inspection_notes', 'All counted lines inspected.'),
-        ];
-        $rm->revision += 1;
-        $rm->save();
+        return DB::transaction(function () use ($rm, $chapterId, $userId, $lines, $request) {
+            $rm->status = 'INSPECTED';
+            $rm->inspector_user_id = $userId;
+            $rm->lines_data = $lines;
+            $rm->inspection_data = [
+                'inspector_id' => $userId,
+                'inspected_at' => now()->toIso8601String(),
+                'notes' => $request->input('inspection_notes', 'All counted lines inspected.'),
+            ];
+            $rm->revision += 1;
+            $rm->save();
 
-        return response()->json([
-            'data' => $rm,
-        ], 200, ['Cache-Control' => 'no-store']);
+            $this->recordOpeningHistory('OPENING_RM', $rm->id, $chapterId, $rm->revision, $rm->material_version, 'inspected', $userId, $rm->toArray());
+            $this->outbox->recordIntent('stage1.opening-rm.changed.v1', $chapterId, $rm->id, $rm->revision, $rm->material_version);
+
+            return response()->json([
+                'data' => $rm,
+            ], 200, ['Cache-Control' => 'no-store']);
+        });
     }
 
     /**
@@ -506,16 +589,60 @@ class OpeningInventoryController extends Controller
             ], 409, ['Cache-Control' => 'no-store']);
         }
 
-        $bindingId = $request->input('evidence_binding_id', $request->input('acknowledgment_id', (string) Str::uuid()));
+        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'inspector-user';
+        $evidenceId = $request->input('evidence_id') ?? $request->input('evidence.evidence_id');
+        $bindingId = $request->input('evidence_binding_id') ?? $request->input('acknowledgment_id');
 
-        $rm->status = 'EVIDENCE_MATCHED';
-        $rm->evidence_binding_id = $bindingId;
-        $rm->revision += 1;
-        $rm->save();
+        $existingBinding = $bindingId
+            ? EvidenceBinding::where('id', $bindingId)->where('chapter_id', $chapterId)->first()
+            : null;
 
-        return response()->json([
-            'data' => $rm,
-        ], 200, ['Cache-Control' => 'no-store']);
+        if ($evidenceId || $existingBinding) {
+            try {
+                $checkLines = [];
+                foreach ((array) ($rm->lines_data ?? []) as $line) {
+                    $checkLines[] = [
+                        'variant_id' => $line['variant_id'] ?? '',
+                        'unit_id' => $line['unit_id'] ?? '',
+                        'quantity' => $line['accepted_quantity'] ?? $line['quantity'] ?? 0,
+                    ];
+                }
+
+                $check = $this->checkEvidenceBinding->check([
+                    'chapter_id' => $chapterId,
+                    'evidence_id' => $evidenceId,
+                    'binding_id' => $bindingId,
+                    'source_type' => $existingBinding?->source_type ?? 'opening_receipt',
+                    'source_id' => $existingBinding?->source_id ?? $rm->id,
+                    'recipient_name' => $request->input('recipient_name', $existingBinding?->recipient_name ?? $rm->inspector_user_id ?? $userId),
+                    'lines' => $checkLines,
+                ], strict: true);
+
+                $bindingId = $check['acknowledgment_id'] ?? $bindingId;
+            } catch (DomainException $e) {
+                return response()->json([
+                    'error' => 'EVIDENCE_MISMATCH',
+                    'code' => 'evidence_mismatch',
+                    'message' => $e->getMessage(),
+                ], 409, ['Cache-Control' => 'no-store']);
+            }
+        } elseif (! $bindingId) {
+            $bindingId = (string) Str::uuid();
+        }
+
+        return DB::transaction(function () use ($rm, $chapterId, $bindingId, $userId) {
+            $rm->status = 'EVIDENCE_MATCHED';
+            $rm->evidence_binding_id = $bindingId;
+            $rm->revision += 1;
+            $rm->save();
+
+            $this->recordOpeningHistory('OPENING_RM', $rm->id, $chapterId, $rm->revision, $rm->material_version, 'evidence_matched', $userId, $rm->toArray());
+            $this->outbox->recordIntent('stage1.opening-rm.changed.v1', $chapterId, $rm->id, $rm->revision, $rm->material_version);
+
+            return response()->json([
+                'data' => $rm,
+            ], 200, ['Cache-Control' => 'no-store']);
+        });
     }
 
     /**
@@ -524,7 +651,6 @@ class OpeningInventoryController extends Controller
      */
     public function postOpeningRm(Request $request, string $chapterId, string $rmId): JsonResponse
     {
-        // Concurrency & Chapter Singleton Fence Check
         $alreadyPosted = OpeningRm::where('chapter_id', $chapterId)
             ->where('status', 'POSTED')
             ->exists();
@@ -555,9 +681,11 @@ class OpeningInventoryController extends Controller
         }
 
         $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'posting-officer';
+        $actionKey = $request->header('Idempotency-Key')
+            ?? $request->header('X-Action-Key')
+            ?? $request->header('X-Idempotency-Key');
 
-        return DB::transaction(function () use ($chapterId, $rm, $userId) {
-            // Locking recheck inside transaction
+        return DB::transaction(function () use ($chapterId, $rm, $userId, $actionKey, $request) {
             $postedCheck = OpeningRm::where('chapter_id', $chapterId)
                 ->where('status', 'POSTED')
                 ->lockForUpdate()
@@ -570,34 +698,72 @@ class OpeningInventoryController extends Controller
                 ], 409, ['Cache-Control' => 'no-store']);
             }
 
-            // Commit physical stock movements via participant
+            if (! $rm->rm_number) {
+                $seq = $this->referenceSequences->nextReference($chapterId, 'RM');
+                $rm->rm_number = $seq['reference'];
+            }
+
             $posting = $this->openingParticipant->execute(
                 chapterId: $chapterId,
                 openingRm: $rm,
                 actorId: $userId
             );
 
-            $rmNumber = $rm->rm_number ?? 'CEB-RM-'.date('Ymd').'-'.strtoupper(substr($rm->id, 0, 6));
-
             $rm->status = 'POSTED';
-            $rm->rm_number = $rmNumber;
             $rm->posted_at = now();
             $rm->revision += 1;
             $rm->save();
 
-            // Link IPC status
             $ipc = $rm->ipc;
             if ($ipc) {
                 $ipc->status = 'POSTED';
+                $ipc->revision += 1;
                 $ipc->save();
+                $this->recordOpeningHistory('IPC', $ipc->id, $chapterId, $ipc->revision, $ipc->material_version, 'posted', $userId, $ipc->toArray());
+                $this->outbox->recordIntent('stage1.ipc.changed.v1', $chapterId, $ipc->id, $ipc->revision, $ipc->material_version);
             }
 
-            return response()->json([
+            $this->recordOpeningHistory('OPENING_RM', $rm->id, $chapterId, $rm->revision, $rm->material_version, 'posted', $userId, $rm->toArray());
+            $this->outbox->recordIntent('stage1.opening-rm.changed.v1', $chapterId, $rm->id, $rm->revision, $rm->material_version);
+            $this->outbox->recordIntent('stage1.opening-baseline.changed.v1', $chapterId, $chapterId, $rm->revision, $rm->material_version);
+
+            $lots = InventoryLot::where('chapter_id', $chapterId)->where('source_id', $rm->id)->get();
+            foreach ($lots as $lot) {
+                $this->outbox->recordIntent('stage1.stock-lot.changed.v1', $chapterId, $lot->id, $lot->stock_version, $lot->material_version);
+            }
+
+            $responseBody = [
                 'data' => [
                     'record' => $rm,
                     'posting' => $posting,
                 ],
-            ], 200, ['Cache-Control' => 'no-store']);
+            ];
+
+            if ($actionKey) {
+                $rawContent = $request->getContent();
+                $decoded = $rawContent !== '' ? json_decode($rawContent, true) : null;
+                $payloadHash = (json_last_error() === JSON_ERROR_NONE && is_array($decoded))
+                    ? CanonicalJson::sha256($decoded)
+                    : hash('sha256', $rawContent);
+
+                IdempotencyRecord::firstOrCreate(
+                    ['key' => $actionKey],
+                    [
+                        'id' => (string) Str::uuid(),
+                        'chapter_id' => $chapterId,
+                        'user_id' => $userId,
+                        'operation_name' => 'postOpeningRm',
+                        'resource_id' => $rm->id,
+                        'state' => 'committed',
+                        'payload_hash' => $payloadHash,
+                        'response_code' => 200,
+                        'response_body' => json_encode($responseBody),
+                        'expires_at' => now()->addDays(7),
+                    ]
+                );
+            }
+
+            return response()->json($responseBody, 200, ['Cache-Control' => 'no-store']);
         });
     }
 
@@ -635,7 +801,7 @@ class OpeningInventoryController extends Controller
     {
         $rm = OpeningRm::where('chapter_id', $chapterId)->where('id', $rmId)->first();
         if (! $rm) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
         $movements = InventoryMovement::where('chapter_id', $chapterId)
@@ -654,7 +820,7 @@ class OpeningInventoryController extends Controller
     {
         $rm = OpeningRm::where('chapter_id', $chapterId)->where('id', $rmId)->first();
         if (! $rm) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
         $findings = InventoryLot::where('chapter_id', $chapterId)
@@ -673,16 +839,23 @@ class OpeningInventoryController extends Controller
     {
         $rm = OpeningRm::where('chapter_id', $chapterId)->where('id', $rmId)->first();
         if (! $rm) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
-        $rm->notes = $request->input('notes', $rm->notes);
-        $rm->revision += 1;
-        $rm->material_version += 1;
-        $rm->status = 'DRAFT';
-        $rm->save();
+        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
 
-        return response()->json(['data' => $rm], 200, ['Cache-Control' => 'no-store']);
+        return DB::transaction(function () use ($rm, $request, $chapterId, $userId) {
+            $rm->notes = $request->input('notes', $rm->notes);
+            $rm->revision += 1;
+            $rm->material_version += 1;
+            $rm->status = 'DRAFT';
+            $rm->save();
+
+            $this->recordOpeningHistory('OPENING_RM', $rm->id, $chapterId, $rm->revision, $rm->material_version, 'replaced', $userId, $rm->toArray());
+            $this->outbox->recordIntent('stage1.opening-rm.changed.v1', $chapterId, $rm->id, $rm->revision, $rm->material_version);
+
+            return response()->json(['data' => $rm], 200, ['Cache-Control' => 'no-store']);
+        });
     }
 
     /**
@@ -692,10 +865,20 @@ class OpeningInventoryController extends Controller
     {
         $rm = OpeningRm::where('chapter_id', $chapterId)->where('id', $rmId)->first();
         if (! $rm) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
-        return response()->json(['data' => [$rm]], 200, ['Cache-Control' => 'no-store']);
+        $history = OpeningRecordHistory::where('chapter_id', $chapterId)
+            ->where('record_type', 'OPENING_RM')
+            ->where('record_id', $rmId)
+            ->orderBy('revision')
+            ->get();
+
+        if ($history->isEmpty()) {
+            return response()->json(['data' => [$rm]], 200, ['Cache-Control' => 'no-store']);
+        }
+
+        return response()->json(['data' => $history], 200, ['Cache-Control' => 'no-store']);
     }
 
     /**
@@ -705,10 +888,25 @@ class OpeningInventoryController extends Controller
     {
         $rm = OpeningRm::where('chapter_id', $chapterId)->where('id', $rmId)->first();
         if (! $rm) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
-        return response()->json(['data' => $rm], 200, ['Cache-Control' => 'no-store']);
+        $revInt = (int) $revision;
+        $record = OpeningRecordHistory::where('chapter_id', $chapterId)
+            ->where('record_type', 'OPENING_RM')
+            ->where('record_id', $rmId)
+            ->where('revision', $revInt)
+            ->first();
+
+        if (! $record) {
+            if ($revInt === (int) $rm->revision && OpeningRecordHistory::where('record_type', 'OPENING_RM')->where('record_id', $rmId)->doesntExist()) {
+                return response()->json(['data' => $rm], 200, ['Cache-Control' => 'no-store']);
+            }
+
+            return response()->json(['error' => 'REVISION_NOT_FOUND', 'message' => "Opening RM revision {$revision} not found."], 404, ['Cache-Control' => 'no-store']);
+        }
+
+        return response()->json(['data' => $record->snapshot_json], 200, ['Cache-Control' => 'no-store']);
     }
 
     /**
@@ -718,7 +916,7 @@ class OpeningInventoryController extends Controller
     {
         $rm = OpeningRm::where('chapter_id', $chapterId)->where('id', $rmId)->first();
         if (! $rm) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
         return response()->json(['data' => ['ipc_id' => $rm->ipc_id]], 200, ['Cache-Control' => 'no-store']);
@@ -731,13 +929,17 @@ class OpeningInventoryController extends Controller
     {
         $rm = OpeningRm::where('chapter_id', $chapterId)->where('id', $rmId)->first();
         if (! $rm) {
-            return response()->json(['error' => 'NOT_FOUND'], 404);
+            return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
+
+        $escapedNumber = e($rm->rm_number ?? 'UNPOSTED');
+        $escapedStatus = e($rm->status);
+        $escapedNotes = e($rm->notes ?? '');
 
         return response()->json([
             'data' => [
                 'rm' => $rm,
-                'printable_html' => "<div><h3>Opening Receiving Manifest</h3><p>RM: {$rm->rm_number}</p></div>",
+                'printable_html' => "<div><h3>Opening Receiving Manifest</h3><p>RM: {$escapedNumber}</p><p>Status: {$escapedStatus}</p><p>{$escapedNotes}</p></div>",
             ],
         ], 200, ['Cache-Control' => 'no-store']);
     }
@@ -747,13 +949,45 @@ class OpeningInventoryController extends Controller
      */
     public function findOpeningActionByKey(Request $request, string $chapterId): JsonResponse
     {
-        $key = $request->header('X-Action-Key') ?? $request->query('action_key');
+        $key = $request->header('X-Action-Key') ?? $request->query('action_key') ?? $request->query('key');
+        if (! $key) {
+            return response()->json([
+                'error' => ['code' => 'missing_key', 'message' => 'action_key is required.'],
+            ], 400, ['Cache-Control' => 'no-store']);
+        }
+
+        $userId = $request->header('X-User-Id') ?? session('user_id');
+        $query = IdempotencyRecord::where('chapter_id', $chapterId)->where('key', $key);
+        if ($userId) {
+            $query->where(function ($q) use ($userId) {
+                $q->where('user_id', $userId)->orWhereNull('user_id');
+            });
+        }
+
+        $record = $query->first();
+        if (! $record) {
+            return response()->json([
+                'error' => ['code' => 'resource_not_found', 'message' => 'Opening action key not found.'],
+            ], 404, ['Cache-Control' => 'no-store']);
+        }
+
+        if ($record->state === 'in_flight') {
+            return response()->json([
+                'error' => ['code' => 'operation_in_flight', 'message' => 'Opening action is still in flight.'],
+            ], 409, ['Cache-Control' => 'no-store']);
+        }
+
+        $decoded = json_decode($record->response_body, true);
 
         return response()->json([
             'data' => [
-                'action_key' => $key,
-                'chapter_id' => $chapterId,
-                'status' => 'completed',
+                'operation_id' => $record->id,
+                'action_key' => $record->key,
+                'chapter_id' => $record->chapter_id,
+                'operation_name' => $record->operation_name,
+                'status' => $record->state ?? 'committed',
+                'http_status' => $record->response_code,
+                'result' => $decoded['data'] ?? $decoded ?? $record->response_body,
             ],
         ], 200, ['Cache-Control' => 'no-store']);
     }
@@ -763,12 +997,57 @@ class OpeningInventoryController extends Controller
      */
     public function readOpeningAction(Request $request, string $chapterId, string $operationId): JsonResponse
     {
+        $userId = $request->header('X-User-Id') ?? session('user_id');
+        $query = IdempotencyRecord::where('chapter_id', $chapterId)->where('id', $operationId);
+        if ($userId) {
+            $query->where(function ($q) use ($userId) {
+                $q->where('user_id', $userId)->orWhereNull('user_id');
+            });
+        }
+
+        $record = $query->first();
+        if (! $record) {
+            return response()->json([
+                'error' => ['code' => 'resource_not_found', 'message' => 'Opening action not found.'],
+            ], 404, ['Cache-Control' => 'no-store']);
+        }
+
+        $decoded = json_decode($record->response_body, true);
+
         return response()->json([
             'data' => [
-                'operation_id' => $operationId,
-                'chapter_id' => $chapterId,
-                'status' => 'completed',
+                'operation_id' => $record->id,
+                'action_key' => $record->key,
+                'chapter_id' => $record->chapter_id,
+                'operation_name' => $record->operation_name,
+                'status' => $record->state ?? 'committed',
+                'http_status' => $record->response_code,
+                'result' => $decoded['data'] ?? $decoded ?? $record->response_body,
             ],
         ], 200, ['Cache-Control' => 'no-store']);
+    }
+
+    private function recordOpeningHistory(
+        string $recordType,
+        string $recordId,
+        string $chapterId,
+        int $revision,
+        int $materialVersion,
+        string $eventType,
+        ?string $actorUserId,
+        array $snapshot
+    ): void {
+        OpeningRecordHistory::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $chapterId,
+            'record_type' => $recordType,
+            'record_id' => $recordId,
+            'revision' => $revision,
+            'material_version' => $materialVersion,
+            'event_type' => $eventType,
+            'actor_user_id' => $actorUserId,
+            'snapshot_json' => $snapshot,
+            'created_at' => now(),
+        ]);
     }
 }

@@ -12,7 +12,11 @@ class IdempotencyRecord extends Model
 
     protected $guarded = [];
 
-    protected $casts = [
-        'expires_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'response_code' => 'integer',
+            'expires_at' => 'datetime',
+        ];
+    }
 }

@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\CatalogueVariant;
 use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
+use App\Models\LotRestrictionAssignment;
+use App\Models\StockHold;
 use App\Services\Inventory\StockViewQueryService;
+use App\Services\Shared\BcMath;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -63,6 +66,7 @@ class StockQueryController extends Controller
                 'observed_at' => now()->toIso8601String(),
                 'views' => $cleanViews,
                 'views_are_additive' => false,
+                'blocked_reserved' => $views['blocked_reserved']['quantity'],
                 'item_usable_stockroom_on_hand' => $cleanViews['usable_stockroom_on_hand']['quantity'],
                 'approved_rop' => null,
                 'approved_target' => null,
@@ -133,6 +137,7 @@ class StockQueryController extends Controller
                 'observed_at' => now()->toIso8601String(),
                 'views' => $cleanViews,
                 'views_are_additive' => false,
+                'blocked_reserved' => $views['blocked_reserved']['quantity'],
                 'item_usable_stockroom_on_hand' => $cleanViews['usable_stockroom_on_hand']['quantity'],
                 'approved_rop' => null,
                 'approved_target' => null,
@@ -149,7 +154,8 @@ class StockQueryController extends Controller
      */
     public function listStockLots(Request $request, string $chapterId): JsonResponse
     {
-        $query = InventoryLot::where('chapter_id', $chapterId);
+        $query = InventoryLot::where('chapter_id', $chapterId)
+            ->with(['variant', 'unit']);
 
         if ($request->has('variant_id')) {
             $query->where('variant_id', $request->query('variant_id'));
@@ -180,6 +186,7 @@ class StockQueryController extends Controller
     {
         $lot = InventoryLot::where('chapter_id', $chapterId)
             ->where('id', $stockLotId)
+            ->with(['variant', 'unit'])
             ->first();
 
         if (! $lot) {
@@ -201,6 +208,7 @@ class StockQueryController extends Controller
     {
         $lot = InventoryLot::where('chapter_id', $chapterId)
             ->where('id', $stockLotId)
+            ->with(['variant', 'unit'])
             ->first();
 
         if (! $lot) {
@@ -211,6 +219,52 @@ class StockQueryController extends Controller
         }
 
         $isUsable = strtoupper($lot->condition) === 'USABLE' && strtoupper($lot->custody) === 'STOCKROOM';
+        $blockers = [];
+        if (! $isUsable) {
+            $blockers[] = 'unsupported_condition';
+        }
+
+        $activeHolds = StockHold::where('chapter_id', $chapterId)
+            ->where('status', 'active')
+            ->whereHas('ranges', fn ($q) => $q->where('lot_id', $lot->id))
+            ->with(['ranges' => fn ($q) => $q->where('lot_id', $lot->id)])
+            ->get();
+
+        $activeHoldIds = $activeHolds->pluck('id')->values()->all();
+        $holdIntervals = [];
+        foreach ($activeHolds as $hold) {
+            foreach ($hold->ranges as $range) {
+                $holdIntervals[] = [
+                    'offset' => $range->offset_quantity,
+                    'quantity' => $range->quantity,
+                ];
+            }
+        }
+        $blockedQty = BcMath::intervalUnionLength($holdIntervals);
+
+        if (! empty($activeHoldIds)) {
+            $blockers[] = 'active_stock_hold';
+        }
+
+        $restrictions = LotRestrictionAssignment::where('lot_id', $lot->id)
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'policy_id' => $r->policy_id,
+                'restriction_code' => $r->restriction_code,
+                'assigned_at' => $r->assigned_at?->toIso8601ZuluString(),
+            ])
+            ->values()
+            ->all();
+
+        if (! empty($restrictions)) {
+            $blockers[] = 'lot_restricted';
+        }
+
+        $onHand = BcMath::str($lot->quantity_on_hand);
+        $eligible = $isUsable
+            && empty($restrictions)
+            && BcMath::comp($blockedQty, $onHand) < 0;
 
         return response()->json([
             'data' => [
@@ -218,10 +272,14 @@ class StockQueryController extends Controller
                 'chapter_id' => $chapterId,
                 'stock_version' => $lot->stock_version,
                 'lot_material_version' => $lot->material_version,
-                'variant_material_version' => 1,
+                'variant_material_version' => (int) ($lot->variant?->material_version ?? 1),
+                'unit_material_version' => (int) ($lot->unit?->material_version ?? 1),
                 'unit_id' => $lot->unit_id,
-                'eligible' => $isUsable,
-                'blockers' => $isUsable ? [] : ['unsupported_condition'],
+                'eligible' => $eligible,
+                'active_hold_ids' => $activeHoldIds,
+                'blocked_quantity' => BcMath::format($blockedQty, $lot->quantity_scale ?? 0),
+                'restrictions' => $restrictions,
+                'blockers' => array_values(array_unique($blockers)),
             ],
         ], 200, ['Cache-Control' => 'no-store']);
     }
@@ -246,6 +304,7 @@ class StockQueryController extends Controller
             ->where('variant_id', $lot->variant_id)
             ->where('unit_id', $lot->unit_id)
             ->where('location_id', $lot->location_id)
+            ->where('condition', $lot->condition)
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -257,31 +316,39 @@ class StockQueryController extends Controller
     protected function formatStockLot(InventoryLot $lot): array
     {
         $scale = $lot->quantity_scale ?? 0;
-        $qty = (float) $lot->quantity_on_hand;
-        $formattedQty = $scale === 0 ? (string) ((int) round($qty)) : number_format($qty, $scale, '.', '');
+        $formattedQty = BcMath::format($lot->quantity_on_hand, $scale);
 
         return [
             'id' => $lot->id,
             'chapter_id' => $lot->chapter_id,
+            'basis_segment_id' => $lot->basis_segment_id ?? $lot->id,
             'material_version' => $lot->material_version,
             'stock_version' => $lot->stock_version,
             'variant_id' => $lot->variant_id,
-            'variant_material_version' => 1,
+            'variant_material_version' => (int) ($lot->variant?->material_version ?? 1),
             'item_id' => $lot->variant?->item_id ?? $lot->variant_id,
             'unit_id' => $lot->unit_id,
-            'unit_material_version' => 1,
+            'unit_material_version' => (int) ($lot->unit?->material_version ?? 1),
             'quantity_scale' => $scale,
-            'historical_variant_label' => $lot->historical_variant_label ?: 'Variant Label',
+            'historical_variant_label' => $lot->historical_variant_label ?: ($lot->variant?->label ?? $lot->variant?->name ?? 'Variant Label'),
             'location_id' => $lot->location_id,
             'custodian_id' => $lot->custodian_user_id,
             'condition' => strtolower($lot->condition),
             'custody' => strtolower($lot->custody),
             'source' => [
-                'type' => 'IPC',
-                'reference' => 'OPENING-BASELINE',
+                'type' => $lot->source_type ?? 'IPC',
+                'id' => $lot->source_id,
+                'reference' => $lot->source_reference ?? 'OPENING-BASELINE',
             ],
             'quantity' => $formattedQty,
-            'segments' => $lot->segments ?? [],
+            'original_quantity' => BcMath::format($lot->original_quantity ?? $lot->quantity_on_hand, $scale),
+            'segments' => $lot->segments ?? [
+                [
+                    'basis_segment_id' => $lot->basis_segment_id ?? $lot->id,
+                    'offset_quantity' => '0',
+                    'quantity' => $formattedQty,
+                ],
+            ],
             'created_at' => $lot->created_at?->toIso8601String() ?? now()->toIso8601String(),
             'observed_at' => now()->toIso8601String(),
         ];

@@ -5,6 +5,9 @@ namespace Tests\Feature\Stage1A;
 use App\Models\ActualIssue;
 use App\Models\ActualIssueLine;
 use App\Models\Buyer;
+use App\Models\Chapter;
+use App\Models\ChapterMembership;
+use App\Models\DutyGrant;
 use App\Models\EvidenceRecord;
 use App\Models\Handover;
 use App\Models\HandoverLine;
@@ -13,6 +16,7 @@ use App\Models\IdempotencyRecord;
 use App\Models\IssueReconciliation;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderLine;
+use App\Models\User;
 use App\Services\Delivery\HandoverCoordinatorService;
 use App\Services\Delivery\SalesReleaseService;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
@@ -30,6 +34,57 @@ class HandoverInfrastructureTest extends TestCase
     private string $otherChapterId = 'chap-davao-02';
 
     private string $userId = 'user-officer-01';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Chapter::create([
+            'id' => $this->chapterId,
+            'code' => 'CEB-HO',
+            'name' => 'Cebu Chapter',
+            'status' => 'live',
+            'version' => 1,
+        ]);
+
+        Chapter::create([
+            'id' => $this->otherChapterId,
+            'code' => 'DVO-HO',
+            'name' => 'Davao Chapter',
+            'status' => 'live',
+            'version' => 1,
+        ]);
+
+        User::create([
+            'id' => $this->userId,
+            'public_id' => 'officer@example.invalid',
+            'name' => 'Handover Officer',
+            'email' => 'officer@example.invalid',
+            'password_hash' => hash('sha256', 'Password123!'),
+            'status' => 'active',
+            'version' => 1,
+        ]);
+
+        ChapterMembership::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $this->userId,
+            'membership_status' => 'active',
+            'version' => 1,
+        ]);
+
+        DutyGrant::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $this->userId,
+            'duty_code' => 'INVENTORY_CUSTODIAN',
+            'status' => 'active',
+            'valid_from' => now()->subDay(),
+            'version' => 1,
+        ]);
+
+        $this->withHeader('X-User-Id', $this->userId);
+    }
 
     /**
      * Test 1: Table creation and model relationships.

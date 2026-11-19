@@ -3,10 +3,15 @@
 namespace Tests\Feature\Stage1A;
 
 use App\Models\Buyer;
+use App\Models\Chapter;
+use App\Models\ChapterMembership;
+use App\Models\DutyGrant;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderLine;
 use App\Models\SalesOrderRevision;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class SalesOrderIntakeTest extends TestCase
@@ -14,6 +19,51 @@ class SalesOrderIntakeTest extends TestCase
     use RefreshDatabase;
 
     private string $chapterId = 'chap-cebu-01';
+
+    private string $userId = 'user-sales-01';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Chapter::create([
+            'id' => $this->chapterId,
+            'code' => 'CEB-01',
+            'name' => 'Cebu Chapter',
+            'status' => 'live',
+            'version' => 1,
+        ]);
+
+        User::create([
+            'id' => $this->userId,
+            'public_id' => 'sales@example.invalid',
+            'name' => 'Sales Officer',
+            'email' => 'sales@example.invalid',
+            'password_hash' => hash('sha256', 'Password123!'),
+            'status' => 'active',
+            'version' => 1,
+        ]);
+
+        ChapterMembership::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $this->userId,
+            'membership_status' => 'active',
+            'version' => 1,
+        ]);
+
+        DutyGrant::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $this->userId,
+            'duty_code' => 'SALES_OFFICER',
+            'status' => 'active',
+            'valid_from' => now()->subDay(),
+            'version' => 1,
+        ]);
+
+        $this->withHeader('X-User-Id', $this->userId);
+    }
 
     public function test_can_create_and_list_buyers(): void
     {
@@ -539,5 +589,48 @@ class SalesOrderIntakeTest extends TestCase
         $approvedBuyer1 = $this->getJson("/api/v1/chapters/{$this->chapterId}/sales-orders?status=APPROVED&buyer_id={$buyer1->id}");
         $approvedBuyer1->assertStatus(200)->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.so_number', 'SO-FILTER-02');
+    }
+
+    public function test_allow_self_approval_bypass_rejected_and_active_alternate_grant_allowed(): void
+    {
+        $buyer = Buyer::create([
+            'chapter_id' => $this->chapterId,
+            'name' => 'Alternate Authority Parish',
+        ]);
+
+        $so = SalesOrder::create([
+            'chapter_id' => $this->chapterId,
+            'so_number' => 'SO-ALT-01',
+            'buyer_id' => $buyer->id,
+            'order_date' => '2026-11-02',
+            'target_delivery_date' => '2026-11-15',
+            'status' => 'SUBMITTED',
+            'created_by' => $this->userId,
+        ]);
+
+        // Passing allow_self_approval=true without an active alternate DutyGrant still fails 403
+        $this->postJson("/api/v1/chapters/{$this->chapterId}/sales-orders/{$so->id}/review", [
+            'action' => 'APPROVE',
+            'reviewer_id' => $this->userId,
+            'allow_self_approval' => true,
+        ])->assertStatus(403);
+
+        // Grant active alternate authority DutyGrant -> self-approval succeeds
+        DutyGrant::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $this->userId,
+            'duty_code' => 'SALES_REVIEWER',
+            'status' => 'active',
+            'is_alternate' => true,
+            'valid_from' => now()->subDay(),
+            'version' => 1,
+        ]);
+
+        $this->postJson("/api/v1/chapters/{$this->chapterId}/sales-orders/{$so->id}/review", [
+            'action' => 'APPROVE',
+            'reviewer_id' => $this->userId,
+        ])->assertStatus(200)
+            ->assertJsonPath('data.status', 'APPROVED');
     }
 }

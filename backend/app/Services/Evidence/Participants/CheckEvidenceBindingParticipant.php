@@ -98,6 +98,30 @@ class CheckEvidenceBindingParticipant
             return ['outcome' => 'missing', 'reason' => 'acknowledgment_missing'];
         }
 
+        if (($binding->status ?? 'active') === 'invalidated') {
+            if ($strict) {
+                throw new DomainException("Evidence binding '{$binding->id}' has been invalidated after material revision.");
+            }
+
+            return ['outcome' => 'mismatched', 'reason' => 'snapshot_changed'];
+        }
+
+        if (! empty($sourceType) && $binding->source_type !== $sourceType) {
+            if ($strict) {
+                throw new DomainException("Evidence binding source_type mismatch: expected '{$binding->source_type}', got '{$sourceType}'.");
+            }
+
+            return ['outcome' => 'mismatched', 'reason' => 'target_mismatch'];
+        }
+
+        if (! empty($sourceId) && $binding->source_id !== $sourceId) {
+            if ($strict) {
+                throw new DomainException("Evidence binding source_id mismatch: expected '{$binding->source_id}', got '{$sourceId}'.");
+            }
+
+            return ['outcome' => 'mismatched', 'reason' => 'target_mismatch'];
+        }
+
         // Validate recipient match
         if ($binding->recipient_name !== $recipientName) {
             if ($strict) {
@@ -186,6 +210,7 @@ class CheckEvidenceBindingParticipant
         $binding->source_id = $sourceId;
         $binding->recipient_name = $recipientName;
         $binding->item_fingerprint = $fingerprint;
+        $binding->status = 'active';
         $binding->save();
 
         return $binding;

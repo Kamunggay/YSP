@@ -21,21 +21,27 @@ class InventoryLot extends Model
         'unit_id',
         'location_id',
         'lot_code',
+        'basis_segment_id',
         'condition',
         'custody',
         'custodian_user_id',
         'quantity_on_hand',
+        'original_quantity',
         'quantity_scale',
         'segments',
         'stock_version',
         'historical_variant_label',
         'material_version',
+        'source_type',
+        'source_id',
+        'source_reference',
     ];
 
     protected function casts(): array
     {
         return [
-            'quantity_on_hand' => 'decimal:4',
+            'quantity_on_hand' => 'decimal:6',
+            'original_quantity' => 'decimal:6',
             'quantity_scale' => 'integer',
             'segments' => 'array',
             'stock_version' => 'integer',

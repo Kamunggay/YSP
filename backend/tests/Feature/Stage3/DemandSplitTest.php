@@ -3,12 +3,17 @@
 namespace Tests\Feature\Stage3;
 
 use App\Models\Buyer;
+use App\Models\Chapter;
+use App\Models\ChapterMembership;
+use App\Models\DutyGrant;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderLine;
 use App\Models\SalesOrderRevision;
 use App\Models\StockReservation;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DemandSplitTest extends TestCase
@@ -16,6 +21,61 @@ class DemandSplitTest extends TestCase
     use RefreshDatabase;
 
     private string $chapterId = 'chap-cebu-01';
+
+    private string $userId = 'user-sales-split-01';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Chapter::create([
+            'id' => $this->chapterId,
+            'code' => 'CEB-SPLIT',
+            'name' => 'Cebu Chapter',
+            'status' => 'live',
+            'version' => 1,
+        ]);
+
+        Chapter::create([
+            'id' => 'chap-manila-02',
+            'code' => 'MNL-02',
+            'name' => 'Manila Chapter',
+            'status' => 'live',
+            'version' => 1,
+        ]);
+
+        User::create([
+            'id' => $this->userId,
+            'public_id' => 'sales.split@example.invalid',
+            'name' => 'Sales Officer',
+            'email' => 'sales.split@example.invalid',
+            'password_hash' => hash('sha256', 'Password123!'),
+            'status' => 'active',
+            'version' => 1,
+        ]);
+
+        foreach ([$this->chapterId, 'chap-manila-02'] as $cid) {
+            ChapterMembership::create([
+                'id' => (string) Str::uuid(),
+                'chapter_id' => $cid,
+                'user_id' => $this->userId,
+                'membership_status' => 'active',
+                'version' => 1,
+            ]);
+
+            DutyGrant::create([
+                'id' => (string) Str::uuid(),
+                'chapter_id' => $cid,
+                'user_id' => $this->userId,
+                'duty_code' => 'SALES_OFFICER',
+                'status' => 'active',
+                'valid_from' => Carbon::parse('2020-01-01 00:00:00'),
+                'version' => 1,
+            ]);
+        }
+
+        $this->withHeader('X-User-Id', $this->userId);
+    }
 
     private function createSalesOrderWithLines(array $lines): SalesOrder
     {

@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DutyGrant;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderLine;
 use App\Models\SalesOrderRevision;
+use App\Models\StockReservation;
+use App\Services\Shared\BcMath;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -152,7 +155,6 @@ class SalesOrderController extends Controller
         $validated = $request->validate([
             'action' => ['required', 'string', 'in:APPROVE,RETURN,CANCEL'],
             'reviewer_id' => ['required', 'string'],
-            'allow_self_approval' => ['nullable', 'boolean'],
             'rejection_reason' => ['nullable', 'string', 'required_if:action,RETURN'],
         ]);
 
@@ -168,13 +170,32 @@ class SalesOrderController extends Controller
 
         $action = $validated['action'];
         $reviewerId = $validated['reviewer_id'];
-        $allowSelfApproval = $request->boolean('allow_self_approval');
 
         if ($action === 'APPROVE') {
-            if ($salesOrder->created_by === $reviewerId && ! $allowSelfApproval) {
-                return response()->json([
-                    'message' => 'Self-approval is forbidden under GOV-05 and SO-02.',
-                ], 403);
+            if ($salesOrder->created_by === $reviewerId) {
+                $now = now();
+                $hasAlternateGrant = DutyGrant::where('chapter_id', $chapterId)
+                    ->where('user_id', $reviewerId)
+                    ->where('status', 'active')
+                    ->where('is_alternate', true)
+                    ->whereIn('duty_code', ['SALES_REVIEWER', 'SALES_OFFICER', 'CHAPTER_HEAD'])
+                    ->get()
+                    ->contains(function (DutyGrant $grant) use ($now): bool {
+                        if ($grant->valid_from && $grant->valid_from->isAfter($now)) {
+                            return false;
+                        }
+                        if ($grant->valid_until && $grant->valid_until->isBefore($now)) {
+                            return false;
+                        }
+
+                        return true;
+                    });
+
+                if (! $hasAlternateGrant) {
+                    return response()->json([
+                        'message' => 'Self-approval is forbidden under GOV-05 and SO-02.',
+                    ], 403);
+                }
             }
 
             $salesOrder->update([
@@ -309,17 +330,81 @@ class SalesOrderController extends Controller
         }
 
         DB::transaction(function () use ($salesOrder, $request) {
+            $salesOrder->loadMissing('lines');
+            $actorId = $request->header('X-User-Id') ?? session('user_id') ?? $salesOrder->created_by;
+
+            SalesOrderRevision::create([
+                'so_id' => $salesOrder->id,
+                'version' => $salesOrder->version,
+                'snapshot' => $salesOrder->toArray(),
+                'reason' => $request->input('reason'),
+                'created_by' => $actorId,
+            ]);
+
+            $activeReservations = StockReservation::where('chapter_id', $salesOrder->chapter_id)
+                ->where('source_type', 'SO')
+                ->where('source_id', $salesOrder->id)
+                ->where('status', 'ACTIVE')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($activeReservations as $res) {
+                $activeAmt = BcMath::str($res->active_quantity ?? $res->quantity);
+                $res->status = 'RELEASED';
+                $res->state = 'released';
+                $res->released_quantity = BcMath::add($res->released_quantity ?? '0', $activeAmt);
+                $res->active_quantity = BcMath::str('0');
+                $res->quantity = BcMath::str('0');
+                $res->save();
+            }
+
             $salesOrder->update([
                 'status' => 'CANCELLED',
                 'rejection_reason' => $request->input('reason', $salesOrder->rejection_reason),
             ]);
-            $salesOrder->lines()->update(['line_status' => 'CANCELLED']);
+            $salesOrder->lines()->update([
+                'line_status' => 'CANCELLED',
+                'reserved_quantity' => 0,
+            ]);
         });
 
         return response()->json([
             'data' => $salesOrder->fresh(['buyer', 'lines']),
             'message' => 'Sales order cancelled successfully.',
         ]);
+    }
+
+    public function print(string $chapterId, string $id): JsonResponse
+    {
+        $salesOrder = SalesOrder::with(['buyer', 'lines'])
+            ->where('chapter_id', $chapterId)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $escapedNumber = e($salesOrder->so_number);
+        $escapedStatus = e($salesOrder->status);
+        $escapedBuyer = e($salesOrder->buyer?->name ?? 'N/A');
+
+        $rowsHtml = '';
+        foreach ($salesOrder->lines as $line) {
+            $rowsHtml .= '<tr><td>'.e($line->variant_id).'</td><td>'.e($line->unit_id).'</td><td>'.e((string) $line->ordered_quantity).'</td></tr>';
+        }
+
+        $html = "<div class='so-print-view' data-status='{$escapedStatus}'>"
+            .'<h3>Sales Order</h3>'
+            ."<p>SO: {$escapedNumber}</p>"
+            ."<p>Status: {$escapedStatus}</p>"
+            ."<p>Buyer: {$escapedBuyer}</p>"
+            ."<table><tbody>{$rowsHtml}</tbody></table>"
+            .'</div>';
+
+        return response()->json([
+            'data' => [
+                'sales_order' => $salesOrder,
+                'printable_html' => $html,
+                'printed_at' => now()->toIso8601ZuluString(),
+            ],
+        ], 200, ['Cache-Control' => 'no-store']);
     }
 
     private function generateSoNumber(string $chapterId): string

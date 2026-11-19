@@ -13,13 +13,22 @@ class ActualIssueLine extends Model
 
     protected $guarded = [];
 
-    protected $casts = [
-        'allocated_quantity' => 'decimal:4',
-        'issued_quantity' => 'decimal:4',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'allocated_quantity' => 'decimal:6',
+            'issued_quantity' => 'decimal:6',
+            'offset_quantity' => 'decimal:6',
+        ];
+    }
 
     public function actualIssue(): BelongsTo
     {
         return $this->belongsTo(ActualIssue::class, 'actual_issue_id');
+    }
+
+    public function reservation(): BelongsTo
+    {
+        return $this->belongsTo(StockReservation::class, 'reservation_id');
     }
 }

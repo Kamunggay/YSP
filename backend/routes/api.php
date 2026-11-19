@@ -7,9 +7,11 @@ use App\Http\Controllers\CatalogueController;
 use App\Http\Controllers\ChapterAccessController;
 use App\Http\Controllers\HandoverController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\InternalRfController;
 use App\Http\Controllers\NotificationSubscriptionController;
 use App\Http\Controllers\OpeningInventoryController;
 use App\Http\Controllers\PaperEvidenceController;
+use App\Http\Controllers\ReservationAndHoldController;
 use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\StockQueryController;
@@ -33,7 +35,7 @@ Route::prefix('v1/auth')->group(function () {
     Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeSession']);
 });
 
-// ================= CHAPTER CONTEXT =================
+// ================= SECURED CHAPTER CONTEXT =================
 Route::prefix('v1/chapters/{chapter_id}')->middleware(['chapter.context'])->group(function () {
     // Context & Access
     Route::get('/context', [ChapterAccessController::class, 'context']);
@@ -47,6 +49,10 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware(['chapter.context'])->grou
     Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'replace'])->middleware(['idempotent']);
     Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion']);
     Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment']);
+
+    // Catalogue Operations (static paths before dynamic {operation_id})
+    Route::get('/catalogue/operations/by-key', [CatalogueController::class, 'findOperationByKey']);
+    Route::get('/catalogue/operations/{operation_id}', [CatalogueController::class, 'readOperation']);
 
     // Catalogue Read
     Route::get('/catalogue/items', [CatalogueController::class, 'listItems']);
@@ -68,9 +74,6 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware(['chapter.context'])->grou
     Route::get('/catalogue/locations/{resource_id}', [CatalogueController::class, 'readLocation']);
     Route::get('/catalogue/locations/{resource_id}/history', [CatalogueController::class, 'listLocationHistory']);
     Route::get('/catalogue/locations/{resource_id}/versions/{material_version}', [CatalogueController::class, 'readLocationVersion']);
-
-    Route::get('/catalogue/operations/by-key', [CatalogueController::class, 'findOperationByKey']);
-    Route::get('/catalogue/operations/{operation_id}', [CatalogueController::class, 'readOperation']);
 
     // Catalogue Write (requires duty authority & idempotent)
     Route::middleware(['duty.authority:INVENTORY,INVENTORY_CUSTODIAN', 'idempotent'])->group(function () {
@@ -96,14 +99,18 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware(['chapter.context'])->grou
     Route::get('/stock/lots/{stock_lot_id}/history', [StockQueryController::class, 'listStockLotHistory']);
 
     // ================= OPENING INVENTORY (IPC & OPENING RM) =================
+    Route::get('/opening-actions/by-key', [OpeningInventoryController::class, 'findOpeningActionByKey']);
+    Route::get('/opening-actions/{operation_id}', [OpeningInventoryController::class, 'readOpeningAction']);
+    Route::get('/opening-baseline', [OpeningInventoryController::class, 'readChapterOpeningBaseline']);
+
     // IPC
     Route::get('/ipcs', [OpeningInventoryController::class, 'listIpcs']);
-    Route::post('/ipcs', [OpeningInventoryController::class, 'createIpc']);
+    Route::post('/ipcs', [OpeningInventoryController::class, 'createIpc'])->middleware(['idempotent']);
     Route::get('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'readIpc']);
-    Route::put('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'replaceIpc']);
-    Route::put('/ipcs/{ipc_id}/my-count', [OpeningInventoryController::class, 'saveMyIpcCount']);
-    Route::post('/ipcs/{ipc_id}/submit', [OpeningInventoryController::class, 'submitIpc']);
-    Route::post('/ipcs/{ipc_id}/authorizations', [OpeningInventoryController::class, 'authorizeIpc']);
+    Route::put('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'replaceIpc'])->middleware(['idempotent']);
+    Route::put('/ipcs/{ipc_id}/my-count', [OpeningInventoryController::class, 'saveMyIpcCount'])->middleware(['idempotent']);
+    Route::post('/ipcs/{ipc_id}/submit', [OpeningInventoryController::class, 'submitIpc'])->middleware(['idempotent']);
+    Route::post('/ipcs/{ipc_id}/authorizations', [OpeningInventoryController::class, 'authorizeIpc'])->middleware(['idempotent']);
     Route::get('/ipcs/{ipc_id}/history', [OpeningInventoryController::class, 'listIpcHistory']);
     Route::get('/ipcs/{ipc_id}/versions/{revision}', [OpeningInventoryController::class, 'readIpcRevision']);
     Route::get('/ipcs/{ipc_id}/related', [OpeningInventoryController::class, 'readIpcRelated']);
@@ -111,12 +118,12 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware(['chapter.context'])->grou
 
     // Opening RM
     Route::get('/opening-rms', [OpeningInventoryController::class, 'listOpeningRms']);
-    Route::post('/opening-rms', [OpeningInventoryController::class, 'createOpeningRm']);
+    Route::post('/opening-rms', [OpeningInventoryController::class, 'createOpeningRm'])->middleware(['idempotent']);
     Route::get('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'readOpeningRm']);
-    Route::put('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'replaceOpeningRm']);
-    Route::post('/opening-rms/{rm_id}/inspection', [OpeningInventoryController::class, 'inspectOpeningRm']);
-    Route::post('/opening-rms/{rm_id}/evidence-match', [OpeningInventoryController::class, 'matchOpeningRmEvidence']);
-    Route::post('/opening-rms/{rm_id}/post', [OpeningInventoryController::class, 'postOpeningRm']);
+    Route::put('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'replaceOpeningRm'])->middleware(['idempotent']);
+    Route::post('/opening-rms/{rm_id}/inspection', [OpeningInventoryController::class, 'inspectOpeningRm'])->middleware(['idempotent']);
+    Route::post('/opening-rms/{rm_id}/evidence-match', [OpeningInventoryController::class, 'matchOpeningRmEvidence'])->middleware(['idempotent']);
+    Route::post('/opening-rms/{rm_id}/post', [OpeningInventoryController::class, 'postOpeningRm'])->middleware(['idempotent']);
     Route::get('/opening-rms/{rm_id}/movements', [OpeningInventoryController::class, 'listOpeningRmMovements']);
     Route::get('/opening-rms/{rm_id}/findings', [OpeningInventoryController::class, 'listOpeningRmFindings']);
     Route::get('/opening-rms/{rm_id}/history', [OpeningInventoryController::class, 'listOpeningRmHistory']);
@@ -124,50 +131,103 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware(['chapter.context'])->grou
     Route::get('/opening-rms/{rm_id}/related', [OpeningInventoryController::class, 'readOpeningRmRelated']);
     Route::get('/opening-rms/{rm_id}/print', [OpeningInventoryController::class, 'printOpeningRm']);
 
-    // Baseline & Opening Actions
-    Route::get('/opening-baseline', [OpeningInventoryController::class, 'readChapterOpeningBaseline']);
-    Route::get('/opening-actions/by-key', [OpeningInventoryController::class, 'findOpeningActionByKey']);
-    Route::get('/opening-actions/{operation_id}', [OpeningInventoryController::class, 'readOpeningAction']);
-});
+    // ================= INTERNAL RFS (TICKET 06 - 14 endpoints) =================
+    // Static operation-results routes BEFORE dynamic {rf_id}
+    Route::middleware(['duty.authority:COMMITTEE_REQUESTER,RF_APPROVER,INVENTORY,DISPATCH,INVENTORY_CUSTODIAN'])->group(function () {
+        Route::get('/internal-rfs/operation-results', [InternalRfController::class, 'findInternalRfOperationResult']);
+        Route::get('/internal-rfs/operation-results/{operation_id}', [InternalRfController::class, 'readInternalRfOperationResult']);
+        Route::get('/internal-rfs', [InternalRfController::class, 'listInternalRfs']);
+        Route::get('/internal-rfs/{rf_id}', [InternalRfController::class, 'readInternalRf']);
+        Route::get('/internal-rfs/{rf_id}/history', [InternalRfController::class, 'listInternalRfHistory']);
+        Route::get('/internal-rfs/{rf_id}/versions/{version}', [InternalRfController::class, 'readInternalRfVersion']);
+        Route::get('/internal-rfs/{rf_id}/related-records', [InternalRfController::class, 'listInternalRfRelatedRecords']);
+    });
 
-// Sales Order & Buyer routes (without chapter context enforcement)
-Route::prefix('v1/chapters/{chapter_id}')->group(function () {
+    Route::middleware(['duty.authority:COMMITTEE_REQUESTER', 'idempotent'])->group(function () {
+        Route::post('/internal-rfs', [InternalRfController::class, 'createInternalRf']);
+        Route::put('/internal-rfs/{rf_id}', [InternalRfController::class, 'replaceInternalRfDraft']);
+        Route::post('/internal-rfs/{rf_id}/submit', [InternalRfController::class, 'submitInternalRf']);
+        Route::post('/internal-rfs/{rf_id}/revise', [InternalRfController::class, 'reviseInternalRf']);
+        Route::post('/internal-rfs/{rf_id}/cancel', [InternalRfController::class, 'cancelInternalRf']);
+    });
+
+    Route::middleware(['duty.authority:RF_APPROVER', 'idempotent'])->group(function () {
+        Route::post('/internal-rfs/{rf_id}/approve', [InternalRfController::class, 'approveInternalRf']);
+        Route::post('/internal-rfs/{rf_id}/return', [InternalRfController::class, 'returnInternalRf']);
+    });
+
+    // ================= RESERVATIONS & STOCK HOLDS (TICKET 07 - 17 endpoints) =================
+    // Static reservation-operations/by-key BEFORE {operation_id}
+    Route::middleware(['duty.authority:INVENTORY,INVENTORY_CUSTODIAN,DISPATCH,RF_APPROVER,COMMITTEE_REQUESTER'])->group(function () {
+        Route::get('/reservation-operations/by-key', [ReservationAndHoldController::class, 'findReservationOperation']);
+        Route::get('/reservation-operations/{operation_id}', [ReservationAndHoldController::class, 'readReservationOperation']);
+        Route::get('/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}', [ReservationAndHoldController::class, 'readRfReservationPreparation']);
+        Route::get('/internal-rfs/{rf_id}/reservations', [ReservationAndHoldController::class, 'listRfReservations']);
+        Route::get('/internal-rfs/{rf_id}/reservations/{reservation_id}', [ReservationAndHoldController::class, 'readRfReservation']);
+        Route::get('/internal-rfs/{rf_id}/reservations/{reservation_id}/history', [ReservationAndHoldController::class, 'listRfReservationHistory']);
+        Route::get('/internal-rfs/{rf_id}/allocation-review', [ReservationAndHoldController::class, 'readRfAllocationReview']);
+        Route::get('/stock-holds', [ReservationAndHoldController::class, 'listStockHolds']);
+        Route::get('/stock-holds/{hold_id}', [ReservationAndHoldController::class, 'readStockHold']);
+        Route::get('/stock-holds/{hold_id}/history', [ReservationAndHoldController::class, 'listStockHoldHistory']);
+    });
+
+    Route::middleware(['duty.authority:INVENTORY,INVENTORY_CUSTODIAN', 'idempotent'])->group(function () {
+        Route::post('/internal-rfs/{rf_id}/reservation-preparations', [ReservationAndHoldController::class, 'prepareRfReservation']);
+        Route::post('/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}/commit', [ReservationAndHoldController::class, 'commitRfReservation']);
+        Route::post('/internal-rfs/{rf_id}/reservations/{reservation_id}/release', [ReservationAndHoldController::class, 'releaseRfReservation']);
+        Route::post('/internal-rfs/{rf_id}/reservations/{reservation_id}/reallocate', [ReservationAndHoldController::class, 'reallocateRfReservation']);
+        Route::post('/stock-holds', [ReservationAndHoldController::class, 'placeStockHold']);
+        Route::put('/stock-holds/{hold_id}/clearance-proposal', [ReservationAndHoldController::class, 'proposeStockHoldClearance']);
+        Route::post('/stock-holds/{hold_id}/clear', [ReservationAndHoldController::class, 'clearStockHold']);
+    });
+
+    // ================= ACTUAL ISSUES (TICKET 08 - 14 endpoints) =================
+    // Static actual-issue-operations/by-key BEFORE {operation_id}
+    Route::middleware(['duty.authority:INVENTORY,DISPATCH,INVENTORY_CUSTODIAN,RF_APPROVER,COMMITTEE_REQUESTER'])->group(function () {
+        Route::get('/actual-issue-operations/by-key', [ActualIssueController::class, 'operationsByKey']);
+        Route::get('/actual-issue-operations/{operation_id}', [ActualIssueController::class, 'operationsById']);
+        Route::get('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'index']);
+        Route::get('/actual-issues/{issue_id}', [ActualIssueController::class, 'show']);
+        Route::get('/actual-issues/{issue_id}/print', [ActualIssueController::class, 'print']);
+        Route::get('/actual-issues/{issue_id}/history', [ActualIssueController::class, 'history']);
+        Route::get('/actual-issues/{issue_id}/movements', [ActualIssueController::class, 'movements']);
+        Route::get('/actual-issues/{issue_id}/related', [ActualIssueController::class, 'related']);
+        Route::get('/actual-issues/{issue_id}/reconciliation', [ActualIssueController::class, 'showReconciliation']);
+    });
+
+    Route::middleware(['duty.authority:INVENTORY,DISPATCH,INVENTORY_CUSTODIAN', 'idempotent'])->group(function () {
+        Route::post('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'prepare']);
+        Route::put('/actual-issues/{issue_id}', [ActualIssueController::class, 'revise']);
+        Route::post('/actual-issues/{issue_id}/acknowledgments', [ActualIssueController::class, 'matchAcknowledgment']);
+        Route::post('/actual-issues/{issue_id}/post', [ActualIssueController::class, 'post']);
+        Route::post('/actual-issues/{issue_id}/reconciliations', [ActualIssueController::class, 'reconciliations']);
+    });
+
+    // ================= SALES ORDERS & BUYERS (Stage 1A/1B) =================
     Route::get('/buyers', [BuyerController::class, 'index']);
-    Route::post('/buyers', [BuyerController::class, 'store']);
+    Route::post('/buyers', [BuyerController::class, 'store'])->middleware(['duty.authority:SALES_OFFICER,SALES_REVIEWER,INVENTORY_CUSTODIAN', 'idempotent']);
 
     Route::get('/sales-orders', [SalesOrderController::class, 'index']);
-    Route::post('/sales-orders', [SalesOrderController::class, 'store']);
     Route::get('/sales-orders/{id}', [SalesOrderController::class, 'show']);
-    Route::post('/sales-orders/{id}/submit', [SalesOrderController::class, 'submit']);
-    Route::post('/sales-orders/{id}/review', [SalesOrderController::class, 'review']);
-    Route::post('/sales-orders/{id}/revise', [SalesOrderController::class, 'revise']);
-    Route::post('/sales-orders/{id}/cancel', [SalesOrderController::class, 'cancel']);
+    Route::get('/sales-orders/{id}/print', [SalesOrderController::class, 'print']);
 
-    // Day 2 Sales Acceptance & Demand Splitting routes
-    Route::post('/sales-orders/{so_id}/contact-logs', [SalesOrderAcceptanceController::class, 'recordCustomerContact']);
-    Route::post('/sales-orders/{so_id}/acceptance', [SalesOrderAcceptanceController::class, 'recordBuyerAcceptance']);
-    Route::post('/sales-orders/{so_id}/split-demand', [SalesOrderAcceptanceController::class, 'splitDemand']);
+    Route::middleware(['duty.authority:SALES_OFFICER,SALES_REVIEWER,INVENTORY_CUSTODIAN', 'idempotent'])->group(function () {
+        Route::post('/sales-orders', [SalesOrderController::class, 'store']);
+        Route::post('/sales-orders/{id}/submit', [SalesOrderController::class, 'submit']);
+        Route::post('/sales-orders/{id}/review', [SalesOrderController::class, 'review']);
+        Route::post('/sales-orders/{id}/revise', [SalesOrderController::class, 'revise']);
+        Route::post('/sales-orders/{id}/cancel', [SalesOrderController::class, 'cancel']);
 
-    // Handover & Actual Issue routes
+        Route::post('/sales-orders/{so_id}/contact-logs', [SalesOrderAcceptanceController::class, 'recordCustomerContact']);
+        Route::post('/sales-orders/{so_id}/acceptance', [SalesOrderAcceptanceController::class, 'recordBuyerAcceptance']);
+        Route::post('/sales-orders/{so_id}/split-demand', [SalesOrderAcceptanceController::class, 'splitDemand']);
+    });
+
+    // ================= CHAPTER-SCOPED HANDOVERS =================
     Route::get('/handovers', [HandoverController::class, 'index']);
-    Route::post('/handovers', [HandoverController::class, 'store']);
+    Route::post('/handovers', [HandoverController::class, 'store'])->middleware(['duty.authority:INVENTORY,DISPATCH,INVENTORY_CUSTODIAN,SALES_OFFICER', 'idempotent']);
     Route::get('/handovers/{id}', [HandoverController::class, 'show']);
     Route::get('/operations/by-idempotency-key/{key}', [HandoverController::class, 'showByIdempotencyKey']);
-
-    Route::post('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'prepare']);
-    Route::get('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'index']);
-    Route::get('/actual-issues/{issue_id}', [ActualIssueController::class, 'show']);
-    Route::put('/actual-issues/{issue_id}', [ActualIssueController::class, 'revise']);
-    Route::get('/actual-issues/{issue_id}/print', [ActualIssueController::class, 'print']);
-    Route::post('/actual-issues/{issue_id}/acknowledgments', [ActualIssueController::class, 'matchAcknowledgment']);
-    Route::post('/actual-issues/{issue_id}/post', [ActualIssueController::class, 'post']);
-    Route::get('/actual-issues/{issue_id}/history', [ActualIssueController::class, 'history']);
-    Route::get('/actual-issues/{issue_id}/movements', [ActualIssueController::class, 'movements']);
-    Route::get('/actual-issues/{issue_id}/related', [ActualIssueController::class, 'related']);
-    Route::post('/actual-issues/{issue_id}/reconciliations', [ActualIssueController::class, 'reconciliations']);
-    Route::get('/actual-issues/{issue_id}/reconciliation', [ActualIssueController::class, 'showReconciliation']);
-    Route::get('/actual-issue-operations/by-key', [ActualIssueController::class, 'operationsByKey']);
-    Route::get('/actual-issue-operations/{operation_id}', [ActualIssueController::class, 'operationsById']);
 });
 
 // Global Handover & Operations routes (Stage 3/4 proposal endpoints per DELIVERY-INTEGRATION-CONTRACT.md)
