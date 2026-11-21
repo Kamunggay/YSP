@@ -16,7 +16,6 @@ import {
 import {
   confirmAuthenticatorEnrollment,
   createOfficerAccount,
-  generateUniqueRecoveryCodes,
   inviteChapterOfficer,
   prepareAuthenticatorEnrollment,
   provisionChapter,
@@ -103,11 +102,12 @@ export function CreateChapterPage({
   const [showInitialPassword, setShowInitialPassword] = useState(false);
 
   // Frame 2: Connect Google Authenticator state (Chapter Head)
+  const [provisionedChapterRef, setProvisionedChapterRef] = useState<string>('');
   const [headEnrollmentId, setHeadEnrollmentId] = useState<string>('');
   const [headSetupKey, setHeadSetupKey] = useState<string>('');
   const [headSetupUri, setHeadSetupUri] = useState<string | undefined>();
   const [headOtp, setHeadOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [headRecoveryCodes, setHeadRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
+  const [headRecoveryCodes, setHeadRecoveryCodes] = useState<string[]>([]);
   const [headPaired, setHeadPaired] = useState(false);
 
   // Frame 4: Invite New Chapter Officer state
@@ -128,9 +128,9 @@ export function CreateChapterPage({
   const [officerSetupKey, setOfficerSetupKey] = useState<string>('');
   const [officerSetupUri, setOfficerSetupUri] = useState<string | undefined>();
   const [officerOtp, setOfficerOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [officerRecoveryCodes, setOfficerRecoveryCodes] = useState<string[]>(() => generateUniqueRecoveryCodes(6));
+  const [officerRecoveryCodes, setOfficerRecoveryCodes] = useState<string[]>([]);
   const [officerPaired, setOfficerPaired] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('/assets/kamunggay/authenticator-qr.png');
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [copiedKey, setCopiedKey] = useState(false);
 
   // Inline invalid field highlights
@@ -183,7 +183,7 @@ export function CreateChapterPage({
       })
       .catch(() => {
         if (isMounted) {
-          setQrCodeUrl(isOfficer ? '/assets/kamunggay/officer-authenticator-qr.png' : '/assets/kamunggay/authenticator-qr.png');
+          setQrCodeUrl('');
         }
       });
 
@@ -194,7 +194,7 @@ export function CreateChapterPage({
 
   useEffect(() => {
     if (step === 'connect-auth' && !headSetupKey) {
-      void prepareAuthenticatorEnrollment('begin', undefined, undefined, 'KMGY 2345 YSPE 7762').then((res) => {
+      void prepareAuthenticatorEnrollment('begin').then((res) => {
         if (res.kind === 'success') {
           setHeadEnrollmentId(res.enrollmentId);
           setHeadSetupKey(res.setupKey);
@@ -202,7 +202,7 @@ export function CreateChapterPage({
         }
       });
     } else if (step === 'officer-connect-auth' && !officerSetupKey) {
-      void prepareAuthenticatorEnrollment('begin', undefined, undefined, 'OFCB 3456 KMGC 7624').then((res) => {
+      void prepareAuthenticatorEnrollment('begin').then((res) => {
         if (res.kind === 'success') {
           setOfficerEnrollmentId(res.enrollmentId);
           setOfficerSetupKey(res.setupKey);
@@ -276,8 +276,9 @@ export function CreateChapterPage({
 
       const provResult = await provisionChapter(data);
       if (provResult.kind === 'success') {
+        setProvisionedChapterRef(provResult.provisioningId || provResult.chapterCode);
         if (!headPaired) {
-          const enrollResult = await prepareAuthenticatorEnrollment('begin', undefined, undefined, 'KMGY 2345 YSPE 7762');
+          const enrollResult = await prepareAuthenticatorEnrollment('begin');
           if (enrollResult.kind === 'success') {
             setHeadEnrollmentId(enrollResult.enrollmentId);
             setHeadSetupKey(enrollResult.setupKey);
@@ -307,7 +308,7 @@ export function CreateChapterPage({
       return;
     }
     const currentOtp = isOfficer ? officerOtp : headOtp;
-    const enrollmentId = (isOfficer ? officerEnrollmentId : headEnrollmentId) || 'enr_active';
+    const enrollmentId = isOfficer ? officerEnrollmentId : headEnrollmentId;
     const code = currentOtp.join('');
 
     if (code.length < 6) {
@@ -532,11 +533,20 @@ export function CreateChapterPage({
     playApplePay(soundEnabled);
     setIsLoading(true);
     try {
-      await inviteChapterOfficer({
-        officerName: trimmedOfficerName,
-        officerEmail: trimmedOfficerEmail,
-        duties: selectedDuties,
-      });
+      const inviteRes = await inviteChapterOfficer(
+        {
+          officerName: trimmedOfficerName,
+          officerEmail: trimmedOfficerEmail,
+          duties: selectedDuties,
+        },
+        provisionedChapterRef
+      );
+      if (inviteRes.kind !== 'success') {
+        playErrorTone(soundEnabled);
+        setErrorMessage(inviteRes.message);
+        showToast({ tone: 'error', text: 'Officer authorization rejected' });
+        return;
+      }
 
       setOfficerFullName(trimmedOfficerName);
       setOfficerAccountEmail(trimmedOfficerEmail);
@@ -616,7 +626,7 @@ export function CreateChapterPage({
 
       if (result.kind === 'success') {
         if (!officerPaired) {
-          const enrollResult = await prepareAuthenticatorEnrollment('begin', undefined, undefined, 'OFCB 3456 KMGC 7624');
+          const enrollResult = await prepareAuthenticatorEnrollment('begin');
           if (enrollResult.kind === 'success') {
             setOfficerEnrollmentId(enrollResult.enrollmentId);
             setOfficerSetupKey(enrollResult.setupKey);
@@ -684,12 +694,16 @@ export function CreateChapterPage({
 
               <div className="qr-glass-panel">
                 <div className="qr-white-frame">
-                  <img
-                    src={qrCodeUrl}
-                    alt="Scan QR code using Google Authenticator"
-                    className="qr-code-image"
-                    draggable={false}
-                  />
+                  {qrCodeUrl ? (
+                    <img
+                      src={qrCodeUrl}
+                      alt="Scan QR code using Google Authenticator"
+                      className="qr-code-image"
+                      draggable={false}
+                    />
+                  ) : (
+                    <span className="p03-muted-inline">Awaiting enrollment QR...</span>
+                  )}
                 </div>
                 {activeSetupKey && (
                   <div className="setup-key-meta">

@@ -29,6 +29,7 @@ export type PolicyLifecycleStatus =
   | 'missing'
   | 'draft'
   | 'submitted'
+  | 'reviewed'
   | 'approved'
   | 'returned';
 
@@ -117,6 +118,25 @@ export interface GlobalDisableBoundaryFeedback {
   message: string;
 }
 
+export interface ExistingIdentityReference {
+  user_id: string;
+  display_name: string;
+}
+
+export type P02OperationScope = 'chapter' | 'provider' | 'global_disable';
+
+export interface P02OperationRecord {
+  operation_id: string;
+  scope: P02OperationScope;
+  chapter_id: string | null;
+  action_code: string;
+  idempotency_key: string;
+  outcome: 'committed' | 'rejected' | 'uncertain';
+  code: string;
+  message: string;
+  committed_at: string;
+}
+
 export interface P02ActionResult<T = undefined> {
   ok: boolean;
   status: 200 | 400 | 403 | 409 | 422 | 503;
@@ -127,6 +147,11 @@ export interface P02ActionResult<T = undefined> {
   permitted_draft?: boolean | undefined;
   required_duty?: DutyCode | undefined;
   link_screen?: 'S-01' | 'S-21' | 'S-22' | undefined;
+  operation_id?: string | undefined;
+  action_code?: string | undefined;
+  idempotency_key?: string | undefined;
+  replayed?: boolean | undefined;
+  next_action?: string | undefined;
   data?: T | undefined;
 }
 
@@ -138,13 +163,33 @@ export interface P02AuditEvent {
   summary: string;
 }
 
+export const P02_CONTEXT_STORAGE_KEY = 'ysp_p02_context';
+
+export interface P02EngineOptions {
+  personas?: ReadonlyArray<P02Persona>;
+  known_identities?: ReadonlyArray<ExistingIdentityReference>;
+  chapters?: ReadonlyArray<ChapterInfo>;
+  authority_versions?: Record<string, number>;
+  provider_authority_version?: number;
+  active_persona_key?: string | null;
+  selected_chapter_id?: string | null;
+  memberships?: ReadonlyArray<ChapterMembershipSummary>;
+  duty_grants?: ReadonlyArray<AdminDutyGrant>;
+  policies?: ReadonlyArray<PolicyRecordItem>;
+  provisioned_chapters?: ReadonlyArray<ProvisionedChapterRecord>;
+  audit_log?: ReadonlyArray<P02AuditEvent>;
+  organization_id?: string;
+  next_seq?: number;
+}
+
 export interface P02Snapshot {
-  active_persona: P02Persona;
+  active_persona: P02Persona | null;
   available_personas: ReadonlyArray<P02Persona>;
   all_chapters: ReadonlyArray<ChapterInfo>;
   authorized_memberships_for_user: ReadonlyArray<ChapterMembershipSummary>;
   selected_chapter_id: string | null;
   selected_chapter_name: string | null;
+  selection_revision: string | null;
   chapter_state: ChapterSelectionState;
   next_action: 'no_chapter_work' | 'select_chapter' | 'review_current_actions';
   authority_version: number;
@@ -154,11 +199,22 @@ export interface P02Snapshot {
   chapter_duty_grants: ReadonlyArray<AdminDutyGrant>;
   chapter_policies: ReadonlyArray<PolicyRecordItem>;
   provisioned_chapters: ReadonlyArray<ProvisionedChapterRecord>;
+  operation_ledger: ReadonlyArray<P02OperationRecord>;
   audit_log: ReadonlyArray<P02AuditEvent>;
+}
+
+export interface LookupMembershipIdentityInput {
+  chapter_id?: string | undefined;
+  user_id: string;
+}
+
+export interface LookupProvisioningIdentityInput {
+  user_id: string;
 }
 
 export interface AuthorizeMembershipInput {
   chapter_id?: string | undefined;
+  idempotency_key?: string | undefined;
   user_id: string;
   display_name: string;
   email: string;
@@ -169,6 +225,7 @@ export interface AuthorizeMembershipInput {
 
 export interface DisableOrRevokeMembershipInput {
   chapter_id?: string | undefined;
+  idempotency_key?: string | undefined;
   membership_id: string;
   action: 'disabled' | 'revoked';
   expected_authority_version: number;
@@ -178,6 +235,7 @@ export interface DisableOrRevokeMembershipInput {
 
 export interface AuthorizeDutyGrantInput {
   chapter_id?: string | undefined;
+  idempotency_key?: string | undefined;
   membership_id: string;
   duty_code: string;
   scope_kind: DutyGrantScopeKind;
@@ -189,8 +247,33 @@ export interface AuthorizeDutyGrantInput {
   reason: string;
 }
 
+export interface AmendDutyGrantInput {
+  chapter_id?: string | undefined;
+  idempotency_key?: string | undefined;
+  grant_id: string;
+  starts_at?: string | undefined;
+  ends_at: string | null;
+  monetary_limit: PostedMoney | null;
+  expected_authority_version: number;
+  expected_membership_version: number;
+  expected_grant_version: number;
+  reason: string;
+}
+
+export interface EndDutyGrantInput {
+  chapter_id?: string | undefined;
+  idempotency_key?: string | undefined;
+  grant_id: string;
+  ends_at: string;
+  expected_authority_version: number;
+  expected_membership_version: number;
+  expected_grant_version: number;
+  reason: string;
+}
+
 export interface SubstituteDutyGrantInput {
   chapter_id?: string | undefined;
+  idempotency_key?: string | undefined;
   grant_id: string;
   alternate_membership_id: string;
   expected_authority_version: number;
@@ -201,6 +284,7 @@ export interface SubstituteDutyGrantInput {
 
 export interface RevokeDutyGrantInput {
   chapter_id?: string | undefined;
+  idempotency_key?: string | undefined;
   grant_id: string;
   expected_authority_version: number;
   expected_membership_version: number;
@@ -210,6 +294,7 @@ export interface RevokeDutyGrantInput {
 
 export interface SavePolicyDraftInput {
   chapter_id?: string | undefined;
+  idempotency_key?: string | undefined;
   policy_id: string;
   summary: string;
   expected_authority_version: number;
@@ -220,6 +305,7 @@ export interface SavePolicyDraftInput {
 
 export interface ReviewPolicyVersionInput {
   chapter_id?: string | undefined;
+  idempotency_key?: string | undefined;
   policy_id: string;
   expected_authority_version: number;
   expected_row_version: number;
@@ -228,12 +314,14 @@ export interface ReviewPolicyVersionInput {
 }
 
 export interface CreateProvisionedChapterInput {
+  idempotency_key?: string | undefined;
   chapter_code: string;
   chapter_name: string;
   expected_provider_authority_version: number;
 }
 
 export interface AppointInitialHeadInput {
+  idempotency_key?: string | undefined;
   provisioning_id: string;
   initial_head_user_id: string;
   initial_head_name: string;
@@ -243,9 +331,23 @@ export interface AppointInitialHeadInput {
 }
 
 export interface GlobalDisableAttemptInput {
+  idempotency_key?: string | undefined;
   user_id: string;
   expected_identity_version: number;
   reason: string;
+}
+
+export interface LookupP02OperationByKeyInput {
+  scope: P02OperationScope;
+  chapter_id?: string | undefined;
+  action_code: string;
+  idempotency_key: string;
+}
+
+export interface LookupP02OperationByIdInput {
+  scope: P02OperationScope;
+  chapter_id?: string | undefined;
+  operation_id: string;
 }
 
 export function chapterNextAction(
@@ -288,6 +390,7 @@ export function chapterScopeMatches(params: {
 
 const VALID_PHP_AMOUNT_RE = /^(?:0|[1-9][0-9]{0,17})\.[0-9]{2}$/;
 const VALID_CHAPTER_CODE_RE = /^[A-Z0-9_-]{2,16}$/;
+const VALID_IDEMPOTENCY_KEY_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 
 function nowUtcSix(): string {
   return new Date().toISOString().replace(/\.\d{3}Z$/, (ms) => `${ms.slice(0, 4)}000Z`);
@@ -297,54 +400,28 @@ function isCanonicalDuty(code: string): code is DutyCode {
   return (CANONICAL_CHAPTER_DUTIES as ReadonlyArray<string>).includes(code);
 }
 
-const INITIAL_PERSONAS: ReadonlyArray<P02Persona> = [
-  {
-    key: 'head_21',
-    user_id: '21',
-    display_name: 'Laurence Parojinog',
-    email: 'head@ysp.org',
-    provider_roles: [],
-  },
-  {
-    key: 'finance_22',
-    user_id: '22',
-    display_name: 'Maria Clara Santos',
-    email: 'finance@ysp.org',
-    provider_roles: [],
-  },
-  {
-    key: 'receiving_11',
-    user_id: '11',
-    display_name: 'Ana Maria Reyes',
-    email: 'receiving@ysp.org',
-    provider_roles: [],
-  },
-  {
-    key: 'provider_90',
-    user_id: '90',
-    display_name: 'Sam Provisioner',
-    email: 'provider@ysp.org',
-    provider_roles: ['provisioner'],
-  },
-];
-
-const INITIAL_CHAPTERS: ReadonlyArray<ChapterInfo> = [
-  { id: '1', code: 'CEB-01', name: 'YSP Cebu Chapter' },
-  { id: '2', code: 'MNL-02', name: 'YSP Manila Chapter' },
-];
-
 export interface P02AdminEngine {
   getSnapshot: () => P02Snapshot;
   selectPersona: (personaKey: string) => P02ActionResult<P02Snapshot>;
   selectChapter: (chapterId: string | null) => P02ActionResult<P02Snapshot>;
+  lookupMembershipIdentity: (
+    input: LookupMembershipIdentityInput
+  ) => P02ActionResult<ExistingIdentityReference | null>;
+  lookupProvisioningIdentity: (
+    input: LookupProvisioningIdentityInput
+  ) => P02ActionResult<ExistingIdentityReference | null>;
   authorizeMembership: (input: AuthorizeMembershipInput) => P02ActionResult<ChapterMembershipSummary>;
   disableOrRevokeMembership: (
     input: DisableOrRevokeMembershipInput
   ) => P02ActionResult<ChapterMembershipSummary>;
   authorizeDutyGrant: (input: AuthorizeDutyGrantInput) => P02ActionResult<AdminDutyGrant>;
+  amendDutyGrant: (input: AmendDutyGrantInput) => P02ActionResult<AdminDutyGrant>;
+  endDutyGrant: (input: EndDutyGrantInput) => P02ActionResult<AdminDutyGrant>;
   substituteDutyGrant: (input: SubstituteDutyGrantInput) => P02ActionResult<AdminDutyGrant>;
   revokeDutyGrant: (input: RevokeDutyGrantInput) => P02ActionResult<AdminDutyGrant>;
   savePolicyDraft: (input: SavePolicyDraftInput) => P02ActionResult<PolicyRecordItem>;
+  submitPolicyVersion: (input: ReviewPolicyVersionInput) => P02ActionResult<PolicyRecordItem>;
+  reviewPolicyVersion: (input: ReviewPolicyVersionInput) => P02ActionResult<PolicyRecordItem>;
   approvePolicyVersion: (input: ReviewPolicyVersionInput) => P02ActionResult<PolicyRecordItem>;
   returnPolicyVersion: (input: ReviewPolicyVersionInput) => P02ActionResult<PolicyRecordItem>;
   evaluateWorkflowGate: (policyCode: string, mode: 'draft' | 'commit') => P02ActionResult;
@@ -355,279 +432,230 @@ export interface P02AdminEngine {
     input: AppointInitialHeadInput
   ) => P02ActionResult<ProvisionedChapterRecord>;
   attemptGlobalIdentityDisable: (input: GlobalDisableAttemptInput) => GlobalDisableBoundaryFeedback;
+  lookupOperationByKey: (
+    input: LookupP02OperationByKeyInput
+  ) => P02ActionResult<P02OperationRecord>;
+  lookupOperationById: (input: LookupP02OperationByIdInput) => P02ActionResult<P02OperationRecord>;
 }
 
-export function createP02AdminEngine(): P02AdminEngine {
-  const chapters: ChapterInfo[] = INITIAL_CHAPTERS.map((c) => ({ ...c }));
-  const authorityVersionByChapter = new Map<string, number>([
-    ['1', 3],
-    ['2', 2],
-  ]);
-  let providerAuthorityVersion = 5;
-  let activePersonaKey = 'head_21';
-  let selectedChapterId: string | null = '1';
-  let nextSeq = 400;
+function readStoredP02Options(): P02EngineOptions | undefined {
+  if (typeof window === 'undefined' || !window.localStorage) return undefined;
+  try {
+    const raw = window.localStorage.getItem(P02_CONTEXT_STORAGE_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== 'object' || parsed === null) return undefined;
+    return parsed as P02EngineOptions;
+  } catch {
+    return undefined;
+  }
+}
 
-  const memberships: ChapterMembershipSummary[] = [
-    {
-      membership_id: '211',
-      chapter_id: '1',
-      chapter_code: 'CEB-01',
-      chapter_name: 'YSP Cebu Chapter',
-      user_id: '21',
-      display_name: 'Laurence Parojinog',
-      email: 'head@ysp.org',
-      status: 'active',
-      version: 1,
-      active_sessions: 1,
-    },
-    {
-      membership_id: '221',
-      chapter_id: '1',
-      chapter_code: 'CEB-01',
-      chapter_name: 'YSP Cebu Chapter',
-      user_id: '22',
-      display_name: 'Maria Clara Santos',
-      email: 'finance@ysp.org',
-      status: 'active',
-      version: 1,
-      active_sessions: 1,
-    },
-    {
-      membership_id: '111',
-      chapter_id: '1',
-      chapter_code: 'CEB-01',
-      chapter_name: 'YSP Cebu Chapter',
-      user_id: '11',
-      display_name: 'Ana Maria Reyes',
-      email: 'receiving@ysp.org',
-      status: 'active',
-      version: 1,
-      active_sessions: 1,
-    },
-    {
-      membership_id: '311',
-      chapter_id: '1',
-      chapter_code: 'CEB-01',
-      chapter_name: 'YSP Cebu Chapter',
-      user_id: '31',
-      display_name: 'Pedro Penduko',
-      email: 'pedro@ysp.org',
-      status: 'active',
-      version: 1,
-      active_sessions: 2,
-    },
-    {
-      membership_id: '212',
-      chapter_id: '2',
-      chapter_code: 'MNL-02',
-      chapter_name: 'YSP Manila Chapter',
-      user_id: '21',
-      display_name: 'Laurence Parojinog',
-      email: 'head@ysp.org',
-      status: 'active',
-      version: 1,
-      active_sessions: 1,
-    },
-  ];
+export function createP02AdminEngine(options?: P02EngineOptions): P02AdminEngine {
+  const seed = options ?? readStoredP02Options() ?? {};
+  const personas: P02Persona[] = (seed.personas ?? []).map((p) => ({
+    ...p,
+    provider_roles: [...p.provider_roles],
+  }));
+  const chapters: ChapterInfo[] = (seed.chapters ?? []).map((c) => ({ ...c }));
+  const authorityVersionByChapter = new Map<string, number>(
+    Object.entries(seed.authority_versions ?? {})
+  );
+  for (const ch of chapters) {
+    if (!authorityVersionByChapter.has(ch.id)) {
+      authorityVersionByChapter.set(ch.id, 1);
+    }
+  }
+  let providerAuthorityVersion = seed.provider_authority_version ?? 0;
+  let activePersonaKey: string | null =
+    seed.active_persona_key !== undefined
+      ? seed.active_persona_key
+      : (personas[0]?.key ?? null);
+  let selectedChapterId: string | null = seed.selected_chapter_id ?? null;
+  let nextSeq = seed.next_seq ?? 0;
+  const organizationId = seed.organization_id ?? '';
 
-  const grants: AdminDutyGrant[] = [
-    {
-      id: '1001',
-      chapter_id: '1',
-      membership_id: '211',
-      user_id: '21',
-      officer_name: 'Laurence Parojinog',
-      duty_code: 'CHAPTER_HEAD',
-      scope_kind: 'chapter',
-      requesting_unit_id: null,
-      monetary_limit: null,
-      starts_at: '2026-10-23T00:00:00.000000Z',
-      ends_at: null,
-      revoked_at: null,
-      version: 1,
-      alternate_for_grant_id: null,
-    },
-    {
-      id: '1002',
-      chapter_id: '1',
-      membership_id: '221',
-      user_id: '22',
-      officer_name: 'Maria Clara Santos',
-      duty_code: 'FINANCE',
-      scope_kind: 'chapter',
-      requesting_unit_id: null,
-      monetary_limit: { currency: 'PHP', amount: '50000.00' },
-      starts_at: '2026-10-23T00:00:00.000000Z',
-      ends_at: null,
-      revoked_at: null,
-      version: 1,
-      alternate_for_grant_id: null,
-    },
-    {
-      id: '1003',
-      chapter_id: '1',
-      membership_id: '111',
-      user_id: '11',
-      officer_name: 'Ana Maria Reyes',
-      duty_code: 'RECEIVING',
-      scope_kind: 'chapter',
-      requesting_unit_id: null,
-      monetary_limit: null,
-      starts_at: '2026-10-23T00:00:00.000000Z',
-      ends_at: null,
-      revoked_at: null,
-      version: 1,
-      alternate_for_grant_id: null,
-    },
-    {
-      id: '1004',
-      chapter_id: '1',
-      membership_id: '311',
-      user_id: '31',
-      officer_name: 'Pedro Penduko',
-      duty_code: 'INVENTORY',
-      scope_kind: 'chapter',
-      requesting_unit_id: null,
-      monetary_limit: null,
-      starts_at: '2026-10-23T00:00:00.000000Z',
-      ends_at: null,
-      revoked_at: null,
-      version: 1,
-      alternate_for_grant_id: null,
-    },
-    {
-      id: '2001',
-      chapter_id: '2',
-      membership_id: '212',
-      user_id: '21',
-      officer_name: 'Laurence Parojinog',
-      duty_code: 'CHAPTER_HEAD',
-      scope_kind: 'chapter',
-      requesting_unit_id: null,
-      monetary_limit: null,
-      starts_at: '2026-10-23T00:00:00.000000Z',
-      ends_at: null,
-      revoked_at: null,
-      version: 1,
-      alternate_for_grant_id: null,
-    },
-  ];
+  const memberships: ChapterMembershipSummary[] = (seed.memberships ?? []).map((m) => ({ ...m }));
 
-  const policies: PolicyRecordItem[] = [
-    {
-      policy_id: 'pol-op-1',
-      chapter_id: '1',
-      category: 'operational',
-      policy_code: 'ITEM_CATALOGUE_UNIT_POLICY',
-      name: 'Item Catalogue, Unit Precision & Custody Rules',
-      status: 'approved',
-      row_version: 2,
-      material_version: 1,
-      material_hash: computeDeterministicHash({ code: 'ITEM_CATALOGUE_UNIT_POLICY', v: 1 }),
-      summary: 'Allowed unit scales 0..6, SKU variant uniqueness, and default stockroom custody.',
-      workflow_affected: 'S-08 Item Catalogue & Inventory Eligibility',
-      approved_by_duty: 'CHAPTER_HEAD',
-      effective_from: '2026-10-23T00:00:00.000000Z',
-      last_reason: 'Approved for Stage 1 catalogue readiness.',
-    },
-    {
-      policy_id: 'pol-op-2',
-      chapter_id: '1',
-      category: 'operational',
-      policy_code: 'OPENING_CUTOFF_POLICY',
-      name: 'Opening Count Cutoff & Two-Counter Independence Policy',
-      status: 'approved',
-      row_version: 2,
-      material_version: 1,
-      material_hash: computeDeterministicHash({ code: 'OPENING_CUTOFF_POLICY', v: 1 }),
-      summary: 'Requires two counters (at least one independent of regular custody) and Head/Finance signatures.',
-      workflow_affected: 'P06 IPC → RM Opening Baseline',
-      approved_by_duty: 'CHAPTER_HEAD',
-      effective_from: '2026-10-23T00:00:00.000000Z',
-      last_reason: 'Approved for Stage 1 opening count walkthrough.',
-    },
-    {
-      policy_id: 'pol-op-3',
-      chapter_id: '1',
-      category: 'operational',
-      policy_code: 'QUOTATION_EMERGENCY_POLICY',
-      name: 'Comparable Quotation & Emergency Purchase Policy',
-      status: 'draft',
-      row_version: 1,
-      material_version: 1,
-      material_hash: computeDeterministicHash({ code: 'QUOTATION_EMERGENCY_POLICY', v: 1 }),
-      summary: 'Requires 3 comparable quotes above PHP 2,500 unless emergency waiver approved.',
-      workflow_affected: 'PRC-05 PO Issuance (Stage 2 Purchasing)',
-      approved_by_duty: null,
-      effective_from: null,
-      last_reason: null,
-    },
-    {
-      policy_id: 'pol-fin-1',
-      chapter_id: '1',
-      category: 'financial',
-      policy_code: 'OFFICIAL_PAYMENT_ACCOUNT_POLICY',
-      name: 'Official Chapter Receipt & Verified GCash Account Policy',
-      status: 'approved',
-      row_version: 2,
-      material_version: 1,
-      material_hash: computeDeterministicHash({ code: 'OFFICIAL_PAYMENT_ACCOUNT_POLICY', v: 1 }),
-      summary: 'Restricts verified collections to registered chapter bank/GCash accounts with unique reference numbers.',
-      workflow_affected: 'PAY-01..07 Payment Verification & OR Issuance',
-      approved_by_duty: 'FINANCE',
-      effective_from: '2026-10-23T00:00:00.000000Z',
-      last_reason: 'Finance verified official collection accounts.',
-    },
-    {
-      policy_id: 'pol-fin-2',
-      chapter_id: '1',
-      category: 'financial',
-      policy_code: 'RETURN_REFUND_VALUATION_POLICY',
-      name: 'Return, Refund Execution & Residual Cent Rounding Policy',
-      status: 'draft',
-      row_version: 1,
-      material_version: 1,
-      material_hash: computeDeterministicHash({ code: 'RETURN_REFUND_VALUATION_POLICY', v: 1 }),
-      summary: 'Governs Finance-approved refunds, unequal replacement credits, and PHP 0.01 rounding.',
-      workflow_affected: 'ADJ-07 Refund Execution & Unequal Replacement',
-      approved_by_duty: null,
-      effective_from: null,
-      last_reason: null,
-    },
-    {
-      policy_id: 'pol-op-m2',
-      chapter_id: '2',
-      category: 'operational',
-      policy_code: 'OPENING_CUTOFF_POLICY',
-      name: 'Opening Count Cutoff & Two-Counter Independence Policy',
-      status: 'approved',
-      row_version: 2,
-      material_version: 1,
-      material_hash: computeDeterministicHash({ code: 'OPENING_CUTOFF_POLICY_M2', v: 1 }),
-      summary: 'Manila chapter approved opening baseline policy.',
-      workflow_affected: 'P06 IPC → RM Opening Baseline',
-      approved_by_duty: 'CHAPTER_HEAD',
-      effective_from: '2026-10-23T00:00:00.000000Z',
-      last_reason: 'Manila Head sign-off.',
-    },
-  ];
+  const grants: AdminDutyGrant[] = (seed.duty_grants ?? []).map((g) => ({
+    ...g,
+    monetary_limit: g.monetary_limit ? { ...g.monetary_limit } : null,
+  }));
 
-  const provisionedChapters: ProvisionedChapterRecord[] = [
-    {
-      id: 'prov-1',
-      organization_id: 'org-ysp-ph',
-      provider_user_id: '90',
-      chapter_code: 'CEB-01',
-      chapter_name: 'YSP Cebu Chapter',
-      version: 2,
-      initial_head_user_id: '21',
-      initial_head_name: 'Laurence Parojinog',
-      initial_head_membership_authorization: 'not_applicable',
-    },
-  ];
+  const policies: PolicyRecordItem[] = (seed.policies ?? []).map((p) => ({ ...p }));
 
-  const auditLog: P02AuditEvent[] = [];
+  const provisionedChapters: ProvisionedChapterRecord[] = (seed.provisioned_chapters ?? []).map(
+    (p) => ({ ...p })
+  );
+
+  const knownIdentities = new Map<string, ExistingIdentityReference>();
+  for (const idRef of seed.known_identities ?? []) {
+    if (idRef.user_id.trim()) {
+      knownIdentities.set(idRef.user_id.trim(), {
+        user_id: idRef.user_id.trim(),
+        display_name: idRef.display_name.trim(),
+      });
+    }
+  }
+  for (const p of personas) {
+    if (p.user_id.trim() && !knownIdentities.has(p.user_id.trim())) {
+      knownIdentities.set(p.user_id.trim(), {
+        user_id: p.user_id.trim(),
+        display_name: p.display_name.trim(),
+      });
+    }
+  }
+  for (const m of memberships) {
+    if (m.user_id.trim() && !knownIdentities.has(m.user_id.trim())) {
+      knownIdentities.set(m.user_id.trim(), {
+        user_id: m.user_id.trim(),
+        display_name: m.display_name.trim(),
+      });
+    }
+  }
+
+  let selectionRevSeq = personas.length > 0 ? 1 : 0;
+  let autoKeySeq = 0;
+  let opSeq = 0;
+
+  interface StoredP02Operation {
+    record: P02OperationRecord;
+    fingerprint: string;
+    result: P02ActionResult<unknown>;
+  }
+
+  const operationsByKey = new Map<string, StoredP02Operation>();
+  const operationsById = new Map<string, StoredP02Operation>();
+  const operationLedger: P02OperationRecord[] = [];
+
+  function formatSelectionRevision(): string | null {
+    if (!getActivePersona()) return null;
+    const rev = Math.max(1, selectionRevSeq);
+    return `ctx_${String(rev).padStart(8, '0')}`;
+  }
+
+  function nextOpUlid(): string {
+    opSeq += 1;
+    const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    let suffix = '';
+    let n = opSeq;
+    for (let i = 0; i < 6; i += 1) {
+      suffix = (alphabet[n % 32] ?? '0') + suffix;
+      n = Math.floor(n / 32);
+    }
+    return `01K8P02OP00000000000${suffix}`;
+  }
+
+  function resolveKnownIdentity(userId: string): ExistingIdentityReference | null {
+    const trimmed = userId.trim();
+    if (!trimmed) return null;
+    const known = knownIdentities.get(trimmed);
+    if (known) return { ...known };
+    const member = memberships.find((m) => m.user_id === trimmed);
+    if (member) return { user_id: member.user_id, display_name: member.display_name };
+    const persona = personas.find((p) => p.user_id === trimmed);
+    if (persona) return { user_id: persona.user_id, display_name: persona.display_name };
+    return null;
+  }
+
+  function runIdempotentOperation<T>(params: {
+    scope: P02OperationScope;
+    chapterId: string | null;
+    actionCode: string;
+    explicitKey: string | undefined;
+    fingerprintPayload: unknown;
+    execute: () => P02ActionResult<T>;
+  }): P02ActionResult<T> {
+    if (params.explicitKey !== undefined) {
+      if (!VALID_IDEMPOTENCY_KEY_RE.test(params.explicitKey)) {
+        return {
+          ok: false,
+          status: 422,
+          code: 'INVALID_IDEMPOTENCY_KEY',
+          message:
+            'Idempotency key must be 1–128 case-sensitive chars (A–Z, a–z, 0–9, ., _, :, -) with no whitespace.',
+        };
+      }
+    }
+
+    const key =
+      params.explicitKey !== undefined
+        ? params.explicitKey
+        : `auto_${++autoKeySeq}`;
+    const scopeKey = `${params.scope}:${params.chapterId ?? 'global'}:${params.actionCode}:${key}`;
+    const fingerprint = computeDeterministicHash({
+      scope: params.scope,
+      chapter_id: params.chapterId,
+      action_code: params.actionCode,
+      payload: params.fingerprintPayload,
+    });
+
+    const existing = operationsByKey.get(scopeKey);
+    if (existing) {
+      if (existing.fingerprint !== fingerprint) {
+        return {
+          ok: false,
+          status: 409,
+          code: 'IDEMPOTENCY_CONFLICT',
+          message: `Key "${key}" is already bound to a different ${params.actionCode} payload.`,
+          next_action: 'review_original_attempt',
+          idempotency_key: key,
+          action_code: params.actionCode,
+        };
+      }
+      return {
+        ...(existing.result as P02ActionResult<T>),
+        replayed: true,
+        operation_id: existing.record.operation_id,
+        action_code: params.actionCode,
+        idempotency_key: key,
+      };
+    }
+
+    const outcome = params.execute();
+    const isDurableStateOutcome =
+      outcome.ok ||
+      outcome.code === 'MEMBERSHIP_ALREADY_ACTIVE' ||
+      outcome.code === 'GRANT_NOT_ACTIVE' ||
+      outcome.code === 'ALTERNATE_MUST_BE_DISTINCT_IDENTITY' ||
+      outcome.code === 'INVALID_POLICY_STATUS';
+
+    if (!isDurableStateOutcome) {
+      return {
+        ...outcome,
+        action_code: params.actionCode,
+        idempotency_key: params.explicitKey !== undefined ? key : undefined,
+      };
+    }
+
+    const opId = nextOpUlid();
+    const committedAt = nowUtcSix();
+    const enriched: P02ActionResult<T> = {
+      ...outcome,
+      operation_id: opId,
+      action_code: params.actionCode,
+      idempotency_key: key,
+      replayed: false,
+    };
+    const record: P02OperationRecord = {
+      operation_id: opId,
+      scope: params.scope,
+      chapter_id: params.chapterId,
+      action_code: params.actionCode,
+      idempotency_key: key,
+      outcome: outcome.ok ? 'committed' : 'rejected',
+      code: outcome.code,
+      message: outcome.message,
+      committed_at: committedAt,
+    };
+    const stored: StoredP02Operation = { record, fingerprint, result: enriched };
+    operationsByKey.set(scopeKey, stored);
+    operationsById.set(opId, stored);
+    operationLedger.unshift(record);
+    return enriched;
+  }
+
+  const auditLog: P02AuditEvent[] = (seed.audit_log ?? []).map((a) => ({ ...a }));
 
   function pushAudit(actorName: string, code: string, summary: string) {
     nextSeq += 1;
@@ -640,11 +668,9 @@ export function createP02AdminEngine(): P02AdminEngine {
     });
   }
 
-  function getActivePersona(): P02Persona {
-    return (
-      INITIAL_PERSONAS.find((p) => p.key === activePersonaKey) ??
-      (INITIAL_PERSONAS[0] as P02Persona)
-    );
+  function getActivePersona(): P02Persona | null {
+    if (!activePersonaKey) return null;
+    return personas.find((p) => p.key === activePersonaKey) ?? null;
   }
 
   function getAuthorizedMembershipsFor(userId: string): ChapterMembershipSummary[] {
@@ -659,6 +685,9 @@ export function createP02AdminEngine(): P02AdminEngine {
     duties: DutyCode[];
   } {
     const user = getActivePersona();
+    if (!user) {
+      return { state: 'no_authorized_memberships', selectedId: null, duties: [] };
+    }
     const userMemberships = getAuthorizedMembershipsFor(user.user_id);
     if (userMemberships.length === 0) {
       return { state: 'no_authorized_memberships', selectedId: null, duties: [] };
@@ -708,15 +737,16 @@ export function createP02AdminEngine(): P02AdminEngine {
     const authVer = selectedId ? (authorityVersionByChapter.get(selectedId) ?? 1) : 0;
 
     return {
-      active_persona: { ...user, provider_roles: [...user.provider_roles] },
-      available_personas: INITIAL_PERSONAS.map((p) => ({
+      active_persona: user ? { ...user, provider_roles: [...user.provider_roles] } : null,
+      available_personas: personas.map((p) => ({
         ...p,
         provider_roles: [...p.provider_roles],
       })),
       all_chapters: chapters.map((c) => ({ ...c })),
-      authorized_memberships_for_user: getAuthorizedMembershipsFor(user.user_id),
+      authorized_memberships_for_user: user ? getAuthorizedMembershipsFor(user.user_id) : [],
       selected_chapter_id: selectedId,
       selected_chapter_name: selectedChapter?.name ?? null,
+      selection_revision: formatSelectionRevision(),
       chapter_state: state,
       next_action: chapterNextAction(state),
       authority_version: authVer,
@@ -726,6 +756,7 @@ export function createP02AdminEngine(): P02AdminEngine {
       chapter_duty_grants: chapterGrants,
       chapter_policies: chapterPolicies,
       provisioned_chapters: provisionedChapters.map((p) => ({ ...p })),
+      operation_ledger: operationLedger.map((op) => ({ ...op })),
       audit_log: auditLog.map((a) => ({ ...a })),
     };
   }
@@ -737,6 +768,20 @@ export function createP02AdminEngine(): P02AdminEngine {
     | { ok: true; chapterId: string; user: P02Persona; duties: DutyCode[]; authVersion: number }
     | { ok: false; result: P02ActionResult<never> } {
     const user = getActivePersona();
+    if (!user) {
+      return {
+        ok: false,
+        result: {
+          ok: false,
+          status: 403,
+          code: 'SESSION_REQUIRED',
+          message:
+            'Sign in with an active officer session before executing chapter administration actions.',
+          link_screen: 'S-01',
+        },
+      };
+    }
+
     const { state, selectedId, duties } = resolveChapterState();
 
     if (user.provider_roles.length > 0 && state === 'no_authorized_memberships') {
@@ -786,7 +831,7 @@ export function createP02AdminEngine(): P02AdminEngine {
   }
 
   function selectPersona(personaKey: string): P02ActionResult<P02Snapshot> {
-    const target = INITIAL_PERSONAS.find((p) => p.key === personaKey);
+    const target = personas.find((p) => p.key === personaKey);
     if (!target) {
       return {
         ok: false,
@@ -796,6 +841,7 @@ export function createP02AdminEngine(): P02AdminEngine {
       };
     }
     activePersonaKey = target.key;
+    selectionRevSeq += 1;
     const myMemberships = getAuthorizedMembershipsFor(target.user_id);
     if (myMemberships.length === 0) {
       selectedChapterId = null;
@@ -835,6 +881,16 @@ export function createP02AdminEngine(): P02AdminEngine {
       };
     }
 
+    if (!user) {
+      return {
+        ok: false,
+        status: 403,
+        code: 'SESSION_REQUIRED',
+        message: 'Sign in with an active officer session before selecting a chapter.',
+        link_screen: 'S-01',
+      };
+    }
+
     const myMemberships = getAuthorizedMembershipsFor(user.user_id);
     if (myMemberships.length === 0 && user.provider_roles.length > 0) {
       return {
@@ -859,6 +915,7 @@ export function createP02AdminEngine(): P02AdminEngine {
     }
 
     selectedChapterId = match.chapter_id;
+    selectionRevSeq += 1;
     const snap = getSnapshot();
     pushAudit(
       user.display_name,
@@ -875,90 +932,179 @@ export function createP02AdminEngine(): P02AdminEngine {
     };
   }
 
+  function lookupMembershipIdentity(
+    input: LookupMembershipIdentityInput
+  ): P02ActionResult<ExistingIdentityReference | null> {
+    const auth = ensureChapterAuthority(input.chapter_id, 'CHAPTER_HEAD');
+    if (!auth.ok) return auth.result;
+    if (!input.user_id.trim()) {
+      return {
+        ok: false,
+        status: 422,
+        code: 'INVALID_INPUT',
+        message: 'Provide a valid user_id to resolve an identity reference.',
+      };
+    }
+    const found = resolveKnownIdentity(input.user_id);
+    return {
+      ok: true,
+      status: 200,
+      code: found ? 'IDENTITY_REFERENCE_RESOLVED' : 'IDENTITY_REFERENCE_NOT_FOUND',
+      message: found
+        ? `Resolved existing identity ${found.display_name} (${found.user_id}).`
+        : `No eligible existing identity found for user ${input.user_id.trim()}.`,
+      authority_version: auth.authVersion,
+      data: found,
+    };
+  }
+
+  function lookupProvisioningIdentity(
+    input: LookupProvisioningIdentityInput
+  ): P02ActionResult<ExistingIdentityReference | null> {
+    const user = getActivePersona();
+    if (!user) {
+      return {
+        ok: false,
+        status: 403,
+        code: 'SESSION_REQUIRED',
+        message: 'Sign in with a provider provisioner session before looking up identities.',
+        link_screen: 'S-01',
+      };
+    }
+    if (!user.provider_roles.includes('provisioner')) {
+      return {
+        ok: false,
+        status: 403,
+        code: 'PROVIDER_AUTHORITY_REQUIRED',
+        message: 'Provisioning identity lookup requires provider provisioner authority.',
+        link_screen: 'S-22',
+      };
+    }
+    if (!input.user_id.trim()) {
+      return {
+        ok: false,
+        status: 422,
+        code: 'INVALID_INPUT',
+        message: 'Provide a valid user_id to look up an eligible Initial Head identity.',
+      };
+    }
+    const found = resolveKnownIdentity(input.user_id);
+    return {
+      ok: true,
+      status: 200,
+      code: found ? 'IDENTITY_REFERENCE_RESOLVED' : 'IDENTITY_REFERENCE_NOT_FOUND',
+      message: found
+        ? `Resolved eligible provisioning identity ${found.display_name} (${found.user_id}).`
+        : `No eligible existing identity matched user ${input.user_id.trim()}.`,
+      authority_version: providerAuthorityVersion,
+      data: found,
+    };
+  }
+
   function authorizeMembership(
     input: AuthorizeMembershipInput
   ): P02ActionResult<ChapterMembershipSummary> {
     const auth = ensureChapterAuthority(input.chapter_id, 'CHAPTER_HEAD');
     if (!auth.ok) return auth.result;
 
-    if (input.expected_authority_version !== auth.authVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_AUTHORITY_VERSION',
-        message: `Authority version changed (expected v${input.expected_authority_version}, current v${auth.authVersion}).`,
-      };
-    }
-    if (!input.reason.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'REASON_REQUIRED',
-        message: 'Provide an authorization reason.',
-      };
-    }
-    if (!input.user_id.trim() || !input.display_name.trim() || !input.email.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'INVALID_INPUT',
-        message: 'User ID, display name, and email are required.',
-      };
-    }
-
-    const existing = memberships.find(
-      (m) => m.chapter_id === auth.chapterId && m.user_id === input.user_id.trim()
-    );
-    if (existing && existing.status === 'active') {
-      return {
-        ok: false,
-        status: 409,
-        code: 'MEMBERSHIP_ALREADY_ACTIVE',
-        message: `${existing.display_name} already holds an active membership in this chapter.`,
-      };
-    }
-
-    const chapter = chapters.find((c) => c.id === auth.chapterId);
-    const nextAuth = auth.authVersion + 1;
-    authorityVersionByChapter.set(auth.chapterId, nextAuth);
-
-    let resultRecord: ChapterMembershipSummary;
-    if (existing) {
-      existing.status = 'active';
-      existing.version += 1;
-      existing.active_sessions = 1;
-      resultRecord = { ...existing };
-    } else {
-      nextSeq += 1;
-      resultRecord = {
-        membership_id: String(nextSeq),
-        chapter_id: auth.chapterId,
-        chapter_code: chapter?.code ?? `CHP-${auth.chapterId}`,
-        chapter_name: chapter?.name ?? `Chapter ${auth.chapterId}`,
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode: 'memberships.authorize',
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
         user_id: input.user_id.trim(),
         display_name: input.display_name.trim(),
         email: input.email.trim().toLowerCase(),
-        status: 'active',
-        version: 1,
-        active_sessions: 1,
-      };
-      memberships.push(resultRecord);
-    }
+        expected_authority_version: input.expected_authority_version,
+        expected_membership_version: input.expected_membership_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        if (input.expected_authority_version !== auth.authVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_AUTHORITY_VERSION',
+            message: `Authority version changed (expected v${input.expected_authority_version}, current v${auth.authVersion}).`,
+          };
+        }
+        if (!input.reason.trim()) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'REASON_REQUIRED',
+            message: 'Provide an authorization reason.',
+          };
+        }
+        if (!input.user_id.trim() || !input.display_name.trim() || !input.email.trim()) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'INVALID_INPUT',
+            message: 'User ID, display name, and email are required.',
+          };
+        }
 
-    pushAudit(
-      auth.user.display_name,
-      'MEMBERSHIP_AUTHORIZED',
-      `Authorized membership for ${resultRecord.display_name} (user ${resultRecord.user_id}) in ${resultRecord.chapter_code}: ${input.reason.trim()}`
-    );
+        const existing = memberships.find(
+          (m) => m.chapter_id === auth.chapterId && m.user_id === input.user_id.trim()
+        );
+        if (existing && existing.status === 'active') {
+          return {
+            ok: false,
+            status: 409,
+            code: 'MEMBERSHIP_ALREADY_ACTIVE',
+            message: `${existing.display_name} already holds an active membership in this chapter.`,
+          };
+        }
 
-    return {
-      ok: true,
-      status: 200,
-      code: 'MEMBERSHIP_AUTHORIZED',
-      message: `Authorized chapter membership for ${resultRecord.display_name}.`,
-      authority_version: nextAuth,
-      data: { ...resultRecord },
-    };
+        const chapter = chapters.find((c) => c.id === auth.chapterId);
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
+
+        let resultRecord: ChapterMembershipSummary;
+        if (existing) {
+          existing.status = 'active';
+          existing.version += 1;
+          existing.active_sessions = 1;
+          resultRecord = { ...existing };
+        } else {
+          nextSeq += 1;
+          resultRecord = {
+            membership_id: String(nextSeq),
+            chapter_id: auth.chapterId,
+            chapter_code: chapter?.code ?? `CHP-${auth.chapterId}`,
+            chapter_name: chapter?.name ?? `Chapter ${auth.chapterId}`,
+            user_id: input.user_id.trim(),
+            display_name: input.display_name.trim(),
+            email: input.email.trim().toLowerCase(),
+            status: 'active',
+            version: 1,
+            active_sessions: 1,
+          };
+          memberships.push(resultRecord);
+        }
+        knownIdentities.set(resultRecord.user_id, {
+          user_id: resultRecord.user_id,
+          display_name: resultRecord.display_name,
+        });
+
+        pushAudit(
+          auth.user.display_name,
+          'MEMBERSHIP_AUTHORIZED',
+          `Authorized membership for ${resultRecord.display_name} (user ${resultRecord.user_id}) in ${resultRecord.chapter_code}: ${input.reason.trim()}`
+        );
+
+        return {
+          ok: true,
+          status: 200,
+          code: 'MEMBERSHIP_AUTHORIZED',
+          message: `Authorized chapter membership for ${resultRecord.display_name}.`,
+          authority_version: nextAuth,
+          data: { ...resultRecord },
+        };
+      },
+    });
   }
 
   function disableOrRevokeMembership(
@@ -967,391 +1113,643 @@ export function createP02AdminEngine(): P02AdminEngine {
     const auth = ensureChapterAuthority(input.chapter_id, 'CHAPTER_HEAD');
     if (!auth.ok) return auth.result;
 
-    if (input.expected_authority_version !== auth.authVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_AUTHORITY_VERSION',
-        message: `Authority version changed (expected v${input.expected_authority_version}, current v${auth.authVersion}).`,
-      };
-    }
+    const actionCode = input.action === 'disabled' ? 'memberships.disable' : 'memberships.revoke';
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode,
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        membership_id: input.membership_id,
+        action: input.action,
+        expected_authority_version: input.expected_authority_version,
+        expected_membership_version: input.expected_membership_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        if (input.expected_authority_version !== auth.authVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_AUTHORITY_VERSION',
+            message: `Authority version changed (expected v${input.expected_authority_version}, current v${auth.authVersion}).`,
+          };
+        }
 
-    const target = memberships.find(
-      (m) => m.chapter_id === auth.chapterId && m.membership_id === input.membership_id
-    );
-    if (!target) {
-      return {
-        ok: false,
-        status: 403,
-        code: 'CROSS_CHAPTER_FORBIDDEN',
-        message: 'Target membership does not belong to the authorized chapter.',
-      };
-    }
+        const target = memberships.find(
+          (m) => m.chapter_id === auth.chapterId && m.membership_id === input.membership_id
+        );
+        if (!target) {
+          return {
+            ok: false,
+            status: 403,
+            code: 'CROSS_CHAPTER_FORBIDDEN',
+            message: 'Target membership does not belong to the authorized chapter.',
+          };
+        }
 
-    if (input.expected_membership_version !== target.version) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_MEMBERSHIP_VERSION',
-        message: `Membership version changed (expected v${input.expected_membership_version}, current v${target.version}).`,
-      };
-    }
+        if (input.expected_membership_version !== target.version) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_MEMBERSHIP_VERSION',
+            message: `Membership version changed (expected v${input.expected_membership_version}, current v${target.version}).`,
+          };
+        }
 
-    if (!input.reason.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'REASON_REQUIRED',
-        message: 'Provide a reason before disabling or revoking chapter membership.',
-      };
-    }
+        if (!input.reason.trim()) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'REASON_REQUIRED',
+            message: 'Provide a reason before disabling or revoking chapter membership.',
+          };
+        }
 
-    if (target.user_id === auth.user.user_id) {
-      const otherActiveHead = memberships.some(
-        (m) =>
-          m.chapter_id === auth.chapterId &&
-          m.status === 'active' &&
-          m.membership_id !== target.membership_id &&
-          grants.some(
-            (g) =>
-              g.membership_id === m.membership_id &&
-              g.duty_code === 'CHAPTER_HEAD' &&
-              g.revoked_at === null
-          )
-      );
-      if (!otherActiveHead) {
+        if (target.user_id === auth.user.user_id) {
+          const otherActiveHead = memberships.some(
+            (m) =>
+              m.chapter_id === auth.chapterId &&
+              m.status === 'active' &&
+              m.membership_id !== target.membership_id &&
+              grants.some(
+                (g) =>
+                  g.membership_id === m.membership_id &&
+                  g.duty_code === 'CHAPTER_HEAD' &&
+                  g.revoked_at === null
+              )
+          );
+          if (!otherActiveHead) {
+            return {
+              ok: false,
+              status: 409,
+              code: 'SOLE_HEAD_SELF_REVOKE_FORBIDDEN',
+              message:
+                'Sole active Chapter Head cannot self-disable or self-revoke without an alternate Head.',
+            };
+          }
+        }
+
+        const revokedSessions = target.active_sessions;
+        target.status = input.action;
+        target.active_sessions = 0;
+        target.version += 1;
+        selectionRevSeq += 1;
+
+        const revokedAt = nowUtcSix();
+        for (const grant of grants) {
+          if (grant.membership_id === target.membership_id && grant.revoked_at === null) {
+            grant.revoked_at = revokedAt;
+            grant.version += 1;
+          }
+        }
+
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
+
+        const code = input.action === 'disabled' ? 'MEMBERSHIP_DISABLED' : 'MEMBERSHIP_REVOKED';
+        pushAudit(
+          auth.user.display_name,
+          code,
+          `${input.action.toUpperCase()} ${target.display_name} (revoked ${revokedSessions} session(s)): ${input.reason.trim()}`
+        );
+
         return {
-          ok: false,
-          status: 409,
-          code: 'SOLE_HEAD_SELF_REVOKE_FORBIDDEN',
-          message: 'Sole active Chapter Head cannot self-disable or self-revoke without an alternate Head.',
+          ok: true,
+          status: 200,
+          code,
+          message: `${target.display_name} membership ${input.action}; ${revokedSessions} active session(s) revoked.`,
+          authority_version: nextAuth,
+          revoked_sessions_count: revokedSessions,
+          data: { ...target },
         };
-      }
-    }
-
-    const revokedSessions = target.active_sessions;
-    target.status = input.action;
-    target.active_sessions = 0;
-    target.version += 1;
-
-    const revokedAt = nowUtcSix();
-    for (const grant of grants) {
-      if (grant.membership_id === target.membership_id && grant.revoked_at === null) {
-        grant.revoked_at = revokedAt;
-        grant.version += 1;
-      }
-    }
-
-    const nextAuth = auth.authVersion + 1;
-    authorityVersionByChapter.set(auth.chapterId, nextAuth);
-
-    const code = input.action === 'disabled' ? 'MEMBERSHIP_DISABLED' : 'MEMBERSHIP_REVOKED';
-    pushAudit(
-      auth.user.display_name,
-      code,
-      `${input.action.toUpperCase()} ${target.display_name} (revoked ${revokedSessions} session(s)): ${input.reason.trim()}`
-    );
-
-    return {
-      ok: true,
-      status: 200,
-      code,
-      message: `${target.display_name} membership ${input.action}; ${revokedSessions} active session(s) revoked.`,
-      authority_version: nextAuth,
-      revoked_sessions_count: revokedSessions,
-      data: { ...target },
-    };
+      },
+    });
   }
 
   function authorizeDutyGrant(input: AuthorizeDutyGrantInput): P02ActionResult<AdminDutyGrant> {
     const auth = ensureChapterAuthority(input.chapter_id, 'CHAPTER_HEAD');
     if (!auth.ok) return auth.result;
 
-    if (!isCanonicalDuty(input.duty_code)) {
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode: 'duty_grants.authorize',
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        membership_id: input.membership_id,
+        duty_code: input.duty_code,
+        scope_kind: input.scope_kind,
+        requesting_unit_id: input.requesting_unit_id,
+        monetary_limit: input.monetary_limit,
+        expected_authority_version: input.expected_authority_version,
+        expected_membership_version: input.expected_membership_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        if (!isCanonicalDuty(input.duty_code)) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'INVALID_CHAPTER_DUTY',
+            message: `"${input.duty_code}" is not one of the 14 canonical chapter duties (provider authorities cannot be assigned as chapter duties).`,
+          };
+        }
+
+        if (input.expected_authority_version !== auth.authVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_AUTHORITY_VERSION',
+            message: `Authority version mismatch (expected v${input.expected_authority_version}, current v${auth.authVersion}).`,
+          };
+        }
+
+        const membership = memberships.find(
+          (m) => m.chapter_id === auth.chapterId && m.membership_id === input.membership_id
+        );
+        if (!membership || membership.status !== 'active') {
+          return {
+            ok: false,
+            status: 409,
+            code: 'MEMBERSHIP_NOT_ACTIVE',
+            message: 'Duty grants require an active membership in this chapter.',
+          };
+        }
+        if (input.expected_membership_version !== membership.version) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_MEMBERSHIP_VERSION',
+            message: `Membership version changed (expected v${input.expected_membership_version}, current v${membership.version}).`,
+          };
+        }
+        if (
+          input.scope_kind === 'unit' &&
+          (!input.requesting_unit_id || !input.requesting_unit_id.trim())
+        ) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'UNIT_SCOPE_REQUIRED',
+            message: 'Unit-scoped duty grants require an explicit requesting_unit_id.',
+          };
+        }
+        if (
+          input.monetary_limit !== null &&
+          (input.monetary_limit.currency !== 'PHP' ||
+            !VALID_PHP_AMOUNT_RE.test(input.monetary_limit.amount.trim()))
+        ) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'INVALID_MONETARY_LIMIT',
+            message: 'Monetary limit must use exact PHP decimal string format (e.g. "1000.00").',
+          };
+        }
+        if (!input.reason.trim()) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'REASON_REQUIRED',
+            message: 'Provide an explicit authorization reason for this duty grant.',
+          };
+        }
+
+        nextSeq += 1;
+        const newGrant: AdminDutyGrant = {
+          id: String(nextSeq),
+          chapter_id: auth.chapterId,
+          membership_id: membership.membership_id,
+          user_id: membership.user_id,
+          officer_name: membership.display_name,
+          duty_code: input.duty_code,
+          scope_kind: input.scope_kind,
+          requesting_unit_id:
+            input.scope_kind === 'unit' ? (input.requesting_unit_id?.trim() ?? null) : null,
+          monetary_limit: input.monetary_limit
+            ? { currency: 'PHP', amount: input.monetary_limit.amount.trim() }
+            : null,
+          starts_at: nowUtcSix(),
+          ends_at: null,
+          revoked_at: null,
+          version: 1,
+          alternate_for_grant_id: null,
+        };
+        grants.push(newGrant);
+
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
+
+        pushAudit(
+          auth.user.display_name,
+          'DUTY_GRANT_AUTHORIZED',
+          `Granted ${newGrant.duty_code} (${newGrant.scope_kind}) to ${membership.display_name}`
+        );
+
+        return {
+          ok: true,
+          status: 200,
+          code: 'DUTY_GRANT_AUTHORIZED',
+          message: `Authorized ${newGrant.duty_code} for ${membership.display_name}.`,
+          authority_version: nextAuth,
+          data: { ...newGrant },
+        };
+      },
+    });
+  }
+
+  function validateActiveGrantMutation(params: {
+    chapterId: string;
+    authVersion: number;
+    grantId: string;
+    expectedAuthorityVersion: number;
+    expectedGrantVersion: number;
+    expectedMembershipVersion: number;
+    reason: string;
+    reasonMessage: string;
+  }):
+    | { ok: true; grant: AdminDutyGrant; membership: ChapterMembershipSummary }
+    | { ok: false; result: P02ActionResult<never> } {
+    if (params.expectedAuthorityVersion !== params.authVersion) {
       return {
         ok: false,
-        status: 422,
-        code: 'INVALID_CHAPTER_DUTY',
-        message: `"${input.duty_code}" is not one of the 14 canonical chapter duties (provider authorities cannot be assigned as chapter duties).`,
+        result: {
+          ok: false,
+          status: 409,
+          code: 'STALE_AUTHORITY_VERSION',
+          message: `Authority version changed (expected v${params.expectedAuthorityVersion}, current v${params.authVersion}).`,
+        },
       };
     }
 
-    if (input.expected_authority_version !== auth.authVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_AUTHORITY_VERSION',
-        message: `Authority version mismatch (expected v${input.expected_authority_version}, current v${auth.authVersion}).`,
-      };
-    }
-
-    const membership = memberships.find(
-      (m) => m.chapter_id === auth.chapterId && m.membership_id === input.membership_id
+    const grant = grants.find(
+      (g) => g.chapter_id === params.chapterId && g.id === params.grantId
     );
-    if (!membership || membership.status !== 'active') {
+    if (!grant || grant.revoked_at !== null) {
       return {
         ok: false,
-        status: 409,
-        code: 'MEMBERSHIP_NOT_ACTIVE',
-        message: 'Duty grants require an active membership in this chapter.',
+        result: {
+          ok: false,
+          status: 409,
+          code: 'GRANT_NOT_ACTIVE',
+          message: 'Duty grant not found or already revoked.',
+        },
       };
     }
-    if (input.expected_membership_version !== membership.version) {
+    if (params.expectedGrantVersion !== grant.version) {
       return {
         ok: false,
-        status: 409,
-        code: 'STALE_MEMBERSHIP_VERSION',
-        message: `Membership version changed (expected v${input.expected_membership_version}, current v${membership.version}).`,
-      };
-    }
-    if (input.scope_kind === 'unit' && (!input.requesting_unit_id || !input.requesting_unit_id.trim())) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'UNIT_SCOPE_REQUIRED',
-        message: 'Unit-scoped duty grants require an explicit requesting_unit_id.',
-      };
-    }
-    if (
-      input.monetary_limit !== null &&
-      (input.monetary_limit.currency !== 'PHP' ||
-        !VALID_PHP_AMOUNT_RE.test(input.monetary_limit.amount.trim()))
-    ) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'INVALID_MONETARY_LIMIT',
-        message: 'Monetary limit must use exact PHP decimal string format (e.g. "1000.00").',
-      };
-    }
-    if (!input.reason.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'REASON_REQUIRED',
-        message: 'Provide an explicit authorization reason for this duty grant.',
+        result: {
+          ok: false,
+          status: 409,
+          code: 'STALE_GRANT_VERSION',
+          message: `Grant version changed (expected v${params.expectedGrantVersion}, current v${grant.version}).`,
+        },
       };
     }
 
-    nextSeq += 1;
-    const newGrant: AdminDutyGrant = {
-      id: String(nextSeq),
-      chapter_id: auth.chapterId,
-      membership_id: membership.membership_id,
-      user_id: membership.user_id,
-      officer_name: membership.display_name,
-      duty_code: input.duty_code,
-      scope_kind: input.scope_kind,
-      requesting_unit_id:
-        input.scope_kind === 'unit' ? (input.requesting_unit_id?.trim() ?? null) : null,
-      monetary_limit: input.monetary_limit
-        ? { currency: 'PHP', amount: input.monetary_limit.amount.trim() }
-        : null,
-      starts_at: nowUtcSix(),
-      ends_at: null,
-      revoked_at: null,
-      version: 1,
-      alternate_for_grant_id: null,
-    };
-    grants.push(newGrant);
+    const membership = memberships.find((m) => m.membership_id === grant.membership_id);
+    if (!membership || params.expectedMembershipVersion !== membership.version) {
+      return {
+        ok: false,
+        result: {
+          ok: false,
+          status: 409,
+          code: 'STALE_MEMBERSHIP_VERSION',
+          message: 'Target membership version mismatch.',
+        },
+      };
+    }
 
-    const nextAuth = auth.authVersion + 1;
-    authorityVersionByChapter.set(auth.chapterId, nextAuth);
+    if (!params.reason.trim()) {
+      return {
+        ok: false,
+        result: {
+          ok: false,
+          status: 422,
+          code: 'REASON_REQUIRED',
+          message: params.reasonMessage,
+        },
+      };
+    }
 
-    pushAudit(
-      auth.user.display_name,
-      'DUTY_GRANT_AUTHORIZED',
-      `Granted ${newGrant.duty_code} (${newGrant.scope_kind}) to ${membership.display_name}`
-    );
+    return { ok: true, grant, membership };
+  }
 
-    return {
-      ok: true,
-      status: 200,
-      code: 'DUTY_GRANT_AUTHORIZED',
-      message: `Authorized ${newGrant.duty_code} for ${membership.display_name}.`,
-      authority_version: nextAuth,
-      data: { ...newGrant },
-    };
+  function amendDutyGrant(input: AmendDutyGrantInput): P02ActionResult<AdminDutyGrant> {
+    const auth = ensureChapterAuthority(input.chapter_id, 'CHAPTER_HEAD');
+    if (!auth.ok) return auth.result;
+
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode: 'duty_grants.prepare',
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        op: 'amend',
+        grant_id: input.grant_id,
+        starts_at: input.starts_at,
+        ends_at: input.ends_at,
+        monetary_limit: input.monetary_limit,
+        expected_authority_version: input.expected_authority_version,
+        expected_membership_version: input.expected_membership_version,
+        expected_grant_version: input.expected_grant_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        const check = validateActiveGrantMutation({
+          chapterId: auth.chapterId,
+          authVersion: auth.authVersion,
+          grantId: input.grant_id,
+          expectedAuthorityVersion: input.expected_authority_version,
+          expectedGrantVersion: input.expected_grant_version,
+          expectedMembershipVersion: input.expected_membership_version,
+          reason: input.reason,
+          reasonMessage: 'Provide a reason for amending this duty grant.',
+        });
+        if (!check.ok) return check.result;
+
+        if (
+          input.monetary_limit !== null &&
+          (input.monetary_limit.currency !== 'PHP' ||
+            !VALID_PHP_AMOUNT_RE.test(input.monetary_limit.amount.trim()))
+        ) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'INVALID_MONETARY_LIMIT',
+            message: 'Monetary limit must use exact PHP decimal string format (e.g. "1000.00").',
+          };
+        }
+
+        const nextStart = input.starts_at?.trim() || check.grant.starts_at;
+        const nextEnd = input.ends_at?.trim() ? input.ends_at.trim() : null;
+        if (nextEnd !== null && Date.parse(nextEnd) <= Date.parse(nextStart)) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'INVALID_EFFECTIVITY_WINDOW',
+            message: 'Grant ends_at must be strictly later than starts_at.',
+          };
+        }
+
+        check.grant.starts_at = nextStart;
+        check.grant.ends_at = nextEnd;
+        check.grant.monetary_limit = input.monetary_limit
+          ? { currency: 'PHP', amount: input.monetary_limit.amount.trim() }
+          : null;
+        check.grant.version += 1;
+
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
+
+        pushAudit(
+          auth.user.display_name,
+          'DUTY_GRANT_AMENDED',
+          `Amended ${check.grant.duty_code} for ${check.grant.officer_name}: ${input.reason.trim()}`
+        );
+
+        return {
+          ok: true,
+          status: 200,
+          code: 'DUTY_GRANT_AMENDED',
+          message: `Amended ${check.grant.duty_code} terms for ${check.grant.officer_name} without changing duty or scope.`,
+          authority_version: nextAuth,
+          data: {
+            ...check.grant,
+            monetary_limit: check.grant.monetary_limit ? { ...check.grant.monetary_limit } : null,
+          },
+        };
+      },
+    });
+  }
+
+  function endDutyGrant(input: EndDutyGrantInput): P02ActionResult<AdminDutyGrant> {
+    const auth = ensureChapterAuthority(input.chapter_id, 'CHAPTER_HEAD');
+    if (!auth.ok) return auth.result;
+
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode: 'duty_grants.revoke',
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        op: 'end',
+        grant_id: input.grant_id,
+        ends_at: input.ends_at.trim(),
+        expected_authority_version: input.expected_authority_version,
+        expected_membership_version: input.expected_membership_version,
+        expected_grant_version: input.expected_grant_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        const check = validateActiveGrantMutation({
+          chapterId: auth.chapterId,
+          authVersion: auth.authVersion,
+          grantId: input.grant_id,
+          expectedAuthorityVersion: input.expected_authority_version,
+          expectedGrantVersion: input.expected_grant_version,
+          expectedMembershipVersion: input.expected_membership_version,
+          reason: input.reason,
+          reasonMessage: 'Provide a reason for scheduling an end timestamp on this duty grant.',
+        });
+        if (!check.ok) return check.result;
+
+        const targetEnd = input.ends_at.trim();
+        const endMs = Date.parse(targetEnd);
+        const startMs = Date.parse(check.grant.starts_at);
+        if (!targetEnd || Number.isNaN(endMs) || endMs <= startMs) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'INVALID_EFFECTIVITY_WINDOW',
+            message: 'Provide a valid ISO UTC ends_at timestamp strictly after starts_at.',
+          };
+        }
+        if (check.grant.ends_at !== null && endMs > Date.parse(check.grant.ends_at)) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'GRANT_END_EXTENSION_FORBIDDEN',
+            message: 'End duty grant cannot extend an existing scheduled end; authorize a new grant instead.',
+          };
+        }
+
+        check.grant.ends_at = targetEnd;
+        check.grant.version += 1;
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
+
+        pushAudit(
+          auth.user.display_name,
+          'DUTY_GRANT_ENDED',
+          `Scheduled end ${targetEnd} on ${check.grant.duty_code} for ${check.grant.officer_name}`
+        );
+
+        return {
+          ok: true,
+          status: 200,
+          code: 'DUTY_GRANT_ENDED',
+          message: `Scheduled end (${targetEnd}) for ${check.grant.duty_code} held by ${check.grant.officer_name}.`,
+          authority_version: nextAuth,
+          data: {
+            ...check.grant,
+            monetary_limit: check.grant.monetary_limit ? { ...check.grant.monetary_limit } : null,
+          },
+        };
+      },
+    });
   }
 
   function substituteDutyGrant(input: SubstituteDutyGrantInput): P02ActionResult<AdminDutyGrant> {
     const auth = ensureChapterAuthority(input.chapter_id, 'CHAPTER_HEAD');
     if (!auth.ok) return auth.result;
 
-    if (input.expected_authority_version !== auth.authVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_AUTHORITY_VERSION',
-        message: `Authority version changed (expected v${input.expected_authority_version}, current v${auth.authVersion}).`,
-      };
-    }
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode: 'alternates.authorize',
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        grant_id: input.grant_id,
+        alternate_membership_id: input.alternate_membership_id,
+        expected_authority_version: input.expected_authority_version,
+        expected_membership_version: input.expected_membership_version,
+        expected_grant_version: input.expected_grant_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        const check = validateActiveGrantMutation({
+          chapterId: auth.chapterId,
+          authVersion: auth.authVersion,
+          grantId: input.grant_id,
+          expectedAuthorityVersion: input.expected_authority_version,
+          expectedGrantVersion: input.expected_grant_version,
+          expectedMembershipVersion: input.expected_membership_version,
+          reason: input.reason,
+          reasonMessage: 'Provide an alternate designation reason.',
+        });
+        if (!check.ok) return check.result;
+        const original = check.grant;
 
-    const original = grants.find((g) => g.chapter_id === auth.chapterId && g.id === input.grant_id);
-    if (!original || original.revoked_at !== null) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'GRANT_NOT_ACTIVE',
-        message: 'Original duty grant is missing or already revoked.',
-      };
-    }
-    if (input.expected_grant_version !== original.version) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_GRANT_VERSION',
-        message: `Grant version changed (expected v${input.expected_grant_version}, current v${original.version}).`,
-      };
-    }
+        const alternateMember = memberships.find(
+          (m) =>
+            m.chapter_id === auth.chapterId &&
+            m.membership_id === input.alternate_membership_id &&
+            m.status === 'active'
+        );
+        if (!alternateMember) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'ALTERNATE_NOT_ACTIVE',
+            message: 'Selected alternate must hold an active membership in this chapter.',
+          };
+        }
+        if (alternateMember.user_id === original.user_id) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'ALTERNATE_MUST_BE_DISTINCT_IDENTITY',
+            message:
+              'Alternate officer must be a distinct active user identity to preserve GOV-05 independence.',
+          };
+        }
 
-    const origMembership = memberships.find((m) => m.membership_id === original.membership_id);
-    if (!origMembership || input.expected_membership_version !== origMembership.version) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_MEMBERSHIP_VERSION',
-        message: 'Target membership version mismatch.',
-      };
-    }
+        original.version += 1;
+        nextSeq += 1;
+        const altGrant: AdminDutyGrant = {
+          id: String(nextSeq),
+          chapter_id: auth.chapterId,
+          membership_id: alternateMember.membership_id,
+          user_id: alternateMember.user_id,
+          officer_name: alternateMember.display_name,
+          duty_code: original.duty_code,
+          scope_kind: original.scope_kind,
+          requesting_unit_id: original.requesting_unit_id,
+          monetary_limit: original.monetary_limit ? { ...original.monetary_limit } : null,
+          starts_at: nowUtcSix(),
+          ends_at: null,
+          revoked_at: null,
+          version: 1,
+          alternate_for_grant_id: original.id,
+        };
+        grants.push(altGrant);
 
-    const alternateMember = memberships.find(
-      (m) =>
-        m.chapter_id === auth.chapterId &&
-        m.membership_id === input.alternate_membership_id &&
-        m.status === 'active'
-    );
-    if (!alternateMember) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'ALTERNATE_NOT_ACTIVE',
-        message: 'Selected alternate must hold an active membership in this chapter.',
-      };
-    }
-    if (alternateMember.user_id === original.user_id) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'ALTERNATE_MUST_BE_DISTINCT_IDENTITY',
-        message: 'Alternate officer must be a distinct active user identity to preserve GOV-05 independence.',
-      };
-    }
-    if (!input.reason.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'REASON_REQUIRED',
-        message: 'Provide an alternate designation reason.',
-      };
-    }
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
 
-    original.version += 1;
-    nextSeq += 1;
-    const altGrant: AdminDutyGrant = {
-      id: String(nextSeq),
-      chapter_id: auth.chapterId,
-      membership_id: alternateMember.membership_id,
-      user_id: alternateMember.user_id,
-      officer_name: alternateMember.display_name,
-      duty_code: original.duty_code,
-      scope_kind: original.scope_kind,
-      requesting_unit_id: original.requesting_unit_id,
-      monetary_limit: original.monetary_limit ? { ...original.monetary_limit } : null,
-      starts_at: nowUtcSix(),
-      ends_at: null,
-      revoked_at: null,
-      version: 1,
-      alternate_for_grant_id: original.id,
-    };
-    grants.push(altGrant);
+        pushAudit(
+          auth.user.display_name,
+          'ALTERNATE_DESIGNATED',
+          `Designated ${alternateMember.display_name} as alternate for ${original.duty_code} (replacing ${original.officer_name})`
+        );
 
-    const nextAuth = auth.authVersion + 1;
-    authorityVersionByChapter.set(auth.chapterId, nextAuth);
-
-    pushAudit(
-      auth.user.display_name,
-      'ALTERNATE_DESIGNATED',
-      `Designated ${alternateMember.display_name} as alternate for ${original.duty_code} (replacing ${original.officer_name})`
-    );
-
-    return {
-      ok: true,
-      status: 200,
-      code: 'ALTERNATE_DESIGNATED',
-      message: `Designated ${alternateMember.display_name} as alternate for ${original.duty_code}.`,
-      authority_version: nextAuth,
-      data: { ...altGrant },
-    };
+        return {
+          ok: true,
+          status: 200,
+          code: 'ALTERNATE_DESIGNATED',
+          message: `Designated ${alternateMember.display_name} as alternate for ${original.duty_code}.`,
+          authority_version: nextAuth,
+          data: { ...altGrant },
+        };
+      },
+    });
   }
 
   function revokeDutyGrant(input: RevokeDutyGrantInput): P02ActionResult<AdminDutyGrant> {
     const auth = ensureChapterAuthority(input.chapter_id, 'CHAPTER_HEAD');
     if (!auth.ok) return auth.result;
 
-    if (input.expected_authority_version !== auth.authVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_AUTHORITY_VERSION',
-        message: 'Authority version mismatch.',
-      };
-    }
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode: 'duty_grants.revoke',
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        op: 'revoke',
+        grant_id: input.grant_id,
+        expected_authority_version: input.expected_authority_version,
+        expected_membership_version: input.expected_membership_version,
+        expected_grant_version: input.expected_grant_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        const check = validateActiveGrantMutation({
+          chapterId: auth.chapterId,
+          authVersion: auth.authVersion,
+          grantId: input.grant_id,
+          expectedAuthorityVersion: input.expected_authority_version,
+          expectedGrantVersion: input.expected_grant_version,
+          expectedMembershipVersion: input.expected_membership_version,
+          reason: input.reason,
+          reasonMessage: 'Provide a reason for revoking this duty grant.',
+        });
+        if (!check.ok) return check.result;
+        const grant = check.grant;
 
-    const grant = grants.find((g) => g.chapter_id === auth.chapterId && g.id === input.grant_id);
-    if (!grant || grant.revoked_at !== null) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'GRANT_NOT_ACTIVE',
-        message: 'Grant not found or already revoked.',
-      };
-    }
-    if (input.expected_grant_version !== grant.version) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_GRANT_VERSION',
-        message: 'Grant version mismatch.',
-      };
-    }
-    const membership = memberships.find((m) => m.membership_id === grant.membership_id);
-    if (!membership || input.expected_membership_version !== membership.version) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_MEMBERSHIP_VERSION',
-        message: 'Membership version mismatch.',
-      };
-    }
-    if (!input.reason.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'REASON_REQUIRED',
-        message: 'Provide a reason for revoking this duty grant.',
-      };
-    }
+        grant.revoked_at = nowUtcSix();
+        grant.version += 1;
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
 
-    grant.revoked_at = nowUtcSix();
-    grant.version += 1;
-    const nextAuth = auth.authVersion + 1;
-    authorityVersionByChapter.set(auth.chapterId, nextAuth);
+        pushAudit(
+          auth.user.display_name,
+          'DUTY_GRANT_REVOKED',
+          `Revoked ${grant.duty_code} from ${grant.officer_name}: ${input.reason.trim()}`
+        );
 
-    pushAudit(
-      auth.user.display_name,
-      'DUTY_GRANT_REVOKED',
-      `Revoked ${grant.duty_code} from ${grant.officer_name}: ${input.reason.trim()}`
-    );
-
-    return {
-      ok: true,
-      status: 200,
-      code: 'DUTY_GRANT_REVOKED',
-      message: `Revoked ${grant.duty_code} grant from ${grant.officer_name}.`,
-      authority_version: nextAuth,
-      data: { ...grant },
-    };
+        return {
+          ok: true,
+          status: 200,
+          code: 'DUTY_GRANT_REVOKED',
+          message: `Revoked ${grant.duty_code} grant from ${grant.officer_name}.`,
+          authority_version: nextAuth,
+          data: { ...grant },
+        };
+      },
+    });
   }
 
   function checkPolicyPermission(
@@ -1391,60 +1789,269 @@ export function createP02AdminEngine(): P02AdminEngine {
     const forbidden = checkPolicyPermission(policy, auth);
     if (forbidden) return forbidden;
 
-    if (input.expected_authority_version !== auth.authVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_AUTHORITY_VERSION',
-        message: 'Authority version mismatch.',
-      };
-    }
-    if (input.expected_row_version !== policy.row_version) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_ROW_VERSION',
-        message: 'Policy row_version mismatch.',
-      };
-    }
-    if (!input.summary.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'INVALID_INPUT',
-        message: 'Policy summary text cannot be empty.',
-      };
-    }
+    const actionCode = `policy.${policy.category}.prepare`;
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode,
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        op: 'draft',
+        policy_id: input.policy_id,
+        summary: input.summary.trim(),
+        expected_authority_version: input.expected_authority_version,
+        expected_row_version: input.expected_row_version,
+        expected_material_version: input.expected_material_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        if (input.expected_authority_version !== auth.authVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_AUTHORITY_VERSION',
+            message: 'Authority version mismatch.',
+          };
+        }
+        if (input.expected_row_version !== policy.row_version) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_ROW_VERSION',
+            message: 'Policy row_version mismatch.',
+          };
+        }
+        if (!input.summary.trim()) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'INVALID_INPUT',
+            message: 'Policy summary text cannot be empty.',
+          };
+        }
 
-    const nextMat = (policy.material_version ?? 0) + 1;
-    policy.summary = input.summary.trim();
-    policy.row_version += 1;
-    policy.material_version = nextMat;
-    policy.material_hash = computeDeterministicHash({
-      policy_code: policy.policy_code,
-      summary: policy.summary,
-      material_version: nextMat,
+        const nextMat = (policy.material_version ?? 0) + 1;
+        policy.summary = input.summary.trim();
+        policy.row_version += 1;
+        policy.material_version = nextMat;
+        policy.material_hash = computeDeterministicHash({
+          policy_code: policy.policy_code,
+          summary: policy.summary,
+          material_version: nextMat,
+        });
+        policy.status = 'draft';
+        policy.last_reason = input.reason.trim() || 'Saved new policy draft revision.';
+
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
+
+        pushAudit(
+          auth.user.display_name,
+          'POLICY_DRAFT_SAVED',
+          `Saved ${policy.policy_code} draft material v${nextMat}`
+        );
+
+        return {
+          ok: true,
+          status: 200,
+          code: 'POLICY_DRAFT_SAVED',
+          message: `Saved ${policy.policy_code} draft (material v${nextMat}).`,
+          authority_version: nextAuth,
+          data: { ...policy },
+        };
+      },
     });
-    policy.status = 'draft';
-    policy.last_reason = input.reason.trim() || 'Saved new policy draft revision.';
+  }
 
-    const nextAuth = auth.authVersion + 1;
-    authorityVersionByChapter.set(auth.chapterId, nextAuth);
+  function submitPolicyVersion(input: ReviewPolicyVersionInput): P02ActionResult<PolicyRecordItem> {
+    const auth = ensureChapterAuthority(input.chapter_id);
+    if (!auth.ok) return auth.result;
 
-    pushAudit(
-      auth.user.display_name,
-      'POLICY_DRAFT_SAVED',
-      `Saved ${policy.policy_code} draft material v${nextMat}`
+    const policy = policies.find(
+      (p) => p.chapter_id === auth.chapterId && p.policy_id === input.policy_id
     );
+    if (!policy) {
+      return {
+        ok: false,
+        status: 403,
+        code: 'CROSS_CHAPTER_FORBIDDEN',
+        message: 'Policy not found in current chapter.',
+      };
+    }
 
-    return {
-      ok: true,
-      status: 200,
-      code: 'POLICY_DRAFT_SAVED',
-      message: `Saved ${policy.policy_code} draft (material v${nextMat}).`,
-      authority_version: nextAuth,
-      data: { ...policy },
-    };
+    const forbidden = checkPolicyPermission(policy, auth);
+    if (forbidden) return forbidden;
+
+    const actionCode = `policy.${policy.category}.prepare`;
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode,
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        op: 'submit',
+        policy_id: input.policy_id,
+        expected_authority_version: input.expected_authority_version,
+        expected_row_version: input.expected_row_version,
+        expected_material_version: input.expected_material_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        if (input.expected_authority_version !== auth.authVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_AUTHORITY_VERSION',
+            message: 'Authority version mismatch.',
+          };
+        }
+        if (
+          input.expected_row_version !== policy.row_version ||
+          input.expected_material_version !== policy.material_version
+        ) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_POLICY_VERSION',
+            message: 'Policy row or material version changed before submission.',
+          };
+        }
+        if (policy.material_version === null) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'MISSING_MATERIAL_REVISION',
+            message: 'Save a policy material draft before submitting.',
+          };
+        }
+        if (policy.status !== 'draft' && policy.status !== 'returned') {
+          return {
+            ok: false,
+            status: 409,
+            code: 'INVALID_POLICY_STATUS',
+            message: `Only draft or returned policies can be submitted (current status: ${policy.status}).`,
+          };
+        }
+
+        policy.status = 'submitted';
+        policy.row_version += 1;
+        policy.last_reason =
+          input.reason.trim() || 'Submitted policy revision for governance review.';
+
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
+
+        pushAudit(
+          auth.user.display_name,
+          'POLICY_SUBMITTED',
+          `Submitted ${policy.policy_code} material v${policy.material_version}`
+        );
+
+        return {
+          ok: true,
+          status: 200,
+          code: 'POLICY_SUBMITTED',
+          message: `Submitted ${policy.policy_code} (material v${policy.material_version}) for approval.`,
+          authority_version: nextAuth,
+          data: { ...policy },
+        };
+      },
+    });
+  }
+
+  function reviewPolicyVersion(input: ReviewPolicyVersionInput): P02ActionResult<PolicyRecordItem> {
+    const auth = ensureChapterAuthority(input.chapter_id);
+    if (!auth.ok) return auth.result;
+
+    const policy = policies.find(
+      (p) => p.chapter_id === auth.chapterId && p.policy_id === input.policy_id
+    );
+    if (!policy) {
+      return {
+        ok: false,
+        status: 403,
+        code: 'CROSS_CHAPTER_FORBIDDEN',
+        message: 'Policy not found in current chapter.',
+      };
+    }
+
+    const forbidden = checkPolicyPermission(policy, auth);
+    if (forbidden) return forbidden;
+
+    const actionCode = `policy.${policy.category}.approve`;
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode,
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        op: 'review',
+        policy_id: input.policy_id,
+        expected_authority_version: input.expected_authority_version,
+        expected_row_version: input.expected_row_version,
+        expected_material_version: input.expected_material_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        if (input.expected_authority_version !== auth.authVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_AUTHORITY_VERSION',
+            message: 'Authority version mismatch.',
+          };
+        }
+        if (
+          input.expected_row_version !== policy.row_version ||
+          input.expected_material_version !== policy.material_version
+        ) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_POLICY_VERSION',
+            message: 'Policy row or material version changed before review.',
+          };
+        }
+        if (!input.reason.trim()) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'REASON_REQUIRED',
+            message: 'Review reason is required.',
+          };
+        }
+        if (policy.status !== 'submitted' && policy.status !== 'draft') {
+          return {
+            ok: false,
+            status: 409,
+            code: 'INVALID_POLICY_STATUS',
+            message: `Only submitted or draft policies can be marked reviewed (current status: ${policy.status}).`,
+          };
+        }
+
+        policy.status = 'reviewed';
+        policy.row_version += 1;
+        policy.last_reason = input.reason.trim();
+
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
+
+        pushAudit(
+          auth.user.display_name,
+          'POLICY_REVIEWED',
+          `Reviewed ${policy.policy_code}: ${input.reason.trim()}`
+        );
+
+        return {
+          ok: true,
+          status: 200,
+          code: 'POLICY_REVIEWED',
+          message: `Recorded governance review on ${policy.policy_code} (ready for approval).`,
+          authority_version: nextAuth,
+          data: { ...policy },
+        };
+      },
+    });
   }
 
   function approvePolicyVersion(input: ReviewPolicyVersionInput): P02ActionResult<PolicyRecordItem> {
@@ -1466,58 +2073,75 @@ export function createP02AdminEngine(): P02AdminEngine {
     const forbidden = checkPolicyPermission(policy, auth);
     if (forbidden) return forbidden;
 
-    if (input.expected_authority_version !== auth.authVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_AUTHORITY_VERSION',
-        message: 'Authority version mismatch.',
-      };
-    }
-    if (
-      input.expected_row_version !== policy.row_version ||
-      input.expected_material_version !== policy.material_version
-    ) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_POLICY_VERSION',
-        message: 'Policy row or material version changed before approval.',
-      };
-    }
-    if (!input.reason.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'REASON_REQUIRED',
-        message: 'Approval reason is required.',
-      };
-    }
+    const actionCode = `policy.${policy.category}.approve`;
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode,
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        op: 'approve',
+        policy_id: input.policy_id,
+        expected_authority_version: input.expected_authority_version,
+        expected_row_version: input.expected_row_version,
+        expected_material_version: input.expected_material_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        if (input.expected_authority_version !== auth.authVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_AUTHORITY_VERSION',
+            message: 'Authority version mismatch.',
+          };
+        }
+        if (
+          input.expected_row_version !== policy.row_version ||
+          input.expected_material_version !== policy.material_version
+        ) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_POLICY_VERSION',
+            message: 'Policy row or material version changed before approval.',
+          };
+        }
+        if (!input.reason.trim()) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'REASON_REQUIRED',
+            message: 'Approval reason is required.',
+          };
+        }
 
-    const requiredDuty: DutyCode = policy.category === 'financial' ? 'FINANCE' : 'CHAPTER_HEAD';
-    policy.status = 'approved';
-    policy.approved_by_duty = requiredDuty;
-    policy.effective_from = nowUtcSix();
-    policy.row_version += 1;
-    policy.last_reason = input.reason.trim();
+        const requiredDuty: DutyCode = policy.category === 'financial' ? 'FINANCE' : 'CHAPTER_HEAD';
+        policy.status = 'approved';
+        policy.approved_by_duty = requiredDuty;
+        policy.effective_from = nowUtcSix();
+        policy.row_version += 1;
+        policy.last_reason = input.reason.trim();
 
-    const nextAuth = auth.authVersion + 1;
-    authorityVersionByChapter.set(auth.chapterId, nextAuth);
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
 
-    pushAudit(
-      auth.user.display_name,
-      'POLICY_APPROVED',
-      `Approved ${policy.policy_code} (${requiredDuty}): ${input.reason.trim()}`
-    );
+        pushAudit(
+          auth.user.display_name,
+          'POLICY_APPROVED',
+          `Approved ${policy.policy_code} (${requiredDuty}): ${input.reason.trim()}`
+        );
 
-    return {
-      ok: true,
-      status: 200,
-      code: 'POLICY_APPROVED',
-      message: `Approved ${policy.policy_code}; dependent workflow ${policy.workflow_affected} is now unblocked.`,
-      authority_version: nextAuth,
-      data: { ...policy },
-    };
+        return {
+          ok: true,
+          status: 200,
+          code: 'POLICY_APPROVED',
+          message: `Approved ${policy.policy_code}; dependent workflow ${policy.workflow_affected} is now unblocked.`,
+          authority_version: nextAuth,
+          data: { ...policy },
+        };
+      },
+    });
   }
 
   function returnPolicyVersion(input: ReviewPolicyVersionInput): P02ActionResult<PolicyRecordItem> {
@@ -1539,56 +2163,73 @@ export function createP02AdminEngine(): P02AdminEngine {
     const forbidden = checkPolicyPermission(policy, auth);
     if (forbidden) return forbidden;
 
-    if (input.expected_authority_version !== auth.authVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_AUTHORITY_VERSION',
-        message: 'Authority version mismatch.',
-      };
-    }
-    if (
-      input.expected_row_version !== policy.row_version ||
-      input.expected_material_version !== policy.material_version
-    ) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_POLICY_VERSION',
-        message: 'Policy version mismatch.',
-      };
-    }
-    if (!input.reason.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'REASON_REQUIRED',
-        message: 'Return reason is required.',
-      };
-    }
+    const actionCode = `policy.${policy.category}.approve`;
+    return runIdempotentOperation({
+      scope: 'chapter',
+      chapterId: auth.chapterId,
+      actionCode,
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        op: 'return',
+        policy_id: input.policy_id,
+        expected_authority_version: input.expected_authority_version,
+        expected_row_version: input.expected_row_version,
+        expected_material_version: input.expected_material_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        if (input.expected_authority_version !== auth.authVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_AUTHORITY_VERSION',
+            message: 'Authority version mismatch.',
+          };
+        }
+        if (
+          input.expected_row_version !== policy.row_version ||
+          input.expected_material_version !== policy.material_version
+        ) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_POLICY_VERSION',
+            message: 'Policy version mismatch.',
+          };
+        }
+        if (!input.reason.trim()) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'REASON_REQUIRED',
+            message: 'Return reason is required.',
+          };
+        }
 
-    policy.status = 'returned';
-    policy.effective_from = null;
-    policy.row_version += 1;
-    policy.last_reason = input.reason.trim();
+        policy.status = 'returned';
+        policy.effective_from = null;
+        policy.row_version += 1;
+        policy.last_reason = input.reason.trim();
 
-    const nextAuth = auth.authVersion + 1;
-    authorityVersionByChapter.set(auth.chapterId, nextAuth);
+        const nextAuth = auth.authVersion + 1;
+        authorityVersionByChapter.set(auth.chapterId, nextAuth);
 
-    pushAudit(
-      auth.user.display_name,
-      'POLICY_RETURNED',
-      `Returned ${policy.policy_code}: ${input.reason.trim()}`
-    );
+        pushAudit(
+          auth.user.display_name,
+          'POLICY_RETURNED',
+          `Returned ${policy.policy_code}: ${input.reason.trim()}`
+        );
 
-    return {
-      ok: true,
-      status: 200,
-      code: 'POLICY_RETURNED',
-      message: `Returned ${policy.policy_code} for revision.`,
-      authority_version: nextAuth,
-      data: { ...policy },
-    };
+        return {
+          ok: true,
+          status: 200,
+          code: 'POLICY_RETURNED',
+          message: `Returned ${policy.policy_code} for revision.`,
+          authority_version: nextAuth,
+          data: { ...policy },
+        };
+      },
+    });
   }
 
   function evaluateWorkflowGate(
@@ -1606,7 +2247,7 @@ export function createP02AdminEngine(): P02AdminEngine {
         ok: false,
         status: 409,
         code: 'POLICY_NOT_EFFECTIVE',
-        message: `Missing required setup policy ${policyCode}. Configure in S-21.`,
+        message: `Missing required setup policy ${policyCode}. Configure in Policies & Readiness.`,
         link_screen: 'S-21',
       };
     }
@@ -1628,7 +2269,7 @@ export function createP02AdminEngine(): P02AdminEngine {
         ok: true,
         status: 200,
         code: 'DRAFT_PERMITTED_WITH_PENDING_POLICY',
-        message: `Draft allowed while ${policy.policy_code} awaits ${requiredDuty} approval in S-21.`,
+        message: `Draft allowed while ${policy.policy_code} awaits ${requiredDuty} approval in Policies & Readiness.`,
         permitted_draft: true,
         required_duty: requiredDuty,
         link_screen: 'S-21',
@@ -1639,7 +2280,7 @@ export function createP02AdminEngine(): P02AdminEngine {
       ok: false,
       status: 409,
       code: 'POLICY_NOT_EFFECTIVE',
-      message: `Blocked (${policy.workflow_affected}): ${policy.policy_code} is "${policy.status}". Requires ${requiredDuty} approval in S-21 before commitment.`,
+      message: `Blocked (${policy.workflow_affected}): ${policy.policy_code} is "${policy.status}". Requires ${requiredDuty} approval before commitment.`,
       permitted_draft: false,
       required_duty: requiredDuty,
       link_screen: 'S-21',
@@ -1650,134 +2291,191 @@ export function createP02AdminEngine(): P02AdminEngine {
     input: CreateProvisionedChapterInput
   ): P02ActionResult<ProvisionedChapterRecord> {
     const user = getActivePersona();
+    if (!user) {
+      return {
+        ok: false,
+        status: 403,
+        code: 'SESSION_REQUIRED',
+        message: 'Sign in with a provider provisioner session before provisioning chapters.',
+        link_screen: 'S-01',
+      };
+    }
     if (!user.provider_roles.includes('provisioner')) {
       return {
         ok: false,
         status: 403,
         code: 'PROVIDER_AUTHORITY_REQUIRED',
-        message: 'Provisioning requires provider provisioner authority (S-22).',
+        message: 'Provisioning requires provider provisioner authority.',
         link_screen: 'S-22',
       };
     }
 
-    if (input.expected_provider_authority_version !== providerAuthorityVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_PROVIDER_AUTHORITY_VERSION',
-        message: `Provider authority version mismatch (expected v${input.expected_provider_authority_version}, current v${providerAuthorityVersion}).`,
-      };
-    }
+    return runIdempotentOperation({
+      scope: 'provider',
+      chapterId: null,
+      actionCode: 'provider.chapters.create',
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        chapter_code: input.chapter_code.trim().toUpperCase(),
+        chapter_name: input.chapter_name.trim(),
+        expected_provider_authority_version: input.expected_provider_authority_version,
+      },
+      execute: () => {
+        if (input.expected_provider_authority_version !== providerAuthorityVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_PROVIDER_AUTHORITY_VERSION',
+            message: `Provider authority version mismatch (expected v${input.expected_provider_authority_version}, current v${providerAuthorityVersion}).`,
+          };
+        }
 
-    const cleanCode = input.chapter_code.trim().toUpperCase();
-    const cleanName = input.chapter_name.trim();
-    if (!VALID_CHAPTER_CODE_RE.test(cleanCode) || !cleanName) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'INVALID_INPUT',
-        message: 'Provide a valid chapter code (e.g. DVO-03) and chapter name.',
-      };
-    }
+        const cleanCode = input.chapter_code.trim().toUpperCase();
+        const cleanName = input.chapter_name.trim();
+        if (!VALID_CHAPTER_CODE_RE.test(cleanCode) || !cleanName) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'INVALID_INPUT',
+            message:
+              'Provide a valid chapter code (2-16 uppercase letters, digits, hyphen, or underscore) and chapter name.',
+          };
+        }
 
-    nextSeq += 1;
-    const provRecord: ProvisionedChapterRecord = {
-      id: `prov-${nextSeq}`,
-      organization_id: 'org-ysp-ph',
-      provider_user_id: user.user_id,
-      chapter_code: cleanCode,
-      chapter_name: cleanName,
-      version: 1,
-      initial_head_user_id: null,
-      initial_head_name: null,
-      initial_head_membership_authorization: 'not_applicable',
-    };
-    provisionedChapters.push(provRecord);
-    providerAuthorityVersion += 1;
+        nextSeq += 1;
+        const provRecord: ProvisionedChapterRecord = {
+          id: `prov-${nextSeq}`,
+          organization_id: organizationId,
+          provider_user_id: user.user_id,
+          chapter_code: cleanCode,
+          chapter_name: cleanName,
+          version: 1,
+          initial_head_user_id: null,
+          initial_head_name: null,
+          initial_head_membership_authorization: 'not_applicable',
+        };
+        provisionedChapters.push(provRecord);
+        providerAuthorityVersion += 1;
 
-    pushAudit(
-      user.display_name,
-      'PROVIDER_CHAPTER_CREATED',
-      `Provisioned chapter ${cleanCode} (${cleanName}) with initial_head_membership_authorization=not_applicable`
-    );
+        pushAudit(
+          user.display_name,
+          'PROVIDER_CHAPTER_CREATED',
+          `Provisioned chapter ${cleanCode} (${cleanName}) with initial_head_membership_authorization=not_applicable`
+        );
 
-    return {
-      ok: true,
-      status: 200,
-      code: 'PROVISIONED_CHAPTER_CREATED',
-      message: `Provisioned ${cleanName} (${cleanCode}). Provisioner receives zero operational chapter access.`,
-      authority_version: providerAuthorityVersion,
-      data: { ...provRecord },
-    };
+        return {
+          ok: true,
+          status: 200,
+          code: 'PROVISIONED_CHAPTER_CREATED',
+          message: `Provisioned ${cleanName} (${cleanCode}). Provisioner receives zero operational chapter access.`,
+          authority_version: providerAuthorityVersion,
+          data: { ...provRecord },
+        };
+      },
+    });
   }
 
   function appointInitialHead(
     input: AppointInitialHeadInput
   ): P02ActionResult<ProvisionedChapterRecord> {
     const user = getActivePersona();
+    if (!user) {
+      return {
+        ok: false,
+        status: 403,
+        code: 'SESSION_REQUIRED',
+        message: 'Sign in with a provider provisioner session before appointing an initial head.',
+        link_screen: 'S-01',
+      };
+    }
     if (!user.provider_roles.includes('provisioner')) {
       return {
         ok: false,
         status: 403,
         code: 'PROVIDER_AUTHORITY_REQUIRED',
-        message: 'Initial Head appointment requires provider provisioner authority (S-22).',
+        message: 'Initial Head appointment requires provider provisioner authority.',
         link_screen: 'S-22',
       };
     }
-    if (input.expected_provider_authority_version !== providerAuthorityVersion) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_PROVIDER_AUTHORITY_VERSION',
-        message: 'Provider authority version mismatch.',
-      };
-    }
 
-    const prov = provisionedChapters.find((p) => p.id === input.provisioning_id);
-    if (!prov) {
-      return {
-        ok: false,
-        status: 400,
-        code: 'PROVISIONING_NOT_FOUND',
-        message: 'Provisioned chapter record not found.',
-      };
-    }
-    if (input.expected_provisioning_version !== prov.version) {
-      return {
-        ok: false,
-        status: 409,
-        code: 'STALE_PROVISIONING_VERSION',
-        message: 'Provisioning record version mismatch.',
-      };
-    }
-    if (!input.initial_head_user_id.trim() || !input.initial_head_name.trim() || !input.reason.trim()) {
-      return {
-        ok: false,
-        status: 422,
-        code: 'INVALID_INPUT',
-        message: 'Initial Head user ID, name, and reason are required.',
-      };
-    }
+    return runIdempotentOperation({
+      scope: 'provider',
+      chapterId: null,
+      actionCode: 'provider.initial_head.appoint',
+      explicitKey: input.idempotency_key,
+      fingerprintPayload: {
+        provisioning_id: input.provisioning_id,
+        initial_head_user_id: input.initial_head_user_id.trim(),
+        initial_head_name: input.initial_head_name.trim(),
+        expected_provider_authority_version: input.expected_provider_authority_version,
+        expected_provisioning_version: input.expected_provisioning_version,
+        reason: input.reason.trim(),
+      },
+      execute: () => {
+        if (input.expected_provider_authority_version !== providerAuthorityVersion) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_PROVIDER_AUTHORITY_VERSION',
+            message: 'Provider authority version mismatch.',
+          };
+        }
 
-    prov.initial_head_user_id = input.initial_head_user_id.trim();
-    prov.initial_head_name = input.initial_head_name.trim();
-    prov.version += 1;
-    providerAuthorityVersion += 1;
+        const prov = provisionedChapters.find((p) => p.id === input.provisioning_id);
+        if (!prov) {
+          return {
+            ok: false,
+            status: 400,
+            code: 'PROVISIONING_NOT_FOUND',
+            message: 'Provisioned chapter record not found.',
+          };
+        }
+        if (input.expected_provisioning_version !== prov.version) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'STALE_PROVISIONING_VERSION',
+            message: 'Provisioning record version mismatch.',
+          };
+        }
+        if (
+          !input.initial_head_user_id.trim() ||
+          !input.initial_head_name.trim() ||
+          !input.reason.trim()
+        ) {
+          return {
+            ok: false,
+            status: 422,
+            code: 'INVALID_INPUT',
+            message: 'Initial Head user ID, name, and reason are required.',
+          };
+        }
 
-    pushAudit(
-      user.display_name,
-      'INITIAL_HEAD_APPOINTED',
-      `Appointed ${prov.initial_head_name} (user ${prov.initial_head_user_id}) to ${prov.chapter_code} — membership remains separate`
-    );
+        prov.initial_head_user_id = input.initial_head_user_id.trim();
+        prov.initial_head_name = input.initial_head_name.trim();
+        prov.version += 1;
+        providerAuthorityVersion += 1;
+        knownIdentities.set(prov.initial_head_user_id, {
+          user_id: prov.initial_head_user_id,
+          display_name: prov.initial_head_name,
+        });
 
-    return {
-      ok: true,
-      status: 200,
-      code: 'INITIAL_HEAD_APPOINTED',
-      message: `Appointed ${prov.initial_head_name} for ${prov.chapter_code}. Separate chapter membership activation still applies.`,
-      authority_version: providerAuthorityVersion,
-      data: { ...prov },
-    };
+        pushAudit(
+          user.display_name,
+          'INITIAL_HEAD_APPOINTED',
+          `Appointed ${prov.initial_head_name} (user ${prov.initial_head_user_id}) to ${prov.chapter_code} — membership remains separate`
+        );
+
+        return {
+          ok: true,
+          status: 200,
+          code: 'INITIAL_HEAD_APPOINTED',
+          message: `Appointed ${prov.initial_head_name} for ${prov.chapter_code}. Separate chapter membership activation still applies.`,
+          authority_version: providerAuthorityVersion,
+          data: { ...prov },
+        };
+      },
+    });
   }
 
   function attemptGlobalIdentityDisable(
@@ -1785,34 +2483,143 @@ export function createP02AdminEngine(): P02AdminEngine {
   ): GlobalDisableBoundaryFeedback {
     const user = getActivePersona();
     pushAudit(
-      user.display_name,
+      user?.display_name ?? 'System boundary',
       'GLOBAL_DISABLE_BOUNDARY_HIT',
-      `Blocked 503 on identity.disable for user ${input.user_id} (enabled_boundary: false)`
+      `Blocked organization-wide lock on user ${input.user_id} (Stage 1 global boundary inactive)`
     );
     return {
       status: 503,
       original_outcome: 'uncertain',
       next_action: 'unavailable',
       message:
-        'Global identity disable boundary is not enabled in Stage 1 (p02-action-catalogue enabled_boundary: false). Retain original attempt; no durable mutation performed.',
+        'Organization-wide account lockout is unavailable in Stage 1. Disable officer memberships individually within each authorized chapter.',
     };
+  }
+
+  function ensureLookupScopeAuthorized(
+    scope: P02OperationScope,
+    chapterId?: string
+  ):
+    | { ok: true; chapterId: string | null }
+    | { ok: false; result: P02ActionResult<P02OperationRecord> } {
+    if (scope === 'chapter') {
+      const auth = ensureChapterAuthority(chapterId);
+      if (!auth.ok) return { ok: false, result: auth.result };
+      return { ok: true, chapterId: auth.chapterId };
+    }
+    if (scope === 'provider') {
+      const user = getActivePersona();
+      if (!user || !user.provider_roles.includes('provisioner')) {
+        return {
+          ok: false,
+          result: {
+            ok: false,
+            status: 403,
+            code: 'PROVIDER_AUTHORITY_REQUIRED',
+            message: 'Provisioning operation lookup requires provider provisioner authority.',
+            link_screen: 'S-22',
+          },
+        };
+      }
+      return { ok: true, chapterId: null };
+    }
+    return { ok: true, chapterId: null };
+  }
+
+  function formatLookupHit(
+    stored: StoredP02Operation | undefined,
+    selectorLabel: string
+  ): P02ActionResult<P02OperationRecord> {
+    if (!stored) {
+      return {
+        ok: false,
+        status: 200,
+        code: 'OPERATION_PENDING_OR_NOT_VISIBLE',
+        message: `No committed or rejected durable operation matched ${selectorLabel}.`,
+        next_action: 'lookup_original_attempt',
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      code: 'OPERATION_RECOVERED',
+      message: `Recovered ${stored.record.outcome} result (${stored.record.code}) for ${stored.record.action_code}.`,
+      operation_id: stored.record.operation_id,
+      action_code: stored.record.action_code,
+      idempotency_key: stored.record.idempotency_key,
+      replayed: true,
+      data: { ...stored.record },
+    };
+  }
+
+  function lookupOperationByKey(
+    input: LookupP02OperationByKeyInput
+  ): P02ActionResult<P02OperationRecord> {
+    const auth = ensureLookupScopeAuthorized(input.scope, input.chapter_id);
+    if (!auth.ok) return auth.result;
+    const action = input.action_code.trim();
+    const key = input.idempotency_key;
+    if (!action || !VALID_IDEMPOTENCY_KEY_RE.test(key)) {
+      return {
+        ok: false,
+        status: 400,
+        code: 'INVALID_SELECTOR',
+        message: 'Provide both action_code and a valid case-sensitive idempotency_key.',
+      };
+    }
+    const stored = operationsByKey.get(
+      `${input.scope}:${auth.chapterId ?? 'global'}:${action}:${key}`
+    );
+    return formatLookupHit(stored, `${action} / ${key}`);
+  }
+
+  function lookupOperationById(
+    input: LookupP02OperationByIdInput
+  ): P02ActionResult<P02OperationRecord> {
+    const auth = ensureLookupScopeAuthorized(input.scope, input.chapter_id);
+    if (!auth.ok) return auth.result;
+    const opId = input.operation_id.trim();
+    if (!opId) {
+      return {
+        ok: false,
+        status: 400,
+        code: 'INVALID_SELECTOR',
+        message: 'Provide a valid operation_id (ULID) to look up.',
+      };
+    }
+    const stored = operationsById.get(opId);
+    const scopedMatch =
+      stored &&
+      stored.record.scope === input.scope &&
+      stored.record.chapter_id === auth.chapterId
+        ? stored
+        : undefined;
+    return formatLookupHit(scopedMatch, `ULID ${opId}`);
   }
 
   return {
     getSnapshot,
     selectPersona,
     selectChapter,
+    lookupMembershipIdentity,
+    lookupProvisioningIdentity,
     authorizeMembership,
     disableOrRevokeMembership,
     authorizeDutyGrant,
+    amendDutyGrant,
+    endDutyGrant,
     substituteDutyGrant,
     revokeDutyGrant,
     savePolicyDraft,
+    submitPolicyVersion,
+    reviewPolicyVersion,
     approvePolicyVersion,
     returnPolicyVersion,
     evaluateWorkflowGate,
     createProvisionedChapter,
     appointInitialHead,
     attemptGlobalIdentityDisable,
+    lookupOperationByKey,
+    lookupOperationById,
   };
 }

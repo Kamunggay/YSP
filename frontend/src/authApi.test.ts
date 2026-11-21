@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   confirmAuthenticatorEnrollment,
   createOfficerAccount,
+  getAssistedRecoveryGuidance,
   initializeCsrf,
   inviteChapterOfficer,
   prepareAuthenticatorEnrollment,
@@ -223,7 +224,8 @@ describe('authApi', () => {
   });
 
   it('handles provisionChapter, inviteChapterOfficer, and createOfficerAccount', async () => {
-    vi.spyOn(globalThis, 'fetch')
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ provisioning: { id: 'prov_999' } }), { status: 200 })
       )
@@ -246,12 +248,29 @@ describe('authApi', () => {
       expect(prov.provisioningId).toBe('prov_999');
     }
 
-    const inv = await inviteChapterOfficer({
-      officerName: 'Pedro Penduko',
-      officerEmail: 'pedro@ysp.org',
-      duties: ['Inventory Custodian', 'Finance Officer'],
-    });
+    const inv = await inviteChapterOfficer(
+      {
+        officerName: 'Pedro Penduko',
+        officerEmail: 'pedro@ysp.org',
+        duties: ['Inventory Custodian', 'Finance Officer'],
+        userId: '31',
+        expectedAuthorityVersion: 4,
+      },
+      '1'
+    );
     expect(inv.kind).toBe('success');
+    const invCall = fetchSpy.mock.calls[1];
+    expect(invCall?.[0]).toBe('/api/v1/chapters/1/memberships/authorize');
+    const parsedInvBody = JSON.parse(String(invCall?.[1]?.body ?? '{}')) as Record<string, unknown>;
+    expect(Object.keys(parsedInvBody).sort()).toEqual([
+      'expected_authority_version',
+      'expected_membership_version',
+      'idempotency_key',
+      'identity',
+    ]);
+    expect(parsedInvBody.expected_authority_version).toBe(4);
+    expect(parsedInvBody.expected_membership_version).toBeNull();
+    expect(parsedInvBody.identity).toEqual({ user_id: '31' });
 
     const acct = await createOfficerAccount({
       fullName: 'Pedro Penduko',
@@ -260,5 +279,43 @@ describe('authApi', () => {
       confirmPassword: 'StrongPassword123!',
     });
     expect(acct.kind).toBe('success');
+
+    const missingChapterInv = await inviteChapterOfficer(
+      {
+        officerName: 'Pedro Penduko',
+        officerEmail: 'pedro@ysp.org',
+        duties: ['Inventory Custodian'],
+      },
+      ''
+    );
+    expect(missingChapterInv.kind).toBe('rejected');
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('returns assisted_recovery_not_approved guidance and fails closed on network outage', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          availability: 'unavailable',
+          blocker: 'assisted_recovery_not_approved',
+          message:
+            'Assisted recovery is unavailable until an authorized proof and reset procedure is approved.',
+          next_actions: ['bootstrap_session', 'sign_out'],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    const okRes = await getAssistedRecoveryGuidance();
+    expect(okRes.kind).toBe('ok');
+    if (okRes.kind === 'ok') {
+      expect(okRes.guidance.availability).toBe('unavailable');
+      expect(okRes.guidance.blocker).toBe('assisted_recovery_not_approved');
+      expect(okRes.guidance.next_actions).toEqual(['bootstrap_session', 'sign_out']);
+    }
+
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('network down'));
+    const errRes = await getAssistedRecoveryGuidance();
+    expect(errRes.kind).toBe('unavailable');
   });
 });

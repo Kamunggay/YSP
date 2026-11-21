@@ -3,7 +3,23 @@
  * Matches OpenAPI specifications in contracts/transport/v1 and backend session controllers.
  */
 
-import type { ChapterDuty, CreateChapterFormData, CreateOfficerFormData, InviteOfficerFormData } from './CreateChapterPage';
+import type { CreateChapterFormData, CreateOfficerFormData, InviteOfficerFormData } from './CreateChapterPage';
+import {
+  getAssistedRecoveryGuidanceApi,
+  getChapterContextApi,
+  getProvisioningContextApi,
+  listChapterMembershipsApi,
+  selectChapterContextApi,
+} from './p02Api';
+import type { AssistedRecoveryGuidance } from './p02Api';
+
+export type { AssistedRecoveryGuidance };
+export {
+  getChapterContextApi,
+  getProvisioningContextApi,
+  listChapterMembershipsApi,
+  selectChapterContextApi,
+};
 
 export type SessionState =
   | 'signed_out'
@@ -83,7 +99,8 @@ export type MfaVerifyResult =
 
 export type RegenerateRecoveryResult =
   | { kind: 'success'; codes: string[] }
-  | { kind: 'invalid_credentials'; message: string };
+  | { kind: 'invalid_credentials'; message: string }
+  | { kind: 'unavailable'; message: string };
 
 export type MfaEnrollmentResult =
   | { kind: 'success'; enrollmentId: string; setupKey: string; setupUri?: string }
@@ -272,11 +289,11 @@ export async function signIn(
 
     return { kind: 'invalid_credentials', message: 'Unable to sign in. Check your email and password.' };
   } catch {
-    // Network or service down — provide graceful simulated response for offline UI preview
+    return {
+      kind: 'unavailable',
+      message: 'Authentication service is unavailable. Verify the backend server is running and try again.',
+    };
   }
-
-  // Graceful development simulation when backend is unreachable
-  return simulateLocalSignIn(email, password);
 }
 
 /**
@@ -344,20 +361,11 @@ export async function verifyMfaChallenge(
       message: 'MFA verification service is currently unavailable.',
     };
   } catch {
-    // Network unreachable — allow offline demo fallback only for local preview challenges
+    return {
+      kind: 'unavailable',
+      message: 'MFA verification service is unavailable. Verify the backend server is running and try again.',
+    };
   }
-
-  return {
-    kind: 'success',
-    session: {
-      state: 'authenticated',
-      user: { id: 'usr_demo_01', display_name: 'Chapter Officer' },
-      mfa: { status: 'verified', verified_at: new Date().toISOString() },
-      active_chapter: { id: 'chp_01', code: 'CEBU-01', name: 'Cebu Chapter' },
-      duties: ['Inventory Custodian', 'Finance Officer'],
-      governance_constraints: 'Requires dual-custody approval for transactions over PHP 50,000.00',
-    },
-  };
 }
 
 /**
@@ -366,8 +374,7 @@ export async function verifyMfaChallenge(
 export async function prepareAuthenticatorEnrollment(
   intent: 'begin' | 'replace_unconfirmed' = 'begin',
   enrollmentId?: string,
-  signal?: AbortSignal,
-  fallbackSetupKey = 'KMGY 2345 YSPE 7762'
+  signal?: AbortSignal
 ): Promise<MfaEnrollmentResult> {
   try {
     const payload = intent === 'begin' ? { intent } : { intent, enrollment_id: enrollmentId };
@@ -381,15 +388,16 @@ export async function prepareAuthenticatorEnrollment(
       signal: fetchSignal,
     });
 
-    if (response.status === 200) {
+    if (response.status === 200 || response.status === 201) {
       const body = (await response.json()) as {
-        enrollment: { id: string; manual_key?: string; setup_uri?: string };
+        enrollment: { id: string; manual_key?: string; setup_key?: string; setup_uri?: string; otpauth_uri?: string };
       };
+      const resolvedUri = body.enrollment.setup_uri ?? body.enrollment.otpauth_uri;
       return {
         kind: 'success',
         enrollmentId: body.enrollment.id,
-        setupKey: body.enrollment.manual_key ?? fallbackSetupKey,
-        ...(body.enrollment.setup_uri ? { setupUri: body.enrollment.setup_uri } : {}),
+        setupKey: body.enrollment.manual_key ?? body.enrollment.setup_key ?? '',
+        ...(resolvedUri ? { setupUri: resolvedUri } : {}),
       };
     }
 
@@ -399,39 +407,25 @@ export async function prepareAuthenticatorEnrollment(
         message: 'Too many authenticator setup attempts. Please wait a few moments.',
       };
     }
+
+    const err = await parseErrorBody(response);
+    if (response.status === 401 || response.status === 403 || response.status === 409 || response.status === 422) {
+      return {
+        kind: 'rejected',
+        message: err.message ?? 'Unable to initialize authenticator enrollment.',
+      };
+    }
+
+    return {
+      kind: 'unavailable',
+      message: err.message ?? 'Authenticator enrollment service is temporarily unavailable.',
+    };
   } catch {
-    // Offline / fallback
+    return {
+      kind: 'unavailable',
+      message: 'Authenticator enrollment service is unreachable.',
+    };
   }
-
-  return {
-    kind: 'success',
-    enrollmentId: 'enr_local_demo',
-    setupKey: fallbackSetupKey,
-  };
-}
-
-/**
- * Generates dynamic, unique, non-repetitive emergency recovery codes.
- * Conforms strictly to backend format: 4 groups of 4 alphanumeric characters (XXXX-XXXX-XXXX-XXXX).
- */
-export function generateUniqueRecoveryCodes(count = 6): string[] {
-  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const codes: string[] = [];
-  while (codes.length < count) {
-    const parts: string[] = [];
-    for (let p = 0; p < 4; p++) {
-      let part = '';
-      for (let i = 0; i < 4; i++) {
-        part += chars[Math.floor(Math.random() * chars.length)];
-      }
-      parts.push(part);
-    }
-    const code = parts.join('-');
-    if (!codes.includes(code)) {
-      codes.push(code);
-    }
-  }
-  return codes;
 }
 
 /**
@@ -479,41 +473,28 @@ export async function confirmAuthenticatorEnrollment(
       };
     }
 
-    // For active server enrollments (not preview fallback), enforce server conflicts/unauthorized rejections
-    if (enrollmentId !== 'enr_local_demo' && enrollmentId !== 'enr_active') {
-      if (response.status === 409) {
-        return {
-          kind: 'rejected',
-          message: 'This authenticator pairing session expired or was already completed.',
-        };
-      }
-      if (response.status === 401 || response.status === 403 || response.status === 419) {
-        return {
-          kind: 'rejected',
-          message: 'Authenticator enrollment session expired. Please sign in again.',
-        };
-      }
+    if (response.status === 409) {
       return {
-        kind: 'unavailable',
-        message: 'Authenticator confirmation service is currently unavailable.',
+        kind: 'rejected',
+        message: 'This authenticator pairing session expired or was already completed.',
       };
     }
+    if (response.status === 401 || response.status === 403 || response.status === 419) {
+      return {
+        kind: 'rejected',
+        message: 'Authenticator enrollment session expired. Please sign in again.',
+      };
+    }
+    return {
+      kind: 'unavailable',
+      message: 'Authenticator confirmation service is currently unavailable.',
+    };
   } catch {
-    // Offline / fallback
+    return {
+      kind: 'unavailable',
+      message: 'Authenticator confirmation service is unreachable.',
+    };
   }
-
-  return {
-    kind: 'success',
-    session: {
-      state: 'authenticated',
-      user: { id: 'usr_head_01', display_name: 'Founding Chapter Head' },
-      mfa: { status: 'verified', verified_at: new Date().toISOString() },
-      active_chapter: { id: 'chp_01', code: 'YSP-CEB', name: 'Cebu Chapter' },
-      duties: ['Chapter Head', 'Executive Authority'],
-      governance_constraints: 'Full operational & chapter administration authority',
-    },
-    recoveryCodes: generateUniqueRecoveryCodes(6),
-  };
 }
 
 /**
@@ -586,16 +567,22 @@ export async function regenerateRecoveryCodes(
       return { kind: 'invalid_credentials', message: 'The submitted factor proof was not accepted.' };
     }
   } catch {
-    // Fallback simulation
+    return {
+      kind: 'unavailable',
+      message: 'Recovery code service is unreachable.',
+    };
   }
-  return { kind: 'success', codes: generateUniqueRecoveryCodes(6) };
+  return {
+    kind: 'unavailable',
+    message: 'Recovery code regeneration is currently unavailable.',
+  };
 }
 
 /**
  * Provisions a new chapter and initial Chapter Head.
  */
 export async function provisionChapter(
-  data: CreateChapterFormData,
+  data: CreateChapterFormData & { expectedProviderAuthorityVersion?: number | undefined },
   signal?: AbortSignal
 ): Promise<ProvisionChapterResult> {
   try {
@@ -604,10 +591,11 @@ export async function provisionChapter(
       method: 'POST',
       credentials: 'include',
       cache: 'no-store',
+      redirect: 'error',
       headers: buildHeaders(),
       body: JSON.stringify({
         idempotency_key: `prov_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        expected_provider_authority_version: 1,
+        expected_provider_authority_version: data.expectedProviderAuthorityVersion ?? 1,
         chapter: {
           code: data.chapterCode.trim().toUpperCase(),
           name: data.chapterName.trim(),
@@ -620,70 +608,125 @@ export async function provisionChapter(
       const body = (await response.json()) as { provisioning?: { id: string } };
       return {
         kind: 'success',
-        provisioningId: body.provisioning?.id ?? 'prov_ok',
-        chapterCode: data.chapterCode,
+        provisioningId: body.provisioning?.id ?? '',
+        chapterCode: data.chapterCode.trim().toUpperCase(),
       };
     }
-  } catch {
-    // Offline simulation
-  }
 
+    const err = await parseErrorBody(response);
+    if (response.status === 401 || response.status === 403 || response.status === 409 || response.status === 422) {
+      return {
+        kind: 'rejected',
+        message: err.message ?? 'Chapter provisioning request was rejected.',
+      };
+    }
+
+    return {
+      kind: 'unavailable',
+      message: err.message ?? 'Chapter provisioning service is currently unavailable.',
+    };
+  } catch {
+    return {
+      kind: 'unavailable',
+      message: 'Chapter provisioning service is unreachable.',
+    };
+  }
+}
+
+/**
+ * Queries GET /api/v1/session/mfa/assisted-recovery per contracts/transport/generated/routes.ts.
+ * Returns fail-closed guidance rather than bypassing authenticator proof.
+ */
+export async function getAssistedRecoveryGuidance(
+  signal?: AbortSignal
+): Promise<
+  | { kind: 'ok'; guidance: AssistedRecoveryGuidance }
+  | { kind: 'unavailable'; message: string }
+> {
+  const res = await getAssistedRecoveryGuidanceApi(signal);
+  if (res.ok && res.body) {
+    return { kind: 'ok', guidance: res.body };
+  }
   return {
-    kind: 'success',
-    provisioningId: `prov_${Date.now()}`,
-    chapterCode: data.chapterCode || 'YSP-01',
+    kind: 'unavailable',
+    message:
+      res.message ||
+      'Assisted recovery is unavailable until an authorized proof and reset procedure is approved.',
   };
 }
 
 /**
- * Invites a new officer with assigned canonical duties.
+ * Authorizes an existing user identity into a chapter via POST /api/v1/chapters/{chapter_id}/memberships/authorize
+ * matching AuthorizeMembershipRequest strictly.
  */
 export async function inviteChapterOfficer(
-  data: InviteOfficerFormData,
-  chapterId = 'chp_active',
+  data: InviteOfficerFormData & {
+    userId?: string | undefined;
+    expectedAuthorityVersion?: number | undefined;
+  },
+  chapterId = '',
   signal?: AbortSignal
 ): Promise<InviteOfficerResult> {
-  const dutiesMapping: Record<ChapterDuty, string> = {
-    'Inventory Custodian': 'INVENTORY',
-    'Committee Requester': 'COMMITTEE_REQUESTER',
-    'Finance Officer': 'FINANCE',
-    'Sales & Dispatch': 'DISPATCH',
-  };
+  const cleanChapterId = chapterId.trim();
+  if (!cleanChapterId) {
+    return {
+      kind: 'rejected',
+      message: 'Chapter context ID is required before authorizing chapter membership.',
+    };
+  }
 
   try {
     const fetchSignal = createTimeoutSignal(signal, 2000);
-    const response = await fetch(`/api/v1/chapters/${chapterId}/memberships/authorize`, {
+    const chapterSegment = `/api/v1/chapters/${encodeURIComponent(cleanChapterId)}/memberships/authorize`;
+    const response = await fetch(chapterSegment, {
       method: 'POST',
       credentials: 'include',
       cache: 'no-store',
+      redirect: 'error',
       headers: buildHeaders(),
       body: JSON.stringify({
         idempotency_key: `inv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        officer: {
-          name: data.officerName.trim(),
-          email: data.officerEmail.trim(),
+        expected_authority_version: data.expectedAuthorityVersion ?? 1,
+        expected_membership_version: null,
+        identity: {
+          user_id: data.userId?.trim() ?? '',
         },
-        granted_duties: data.duties.map((d) => dutiesMapping[d]),
       }),
       signal: fetchSignal,
     });
 
     if (response.status === 200 || response.status === 201) {
-      return { kind: 'success', invitationId: `inv_${Date.now()}`, officerEmail: data.officerEmail };
+      const body = (await response.json()) as { invitation_id?: string };
+      return {
+        kind: 'success',
+        invitationId: body.invitation_id ?? '',
+        officerEmail: data.officerEmail.trim(),
+      };
     }
-  } catch {
-    // Offline simulation
-  }
 
-  return {
-    kind: 'success',
-    invitationId: `inv_${Date.now()}`,
-    officerEmail: data.officerEmail,
-  };
+    const err = await parseErrorBody(response);
+    if (response.status === 401 || response.status === 403 || response.status === 409 || response.status === 422) {
+      return {
+        kind: 'rejected',
+        message: err.message ?? 'Officer membership authorization was rejected.',
+      };
+    }
+
+    return {
+      kind: 'unavailable',
+      message: err.message ?? 'Membership authorization service is currently unavailable.',
+    };
+  } catch {
+    return {
+      kind: 'unavailable',
+      message: 'Membership authorization service is unreachable.',
+    };
+  }
 }
 
 /**
- * Creates officer account (accepts invitation).
+ * Creates officer account via invitation acceptance.
+ * Note: POST /api/v1/auth/invitations/accept awaits backend route registration in contracts/transport/generated/routes.ts.
  */
 export async function createOfficerAccount(
   data: CreateOfficerFormData,
@@ -705,48 +748,30 @@ export async function createOfficerAccount(
     });
 
     if (response.status === 200 || response.status === 201) {
-      return { kind: 'success', userId: `usr_${Date.now()}`, email: data.email };
+      const body = (await response.json()) as { user_id?: string };
+      return {
+        kind: 'success',
+        userId: body.user_id ?? '',
+        email: data.email.trim(),
+      };
     }
+
+    const err = await parseErrorBody(response);
+    if (response.status === 400 || response.status === 401 || response.status === 403 || response.status === 409 || response.status === 422) {
+      return {
+        kind: 'rejected',
+        message: err.message ?? 'Officer account creation was rejected.',
+      };
+    }
+
+    return {
+      kind: 'unavailable',
+      message: err.message ?? 'Officer onboarding service is currently unavailable.',
+    };
   } catch {
-    // Offline simulation
-  }
-
-  return {
-    kind: 'success',
-    userId: `usr_${Date.now()}`,
-    email: data.email,
-  };
-}
-
-/**
- * Fallback local credentials check for responsive preview in mock/offline conditions.
- */
-function simulateLocalSignIn(email: string, password: string): SignInResult {
-  const normEmail = email.trim().toLowerCase();
-  if (normEmail === 'revoked@example.test' || normEmail === 'revoked@ysp.org') {
     return {
-      kind: 'forbidden',
-      message: 'Active Session Revoked. Your membership in this chapter has been disabled.',
-      isRevoked: true,
+      kind: 'unavailable',
+      message: 'Officer onboarding service is unreachable.',
     };
   }
-
-  if (normEmail.includes('officer') || normEmail.includes('head') || password.length >= 6) {
-    return {
-      kind: 'success',
-      session: {
-        state: 'mfa_challenge_required',
-        challenge: {
-          id: `chl_${Date.now()}_${Math.random().toString(36).slice(2).padEnd(20, '0')}`,
-          delivery: 'totp_app',
-          issued_at: new Date().toISOString(),
-        },
-      },
-    };
-  }
-
-  return {
-    kind: 'invalid_credentials',
-    message: 'Unable to sign in. Check your email and password.',
-  };
 }

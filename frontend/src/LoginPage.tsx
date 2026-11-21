@@ -12,8 +12,13 @@ import {
   playErrorTone,
   playScribblenauts,
 } from './batcaveAudio';
-import { signIn, signOut, verifyMfaChallenge } from './authApi';
-import type { AuthenticatedSession } from './authApi';
+import {
+  getAssistedRecoveryGuidance,
+  signIn,
+  signOut,
+  verifyMfaChallenge,
+} from './authApi';
+import type { AssistedRecoveryGuidance, AuthenticatedSession } from './authApi';
 
 export type AuthScreenMode = 'login' | 'mfa' | 'recovery' | 'revoked' | 'verified';
 
@@ -36,12 +41,12 @@ export interface ResolvedVerifiedSession {
 }
 
 const EMPTY_VERIFIED_FALLBACK: ResolvedVerifiedSession = {
-  userName: 'Verified Officer',
-  authenticatedUnder: 'Verified Officer',
-  tierSummary: 'Chapter Operations',
-  activeChapter: 'Assigned Chapter',
-  grantedDuties: 'Chapter Operations',
-  governanceConstraints: 'Standard chapter governance rules apply',
+  userName: '—',
+  authenticatedUnder: '—',
+  tierSummary: '—',
+  activeChapter: '—',
+  grantedDuties: '—',
+  governanceConstraints: '—',
 };
 
 interface LoginPageProps {
@@ -72,13 +77,16 @@ export function LoginPage({
   const [recoveryCode, setRecoveryCode] = useState('');
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  const [activeChallengeId, setActiveChallengeId] = useState<string>('chl_active');
+  const [activeChallengeId, setActiveChallengeId] = useState<string>('');
   const [hasActiveChallenge, setHasActiveChallenge] = useState<boolean>(initialScreen === 'mfa');
   const [recoveryOrigin, setRecoveryOrigin] = useState<'login' | 'mfa'>(
     initialScreen === 'mfa' ? 'mfa' : 'login'
   );
   const [otpInvalid, setOtpInvalid] = useState(false);
   const [recoveryInvalid, setRecoveryInvalid] = useState(false);
+  const [assistedRecovery, setAssistedRecovery] = useState<
+    { blocker: string; message: string; nextActions?: ReadonlyArray<string> } | null
+  >(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<VerifiedSessionData | undefined>(initialSessionData);
@@ -94,10 +102,11 @@ export function LoginPage({
     setShowPassword(false);
     setOtp(['', '', '', '', '', '']);
     setRecoveryCode('');
-    setActiveChallengeId('chl_active');
+    setActiveChallengeId('');
     setHasActiveChallenge(false);
     setOtpInvalid(false);
     setRecoveryInvalid(false);
+    setAssistedRecovery(null);
   }
 
   const effectiveSessionData: ResolvedVerifiedSession = {
@@ -126,6 +135,7 @@ export function LoginPage({
     setPasswordInvalid(false);
     setOtpInvalid(false);
     setRecoveryInvalid(false);
+    setAssistedRecovery(null);
     setScreen(next);
     if (toastInfo) {
       showToast(toastInfo);
@@ -293,6 +303,31 @@ export function LoginPage({
       playErrorTone(soundEnabled);
       setErrorMessage('Recovery code verification failed.');
       showToast({ tone: 'error', text: 'Recovery verification error' });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleCheckAssistedRecovery() {
+    if (isLoading) return;
+    playClickPen(soundEnabled);
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      const res = await getAssistedRecoveryGuidance();
+      if (res.kind === 'ok') {
+        const g: AssistedRecoveryGuidance = res.guidance;
+        setAssistedRecovery({
+          blocker: g.blocker,
+          message: g.message,
+          nextActions: g.next_actions,
+        });
+      } else {
+        setAssistedRecovery({
+          blocker: 'assisted_recovery_not_approved',
+          message: res.message,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -665,6 +700,30 @@ export function LoginPage({
                 >
                   <span>{isLoading ? 'Authenticating...' : 'Authenticate via Recovery Code'}</span>
                 </button>
+
+                <button
+                  type="button"
+                  id="login-assisted-recovery-btn"
+                  disabled={isLoading}
+                  className="btn-batcave-secondary"
+                  onClick={() => void handleCheckAssistedRecovery()}
+                >
+                  Check Assisted Recovery Availability
+                </button>
+
+                {assistedRecovery ? (
+                  <div
+                    className="callout-banner is-error"
+                    data-testid="login-assisted-recovery-notice"
+                    aria-live="polite"
+                  >
+                    <span className="callout-dot dot-warning" aria-hidden="true" />
+                    <div>
+                      <strong>{assistedRecovery.blocker}</strong>
+                      <div>{assistedRecovery.message}</div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <button
                   type="button"
