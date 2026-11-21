@@ -1,3 +1,17 @@
+import {
+  computeDeterministicHash,
+  computeOpeningMaterialHashV1,
+  normalizeSixDecimalQuantity,
+  serializeOpeningMaterialV1,
+} from './canonicalHash';
+
+export {
+  computeDeterministicHash,
+  computeOpeningMaterialHashV1,
+  normalizeSixDecimalQuantity,
+  serializeOpeningMaterialV1,
+};
+
 export type DutyCode =
   | 'COMMITTEE_REQUESTER'
   | 'RF_APPROVER'
@@ -248,6 +262,26 @@ export interface StoredOperationSummary {
   document_number?: string | undefined;
 }
 
+export interface P03PersonaOption {
+  key: string;
+  user_id: string;
+  actor_name: string;
+  duty_code: DutyCode;
+  membership_id: string;
+  duty_grant_id: string;
+  label: string;
+}
+
+export interface P03EngineOptions {
+  chapter_id?: string | undefined;
+  chapter_name?: string | undefined;
+  record?: RecordReference | undefined;
+  policy_effective?: boolean | undefined;
+  policy_reference?: PolicyReference | null | undefined;
+  initial_draft_payload?: Partial<DraftPayload> | undefined;
+  personas?: ReadonlyArray<P03PersonaOption> | undefined;
+}
+
 export interface P03EngineSnapshot {
   chapter_id: string;
   chapter_name: string;
@@ -256,152 +290,19 @@ export interface P03EngineSnapshot {
     kind: RecordKind;
     document_number: string;
     label: string;
-  };
+  } | null;
   document_number: string | null;
   server_row_version: number;
   server_material_version: number | null;
   policy_effective: boolean;
-  policy_reference: PolicyReference;
+  policy_reference: PolicyReference | null;
+  personas: ReadonlyArray<P03PersonaOption>;
   draft: DraftRecord;
   returned_draft_payload: DraftPayload | null;
   current_source: VersionedSource | null;
   version_history: ReadonlyArray<VersionedSource>;
   business_times: BusinessTimes;
   operation_ledger: ReadonlyArray<StoredOperationSummary>;
-}
-
-const SHA256_K = [
-  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
-];
-
-const SHA256_INIT = [
-  0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-  0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
-];
-
-function rotr(value: number, bits: number): number {
-  return (value >>> bits) | (value << (32 - bits));
-}
-
-function sha256Hex(message: string): string {
-  const utf8 = new TextEncoder().encode(message);
-  const bitLen = utf8.length * 8;
-  const withOneLen = utf8.length + 1;
-  const padZeroLen = (64 - ((withOneLen + 8) % 64)) % 64;
-  const totalLen = withOneLen + padZeroLen + 8;
-  const padded = new Uint8Array(totalLen);
-  padded.set(utf8);
-  padded[utf8.length] = 0x80;
-
-  const view = new DataView(padded.buffer);
-  const highBits = Math.floor(bitLen / 0x100000000);
-  const lowBits = bitLen >>> 0;
-  view.setUint32(totalLen - 8, highBits, false);
-  view.setUint32(totalLen - 4, lowBits, false);
-
-  const hash = [...SHA256_INIT];
-  const w = new Uint32Array(64);
-
-  for (let offset = 0; offset < totalLen; offset += 64) {
-    for (let i = 0; i < 16; i += 1) {
-      w[i] = view.getUint32(offset + i * 4, false);
-    }
-    for (let i = 16; i < 64; i += 1) {
-      const w15 = w[i - 15] ?? 0;
-      const w2 = w[i - 2] ?? 0;
-      const w16 = w[i - 16] ?? 0;
-      const w7 = w[i - 7] ?? 0;
-      const s0 = rotr(w15, 7) ^ rotr(w15, 18) ^ (w15 >>> 3);
-      const s1 = rotr(w2, 17) ^ rotr(w2, 19) ^ (w2 >>> 10);
-      w[i] = (w16 + s0 + w7 + s1) >>> 0;
-    }
-
-    let a = hash[0] ?? 0;
-    let b = hash[1] ?? 0;
-    let c = hash[2] ?? 0;
-    let d = hash[3] ?? 0;
-    let e = hash[4] ?? 0;
-    let f = hash[5] ?? 0;
-    let g = hash[6] ?? 0;
-    let h = hash[7] ?? 0;
-
-    for (let i = 0; i < 64; i += 1) {
-      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
-      const ch = (e & f) ^ (~e & g);
-      const ki = SHA256_K[i] ?? 0;
-      const wi = w[i] ?? 0;
-      const temp1 = (h + S1 + ch + ki + wi) >>> 0;
-      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
-      const maj = (a & b) ^ (a & c) ^ (b & c);
-      const temp2 = (S0 + maj) >>> 0;
-
-      h = g;
-      g = f;
-      f = e;
-      e = (d + temp1) >>> 0;
-      d = c;
-      c = b;
-      b = a;
-      a = (temp1 + temp2) >>> 0;
-    }
-
-    hash[0] = ((hash[0] ?? 0) + a) >>> 0;
-    hash[1] = ((hash[1] ?? 0) + b) >>> 0;
-    hash[2] = ((hash[2] ?? 0) + c) >>> 0;
-    hash[3] = ((hash[3] ?? 0) + d) >>> 0;
-    hash[4] = ((hash[4] ?? 0) + e) >>> 0;
-    hash[5] = ((hash[5] ?? 0) + f) >>> 0;
-    hash[6] = ((hash[6] ?? 0) + g) >>> 0;
-    hash[7] = ((hash[7] ?? 0) + h) >>> 0;
-  }
-
-  return hash.map((word) => word.toString(16).padStart(8, '0')).join('');
-}
-
-function canonicalizeValue(value: unknown): unknown {
-  if (value === null || typeof value !== 'object') {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => canonicalizeValue(item));
-  }
-  const source = value as Record<string, unknown>;
-  const sorted: Record<string, unknown> = {};
-  for (const key of Object.keys(source).sort()) {
-    const val = source[key];
-    if (val !== undefined) {
-      sorted[key] = canonicalizeValue(val);
-    }
-  }
-  return sorted;
-}
-
-/**
- * Deterministic 64-character lowercase SHA-256 hex digest over canonicalized JSON.
- */
-export function computeDeterministicHash(payload: unknown): string {
-  const canonicalJson = JSON.stringify(canonicalizeValue(payload));
-  return sha256Hex(canonicalJson);
-}
-
-/**
- * Normalizes a non-negative decimal string (up to 14 integer and 6 fractional digits)
- * to exactly 6 fractional places without converting to floating-point Number.
- */
-export function normalizeSixDecimalQuantity(raw: string): string {
-  const trimmed = raw.trim();
-  if (!/^(?:0|[1-9][0-9]{0,13})(?:\.[0-9]{1,6})?$/.test(trimmed)) {
-    return trimmed;
-  }
-  const [wholePart = '0', fracPart = ''] = trimmed.split('.');
-  return `${wholePart}.${fracPart.padEnd(6, '0').slice(0, 6)}`;
 }
 
 /**
@@ -456,79 +357,35 @@ function createMonotonicUlidGenerator() {
   };
 }
 
-export const P03_PERSONAS: ReadonlyArray<{
-  user_id: string;
-  actor_name: string;
-  duty_code: DutyCode;
-  membership_id: string;
-  duty_grant_id: string;
-  label: string;
-}> = [
-  {
-    user_id: '11',
-    actor_name: 'Ana Maria Reyes',
-    duty_code: 'RECEIVING',
-    membership_id: '111',
-    duty_grant_id: '112',
-    label: 'Ana Maria Reyes (RECEIVING — Preparer)',
-  },
-  {
-    user_id: '21',
-    actor_name: 'Laurence Parojinog',
-    duty_code: 'CHAPTER_HEAD',
-    membership_id: '211',
-    duty_grant_id: '212',
-    label: 'Laurence Parojinog (CHAPTER_HEAD)',
-  },
-  {
-    user_id: '22',
-    actor_name: 'Maria Clara Santos',
-    duty_code: 'FINANCE',
-    membership_id: '221',
-    duty_grant_id: '222',
-    label: 'Maria Clara Santos (FINANCE)',
-  },
-];
+export const P03_CONTEXT_STORAGE_KEY = 'ysp_p03_context';
 
-const INITIAL_CHAPTER_ID = '1';
-const INITIAL_CHAPTER_NAME = 'YSP Cebu Chapter';
-const INITIAL_RECORD: RecordReference = {
-  id: '9007199254740993',
-  kind: 'IPC',
-};
+function readStoredP03Context(): P03EngineOptions | null {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return null;
+  }
+  try {
+    const raw = window.localStorage.getItem(P03_CONTEXT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as P03EngineOptions;
+  } catch {
+    return null;
+  }
+}
+
 const VALID_IDEMPOTENCY_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 const VALID_DECIMAL_RE = /^(?:0|[1-9][0-9]{0,13})(?:\.[0-9]{1,6})?$/;
 
-function createDefaultPolicyReference(): PolicyReference {
-  const approvalRecord: RecordReference = { id: '43', kind: 'CONFIG' };
-  const settingsHash = sha256Hex('CFG-2026-0001:opening-policy:v1');
-  const materialHash = sha256Hex('CONFIG:43:v1:approved');
+function createEmptyDraftPayload(): DraftPayload {
   return {
-    chapter_id: INITIAL_CHAPTER_ID,
-    policy_id: '41',
-    policy_version_id: '42',
-    version_no: 1,
-    settings_hash: settingsHash,
-    approval: {
-      chapter_id: INITIAL_CHAPTER_ID,
-      record: approvalRecord,
-      material_version: 1,
-      material_hash: materialHash,
-    },
-    effective_from: '2026-10-23T00:00:00.000000Z',
-    effective_until: null,
-  };
-}
-
-function createInitialDraftPayload(): DraftPayload {
-  return {
-    purpose: 'Chapter A Initial Physical Count — opening baseline count',
-    cutoff_at: '2026-10-23T23:00:00.000000Z',
-    counted_at: '2026-10-24T06:00:00.000000Z',
-    counted_quantity: '10',
-    unit_valuation: '25.000000',
-    valuation_basis: 'Approved chapter unit valuation standard (PHP)',
-    external_reference: 'COUNT-SHEET-CEB-2026-01',
+    purpose: '',
+    cutoff_at: '',
+    counted_at: '',
+    counted_quantity: '',
+    unit_valuation: '',
+    valuation_basis: '',
+    external_reference: '',
   };
 }
 
@@ -641,24 +498,38 @@ function cloneActionResult(res: ActionResult, replayedOverride?: boolean): Actio
  * Creates a self-contained P03 record, version history, review decision, and durable
  * idempotent operation engine faithful to YSP Transport & Identity/Record contracts.
  */
-export function createP03RecordEngine(): P03RecordEngine {
+export function createP03RecordEngine(options?: P03EngineOptions): P03RecordEngine {
+  const stored = options === undefined ? readStoredP03Context() : null;
+  const resolved: P03EngineOptions = options ?? stored ?? {};
   const nextUlid = createMonotonicUlidGenerator();
-  const policyRef = createDefaultPolicyReference();
+
+  const activeChapterId = resolved.chapter_id ?? '';
+  const activeChapterName = resolved.chapter_name ?? '';
+  const recordRef: RecordReference = resolved.record
+    ? { ...resolved.record }
+    : { id: '', kind: 'IPC' };
+  const activePersonas: P03PersonaOption[] = resolved.personas
+    ? resolved.personas.map((p) => ({ ...p }))
+    : [];
+  const policyRef: PolicyReference | null = resolved.policy_reference ?? null;
 
   let serverRowVersion = 1;
   let serverMaterialVersion: number | null = null;
-  let policyEffective = true;
+  let policyEffective = resolved.policy_effective ?? false;
   let issuedDocumentNumber: string | null = null;
   let sequenceCounter = 0;
   let decisionCounter = 200;
 
   let draft: DraftRecord = {
-    chapter_id: INITIAL_CHAPTER_ID,
-    reference: { ...INITIAL_RECORD },
+    chapter_id: activeChapterId,
+    reference: { ...recordRef },
     row_version: serverRowVersion,
     material_version: null,
     approval_state: 'draft',
-    draft_payload: createInitialDraftPayload(),
+    draft_payload: {
+      ...createEmptyDraftPayload(),
+      ...(resolved.initial_draft_payload ?? {}),
+    },
   };
 
   let returnedDraftPayload: DraftPayload | null = null;
@@ -679,12 +550,33 @@ export function createP03RecordEngine(): P03RecordEngine {
     return `${chapterId}::${actionCode}::${key}`;
   }
 
+  function resolvePolicySnapshot(): PolicyReference {
+    if (policyRef) {
+      return policyRef;
+    }
+    return {
+      chapter_id: activeChapterId,
+      policy_id: '',
+      policy_version_id: '',
+      version_no: 1,
+      settings_hash: '',
+      approval: {
+        chapter_id: activeChapterId,
+        record: { id: '', kind: 'CONFIG' },
+        material_version: 1,
+        material_hash: '',
+      },
+      effective_from: nowUtcSixDecimal(),
+      effective_until: null,
+    };
+  }
+
   function currentRecordState(): RecordState | null {
     if (!currentSource) {
       return null;
     }
     return {
-      reference: { ...INITIAL_RECORD },
+      reference: { ...recordRef },
       row_version: serverRowVersion,
       material_version: currentSource.target.material_version,
       states: { ...currentSource.state.states },
@@ -710,19 +602,22 @@ export function createP03RecordEngine(): P03RecordEngine {
     }
 
     return {
-      chapter_id: INITIAL_CHAPTER_ID,
-      chapter_name: INITIAL_CHAPTER_NAME,
-      record: { ...INITIAL_RECORD },
-      parent_reference: {
-        kind: 'CONFIG',
-        document_number: 'CFG-2026-0001',
-        label: 'Policy CFG-2026-0001 v1',
-      },
+      chapter_id: activeChapterId,
+      chapter_name: activeChapterName,
+      record: { ...recordRef },
+      parent_reference: policyRef
+        ? {
+            kind: 'CONFIG',
+            document_number: policyRef.policy_id,
+            label: `Policy ${policyRef.policy_id} v${policyRef.version_no}`,
+          }
+        : null,
       document_number: issuedDocumentNumber,
       server_row_version: serverRowVersion,
       server_material_version: serverMaterialVersion,
       policy_effective: policyEffective,
       policy_reference: policyRef,
+      personas: activePersonas.map((p) => ({ ...p })),
       draft: {
         ...draft,
         reference: { ...draft.reference },
@@ -761,13 +656,13 @@ export function createP03RecordEngine(): P03RecordEngine {
           ...currentSource.material,
           purpose: nextPurpose,
         };
-        const nextHash = computeDeterministicHash(nextMaterial);
+        const nextHash = computeOpeningMaterialHashV1(nextMaterial);
         const prevRef: MaterialReference = { ...currentSource.target };
         serverMaterialVersion = nextMat;
         currentSource = {
           ...currentSource,
           state: {
-            reference: { ...INITIAL_RECORD },
+            reference: { ...recordRef },
             row_version: serverRowVersion,
             material_version: nextMat,
             states: {
@@ -777,8 +672,8 @@ export function createP03RecordEngine(): P03RecordEngine {
             },
           },
           target: {
-            chapter_id: INITIAL_CHAPTER_ID,
-            record: { ...INITIAL_RECORD },
+            chapter_id: activeChapterId,
+            record: { ...recordRef },
             material_version: nextMat,
             material_hash: nextHash,
           },
@@ -792,9 +687,9 @@ export function createP03RecordEngine(): P03RecordEngine {
   }
 
   function saveDraft(input: SaveDraftInput): ActionResult {
-    const chapterId = input.chapter_id ?? INITIAL_CHAPTER_ID;
-    if (chapterId !== INITIAL_CHAPTER_ID) {
-      return makeForbiddenResult('Cannot save draft outside authorized chapter 1.');
+    const chapterId = input.chapter_id ?? activeChapterId;
+    if (activeChapterId && chapterId !== activeChapterId) {
+      return makeForbiddenResult('Cannot save draft outside the authorized chapter.');
     }
 
     serverRowVersion += 1;
@@ -815,8 +710,8 @@ export function createP03RecordEngine(): P03RecordEngine {
 
     if (currentSource === null) {
       draft = {
-        chapter_id: INITIAL_CHAPTER_ID,
-        reference: { ...INITIAL_RECORD },
+        chapter_id: activeChapterId,
+        reference: { ...recordRef },
         row_version: serverRowVersion,
         material_version: null,
         approval_state: 'draft',
@@ -837,7 +732,7 @@ export function createP03RecordEngine(): P03RecordEngine {
 
     return {
       schema_version: '1.0',
-      chapter_id: INITIAL_CHAPTER_ID,
+      chapter_id: activeChapterId || null,
       action_result: 'success',
       operation: {
         identity: {
@@ -851,13 +746,13 @@ export function createP03RecordEngine(): P03RecordEngine {
       },
       record: currentSource
         ? {
-            reference: { ...INITIAL_RECORD },
+            reference: { ...recordRef },
             row_version: serverRowVersion,
             material_version: currentSource.target.material_version,
             states: { ...currentSource.state.states },
           }
         : {
-            reference: { ...INITIAL_RECORD },
+            reference: { ...recordRef },
             row_version: serverRowVersion,
             material_version: 1,
             states: {
@@ -877,8 +772,11 @@ export function createP03RecordEngine(): P03RecordEngine {
   }
 
   function submitMaterial(input: SubmitMaterialInput): ActionResult {
-    const chapterId = input.chapter_id ?? INITIAL_CHAPTER_ID;
-    if (chapterId !== INITIAL_CHAPTER_ID) {
+    const chapterId = input.chapter_id ?? activeChapterId;
+    if (!activeChapterId) {
+      return makeForbiddenResult('Authorized chapter context and active policy are required before submitting.');
+    }
+    if (chapterId !== activeChapterId) {
       return makeForbiddenResult('Access denied for requested chapter context.');
     }
 
@@ -925,7 +823,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (fieldFeedback.length > 0) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'blocked',
         operation: null,
         record: currentRecordState(),
@@ -967,7 +865,7 @@ export function createP03RecordEngine(): P03RecordEngine {
       if (existing.payload_fingerprint !== payloadFingerprint) {
         return {
           schema_version: '1.0',
-          chapter_id: INITIAL_CHAPTER_ID,
+          chapter_id: activeChapterId,
           action_result: 'blocked',
           operation: null,
           record: currentRecordState(),
@@ -997,7 +895,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (!policyEffective) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'blocked',
         operation: null,
         record: currentRecordState(),
@@ -1005,7 +903,7 @@ export function createP03RecordEngine(): P03RecordEngine {
         blocking_reason: {
           code: 'POLICY_NOT_EFFECTIVE',
           message:
-            'Approved chapter policy (CFG-2026-0001) is missing or not effective. Draft saving remains allowed while submission is blocked.',
+            'Approved chapter policy is missing or not effective. Draft saving remains allowed while submission is blocked.',
         },
         permitted_next_actions: [
           { code: 'review_record', label: 'Ensure approved chapter setup policy is effective' },
@@ -1021,7 +919,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     ) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'stale',
         operation: null,
         record: currentRecordState(),
@@ -1041,7 +939,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (input.expected_row_version !== serverRowVersion) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'stale',
         operation: null,
         record: currentRecordState(),
@@ -1075,27 +973,30 @@ export function createP03RecordEngine(): P03RecordEngine {
     const resolvedExternalRef =
       input.external_reference?.trim() ||
       draft.draft_payload.external_reference?.trim() ||
-      'COUNT-SHEET-CEB-2026-01';
+      '';
 
     const committedAt = nowUtcSixDecimal();
-    const preparerPersona = P03_PERSONAS[0];
+    const resolvedPolicy = resolvePolicySnapshot();
+    const preparerPersona =
+      activePersonas.find((p) => p.duty_code === 'RECEIVING') ?? activePersonas[0];
+    const effectiveCountedAt = input.counted_at.trim() || committedAt;
+    const effectiveCutoffAt = input.cutoff_at.trim() || committedAt;
     const material: OpeningMaterial = {
-      chapter_id: INITIAL_CHAPTER_ID,
-      record: { ...INITIAL_RECORD },
-      cutoff_at: input.cutoff_at.trim(),
-      counted_at: input.counted_at.trim(),
+      chapter_id: activeChapterId,
+      record: { ...recordRef },
+      cutoff_at: effectiveCutoffAt,
+      counted_at: effectiveCountedAt,
       purpose: input.purpose.trim(),
       external_reference: resolvedExternalRef,
-      policy_version_id: policyRef.policy_version_id,
-      counters: [
-        { user_id: '11', is_regular_custodian: true },
-        { user_id: '12', is_regular_custodian: false },
-      ],
+      policy_version_id: resolvedPolicy.policy_version_id,
+      counters: preparerPersona
+        ? [{ user_id: preparerPersona.user_id, is_regular_custodian: true }]
+        : [],
       lines: [
         {
           reference: {
-            chapter_id: INITIAL_CHAPTER_ID,
-            record: { ...INITIAL_RECORD },
+            chapter_id: activeChapterId,
+            record: { ...recordRef },
             line_id: '501',
             line_kind: 'IPC',
             variant_id: '71',
@@ -1114,16 +1015,16 @@ export function createP03RecordEngine(): P03RecordEngine {
       ],
     };
 
-    const materialHash = computeDeterministicHash(material);
+    const materialHash = computeOpeningMaterialHashV1(material);
     const nextTarget: MaterialReference = {
-      chapter_id: INITIAL_CHAPTER_ID,
-      record: { ...INITIAL_RECORD },
+      chapter_id: activeChapterId,
+      record: { ...recordRef },
       material_version: nextMaterialVersion,
       material_hash: materialHash,
     };
 
     const nextState: RecordState = {
-      reference: { ...INITIAL_RECORD },
+      reference: { ...recordRef },
       row_version: serverRowVersion,
       material_version: nextMaterialVersion,
       states: {
@@ -1139,23 +1040,23 @@ export function createP03RecordEngine(): P03RecordEngine {
       previous_version: currentSource ? { ...currentSource.target } : null,
       material,
       prepared_by: {
-        chapter_id: INITIAL_CHAPTER_ID,
-        user_id: preparerPersona?.user_id ?? '11',
-        membership_id: preparerPersona?.membership_id ?? '111',
-        duty_grant_id: preparerPersona?.duty_grant_id ?? '112',
+        chapter_id: activeChapterId,
+        user_id: preparerPersona?.user_id ?? '',
+        membership_id: preparerPersona?.membership_id ?? '',
+        duty_grant_id: preparerPersona?.duty_grant_id ?? '',
         duty_code: preparerPersona?.duty_code ?? 'RECEIVING',
-        actor_name: preparerPersona?.actor_name ?? 'Ana Maria Reyes',
-        chapter_name: INITIAL_CHAPTER_NAME,
+        actor_name: preparerPersona?.actor_name ?? '',
+        chapter_name: activeChapterName,
         captured_at: committedAt,
       },
-      policy: policyRef,
+      policy: resolvedPolicy,
       decisions: [],
     };
 
     const savedPayload: DraftPayload = {
       purpose: material.purpose,
-      cutoff_at: material.cutoff_at,
-      counted_at: material.counted_at,
+      cutoff_at: input.cutoff_at.trim(),
+      counted_at: input.counted_at.trim(),
       counted_quantity: normalizedQty,
       unit_valuation: normalizedVal,
       valuation_basis: input.valuation_basis.trim(),
@@ -1176,7 +1077,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     const opId = nextUlid();
     const committedResult: ActionResult = {
       schema_version: '1.0',
-      chapter_id: INITIAL_CHAPTER_ID,
+      chapter_id: activeChapterId,
       action_result: 'success',
       operation: {
         identity: {
@@ -1216,7 +1117,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (input.simulate_lost_response) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'uncertain',
         operation: {
           identity: {
@@ -1248,9 +1149,33 @@ export function createP03RecordEngine(): P03RecordEngine {
   }
 
   function recordReviewDecision(input: RecordReviewDecisionInput): ActionResult {
-    const chapterId = input.chapter_id ?? INITIAL_CHAPTER_ID;
-    if (chapterId !== INITIAL_CHAPTER_ID) {
+    const chapterId = input.chapter_id ?? activeChapterId;
+    if (!activeChapterId || chapterId !== activeChapterId) {
       return makeForbiddenResult('Access denied for requested chapter context.');
+    }
+
+    if (!input.actor_name.trim() || !input.actor_id.trim()) {
+      return {
+        schema_version: '1.0',
+        chapter_id: activeChapterId,
+        action_result: 'blocked',
+        operation: null,
+        record: currentRecordState(),
+        field_feedback: [
+          {
+            path: '/actor_id',
+            code: 'REVIEWER_REQUIRED',
+            message: 'Select an authorized reviewer identity before recording a decision.',
+          },
+        ],
+        blocking_reason: {
+          code: 'REVIEWER_REQUIRED',
+          message: 'An authorized acting reviewer identity is required before recording a decision.',
+        },
+        permitted_next_actions: [{ code: 'correct_input', label: 'Select reviewer identity' }],
+        input_policy: 'preserve',
+        lookup_state: null,
+      };
     }
 
     const actionCode = 'ipc.record_review';
@@ -1259,7 +1184,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (!VALID_IDEMPOTENCY_RE.test(trimmedKey)) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'blocked',
         operation: null,
         record: currentRecordState(),
@@ -1297,7 +1222,7 @@ export function createP03RecordEngine(): P03RecordEngine {
       if (existing.payload_fingerprint !== payloadFingerprint) {
         return {
           schema_version: '1.0',
-          chapter_id: INITIAL_CHAPTER_ID,
+          chapter_id: activeChapterId,
           action_result: 'blocked',
           operation: null,
           record: currentRecordState(),
@@ -1319,7 +1244,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (currentSource === null) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'blocked',
         operation: null,
         record: null,
@@ -1337,7 +1262,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (!input.reason.trim()) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'blocked',
         operation: null,
         record: currentRecordState(),
@@ -1361,7 +1286,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (input.expected_material_version !== currentSource.target.material_version) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'stale',
         operation: null,
         record: currentRecordState(),
@@ -1379,7 +1304,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (input.expected_row_version !== serverRowVersion) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'stale',
         operation: null,
         record: currentRecordState(),
@@ -1398,7 +1323,7 @@ export function createP03RecordEngine(): P03RecordEngine {
       if (input.actor_id === currentSource.prepared_by.user_id) {
         return {
           schema_version: '1.0',
-          chapter_id: INITIAL_CHAPTER_ID,
+          chapter_id: activeChapterId,
           action_result: 'blocked',
           operation: null,
           record: currentRecordState(),
@@ -1421,7 +1346,7 @@ export function createP03RecordEngine(): P03RecordEngine {
       if (alreadyApprovedBySamePerson) {
         return {
           schema_version: '1.0',
-          chapter_id: INITIAL_CHAPTER_ID,
+          chapter_id: activeChapterId,
           action_result: 'blocked',
           operation: null,
           record: currentRecordState(),
@@ -1445,16 +1370,16 @@ export function createP03RecordEngine(): P03RecordEngine {
     const newDecision: ReviewDecision = {
       id: String(decisionCounter),
       target: { ...currentSource.target, record: { ...currentSource.target.record } },
-      policy: policyRef,
+      policy: resolvePolicySnapshot(),
       decision: input.decision,
       actor: {
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         user_id: input.actor_id,
         membership_id: `${input.actor_id}1`,
         duty_grant_id: `${input.actor_id}2`,
         duty_code: input.duty_code,
         actor_name: input.actor_name,
-        chapter_name: INITIAL_CHAPTER_NAME,
+        chapter_name: activeChapterName,
         captured_at: decidedAt,
       },
       decided_at: decidedAt,
@@ -1501,7 +1426,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     currentSource = {
       ...currentSource,
       state: {
-        reference: { ...INITIAL_RECORD },
+        reference: { ...recordRef },
         row_version: serverRowVersion,
         material_version: currentSource.target.material_version,
         states: {
@@ -1516,7 +1441,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     const opId = nextUlid();
     const committedResult: ActionResult = {
       schema_version: '1.0',
-      chapter_id: INITIAL_CHAPTER_ID,
+      chapter_id: activeChapterId,
       action_result: 'success',
       operation: {
         identity: {
@@ -1557,7 +1482,7 @@ export function createP03RecordEngine(): P03RecordEngine {
   }
 
   function lookupOperation(query: OperationLookupQuery): ActionResult {
-    if (query.chapter_id !== INITIAL_CHAPTER_ID) {
+    if (!activeChapterId || query.chapter_id !== activeChapterId) {
       return makeForbiddenResult(
         'Cross-chapter or unauthorized operation lookup is strictly redacted.'
       );
@@ -1575,7 +1500,7 @@ export function createP03RecordEngine(): P03RecordEngine {
     if (!entry) {
       return {
         schema_version: '1.0',
-        chapter_id: INITIAL_CHAPTER_ID,
+        chapter_id: activeChapterId,
         action_result: 'uncertain',
         operation: null,
         record: null,
@@ -1597,14 +1522,14 @@ export function createP03RecordEngine(): P03RecordEngine {
     return cloneActionResult(entry.result, true);
   }
 
-  function attemptGenericStockOrMoneyPost(chapterId = INITIAL_CHAPTER_ID): ActionResult {
-    if (chapterId !== INITIAL_CHAPTER_ID) {
+  function attemptGenericStockOrMoneyPost(chapterId = activeChapterId): ActionResult {
+    if (!activeChapterId || chapterId !== activeChapterId) {
       return makeForbiddenResult('Access denied for requested chapter context.');
     }
 
     return {
       schema_version: '1.0',
-      chapter_id: INITIAL_CHAPTER_ID,
+      chapter_id: activeChapterId,
       action_result: 'blocked',
       operation: null,
       record: currentRecordState(),

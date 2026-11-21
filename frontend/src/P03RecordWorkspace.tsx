@@ -349,14 +349,16 @@ export function BlockerAndStaleComparisonPanel({
         <div className="p03-blocker-heading">
           <span className="callout-dot dot-error" aria-hidden="true" />
           <div>
-            <div className="p03-blocker-title-row">
-              <span className="p03-blocker-code">
-                {lastResult.blocking_reason?.code ?? lastResult.action_result.toUpperCase()}
-              </span>
-              <span className="p03-policy-chip">
-                {lastResult.input_policy === 'preserve' ? 'Input Preserved' : 'May Clear'}
-              </span>
-            </div>
+            {lastResult.blocking_reason?.code !== 'OPERATION_NOT_FOUND' ? (
+              <div className="p03-blocker-title-row">
+                <span className="p03-blocker-code">
+                  {lastResult.blocking_reason?.code ?? lastResult.action_result.toUpperCase()}
+                </span>
+                <span className="p03-policy-chip">
+                  {lastResult.input_policy === 'preserve' ? 'Input Preserved' : 'May Clear'}
+                </span>
+              </div>
+            ) : null}
             <p className="p03-blocker-msg">
               {lastResult.blocking_reason?.message ?? 'Action did not complete.'}
             </p>
@@ -567,15 +569,14 @@ export function UncertainOutcomeLookupPanel({
             <label htmlFor="p03-lookup-chapter" className="form-label">
               Authorized Chapter Scope
             </label>
-            <select
+            <input
               id="p03-lookup-chapter"
-              className="form-control"
+              type="text"
+              className="form-control p03-mono-inline"
               value={lookupChapterId}
               onChange={(e) => onChangeChapterId(e.target.value)}
-            >
-              <option value="1">Chapter 1 — Authorized (YSP Cebu)</option>
-              <option value="999">Chapter 999 — Unauthorized Chapter</option>
-            </select>
+              placeholder="Enter authorized chapter ID"
+            />
           </div>
           <div className="form-group">
             <label htmlFor="p03-lookup-action" className="form-label">
@@ -605,7 +606,7 @@ export function UncertainOutcomeLookupPanel({
                 className="form-control"
                 value={lookupKey}
                 onChange={(e) => onChangeKey(e.target.value)}
-                placeholder="e.g. submit-ipc-v1-01"
+                placeholder="Enter idempotency key"
               />
               <button
                 type="button"
@@ -658,14 +659,11 @@ export function UncertainOutcomeLookupPanel({
             aria-hidden="true"
           />
           <div>
-            <strong>
-              {lookupResult.action_result === 'success'
-                ? 'Recovered Committed Result'
-                : lookupResult.blocking_reason?.code ?? lookupResult.action_result.toUpperCase()}
-            </strong>
-            <div>
-              {lookupResult.action_result === 'success'
-                ? `${
+            {lookupResult.action_result === 'success' ? (
+              <>
+                <strong>Recovered Committed Result</strong>
+                <div>
+                  {`${
                     lookupResult.document_number
                       ? `Initial Physical Count (${lookupResult.document_number})`
                       : 'Draft'
@@ -673,9 +671,18 @@ export function UncertainOutcomeLookupPanel({
                     lookupResult.record?.material_version ?? 'N/A'
                   } · Transaction ULID: ${
                     lookupResult.operation?.identity.operation_id ?? 'N/A'
-                  } · Verified without duplicate execution`
-                : lookupResult.blocking_reason?.message}
-            </div>
+                  } · Verified without duplicate execution`}
+                </div>
+              </>
+            ) : (
+              <>
+                {lookupResult.blocking_reason?.code &&
+                lookupResult.blocking_reason.code !== 'OPERATION_NOT_FOUND' ? (
+                  <strong>{lookupResult.blocking_reason.code}</strong>
+                ) : null}
+                <div>{lookupResult.blocking_reason?.message}</div>
+              </>
+            )}
           </div>
         </div>
       ) : null}
@@ -835,11 +842,13 @@ export function LinkedHistoryTimelinePanel({
                   <div className="p03-formal-cell is-span-2">
                     <dt className="p03-formal-key">VALUATION BASIS</dt>
                     <dd className="p03-formal-val">
-                      {line?.valuation_basis || 'Standard Chapter Valuation'}
+                      {line?.valuation_basis || '—'}
                     </dd>
                     <dd className="p03-formal-sub">
-                      Ext Ref: {version.material.external_reference || 'N/A'} &middot; Parent:
-                      CFG-2026-0001 v1
+                      Ext Ref: {version.material.external_reference || 'N/A'} &middot;{' '}
+                      {version.policy.policy_id
+                        ? `Parent: Policy ${version.policy.policy_id} v${version.policy.version_no}`
+                        : 'Parent Policy: None Linked'}
                     </dd>
                   </div>
 
@@ -921,43 +930,6 @@ interface P03RecordWorkspaceProps {
   onNotify?: ((tone: 'success' | 'warning' | 'error' | 'info', text: string) => void) | undefined;
 }
 
-const PERSONA_OPTIONS: ReadonlyArray<{
-  key: string;
-  actor_id: string;
-  actor_name: string;
-  duty_code: DutyCode;
-  label: string;
-}> = [
-  {
-    key: 'head_21',
-    actor_id: '21',
-    actor_name: 'Laurence Parojinog',
-    duty_code: 'CHAPTER_HEAD',
-    label: 'Laurence Parojinog — Chapter Head (Approver 1)',
-  },
-  {
-    key: 'finance_22',
-    actor_id: '22',
-    actor_name: 'Maria Clara Santos',
-    duty_code: 'FINANCE',
-    label: 'Maria Clara Santos — Finance (Approver 2)',
-  },
-  {
-    key: 'preparer_11',
-    actor_id: '11',
-    actor_name: 'Ana Maria Reyes',
-    duty_code: 'RECEIVING',
-    label: 'Ana Maria Reyes — Receiving (Preparer)',
-  },
-  {
-    key: 'head_as_finance_21',
-    actor_id: '21',
-    actor_name: 'Laurence Parojinog',
-    duty_code: 'FINANCE',
-    label: 'Laurence Parojinog — Finance Role',
-  },
-];
-
 export function P03RecordWorkspace({
   soundEnabled,
   onBackToDashboard,
@@ -975,14 +947,12 @@ export function P03RecordWorkspace({
   const [expectedMaterialVersion, setExpectedMaterialVersion] = useState<number | null>(
     () => snapshot.server_material_version
   );
-  const [submitKey, setSubmitKey] = useState<string>('submit-ipc-v1-01');
+  const [submitKey, setSubmitKey] = useState<string>('');
 
-  const [reviewPersonaKey, setReviewPersonaKey] = useState<string>('head_21');
+  const [reviewPersonaKey, setReviewPersonaKey] = useState<string>('');
   const [reviewDecision, setReviewDecision] = useState<ReviewDecisionType>('approve');
-  const [reviewReason, setReviewReason] = useState<string>(
-    'Verified independent opening count purpose and unit valuations.'
-  );
-  const [reviewKey, setReviewKey] = useState<string>('review-ipc-01');
+  const [reviewReason, setReviewReason] = useState<string>('');
+  const [reviewKey, setReviewKey] = useState<string>('');
 
   const [lastResult, setLastResult] = useState<ActionResult | null>(null);
   const [lastSubmitFailed, setLastSubmitFailed] = useState<boolean>(false);
@@ -991,19 +961,19 @@ export function P03RecordWorkspace({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [copiedHashId, setCopiedHashId] = useState<string | null>(null);
 
-  const [lookupChapterId, setLookupChapterId] = useState<string>('1');
+  const [lookupChapterId, setLookupChapterId] = useState<string>(() => snapshot.chapter_id);
   const [lookupActionCode, setLookupActionCode] = useState<string>('ipc.submit_material');
-  const [lookupKey, setLookupKey] = useState<string>('submit-ipc-v1-01');
+  const [lookupKey, setLookupKey] = useState<string>('');
   const [lookupOpId, setLookupOpId] = useState<string>('');
   const [lookupResult, setLookupResult] = useState<ActionResult | null>(null);
 
-  const nextSubmitSeqRef = useRef(1);
-  const nextReviewSeqRef = useRef(1);
+  const nextSubmitSeqRef = useRef(0);
+  const nextReviewSeqRef = useRef(0);
   const copyTimerRef = useRef<number | null>(null);
 
   const activePersona = useMemo(
-    () => PERSONA_OPTIONS.find((p) => p.key === reviewPersonaKey) ?? PERSONA_OPTIONS[0],
-    [reviewPersonaKey]
+    () => snapshot.personas.find((p) => p.key === reviewPersonaKey) ?? null,
+    [snapshot.personas, reviewPersonaKey]
   );
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -1093,7 +1063,6 @@ export function P03RecordWorkspace({
 
   function handleRecordDecision() {
     playClickPen(soundEnabled);
-    if (!activePersona) return;
 
     const snapBefore = engine.getSnapshot();
     const targetMat = expectedMaterialVersion ?? snapBefore.server_material_version ?? 1;
@@ -1103,9 +1072,9 @@ export function P03RecordWorkspace({
       expected_row_version: expectedRowVersion,
       expected_material_version: targetMat,
       decision: reviewDecision,
-      actor_id: activePersona.actor_id,
-      actor_name: activePersona.actor_name,
-      duty_code: activePersona.duty_code,
+      actor_id: activePersona?.user_id ?? '',
+      actor_name: activePersona?.actor_name ?? '',
+      duty_code: activePersona?.duty_code ?? 'CHAPTER_HEAD',
       reason: reviewReason,
     });
 
@@ -1129,6 +1098,12 @@ export function P03RecordWorkspace({
     setSubmitKey(`submit-ipc-v1-${String(nextSubmitSeqRef.current).padStart(2, '0')}`);
   }
 
+  function handleGenerateReviewKey() {
+    playClickPen(soundEnabled);
+    nextReviewSeqRef.current += 1;
+    setReviewKey(`review-ipc-${String(nextReviewSeqRef.current).padStart(2, '0')}`);
+  }
+
   function handleLookupByKey() {
     playClickPen(soundEnabled);
     const res = engine.lookupOperation({
@@ -1142,7 +1117,11 @@ export function P03RecordWorkspace({
       refreshFromServer(true);
       onNotify?.('success', 'Recovered committed result via scoped key lookup');
     } else {
-      onNotify?.('warning', res.blocking_reason?.code ?? 'Lookup did not match');
+      const code = res.blocking_reason?.code;
+      onNotify?.(
+        'warning',
+        code && code !== 'OPERATION_NOT_FOUND' ? code : 'No matching operation found'
+      );
     }
   }
 
@@ -1158,7 +1137,11 @@ export function P03RecordWorkspace({
       refreshFromServer(true);
       onNotify?.('success', 'Recovered committed result via ULID lookup');
     } else {
-      onNotify?.('warning', res.blocking_reason?.code ?? 'ULID lookup did not match');
+      const code = res.blocking_reason?.code;
+      onNotify?.(
+        'warning',
+        code && code !== 'OPERATION_NOT_FOUND' ? code : 'No matching operation found'
+      );
     }
   }
 
@@ -1296,32 +1279,6 @@ export function P03RecordWorkspace({
 
           <div className="p03-header-nav-row">
             <div className="p03-header-left">
-              {onBackToDashboard ? (
-                <button
-                  type="button"
-                  className="nav-back-btn"
-                  aria-label="Return"
-                  title="Return"
-                  onClick={() => {
-                    playClickPen(soundEnabled);
-                    onBackToDashboard();
-                  }}
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M15 18l-6-6 6-6" />
-                  </svg>
-                </button>
-              ) : null}
               <h1 id="p03-workspace-title" className="p03-main-title">
                 Record, Version &amp; Durable Operation
               </h1>
@@ -1450,6 +1407,7 @@ export function P03RecordWorkspace({
                       type="text"
                       className="form-control"
                       value={draftForm.purpose}
+                      placeholder="Enter opening count purpose"
                       onChange={(e) =>
                         setDraftForm((prev) => ({ ...prev, purpose: e.target.value }))
                       }
@@ -1459,13 +1417,14 @@ export function P03RecordWorkspace({
                   <div className="p03-two-col">
                     <div className="form-group">
                       <label htmlFor="p03-qty-input" className="form-label">
-                        Line 501 Counted Quantity <span className="required-star">*</span>
+                        Counted Quantity <span className="required-star">*</span>
                       </label>
                       <input
                         id="p03-qty-input"
                         type="text"
                         className="form-control is-mono"
                         value={draftForm.counted_quantity}
+                        placeholder="0.00"
                         onChange={(e) =>
                           setDraftForm((prev) => ({ ...prev, counted_quantity: e.target.value }))
                         }
@@ -1480,6 +1439,7 @@ export function P03RecordWorkspace({
                         type="text"
                         className="form-control is-mono"
                         value={draftForm.unit_valuation}
+                        placeholder="0.000000"
                         onChange={(e) =>
                           setDraftForm((prev) => ({ ...prev, unit_valuation: e.target.value }))
                         }
@@ -1497,6 +1457,7 @@ export function P03RecordWorkspace({
                         type="text"
                         className="form-control"
                         value={draftForm.valuation_basis}
+                        placeholder="Enter approved valuation basis"
                         onChange={(e) =>
                           setDraftForm((prev) => ({ ...prev, valuation_basis: e.target.value }))
                         }
@@ -1512,7 +1473,7 @@ export function P03RecordWorkspace({
                         type="text"
                         className="form-control is-mono"
                         value={draftForm.external_reference ?? ''}
-                        placeholder="e.g. COUNT-SHEET-CEB-2026-01"
+                        placeholder="Enter external document reference"
                         onChange={(e) =>
                           setDraftForm((prev) => ({ ...prev, external_reference: e.target.value }))
                         }
@@ -1566,6 +1527,7 @@ export function P03RecordWorkspace({
                         type="text"
                         className="form-control is-mono"
                         value={submitKey}
+                        placeholder="Enter or generate idempotency key"
                         onChange={(e) => setSubmitKey(e.target.value)}
                       />
                       <button
@@ -1631,7 +1593,12 @@ export function P03RecordWorkspace({
                       value={reviewPersonaKey}
                       onChange={(e) => setReviewPersonaKey(e.target.value)}
                     >
-                      {PERSONA_OPTIONS.map((option) => (
+                      <option value="">
+                        {snapshot.personas.length > 0
+                          ? 'Select authorized reviewer...'
+                          : 'No reviewer identities loaded'}
+                      </option>
+                      {snapshot.personas.map((option) => (
                         <option key={option.key} value={option.key}>
                           {option.label}
                         </option>
@@ -1675,13 +1642,24 @@ export function P03RecordWorkspace({
                     <label htmlFor="p03-review-key" className="form-label">
                       Review Idempotency Key
                     </label>
-                    <input
-                      id="p03-review-key"
-                      type="text"
-                      className="form-control is-mono"
-                      value={reviewKey}
-                      onChange={(e) => setReviewKey(e.target.value)}
-                    />
+                    <div className="p03-input-action-row">
+                      <input
+                        id="p03-review-key"
+                        type="text"
+                        className="form-control is-mono"
+                        value={reviewKey}
+                        placeholder="Enter or generate idempotency key"
+                        onChange={(e) => setReviewKey(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        id="p03-new-review-key-btn"
+                        className="btn-batcave-secondary p03-shrink-btn"
+                        onClick={handleGenerateReviewKey}
+                      >
+                        New Key
+                      </button>
+                    </div>
                   </div>
 
                   <button
@@ -1692,6 +1670,34 @@ export function P03RecordWorkspace({
                   >
                     Record Review Decision
                   </button>
+                </div>
+
+                <div className="p03-guard-strip">
+                  <span className="p03-formal-key">APPROVAL INDEPENDENCE STATUS</span>
+                  <div className="p03-formal-grid">
+                    <div className="p03-formal-cell is-span-2">
+                      <span className="p03-formal-key">TARGET MATERIAL SNAPSHOT</span>
+                      <span className="p03-formal-val">
+                        {snapshot.server_material_version !== null
+                          ? `Material v${snapshot.server_material_version}`
+                          : 'Awaiting Submission'}
+                      </span>
+                      <span className="p03-formal-sub">
+                        {snapshot.document_number ?? 'Draft record number unassigned'}
+                      </span>
+                    </div>
+                    <div className="p03-formal-cell is-span-2">
+                      <span className="p03-formal-key">RECORDED DECISIONS ON TARGET</span>
+                      <span className="p03-formal-val">
+                        {snapshot.current_source
+                          ? `${snapshot.current_source.decisions.length} Recorded`
+                          : '0 Recorded'}
+                      </span>
+                      <span className="p03-formal-sub">
+                        Requires distinct Chapter Head &amp; Finance sign-off
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </section>
             ) : null}

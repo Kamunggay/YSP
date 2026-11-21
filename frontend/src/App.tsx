@@ -13,6 +13,7 @@ import { HalftoneWaveCanvas } from './HalftoneWaveCanvas';
 import { useBatCaveTheme } from './batcaveTheme';
 import { P03RecordWorkspace } from './P03RecordWorkspace';
 import { P02AdminWorkspace } from './P02AdminWorkspace';
+import { P04EvidenceWorkspace } from './P04EvidenceWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -26,6 +27,7 @@ export type AppRouteMode =
   | 'dashboard'
   | 'p02-admin'
   | 'p03-records'
+  | 'p04-evidence'
   | 'health';
 
 interface ResolvedRoute {
@@ -50,6 +52,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p03' || view === 'records' || path === '/p03' || path === '/records') {
     return { mode: 'p03-records', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p04' || view === 'evidence' || path === '/p04' || path === '/evidence') {
+    return { mode: 'p04-evidence', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -238,6 +243,18 @@ export function App() {
 
               <button
                 type="button"
+                id="open-p04-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p04-evidence');
+                }}
+              >
+                Open P04 Ready Evidence &amp; Signed-Batch Handover
+              </button>
+
+              <button
+                type="button"
                 disabled={isSigningOut}
                 className="btn-batcave-primary"
                 onClick={() => void handleDashboardSignOut()}
@@ -279,6 +296,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P03RecordWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p04-evidence') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P04EvidenceWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

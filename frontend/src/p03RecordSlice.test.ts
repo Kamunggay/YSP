@@ -5,9 +5,81 @@ import {
   normalizeSixDecimalQuantity,
 } from './p03RecordSlice';
 
+function createTestP03Engine() {
+  return createP03RecordEngine({
+    chapter_id: '1',
+    chapter_name: 'Chapter 1 Test',
+    record: { id: '9007199254740993', kind: 'IPC' },
+    policy_effective: true,
+    policy_reference: {
+      chapter_id: '1',
+      policy_id: 'CFG-2026-0001',
+      policy_version_id: '42',
+      version_no: 1,
+      settings_hash: computeDeterministicHash('CFG-2026-0001:opening-policy:v1'),
+      approval: {
+        chapter_id: '1',
+        record: { id: '43', kind: 'CONFIG' },
+        material_version: 1,
+        material_hash: computeDeterministicHash('CONFIG:43:v1:approved'),
+      },
+      effective_from: '2026-10-23T00:00:00.000000Z',
+      effective_until: null,
+    },
+    personas: [
+      {
+        key: 'preparer_11',
+        user_id: '11',
+        actor_name: 'Test Preparer',
+        duty_code: 'RECEIVING',
+        membership_id: '111',
+        duty_grant_id: '112',
+        label: 'Test Preparer (RECEIVING)',
+      },
+      {
+        key: 'head_21',
+        user_id: '21',
+        actor_name: 'Test Chapter Head',
+        duty_code: 'CHAPTER_HEAD',
+        membership_id: '211',
+        duty_grant_id: '212',
+        label: 'Test Chapter Head (CHAPTER_HEAD)',
+      },
+      {
+        key: 'finance_22',
+        user_id: '22',
+        actor_name: 'Test Finance Officer',
+        duty_code: 'FINANCE',
+        membership_id: '221',
+        duty_grant_id: '222',
+        label: 'Test Finance Officer (FINANCE)',
+      },
+    ],
+  });
+}
+
 describe('p03RecordSlice', () => {
+  it('starts cleanly with zero generated default data when unseeded', () => {
+    const emptyEngine = createP03RecordEngine();
+    const emptySnap = emptyEngine.getSnapshot();
+    expect(emptySnap.chapter_id).toBe('');
+    expect(emptySnap.chapter_name).toBe('');
+    expect(emptySnap.policy_effective).toBe(false);
+    expect(emptySnap.policy_reference).toBeNull();
+    expect(emptySnap.personas).toEqual([]);
+    expect(emptySnap.draft.draft_payload).toEqual({
+      purpose: '',
+      cutoff_at: '',
+      counted_at: '',
+      counted_quantity: '',
+      unit_valuation: '',
+      valuation_basis: '',
+      external_reference: '',
+    });
+  });
+
   it('saves incomplete drafts incrementing row_version while keeping material_version null', () => {
-    const engine = createP03RecordEngine();
+    const engine = createTestP03Engine();
     const initial = engine.getSnapshot();
     expect(initial.draft.row_version).toBe(1);
     expect(initial.draft.material_version).toBeNull();
@@ -30,7 +102,7 @@ describe('p03RecordSlice', () => {
   });
 
   it('publishes immutable material_version 1 with deterministic SHA-256 hash and once-only sequence number', () => {
-    const engine = createP03RecordEngine();
+    const engine = createTestP03Engine();
     const snap = engine.getSnapshot();
 
     const submitRes = engine.submitMaterial({
@@ -59,7 +131,7 @@ describe('p03RecordSlice', () => {
   });
 
   it('replays identical idempotency key once and rejects changed payload on same key', () => {
-    const engine = createP03RecordEngine();
+    const engine = createTestP03Engine();
     const snap = engine.getSnapshot();
 
     const first = engine.submitMaterial({
@@ -112,7 +184,7 @@ describe('p03RecordSlice', () => {
   });
 
   it('preserves v1 return reason when revised to v2 and never copies prior approvals forward', () => {
-    const engine = createP03RecordEngine();
+    const engine = createTestP03Engine();
 
     const sub1 = engine.submitMaterial({
       idempotency_key: 'sub-v1',
@@ -185,7 +257,7 @@ describe('p03RecordSlice', () => {
   });
 
   it('enforces distinct individual approval identities and rejects self-approval or dual-role reuse', () => {
-    const engine = createP03RecordEngine();
+    const engine = createTestP03Engine();
     engine.submitMaterial({
       idempotency_key: 'sub-indep',
       expected_row_version: 1,
@@ -256,7 +328,7 @@ describe('p03RecordSlice', () => {
   });
 
   it('detects STALE_ROW_VERSION and STALE_MATERIAL_VERSION with input_policy preserve', () => {
-    const engine = createP03RecordEngine();
+    const engine = createTestP03Engine();
     engine.submitMaterial({
       idempotency_key: 'sub-stale-base',
       expected_row_version: 1,
@@ -305,7 +377,7 @@ describe('p03RecordSlice', () => {
   });
 
   it('recovers commit-before-dispatch lost responses via scoped lookup and redacts cross-chapter queries', () => {
-    const engine = createP03RecordEngine();
+    const engine = createTestP03Engine();
 
     const lost = engine.submitMaterial({
       idempotency_key: 'lost-conn-01',
@@ -361,7 +433,7 @@ describe('p03RecordSlice', () => {
   });
 
   it('blocks submission when setup policy is inactive while permitting draft saves and rejects generic posting', () => {
-    const engine = createP03RecordEngine();
+    const engine = createTestP03Engine();
     engine.setPolicyEffective(false);
 
     const draftOk = engine.saveDraft({
@@ -402,7 +474,7 @@ describe('p03RecordSlice', () => {
   });
 
   it('tracks parent_reference (DOC-02), persists external_reference (DOC-07), and records cancel decisions with retained reason (DOC-04/DOC-09)', () => {
-    const engine = createP03RecordEngine();
+    const engine = createTestP03Engine();
     const initial = engine.getSnapshot();
     expect(initial.parent_reference).toEqual({
       kind: 'CONFIG',
