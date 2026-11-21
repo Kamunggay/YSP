@@ -237,7 +237,7 @@ export function RecordStateHeader({ snapshot, attentionTone }: RecordStateHeader
       <div className="p03-card-header-row">
         <div className="p03-state-title-group">
           <h2 id="p03-state-header-title" className="p03-section-title">
-            {snapshot.document_number ? 'Initial Physical Count' : '(Draft)'}
+            Initial Physical Count
           </h2>
           <AttentionBadge tone={attentionTone} />
         </div>

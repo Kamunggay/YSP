@@ -14,6 +14,7 @@ import { useBatCaveTheme } from './batcaveTheme';
 import { P03RecordWorkspace } from './P03RecordWorkspace';
 import { P02AdminWorkspace } from './P02AdminWorkspace';
 import { P04EvidenceWorkspace } from './P04EvidenceWorkspace';
+import { P05InventoryWorkspace } from './P05InventoryWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -28,6 +29,7 @@ export type AppRouteMode =
   | 'p02-admin'
   | 'p03-records'
   | 'p04-evidence'
+  | 'p05-inventory'
   | 'health';
 
 interface ResolvedRoute {
@@ -55,6 +57,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p04' || view === 'evidence' || path === '/p04' || path === '/evidence') {
     return { mode: 'p04-evidence', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p05' || view === 'inventory' || path === '/p05' || path === '/inventory') {
+    return { mode: 'p05-inventory', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -226,7 +231,7 @@ export function App() {
                   setRouteMode('p02-admin');
                 }}
               >
-                Open P02 Chapter Admin &amp; Setup (S-21 / S-22)
+                Chapter Administration &amp; Setup
               </button>
 
               <button
@@ -238,7 +243,7 @@ export function App() {
                   setRouteMode('p03-records');
                 }}
               >
-                Open P03 Record &amp; Operation Workspace
+                Record &amp; Operation Workspace
               </button>
 
               <button
@@ -250,7 +255,19 @@ export function App() {
                   setRouteMode('p04-evidence');
                 }}
               >
-                Open P04 Ready Evidence &amp; Signed-Batch Handover
+                Ready Evidence &amp; Signed Handover
+              </button>
+
+              <button
+                type="button"
+                id="open-p05-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p05-inventory');
+                }}
+              >
+                Inventory Catalog &amp; Stock Eligibility
               </button>
 
               <button
@@ -314,6 +331,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P04EvidenceWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p05-inventory') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P05InventoryWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

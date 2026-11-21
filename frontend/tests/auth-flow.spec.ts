@@ -376,7 +376,7 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     ).toBeVisible();
 
     // Unseeded clean state: zero default records, policies, reviewers, or pre-filled keys
-    await expect(page.locator('#p03-state-header-title')).toHaveText('(Draft)');
+    await expect(page.locator('#p03-state-header-title')).toHaveText('Initial Physical Count');
     await expect(page.locator('#p03-purpose-input')).toHaveValue('');
     await expect(page.locator('#p03-qty-input')).toHaveValue('');
     await expect(page.locator('#p03-valuation-input')).toHaveValue('');
@@ -456,7 +456,7 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     });
     await page.reload();
 
-    await expect(page.locator('#p03-state-header-title')).toHaveText('(Draft)');
+    await expect(page.locator('#p03-state-header-title')).toHaveText('Initial Physical Count');
     await expect(page.getByTestId('p03-material-version-pill')).toContainText('Draft');
     await expect(page.getByTestId('p03-axis-approval')).toHaveText('draft');
     await expect(page.getByTestId('p03-submit-card')).toHaveClass(/is-needs-action/);
@@ -1074,6 +1074,239 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     await expect(page.getByTestId('p04-history-v1')).toHaveCount(0);
     await page.locator('#p04-search-clear-btn').click();
     await expect(page.getByTestId('p04-history-v1')).toBeVisible();
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('executes P05 non-posting catalog, policy gate, 7-view stock query, disjoint overlap split/clearance, and durable lookup', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p05');
+    await expect(
+      page.getByRole('heading', { name: 'Inventory Catalog & Stock Eligibility' })
+    ).toBeVisible();
+
+    // Unseeded clean state: zero variants, units, cells, holds, and empty form inputs
+    await expect(page.getByTestId('p05-variant-count-pill')).toContainText('0');
+    await expect(page.getByTestId('p05-unit-count-pill')).toContainText('0');
+    await expect(page.getByTestId('p05-cell-count-pill')).toContainText('0');
+    await expect(page.getByTestId('p05-empty-catalog-notice')).toBeVisible();
+    await expect(page.locator('#p05-unit-code-input')).toHaveValue('');
+    await expect(page.locator('#p05-location-code-input')).toHaveValue('');
+    await expect(page.locator('#p05-variant-sku-input')).toHaveValue('');
+    await expect(page.locator('#p05-policy-rop-input')).toHaveValue('');
+
+    // Verify precise inline row height and vertical alignment for Register Unit & Register Location
+    const unitSelectBox = await page.locator('#p05-unit-scale-select').boundingBox();
+    const addUnitBtnBox = await page.locator('#p05-add-unit-btn').boundingBox();
+    expect(unitSelectBox).not.toBeNull();
+    expect(addUnitBtnBox).not.toBeNull();
+    if (unitSelectBox && addUnitBtnBox) {
+      expect(Math.abs(unitSelectBox.y - addUnitBtnBox.y)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(unitSelectBox.height - addUnitBtnBox.height)).toBeLessThanOrEqual(0.5);
+    }
+
+    const locSelectBox = await page.locator('#p05-location-custody-select').boundingBox();
+    const addLocBtnBox = await page.locator('#p05-add-location-btn').boundingBox();
+    expect(locSelectBox).not.toBeNull();
+    expect(addLocBtnBox).not.toBeNull();
+    if (locSelectBox && addLocBtnBox) {
+      expect(Math.abs(locSelectBox.y - addLocBtnBox.y)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(locSelectBox.height - addLocBtnBox.height)).toBeLessThanOrEqual(0.5);
+    }
+
+    // 1. Interactively register Unit (PCS, scale 0), Location (LOC-MAIN), and Variant (YSP-SHIRT-M)
+    await page.locator('#p05-unit-code-input').fill('PCS');
+    await page.locator('#p05-unit-name-input').fill('Pieces');
+    await page.locator('#p05-unit-scale-select').selectOption('0');
+    await page.locator('#p05-add-unit-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('UNIT_REGISTERED');
+
+    await page.locator('#p05-location-code-input').fill('LOC-MAIN');
+    await page.locator('#p05-location-name-input').fill('Main Stockroom');
+    await page.locator('#p05-location-custody-select').selectOption('stockroom');
+    await page.locator('#p05-add-location-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('LOCATION_REGISTERED');
+
+    await page.locator('#p05-variant-sku-input').fill('YSP-SHIRT-M');
+    await page.locator('#p05-variant-name-input').fill('Chapter Relief T-Shirt');
+    await page.locator('#p05-add-variant-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('VARIANT_REGISTERED');
+    await expect(page.getByTestId('p05-variant-count-pill')).toContainText('1');
+
+    // Non-posting guard check: rejects arbitrary direct balance setter
+    await page.locator('#p05-test-direct-balance-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText(
+      'DIRECT_BALANCE_SETTER_FORBIDDEN'
+    );
+
+    // Querying before approved policy rejects with POLICY_NOT_EFFECTIVE
+    await page.locator('#p05-tab-eligibility').click();
+    await page.locator('#p05-query-purpose-select').selectOption('internal');
+    await page.locator('#p05-query-qty-input').fill('2');
+    await page.locator('#p05-run-query-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('POLICY_NOT_EFFECTIVE');
+
+    // Prepare & approve item ROP policy -> run zero-stock query across all 7 views
+    await page.locator('#p05-tab-catalog').click();
+    await page.locator('#p05-policy-rop-input').fill('8');
+    await page.locator('#p05-prepare-policy-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('ITEM_POLICY_DRAFTED');
+    await page.locator('#p05-approve-policy-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('ITEM_POLICY_APPROVED');
+
+    await page.locator('#p05-tab-eligibility').click();
+    await page.locator('#p05-run-query-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('ELIGIBILITY_ZERO_STOCK');
+    await expect(page.getByTestId('p05-view-usable-on-hand')).toHaveText('0');
+    await expect(page.getByTestId('p05-view-available')).toHaveText('0');
+    await expect(page.getByTestId('p05-view-rf-reserved')).toHaveText('0');
+    await expect(page.getByTestId('p05-view-so-reserved')).toHaveText('0');
+    await expect(page.getByTestId('p05-view-booth-custody')).toHaveText('0');
+    await expect(page.getByTestId('p05-view-quarantined')).toHaveText('0');
+    await expect(page.getByTestId('p05-view-inbound-po')).toHaveText('0');
+
+    // 2. Seed P05 test context with 10-unit RM-backed lot [0, 10) for disjoint cell hold split & clearance
+    await page.evaluate(() => {
+      window.localStorage.setItem(
+        'ysp_p05_context',
+        JSON.stringify({
+          chapter_id: '1',
+          chapter_name: 'YSP Cebu Chapter',
+          units: [{ unit_id: '61', chapter_id: '1', code: 'PCS', name: 'Pieces', quantity_scale: 0 }],
+          locations: [
+            {
+              location_id: '91',
+              chapter_id: '1',
+              code: 'LOC-MAIN',
+              name: 'Main Stockroom',
+              custody_kind: 'stockroom',
+              custody_assignment_id: '101',
+              custodian_user_id: null,
+            },
+          ],
+          variants: [
+            {
+              variant_id: '71',
+              chapter_id: '1',
+              sku: 'YSP-SHIRT-M',
+              item_name: 'Chapter Relief T-Shirt',
+              variant_label: 'Medium',
+              unit_id: '61',
+              quantity_scale: 0,
+              eligibility_version: 1,
+              policy_status: 'approved',
+              policy_version_id: '301',
+              draft_rop_threshold: { value: '5', quantity_scale: 0 },
+              approved_rop_threshold: { value: '5', quantity_scale: 0 },
+              restriction_version_ids: ['201'],
+            },
+          ],
+          cells: [
+            {
+              cell_id: '2001',
+              dimension: {
+                chapter_id: '1',
+                variant_id: '71',
+                unit_id: '61',
+                quantity_scale: 0,
+                lot_id: '1201',
+                position_id: '1301',
+                location_id: '91',
+                custody_assignment_id: '101',
+                custodian_user_id: null,
+                custody_kind: 'stockroom',
+                condition_code: 'usable',
+                lot_kind: 'accepted',
+                restriction_version_id: '201',
+                source: {
+                  chapter_id: '1',
+                  record: { id: '901', kind: 'RM' },
+                  line_id: '601',
+                  line_kind: 'RM',
+                  variant_id: '71',
+                },
+              },
+              start: '0',
+              end: '10',
+              quantity: { value: '10', quantity_scale: 0 },
+              active_hold_ids: [],
+              active_reservation_id: null,
+              non_hold_eligibility: 'eligible',
+              blocking_codes: [],
+            },
+          ],
+          position_versions: { '1301': 1 },
+        })
+      );
+    });
+    await page.reload();
+
+    // Record overlapping holds [0, 3) and [2, 4) -> verify disjoint split into 4 cells & union math
+    await page.locator('#p05-tab-holds').click();
+    await page.locator('#p05-hold-variant-select').selectOption('71');
+    await page.locator('#p05-hold-reason-input').fill('overlap_hold_a');
+    await page.locator('#p05-hold-lot-input').fill('1201');
+    await page.locator('#p05-hold-position-input').fill('1301');
+    await page.locator('#p05-hold-start-input').fill('0');
+    await page.locator('#p05-hold-end-input').fill('3');
+    await page.locator('#p05-hold-evidence-hash-input').fill('a'.repeat(64));
+    await page.locator('#p05-hold-key-input').fill('e2e-hold-key-a');
+    await page.locator('#p05-record-hold-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('HOLD_RECORDED');
+
+    await page.locator('#p05-hold-reason-input').fill('overlap_hold_b');
+    await page.locator('#p05-hold-start-input').fill('2');
+    await page.locator('#p05-hold-end-input').fill('4');
+    await page.locator('#p05-hold-evidence-hash-input').fill('b'.repeat(64));
+    await page.locator('#p05-hold-key-input').fill('e2e-hold-key-b');
+    await page.locator('#p05-record-hold-btn').click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('HOLD_RECORDED');
+
+    await page.locator('#p05-tab-eligibility').click();
+    await page.locator('#p05-query-variant-select').selectOption('71');
+    await page.locator('#p05-query-purpose-select').selectOption('internal');
+    await page.locator('#p05-query-qty-input').fill('2');
+    await page.locator('#p05-run-query-btn').click();
+    await expect(page.getByTestId('p05-cells-table').locator('tbody tr')).toHaveCount(4);
+    await expect(page.getByTestId('p05-union-held')).toHaveText('4');
+    await expect(page.getByTestId('p05-view-available')).toHaveText('6');
+
+    // Clear first hold -> verify held_union drops to 2 and available_to_allocate increases to 8 with 0 movements
+    await page.locator('#p05-tab-holds').click();
+    await page.locator('#p05-clear-reason-input').fill('Verified sample batch intact');
+    await page.locator('#p05-clear-evidence-hash-input').fill('c'.repeat(64));
+    await page.locator('#p05-clear-key-input').fill('e2e-clear-key-a');
+    await page.locator('[data-testid^="p05-clear-hold-"]').first().click();
+    await expect(page.getByTestId('p05-feedback-banner')).toContainText('HOLD_CLEARED');
+
+    await page.locator('#p05-tab-eligibility').click();
+    await page.locator('#p05-run-query-btn').click();
+    await expect(page.getByTestId('p05-union-held')).toHaveText('2');
+    await expect(page.getByTestId('p05-view-available')).toHaveText('8');
+
+    // Verify durable operation lookup by key & ULID
+    await page.locator('#p05-tab-lookup').click();
+    await page.locator('#p05-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p05-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p05-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p05-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p05_context');
+    });
 
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);

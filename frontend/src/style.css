@@ -2381,3 +2381,80 @@ html.dark .p02-compact-btn.is-primary:hover {
   border-color: var(--color-error);
   color: var(--color-error);
 }
+
+/* P05 Inventory 7-View Eligibility Grid & Coverage Table */
+.p05-seven-views-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 0.55rem;
+}
+
+.p05-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid var(--glass-field-border);
+}
+
+.p05-cells-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  text-align: left;
+  color: rgb(var(--ink));
+}
+
+.p05-cells-table th,
+.p05-cells-table td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--glass-divider);
+  white-space: nowrap;
+}
+
+.p05-cells-table th {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgb(var(--g600));
+  background-color: var(--glass-field-bg);
+}
+
+html.dark .p05-cells-table th {
+  color: rgb(var(--g400));
+}
+
+.p05-cells-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.p03-input-action-row .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 38px;
+  min-height: 38px;
+  margin: 0;
+}
+
+.p03-input-action-row .btn-batcave-primary,
+.p03-input-action-row .btn-batcave-secondary {
+  height: 38px;
+  min-height: 38px;
+  padding: 0 1.05rem;
+  margin: 0;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.p03-guard-buttons {
+  align-items: stretch;
+}
+
+.p03-guard-buttons .btn-batcave-primary,
+.p03-guard-buttons .btn-batcave-secondary {
+  height: 40px;
+  min-height: 40px;
+  margin: 0;
+  line-height: 1;
+  box-sizing: border-box;
+}

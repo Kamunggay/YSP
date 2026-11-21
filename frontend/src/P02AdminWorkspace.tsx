@@ -1603,7 +1603,7 @@ export function P02AdminWorkspace({
                     <span className="p03-formal-val">
                       {hasHeadAssigned && hasFinanceAssigned ? 'Both Active' : 'Incomplete'}
                     </span>
-                    <span className="p03-formal-sub">Required Stage 1 signers</span>
+                    <span className="p03-formal-sub">Required chapter signers</span>
                   </div>
                   <div className="p03-formal-cell is-span-2">
                     <span className="p03-formal-key">SEGREGATION ENFORCEMENT</span>
@@ -1625,7 +1625,7 @@ export function P02AdminWorkspace({
               <div className="p03-card-header-row">
                 <div className="p03-state-title-group">
                   <h2 id="p02-readiness-heading" className="p03-section-title">
-                    Stage 1 Chapter Readiness Checklist
+                    Chapter Operational Readiness Checklist
                   </h2>
                   <span className="p03-attention-badge" data-testid="p02-readiness-badge">
                     <span
@@ -2057,7 +2057,7 @@ export function P02AdminWorkspace({
                   Global Account Disable Control
                 </h2>
                 <p className="p03-muted-copy">
-                  Organization-wide identity suspension is disabled during Stage 1 rollout. Suspend or revoke officer access within each individual chapter roster instead.
+                  Organization-wide identity suspension is disabled under current platform policy. Suspend or revoke officer access within each individual chapter roster instead.
                 </p>
               </div>
 
