@@ -396,3 +396,188 @@ export function serializeBatchSnapshotV1(snapshot: CanonicalBatchSnapshotInput):
 export function computeBatchSnapshotHashV1(snapshot: CanonicalBatchSnapshotInput): string {
   return sha256Hex(serializeBatchSnapshotV1(snapshot));
 }
+
+export interface CanonicalMaterialRefInput {
+  chapter_id: string;
+  record: CanonicalRecordRef;
+  material_version: number;
+  material_hash: string;
+}
+
+export interface CanonicalAttributionInput {
+  chapter_id: string;
+  user_id: string;
+  membership_id: string;
+  duty_grant_id: string;
+  duty_code: string;
+  actor_name: string;
+  chapter_name: string;
+  captured_at: string;
+}
+
+export interface CanonicalPolicyRefInput {
+  chapter_id: string;
+  policy_id: string;
+  policy_version_id: string;
+  version_no: number;
+  settings_hash: string;
+  approval: CanonicalMaterialRefInput;
+  effective_from: string;
+  effective_until: string | null;
+}
+
+export interface CanonicalQuantityInput {
+  value: string;
+  quantity_scale: number;
+}
+
+export interface CanonicalInspectionLineInput {
+  reference: CanonicalLineRef;
+  source_line: CanonicalLineRef;
+  expected_quantity: CanonicalQuantityInput;
+  delivered_quantity: CanonicalQuantityInput;
+  accepted_quantity: CanonicalQuantityInput;
+  rejected_quantity: CanonicalQuantityInput;
+  held_quantity: CanonicalQuantityInput;
+  missing_quantity: CanonicalQuantityInput;
+  nonusable_recorded_quantity: CanonicalQuantityInput;
+  location_id: string;
+  custody_assignment_id: string;
+  condition_code: string;
+  restriction_version_id: string;
+  unit_valuation: string;
+  valuation_basis: string;
+  condition_notes: string;
+}
+
+export interface CanonicalInspectionMaterialInput {
+  chapter_id: string;
+  record: CanonicalRecordRef;
+  source: CanonicalMaterialRefInput;
+  inspection_at: string;
+  inspector: CanonicalAttributionInput;
+  representatives: ReadonlyArray<CanonicalAttributionInput>;
+  policy: CanonicalPolicyRefInput;
+  lines: ReadonlyArray<CanonicalInspectionLineInput>;
+}
+
+function buildCanonicalLineRef(line: CanonicalLineRef) {
+  return {
+    chapter_id: line.chapter_id,
+    record: {
+      id: line.record.id,
+      kind: line.record.kind,
+    },
+    line_id: line.line_id,
+    line_kind: line.line_kind,
+    variant_id: line.variant_id,
+  };
+}
+
+function buildCanonicalAttribution(actor: CanonicalAttributionInput) {
+  return {
+    chapter_id: actor.chapter_id,
+    user_id: actor.user_id,
+    membership_id: actor.membership_id,
+    duty_grant_id: actor.duty_grant_id,
+    duty_code: actor.duty_code,
+    actor_name: actor.actor_name,
+    chapter_name: actor.chapter_name,
+    captured_at: actor.captured_at,
+  };
+}
+
+function buildCanonicalMaterialRef(ref: CanonicalMaterialRefInput) {
+  return {
+    chapter_id: ref.chapter_id,
+    record: {
+      id: ref.record.id,
+      kind: ref.record.kind,
+    },
+    material_version: ref.material_version,
+    material_hash: ref.material_hash,
+  };
+}
+
+function buildCanonicalQuantity(qty: CanonicalQuantityInput) {
+  return {
+    value: normalizeSixDecimalQuantity(qty.value),
+    quantity_scale: qty.quantity_scale,
+  };
+}
+
+export function buildCanonicalInspectionMaterial(material: CanonicalInspectionMaterialInput) {
+  const seenReps = new Set<string>();
+  const sortedReps = [...material.representatives]
+    .sort((a, b) => numericIdCompare(a.user_id, b.user_id))
+    .map((rep) => {
+      if (seenReps.has(rep.user_id)) {
+        throw new Error(`DUPLICATE_REPRESENTATIVE_ID: Duplicate user_id "${rep.user_id}".`);
+      }
+      seenReps.add(rep.user_id);
+      return buildCanonicalAttribution(rep);
+    });
+
+  const seenLines = new Set<string>();
+  const sortedLines = [...material.lines]
+    .sort((a, b) => numericIdCompare(a.reference.line_id, b.reference.line_id))
+    .map((l) => {
+      if (seenLines.has(l.reference.line_id)) {
+        throw new Error(`DUPLICATE_LINE_ID: Duplicate inspection line_id "${l.reference.line_id}".`);
+      }
+      seenLines.add(l.reference.line_id);
+      return {
+        reference: buildCanonicalLineRef(l.reference),
+        source_line: buildCanonicalLineRef(l.source_line),
+        expected_quantity: buildCanonicalQuantity(l.expected_quantity),
+        delivered_quantity: buildCanonicalQuantity(l.delivered_quantity),
+        accepted_quantity: buildCanonicalQuantity(l.accepted_quantity),
+        rejected_quantity: buildCanonicalQuantity(l.rejected_quantity),
+        held_quantity: buildCanonicalQuantity(l.held_quantity),
+        missing_quantity: buildCanonicalQuantity(l.missing_quantity),
+        nonusable_recorded_quantity: buildCanonicalQuantity(l.nonusable_recorded_quantity),
+        location_id: l.location_id,
+        custody_assignment_id: l.custody_assignment_id,
+        condition_code: l.condition_code,
+        restriction_version_id: l.restriction_version_id,
+        unit_valuation: normalizeSixDecimalQuantity(l.unit_valuation),
+        valuation_basis: l.valuation_basis,
+        condition_notes: l.condition_notes,
+      };
+    });
+
+  return {
+    chapter_id: material.chapter_id,
+    record: {
+      id: material.record.id,
+      kind: material.record.kind,
+    },
+    source: buildCanonicalMaterialRef(material.source),
+    inspection_at: material.inspection_at,
+    inspector: buildCanonicalAttribution(material.inspector),
+    representatives: sortedReps,
+    policy: {
+      chapter_id: material.policy.chapter_id,
+      policy_id: material.policy.policy_id,
+      policy_version_id: material.policy.policy_version_id,
+      version_no: material.policy.version_no,
+      settings_hash: material.policy.settings_hash,
+      approval: buildCanonicalMaterialRef(material.policy.approval),
+      effective_from: material.policy.effective_from,
+      effective_until: material.policy.effective_until,
+    },
+    lines: sortedLines,
+  };
+}
+
+export function serializeInspectionMaterialV1(
+  material: CanonicalInspectionMaterialInput
+): string {
+  return serializeFixedOrderJson(buildCanonicalInspectionMaterial(material));
+}
+
+export function computeInspectionMaterialHashV1(
+  material: CanonicalInspectionMaterialInput
+): string {
+  return sha256Hex(serializeInspectionMaterialV1(material));
+}

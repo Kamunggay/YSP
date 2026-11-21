@@ -15,6 +15,7 @@ import { P03RecordWorkspace } from './P03RecordWorkspace';
 import { P02AdminWorkspace } from './P02AdminWorkspace';
 import { P04EvidenceWorkspace } from './P04EvidenceWorkspace';
 import { P05InventoryWorkspace } from './P05InventoryWorkspace';
+import { P06OpeningWorkspace } from './P06OpeningWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -30,6 +31,7 @@ export type AppRouteMode =
   | 'p03-records'
   | 'p04-evidence'
   | 'p05-inventory'
+  | 'p06-opening'
   | 'health';
 
 interface ResolvedRoute {
@@ -60,6 +62,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p05' || view === 'inventory' || path === '/p05' || path === '/inventory') {
     return { mode: 'p05-inventory', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p06' || view === 'opening' || path === '/p06' || path === '/opening') {
+    return { mode: 'p06-opening', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -269,6 +274,17 @@ export function App() {
               >
                 Inventory Catalog &amp; Stock Eligibility
               </button>
+              <button
+                type="button"
+                id="open-p06-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p06-opening');
+                }}
+              >
+                Opening Physical Count &amp; Baseline Acceptance
+              </button>
 
               <button
                 type="button"
@@ -349,6 +365,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P05InventoryWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p06-opening') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P06OpeningWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeBatchSnapshotHashV1,
+  computeInspectionMaterialHashV1,
   computeOpeningMaterialHashV1,
   computeRecipientHashV1,
   normalizeSixDecimalQuantity,
@@ -151,5 +152,126 @@ describe('canonicalHash (ysp-opening-v1 / ysp-batch-v1)', () => {
         ],
       })
     ).toThrow(/DUPLICATE_LINE_ID/);
+  });
+
+  it('matches ipc-rm-acceptance/v1 two-line IPC & RM inspection canonical hashes bit-for-bit', () => {
+    const twoLineIpc = {
+      chapter_id: '1',
+      record: { id: '9007199254740993', kind: 'IPC' },
+      cutoff_at: '2026-10-23T23:00:00.000000Z',
+      counted_at: '2026-10-24T06:00:00.000000Z',
+      purpose: 'Synthetic opening count; contract example only',
+      policy_version_id: '42',
+      counters: [
+        { user_id: '11', is_regular_custodian: true },
+        { user_id: '12', is_regular_custodian: false },
+      ],
+      lines: [
+        {
+          reference: { chapter_id: '1', record: { id: '9007199254740993', kind: 'IPC' }, line_id: '501', line_kind: 'IPC', variant_id: '71' },
+          location_id: '81',
+          custody_assignment_id: '82',
+          condition_code: 'usable',
+          counted_quantity: { value: '10', quantity_scale: 0 },
+          unit_valuation: '25',
+          valuation_basis: 'Synthetic approved test valuation',
+          restriction_version_id: '83',
+        },
+        {
+          reference: { chapter_id: '1', record: { id: '9007199254740993', kind: 'IPC' }, line_id: '502', line_kind: 'IPC', variant_id: '71' },
+          location_id: '84',
+          custody_assignment_id: '85',
+          condition_code: 'damaged',
+          counted_quantity: { value: '2', quantity_scale: 0 },
+          unit_valuation: '25',
+          valuation_basis: 'Synthetic approved test valuation',
+          restriction_version_id: '83',
+        },
+      ],
+    };
+
+    expect(computeOpeningMaterialHashV1(twoLineIpc)).toBe(
+      'bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128'
+    );
+
+    const inspectionMaterial = {
+      chapter_id: '1',
+      record: { id: '901', kind: 'RM' },
+      source: {
+        chapter_id: '1',
+        record: { id: '9007199254740993', kind: 'IPC' },
+        material_version: 1,
+        material_hash: 'bbd7495ecab1a3ce691c09aa273d58b7247c308d4842c5048ba5f70b1feaf128',
+      },
+      inspection_at: '2026-10-24T06:30:00.000000Z',
+      inspector: {
+        chapter_id: '1',
+        user_id: '11',
+        membership_id: '111',
+        duty_grant_id: '112',
+        duty_code: 'RECEIVING',
+        actor_name: 'Synthetic officer 11',
+        chapter_name: 'Synthetic chapter A',
+        captured_at: '2026-10-24T06:00:00.000000Z',
+      },
+      representatives: [],
+      policy: {
+        chapter_id: '1',
+        policy_id: '41',
+        policy_version_id: '42',
+        version_no: 1,
+        settings_hash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        approval: {
+          chapter_id: '1',
+          record: { id: '43', kind: 'CONFIG' },
+          material_version: 1,
+          material_hash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        },
+        effective_from: '2026-10-23T00:00:00.000000Z',
+        effective_until: null,
+      },
+      lines: [
+        {
+          reference: { chapter_id: '1', record: { id: '901', kind: 'RM' }, line_id: '601', line_kind: 'RM', variant_id: '71' },
+          source_line: { chapter_id: '1', record: { id: '9007199254740993', kind: 'IPC' }, line_id: '501', line_kind: 'IPC', variant_id: '71' },
+          expected_quantity: { value: '10', quantity_scale: 0 },
+          delivered_quantity: { value: '10', quantity_scale: 0 },
+          accepted_quantity: { value: '10', quantity_scale: 0 },
+          rejected_quantity: { value: '0', quantity_scale: 0 },
+          held_quantity: { value: '0', quantity_scale: 0 },
+          missing_quantity: { value: '0', quantity_scale: 0 },
+          nonusable_recorded_quantity: { value: '0', quantity_scale: 0 },
+          location_id: '81',
+          custody_assignment_id: '82',
+          condition_code: 'usable',
+          restriction_version_id: '83',
+          unit_valuation: '25',
+          valuation_basis: 'Synthetic approved test valuation',
+          condition_notes: 'Ten inspected usable units; packaging/specification/variant match.',
+        },
+        {
+          reference: { chapter_id: '1', record: { id: '901', kind: 'RM' }, line_id: '602', line_kind: 'RM', variant_id: '71' },
+          source_line: { chapter_id: '1', record: { id: '9007199254740993', kind: 'IPC' }, line_id: '502', line_kind: 'IPC', variant_id: '71' },
+          expected_quantity: { value: '2', quantity_scale: 0 },
+          delivered_quantity: { value: '2', quantity_scale: 0 },
+          accepted_quantity: { value: '0', quantity_scale: 0 },
+          rejected_quantity: { value: '2', quantity_scale: 0 },
+          held_quantity: { value: '0', quantity_scale: 0 },
+          missing_quantity: { value: '0', quantity_scale: 0 },
+          nonusable_recorded_quantity: { value: '2', quantity_scale: 0 },
+          location_id: '84',
+          custody_assignment_id: '85',
+          condition_code: 'damaged',
+          restriction_version_id: '83',
+          unit_valuation: '25',
+          valuation_basis: 'Synthetic approved test valuation',
+          condition_notes: 'Two damaged units segregated in holding; unavailable; discrepancy remains open.',
+        },
+      ],
+    };
+
+    expect(computeInspectionMaterialHashV1(inspectionMaterial)).toBe(
+      '8a749f25377479cffec388d99e5ee1fa30dac766f3df967ec5a36a0753c60179'
+    );
   });
 });

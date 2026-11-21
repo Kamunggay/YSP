@@ -1311,4 +1311,159 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('completes Opening Physical Count, Receiving Inspection & Split, Atomic Baseline Lock, Duplicate Fence & Lookup without console/runtime errors', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p06');
+    await expect(
+      page.getByRole('heading', { name: 'Opening Physical Count & Baseline Acceptance' })
+    ).toBeVisible();
+
+    // Unseeded zero-data initial state check
+    await expect(page.getByTestId('p06-empty-counters-notice')).toBeVisible();
+    await expect(page.getByTestId('p06-empty-ipc-lines-notice')).toBeVisible();
+    await expect(page.getByTestId('p06-baseline-lock-pill')).toContainText('Unlocked');
+    await expect(page.getByTestId('p06-usable-on-hand-val')).toHaveText('0');
+    await expect(page.locator('#p06-counter-user-id')).toHaveValue('');
+    await expect(page.locator('#p06-ipc-variant-id')).toHaveValue('');
+
+    // Add first counter (custodian) + usable count line
+    await page.locator('#p06-counter-user-id').fill('11');
+    await page.locator('#p06-counter-name').fill('Officer Eleven');
+    await page.locator('#p06-counter-custodian-checkbox').check();
+    await page.locator('#p06-add-counter-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('COUNTER_ADDED');
+
+    await page.locator('#p06-ipc-line-id').fill('501');
+    await page.locator('#p06-ipc-variant-id').fill('71');
+    await page.locator('#p06-ipc-sku').fill('TENT-4P');
+    await page.locator('#p06-ipc-item-name').fill('Four-Person Field Tent');
+    await page.locator('#p06-ipc-location-id').fill('81');
+    await page.locator('#p06-ipc-custody-id').fill('82');
+    await page.locator('#p06-ipc-condition').selectOption('usable');
+    await page.locator('#p06-ipc-scale').selectOption('0');
+    await page.locator('#p06-ipc-qty').fill('10');
+    await page.locator('#p06-ipc-valuation').fill('25');
+    await page.locator('#p06-ipc-valuation-basis').fill('Approved baseline schedule');
+    await page.locator('#p06-ipc-restriction-id').fill('83');
+    await page.locator('#p06-add-ipc-line-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('IPC_LINE_ADDED');
+
+    // Attempt IPC publish without independent non-custodian counter -> 409 COUNTER_INDEPENDENCE_REQUIRED
+    await page.locator('#p06-ipc-policy-id').fill('42');
+    await page.locator('#p06-ipc-cutoff-at').fill('2026-10-23T23:00:00.000000Z');
+    await page.locator('#p06-ipc-counted-at').fill('2026-10-24T06:00:00.000000Z');
+    await page.locator('#p06-ipc-purpose').fill('Initial chapter baseline opening count');
+    await page.locator('#p06-ipc-sheet-hash').fill('c'.repeat(64));
+    await page.locator('#p06-ipc-head-approved').check();
+    await page.locator('#p06-ipc-finance-approved').check();
+    await page.locator('#p06-publish-ipc-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText(
+      'COUNTER_INDEPENDENCE_REQUIRED'
+    );
+
+    // Add independent counter & damaged count line -> approve & publish IPC
+    await page.locator('#p06-counter-user-id').fill('12');
+    await page.locator('#p06-counter-name').fill('Auditor Twelve');
+    await page.locator('#p06-add-counter-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('COUNTER_ADDED');
+
+    await page.locator('#p06-ipc-line-id').fill('502');
+    await page.locator('#p06-ipc-location-id').fill('84');
+    await page.locator('#p06-ipc-custody-id').fill('85');
+    await page.locator('#p06-ipc-condition').selectOption('damaged');
+    await page.locator('#p06-ipc-qty').fill('2');
+    await page.locator('#p06-add-ipc-line-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('IPC_LINE_ADDED');
+
+    await page.locator('#p06-publish-ipc-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('IPC_PUBLISHED');
+    await expect(page.getByTestId('p06-usable-on-hand-val')).toHaveText('0');
+
+    // Switch to Tab 2: Receiving Inspection & Split (10 usable + 2 damaged)
+    await page.locator('#p06-tab-inspection').click();
+    await page.locator('#p06-rm-source-line-select').selectOption('501');
+    await page.locator('#p06-rm-line-id').fill('601');
+    await page.locator('#p06-rm-delivered-qty').fill('10');
+    await page.locator('#p06-rm-accepted-qty').fill('10');
+    await page.locator('#p06-rm-rejected-qty').fill('0');
+    await page.locator('#p06-rm-held-qty').fill('0');
+    await page.locator('#p06-rm-missing-qty').fill('0');
+    await page.locator('#p06-rm-nonusable-qty').fill('0');
+    await page.locator('#p06-rm-condition').selectOption('usable');
+    await page.locator('#p06-rm-notes').fill('Ten inspected usable units matching count sheet.');
+    await page.locator('#p06-save-rm-line-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('RM_INSPECTION_LINE_SAVED');
+
+    await page.locator('#p06-rm-source-line-select').selectOption('502');
+    await page.locator('#p06-rm-line-id').fill('602');
+    await page.locator('#p06-rm-delivered-qty').fill('2');
+    await page.locator('#p06-rm-accepted-qty').fill('0');
+    await page.locator('#p06-rm-rejected-qty').fill('2');
+    await page.locator('#p06-rm-held-qty').fill('0');
+    await page.locator('#p06-rm-missing-qty').fill('0');
+    await page.locator('#p06-rm-nonusable-qty').fill('2');
+    await page.locator('#p06-rm-condition').selectOption('damaged');
+    await page.locator('#p06-rm-notes').fill('Two damaged units segregated in holding.');
+    await page.locator('#p06-save-rm-line-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('RM_INSPECTION_LINE_SAVED');
+
+    await page.locator('#p06-rm-inspection-at').fill('2026-10-24T06:30:00.000000Z');
+    await page.locator('#p06-rm-inspection-hash').fill('d'.repeat(64));
+    await page.locator('#p06-rm-discrepancy-hash').fill('e'.repeat(64));
+    await page.locator('#p06-publish-rm-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('RM_INSPECTION_PUBLISHED');
+
+    // Switch to Tab 3: Atomic Opening Baseline Acceptance
+    await page.locator('#p06-tab-acceptance').click();
+    await expect(page.getByTestId('p06-gate1-checklist')).toContainText('Verified');
+    await expect(page.getByTestId('p06-gate1-checklist')).toContainText('Approved');
+    await expect(page.getByTestId('p06-gate1-checklist')).toContainText('Complete');
+    await expect(page.getByTestId('p06-gate1-checklist')).toContainText('3 ready');
+
+    await page.locator('#p06-accept-idempotency-key').fill('e2e-p06-accept-01');
+    await page.locator('#p06-commit-baseline-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('OPENING_BASELINE_ACCEPTED');
+    await expect(page.getByTestId('p06-usable-on-hand-val')).toHaveText('10');
+    await expect(page.getByTestId('p06-quarantined-val')).toHaveText('2');
+    await expect(page.getByTestId('p06-baseline-lock-pill')).toContainText('Locked');
+    await expect(page.getByTestId('p06-accepted-summary')).toContainText('Baseline #1001');
+    await expect(page.getByTestId('p06-accepted-summary')).toContainText('Discrepancies: #1501');
+
+    // Replay with same key succeeds before lock check; fresh key triggers once-only baseline fence
+    await page.locator('#p06-replay-same-key-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('OPENING_BASELINE_REPLAYED');
+
+    await page.locator('#p06-simulate-duplicate-baseline-btn').click();
+    await expect(page.getByTestId('p06-feedback-banner')).toContainText('DUPLICATE_OPENING_BASELINE');
+
+    // Switch to Tab 4: Durable Operation Recovery by Key and ULID
+    await page.locator('#p06-tab-lookup').click();
+    await page.locator('#p06-lookup-key-input').fill('e2e-p06-accept-01');
+    await page.locator('#p06-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p06-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.locator('[data-testid^="p06-ledger-fill-"]').first().click();
+    await page.locator('#p06-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p06-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p06_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
