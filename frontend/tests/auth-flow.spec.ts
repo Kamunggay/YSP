@@ -2773,4 +2773,120 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P18 Customer Claims, OR/DR Link Gate, Cumulative Limit, Defect Inspection & Signed Replacement', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p18');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Customer Claims, Inspected Returns & Replacements',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p18-empty-sales-notice')).toBeVisible();
+    await expect(page.getByTestId('p18-eligible-stock-val')).toHaveText('0');
+
+    // Register Track 1 sale missing signed Customer DR -> claim blocked
+    await page.locator('#p18-sale-channel').selectOption('track1_so_cdr');
+    await page.locator('#p18-sale-so-ref').fill('CEBU-SO-2026-000001');
+    await page.locator('#p18-sale-or-ref').fill('CEBU-OR-2026-000001');
+    await page.locator('#p18-sale-variant').fill('71');
+    await page.locator('#p18-sale-item').fill('Four-Person Field Tent');
+    await page.locator('#p18-sale-released').fill('2');
+    await page.locator('#p18-sale-stock').fill('5');
+    await page.locator('#p18-sale-scale').selectOption('0');
+    await page.locator('#p18-sale-prov').fill('CEBU-RM-2026-000001');
+    await page.locator('#p18-register-sale-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText('ORIGINAL_SALE_REGISTERED');
+
+    await page.locator('#p18-clm-preparer').fill('101');
+    await page.locator('#p18-clm-qty').fill('2');
+    await page.locator('#p18-clm-reason').fill('Seam defect');
+    await page.locator('#p18-clm-at').fill('2026-11-07T08:00:00Z');
+    await page.locator('#p18-initiate-claim-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText(
+      'MISSING_ORIGINAL_OR_OR_SIGNED_DR'
+    );
+
+    // Register valid Track 1 sale with OR + Signed DR -> initiate claim for 2 -> cumulative reclaim blocked
+    await page.locator('#p18-sale-so-ref').fill('CEBU-SO-2026-000002');
+    await page.locator('#p18-sale-or-ref').fill('CEBU-OR-2026-000002');
+    await page.locator('#p18-sale-cdr-ref').fill('CEBU-CDR-2026-000002');
+    await page.locator('#p18-register-sale-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText('ORIGINAL_SALE_REGISTERED');
+
+    await page.locator('#p18-initiate-claim-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText('CLAIM_ADJ_INITIATED');
+
+    await page.locator('#p18-clm-qty').fill('1');
+    await page.locator('#p18-clm-reason').fill('Excess claim check');
+    await page.locator('#p18-initiate-claim-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText(
+      'CUMULATIVE_CLAIM_LIMIT_EXCEEDED'
+    );
+
+    // Tab 2: Inspect defective -> single configured Claim Approver 202 approves
+    await page.locator('#p18-tab-inspect').click();
+    await page.locator('#p18-insp-actor').fill('301');
+    await page.locator('#p18-insp-outcome').selectOption('defective_confirmed');
+    await page.locator('#p18-insp-rm-ref').fill('CEBU-RM-2026-000001');
+    await page.locator('#p18-insp-at').fill('2026-11-07T08:30:00Z');
+    await page.locator('#p18-insp-notes').fill('Seam tear verified on both tents');
+    await page.locator('#p18-record-inspection-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText('CLAIM_INSPECTION_RECORDED');
+
+    await page.locator('#p18-app-actor').fill('202');
+    await page.locator('#p18-app-at').fill('2026-11-07T08:35:00Z');
+    await page.locator('#p18-app-reason').fill('Approved even replacement');
+    await page.locator('#p18-approve-claim-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText('CLAIM_ADJ_APPROVED');
+
+    // Tab 3: Execute blocked before acknowledgment -> bind ack -> execute (quarantines 2, issues 2 replacements)
+    await page.locator('#p18-tab-replace').click();
+    await page.locator('#p18-exec-actor').fill('301');
+    await page.locator('#p18-exec-at').fill('2026-11-07T08:40:00Z');
+    await page.locator('#p18-execute-claim-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText(
+      'MISSING_REPLACEMENT_ACKNOWLEDGMENT'
+    );
+
+    await page.locator('#p18-ack-actor').fill('301');
+    await page.locator('#p18-ack-rec-name').fill('Maria Santos');
+    await page.locator('#p18-ack-hash').fill('f'.repeat(64));
+    await page.locator('#p18-ack-at').fill('2026-11-07T08:42:00Z');
+    await page.locator('#p18-bind-ack-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText(
+      'REPLACEMENT_ACKNOWLEDGMENT_BOUND'
+    );
+
+    await page.locator('#p18-execute-claim-btn').click();
+    await expect(page.getByTestId('p18-feedback-banner')).toContainText('CLAIM_REPLACEMENT_EXECUTED');
+    await expect(page.getByTestId('p18-quarantined-defects-val')).toHaveText('2');
+    await expect(page.getByTestId('p18-replacements-issued-val')).toHaveText('2');
+    await expect(page.getByTestId('p18-claims-table')).toContainText('CEBU-ADJ-CLM-2026-000001');
+
+    await page.locator('#p18-tab-history').click();
+    await page.locator('[data-testid^="p18-ledger-fill-"]').first().click();
+    await page.locator('#p18-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p18-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p18_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

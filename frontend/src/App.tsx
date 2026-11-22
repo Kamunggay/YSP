@@ -27,6 +27,7 @@ import { P14TwoClocksExpiryWorkspace } from './P14TwoClocksExpiryWorkspace';
 import { P15CustomerReleaseWorkspace } from './P15CustomerReleaseWorkspace';
 import { P16DonationRestrictionWorkspace } from './P16DonationRestrictionWorkspace';
 import { P17CountVarianceAdjWorkspace } from './P17CountVarianceAdjWorkspace';
+import { P18ClaimReturnReplacementWorkspace } from './P18ClaimReturnReplacementWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -54,6 +55,7 @@ export type AppRouteMode =
   | 'p15-releases'
   | 'p16-donations'
   | 'p17-variance-adj'
+  | 'p18-claims'
   | 'health';
 
 interface ResolvedRoute {
@@ -127,6 +129,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p17' || view === 'variance-adj' || path === '/p17' || path === '/variance-adj') {
     return { mode: 'p17-variance-adj', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p18' || view === 'claims' || path === '/p18' || path === '/claims') {
+    return { mode: 'p18-claims', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -468,6 +473,17 @@ export function App() {
               >
                 Independent Counts &amp; Stock-Variance Adjustments
               </button>
+              <button
+                type="button"
+                id="open-p18-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p18-claims');
+                }}
+              >
+                Customer Claims, Inspected Returns &amp; Replacements
+              </button>
 
               <button
                 type="button"
@@ -764,6 +780,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P17CountVarianceAdjWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p18-claims') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P18ClaimReturnReplacementWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
