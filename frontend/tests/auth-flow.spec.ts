@@ -3233,4 +3233,130 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P21 Immediate Booth Cart Steppers, Verified Sale OR, Custody Isolation & Concurrent Re-Check', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p21');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Immediate Booth Cart, Verified Sale & Receipts',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p21-empty-catalog-notice')).toBeVisible();
+    await expect(page.getByTestId('p21-booth-custody-val')).toHaveText('0');
+    await expect(page.getByTestId('p21-stockroom-usable-val')).toHaveText('0');
+    await expect(page.getByTestId('p21-cart-qty-val')).toHaveText('0');
+    await expect(page.getByTestId('p21-sales-total-val')).toHaveText('0.00');
+    await expect(page.getByTestId('p21-or-count-val')).toHaveText('0');
+
+    // Load booth item with 100 booth custody, 50 stockroom usable
+    await page.locator('#p21-cat-event').fill('CEBU-EVT-2026-000001');
+    await page.locator('#p21-cat-sku').fill('MERCH-KIT-01');
+    await page.locator('#p21-cat-name').fill('Chapter Advocacy Tee');
+    await page.locator('#p21-cat-price').fill('150.00');
+    await page.locator('#p21-cat-booth-qty').fill('100');
+    await page.locator('#p21-cat-stock-qty').fill('50');
+    await page.locator('#p21-register-item-btn').click();
+    await expect(page.getByTestId('p21-feedback-banner')).toContainText(
+      'BOOTH_CATALOG_ITEM_REGISTERED'
+    );
+
+    // Stepper & reset controls
+    await page.locator('#p21-cart-inc-btn').click();
+    await expect(page.getByTestId('p21-cart-qty-val')).toHaveText('1');
+    await page.locator('#p21-cart-reset-btn').click();
+    await expect(page.getByTestId('p21-feedback-banner')).toContainText(
+      'CART_RESET_CONFIRMATION_REQUIRED'
+    );
+    await page.locator('label[for="p21-cart-reset-confirm"]').click();
+    await page.locator('#p21-cart-reset-btn').click();
+    await expect(page.getByTestId('p21-cart-qty-val')).toHaveText('0');
+
+    await page.locator('#p21-cart-qty-input').fill('30');
+    await expect(page.getByTestId('p21-cart-qty-val')).toHaveText('30');
+
+    // Unauthorized price override & unverified GCash blocked
+    await page.locator('#p21-sale-cashier').fill('302');
+    await page.locator('#p21-sale-price').fill('100.00');
+    await page.locator('#p21-sale-channel').selectOption('cash');
+    await page.locator('#p21-sale-pay-ref').fill('GC-771201');
+    await page.locator('#p21-sale-at').fill('2026-11-15T09:00:00Z');
+    await page.locator('#p21-commit-sale-btn').click();
+    await expect(page.getByTestId('p21-feedback-banner')).toContainText(
+      'UNAUTHORIZED_DISCOUNT_OR_PRICE_OVERRIDE'
+    );
+
+    await page.locator('#p21-sale-price').fill('150.00');
+    await page.locator('#p21-sale-channel').selectOption('official_gcash');
+    await page.locator('#p21-commit-sale-btn').click();
+    await expect(page.getByTestId('p21-feedback-banner')).toContainText(
+      'UNVERIFIED_GCASH_OR_SCREENSHOT_BLOCKED'
+    );
+
+    // Verify GCash & commit sell 30 -> booth 70, stockroom unchanged 50, OR issued
+    await page.locator('label[for="p21-sale-gcash-verified"]').click();
+    await page.locator('#p21-commit-sale-btn').click();
+    await expect(page.getByTestId('p21-feedback-banner')).toContainText(
+      'IMMEDIATE_BOOTH_SALE_COMMITTED'
+    );
+    await expect(page.getByTestId('p21-booth-custody-val')).toHaveText('70');
+    await expect(page.getByTestId('p21-stockroom-usable-val')).toHaveText('50');
+    await expect(page.getByTestId('p21-sales-total-val')).toHaveText('4500.00');
+    await expect(page.getByTestId('p21-or-count-val')).toHaveText('1');
+
+    // Concurrent stock change triggers oversale block on fresh re-check
+    await page.locator('#p21-cart-qty-input').fill('10');
+    await page.locator('#p21-conc-actor').fill('305');
+    await page.locator('#p21-conc-qty').fill('2');
+    await page.locator('#p21-conc-update-btn').click();
+    await expect(page.getByTestId('p21-feedback-banner')).toContainText('CONCURRENT_STOCK_UPDATED');
+
+    await page.locator('#p21-sale-pay-ref').fill('GC-771202');
+    await page.locator('#p21-commit-sale-btn').click();
+    await expect(page.getByTestId('p21-feedback-banner')).toContainText(
+      'BOOTH_CUSTODY_OVERSALE_BLOCKED'
+    );
+
+    // Tab 2: Out-of-stock Track 1 SO handoff
+    await page.locator('#p21-tab-handoff').click();
+    await page.locator('#p21-ho-event').fill('CEBU-EVT-2026-000001');
+    await page.locator('#p21-ho-sku').fill('MERCH-KIT-01');
+    await page.locator('#p21-ho-buyer').fill('Elena Bautista');
+    await page.locator('#p21-ho-qty').fill('8');
+    await page.locator('#p21-ho-cashier').fill('302');
+    await page.locator('#p21-ho-at').fill('2026-11-15T10:15:00Z');
+    await page.locator('#p21-ho-notes').fill('Buyer accepts scheduled order');
+    await page.locator('#p21-handoff-btn').click();
+    await expect(page.getByTestId('p21-feedback-banner')).toContainText(
+      'TRACK1_SO_HANDOFF_RECORDED'
+    );
+
+    // Tab 3: Lookup recovery
+    await page.locator('#p21-tab-history').click();
+    await page.locator('[data-testid^="p21-ledger-fill-"]').first().click();
+    await page.locator('#p21-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p21-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p21-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p21-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p21_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

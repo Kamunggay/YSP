@@ -30,6 +30,7 @@ import { P17CountVarianceAdjWorkspace } from './P17CountVarianceAdjWorkspace';
 import { P18ClaimReturnReplacementWorkspace } from './P18ClaimReturnReplacementWorkspace';
 import { P19RefundExceptionWorkspace } from './P19RefundExceptionWorkspace';
 import { P20BoothCheckoutWorkspace } from './P20BoothCheckoutWorkspace';
+import { P21BoothSaleOrWorkspace } from './P21BoothSaleOrWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -60,6 +61,7 @@ export type AppRouteMode =
   | 'p18-claims'
   | 'p19-refunds'
   | 'p20-booth-checkout'
+  | 'p21-booth-sale'
   | 'health';
 
 interface ResolvedRoute {
@@ -142,6 +144,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p20' || view === 'booth-checkout' || path === '/p20' || path === '/booth-checkout') {
     return { mode: 'p20-booth-checkout', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p21' || view === 'booth-sale' || path === '/p21' || path === '/booth-sale') {
+    return { mode: 'p21-booth-sale', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -516,6 +521,17 @@ export function App() {
               >
                 Approved Booth Setup &amp; Signed Custody Checkout
               </button>
+              <button
+                type="button"
+                id="open-p21-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p21-booth-sale');
+                }}
+              >
+                Immediate Booth Cart, Verified Sale &amp; Receipts
+              </button>
 
               <button
                 type="button"
@@ -866,6 +882,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P20BoothCheckoutWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p21-booth-sale') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P21BoothSaleOrWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
