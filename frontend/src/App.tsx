@@ -34,6 +34,7 @@ import { P21BoothSaleOrWorkspace } from './P21BoothSaleOrWorkspace';
 import { P22ManualOutageWorkspace } from './P22ManualOutageWorkspace';
 import { P23BoothCloseoutWorkspace } from './P23BoothCloseoutWorkspace';
 import { P24ReportsQueuesWorkspace } from './P24ReportsQueuesWorkspace';
+import { P25OperationsMapWorkspace } from './P25OperationsMapWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -68,6 +69,7 @@ export type AppRouteMode =
   | 'p22-manual-outage'
   | 'p23-booth-closeout'
   | 'p24-reports'
+  | 'p25-operations-map'
   | 'health';
 
 interface ResolvedRoute {
@@ -162,6 +164,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p24' || view === 'reports' || path === '/p24' || path === '/reports') {
     return { mode: 'p24-reports', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p25' || view === 'operations-map' || path === '/p25' || path === '/operations-map') {
+    return { mode: 'p25-operations-map', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -579,6 +584,17 @@ export function App() {
                 }}
               >
                 Reports, Alerts, Immutable Outputs &amp; Accessible Queues
+              </button>
+              <button
+                type="button"
+                id="open-p25-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p25-operations-map');
+                }}
+              >
+                Operations Architecture Map &amp; Scenario Tracer
               </button>
 
               <button
@@ -1002,6 +1018,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P24ReportsQueuesWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p25-operations-map') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P25OperationsMapWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

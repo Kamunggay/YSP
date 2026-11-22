@@ -3745,4 +3745,98 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P25 Operations Map 5 Views, Text Alternative, Scope Neutral Guard & Outage Resilience', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p25');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Operations Architecture Map & Interactive Scenario Tracer',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p25-empty-live-records-notice')).toBeVisible();
+    await expect(page.getByTestId('p25-live-records-val')).toHaveText('0');
+    await expect(page.getByTestId('p25-illustrative-banner')).toContainText(
+      'ILLUSTRATIVE SCENARIO — NOT LIVE OPERATIONAL DATA'
+    );
+
+    // Switch map view + scenario + toggle readable text alternative
+    await page.locator('#p25-view-select').selectOption('view_5_scenario_tracer');
+    await page.locator('#p25-scenario-select').selectOption('track2_booth_100_30_70');
+    await page.locator('#p25-toggle-text-alt-btn').click();
+    await expect(page.getByTestId('p25-text-alt-val')).toHaveText('on');
+    await expect(page.getByTestId('p25-text-alternative-panel')).toContainText(
+      'Sign custodian checkout of 100 units'
+    );
+
+    // Scoped inspection: cross-chapter and provider-without-membership denied neutrally -> valid member authorized
+    await page.locator('#p25-insp-chapter').fill('2');
+    await page.locator('#p25-insp-actor').fill('202');
+    await page.locator('#p25-insp-duties').fill('finance_verifier');
+    await page.locator('#p25-inspect-node-btn').click();
+    await expect(page.getByTestId('p25-feedback-banner')).toContainText(
+      'NEUTRAL_SCOPE_RESTRICTED_EXPLANATION'
+    );
+
+    await page.locator('#p25-insp-chapter').fill('1');
+    await page.locator('label[for="p25-insp-provider-only"]').click();
+    await page.locator('label[for="p25-insp-has-membership"]').click();
+    await page.locator('#p25-inspect-node-btn').click();
+    await expect(page.getByTestId('p25-feedback-banner')).toContainText(
+      'NEUTRAL_SCOPE_RESTRICTED_EXPLANATION'
+    );
+
+    await page.locator('label[for="p25-insp-provider-only"]').click();
+    await page.locator('label[for="p25-insp-has-membership"]').click();
+    await page.locator('#p25-inspect-node-btn').click();
+    await expect(page.getByTestId('p25-feedback-banner')).toContainText(
+      'NODE_INSPECTED_AUTHORIZED'
+    );
+    await expect(page.getByTestId('p25-inspector-output')).toContainText(
+      'Verified Payment & Official Receipt Desk'
+    );
+
+    // Tab 2: Simulate map outage -> core workflow posting succeeds unaffected
+    await page.locator('#p25-tab-resilience').click();
+    await page.locator('#p25-simulate-outage-btn').click();
+    await expect(page.getByTestId('p25-map-status-val')).toHaveText('unavailable');
+
+    await page.locator('#p25-core-actor').fill('202');
+    await page.locator('#p25-core-label').fill('Verify Official Receipt OR-2026-000010');
+    await page.locator('#p25-core-qty').fill('5');
+    await page.locator('#p25-core-at').fill('2026-11-19T08:00:00Z');
+    await page.locator('#p25-verify-core-btn').click();
+    await expect(page.getByTestId('p25-feedback-banner')).toContainText(
+      'CORE_WORKFLOW_UNAFFECTED_BY_MAP_OUTAGE'
+    );
+    await expect(page.getByTestId('p25-live-records-val')).toHaveText('1');
+
+    // Tab 3: Lookup recovery
+    await page.locator('#p25-tab-history').click();
+    await page.locator('[data-testid^="p25-ledger-fill-"]').first().click();
+    await page.locator('#p25-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p25-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p25-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p25-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p25_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
