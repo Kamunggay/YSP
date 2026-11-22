@@ -4470,26 +4470,32 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     await page.goto('/?view=dashboard');
     await expect(page.getByRole('heading', { name: 'My Work — Chapter Workspace' })).toBeVisible();
 
-    // Verify pixel-exact vertical alignment and height across the top command search bar and action buttons
+    // Verify pixel-exact vertical alignment and height across the top command search bar and Jump CTA
     const searchBox = await page.locator('#s02-command-search').boundingBox();
     const jumpBox = await page.locator('#s02-record-jump-btn').boundingBox();
-    const signOutBox = await page.locator('#s02-sign-out-btn').boundingBox();
     expect(searchBox).not.toBeNull();
     expect(jumpBox).not.toBeNull();
-    expect(signOutBox).not.toBeNull();
-    if (searchBox && jumpBox && signOutBox) {
+    if (searchBox && jumpBox) {
       expect(Math.abs(searchBox.y - jumpBox.y)).toBeLessThanOrEqual(1);
       expect(Math.abs(searchBox.height - jumpBox.height)).toBeLessThanOrEqual(1);
-      expect(Math.abs(jumpBox.y - signOutBox.y)).toBeLessThanOrEqual(1);
-      expect(Math.abs(jumpBox.height - signOutBox.height)).toBeLessThanOrEqual(1);
     }
+
+    await expect(page.locator('#s02-sign-out-btn')).toBeVisible();
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth + 1
+    );
+    expect(hasHorizontalOverflow).toBe(false);
 
     await expect(page.getByTestId('s02-kpi-usable')).toHaveText('0');
     await expect(page.getByTestId('s02-kpi-available')).toHaveText('0');
+    await expect(page.getByTestId('s02-kpi-clocks')).toHaveText('0');
     await expect(page.getByTestId('s02-kpi-cash')).toContainText('₱0.00');
+    await expect(page.getByTestId('s02-kpi-slips')).toHaveText('0');
+    await expect(page.getByTestId('s02-kpi-booth')).toHaveText('0');
+    await expect(page.getByTestId('s02-kpi-rop')).toHaveText('0');
     await expect(page.getByTestId('s02-queue-empty')).toBeVisible();
 
-    // Confirm all 28 workspace launchers remain mounted and visible inside the 7 domain hubs
+    // Confirm all 28 workspace launchers remain mounted and visible inside the sticky sidebar
     for (let pkg = 2; pkg <= 29; pkg++) {
       const padded = String(pkg).padStart(2, '0');
       await expect(page.locator(`#open-p${padded}-workspace-btn`)).toBeVisible();
@@ -4569,7 +4575,9 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     await expect(page.getByTestId('s02-kpi-available')).toHaveText('30');
     await expect(page.getByTestId('s02-kpi-clocks')).toHaveText('2');
     await expect(page.getByTestId('s02-kpi-cash')).toContainText('₱1,250.50');
-    await expect(page.getByTestId('s02-kpi-booth-rop')).toContainText('15 units / 1 ROP');
+    await expect(page.getByTestId('s02-kpi-slips')).toHaveText('3');
+    await expect(page.getByTestId('s02-kpi-booth')).toHaveText('15');
+    await expect(page.getByTestId('s02-kpi-rop')).toHaveText('1');
 
     // Update chapter lifecycle & maintenance fencing
     await page.locator('#s02-life-phase').selectOption('grace_read_export');
