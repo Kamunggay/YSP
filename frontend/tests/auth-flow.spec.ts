@@ -1703,4 +1703,102 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P09 Quotations comparison, quote-count threshold, PO issuance (inbound only), amendment & recovery', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p09');
+    await expect(
+      page.getByRole('heading', { name: 'Quotations, Supplier Selection & Purchase Orders' })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p09-empty-quotes-notice')).toBeVisible();
+    await expect(page.getByTestId('p09-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p09-inbound-val')).toHaveText('0');
+
+    // Register approved RepF source
+    await page.locator('#p09-src-ref').fill('CEBU-REPF-2026-000001');
+    await page.locator('#p09-src-preparer').fill('101');
+    await page.locator('#p09-src-variant').fill('71');
+    await page.locator('#p09-src-item-name').fill('Four-Person Field Tent');
+    await page.locator('#p09-src-qty').fill('10');
+    await page.locator('#p09-src-scale').selectOption('0');
+    await page.locator('#p09-src-ceiling').fill('2500.00');
+    await page.locator('#p09-src-min-quotes').fill('2');
+    await page.locator('#p09-register-source-btn').click();
+    await expect(page.getByTestId('p09-feedback-banner')).toContainText('APPROVED_REPF_REGISTERED');
+    await expect(page.getByTestId('p09-uncovered-val')).toHaveText('10');
+
+    // Record Quote 1 -> threshold guard blocks premature selection
+    await page.locator('#p09-quote-supplier').fill('Mactan Gear Supply');
+    await page.locator('#p09-quote-actor').fill('301');
+    await page.locator('#p09-quote-unit-price').fill('240.00');
+    await page.locator('#p09-quote-total-cost').fill('2400.00');
+    await page.locator('#p09-quote-lead-days').fill('5');
+    await page.locator('#p09-quote-warranty').fill('1 year replacement');
+    await page.locator('#p09-quote-terms').fill('Net 15');
+    await page.locator('#p09-record-quote-btn').click();
+    await expect(page.getByTestId('p09-feedback-banner')).toContainText('QUOTATION_RECORDED');
+
+    await page.locator('#p09-quote-rationale').fill('Best warranty within budget');
+    await page.locator('[data-testid^="p09-select-quote-"]').first().click();
+    await expect(page.getByTestId('p09-feedback-banner')).toContainText('QUOTATION_THRESHOLD_UNMET');
+
+    // Record Quote 2 -> select winning quote
+    await page.locator('#p09-quote-supplier').fill('Cebu Depot Co.');
+    await page.locator('#p09-quote-unit-price').fill('248.00');
+    await page.locator('#p09-quote-total-cost').fill('2480.00');
+    await page.locator('#p09-record-quote-btn').click();
+    await expect(page.getByTestId('p09-feedback-banner')).toContainText('QUOTATION_RECORDED');
+
+    await page.locator('[data-testid^="p09-select-quote-"]').first().click();
+    await expect(page.getByTestId('p09-feedback-banner')).toContainText('WINNING_QUOTATION_SELECTED');
+
+    // Issue PO: preparer self-issue blocked -> independent approval updates inbound (not on-hand)
+    await page.locator('#p09-tab-po-issue').click();
+    await page.locator('#p09-po-approver').fill('101');
+    await page.locator('#p09-po-location').fill('Main Stockroom');
+    await page.locator('#p09-po-expected-at').fill('2026-12-03T10:00:00.000000Z');
+    await page.locator('#p09-issue-po-btn').click();
+    await expect(page.getByTestId('p09-feedback-banner')).toContainText('INDEPENDENCE_REQUIRED');
+
+    await page.locator('#p09-po-approver').fill('202');
+    await page.locator('#p09-issue-po-btn').click();
+    await expect(page.getByTestId('p09-feedback-banner')).toContainText('PO_ISSUED');
+    await expect(page.getByTestId('p09-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p09-inbound-val')).toHaveText('10');
+    await expect(page.getByTestId('p09-uncovered-val')).toHaveText('0');
+
+    // Amend PO & lookup recovery
+    await page.locator('#p09-tab-amendments').click();
+    await page.locator('#p09-amend-qty').fill('8');
+    await page.locator('#p09-amend-reason').fill('Initial supplier partial batch 8');
+    await page.locator('#p09-amend-po-btn').click();
+    await expect(page.getByTestId('p09-feedback-banner')).toContainText('PO_AMENDED');
+    await expect(page.getByTestId('p09-inbound-val')).toHaveText('8');
+    await expect(page.getByTestId('p09-uncovered-val')).toHaveText('2');
+
+    await page.locator('#p09-tab-history').click();
+    await page.locator('[data-testid^="p09-ledger-fill-"]').first().click();
+    await page.locator('#p09-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p09-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p09_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
