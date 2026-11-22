@@ -1613,4 +1613,94 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P08 Net-Need & ROP Alerts, unpaid-SO/duplicate claim guards, budget review & recovery', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p08');
+    await expect(
+      page.getByRole('heading', { name: 'Purchase Requests & Budget Review' })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p08-empty-profiles-notice')).toBeVisible();
+    await expect(page.getByTestId('p08-gross-uncovered-val')).toHaveText('0');
+    await expect(page.getByTestId('p08-low-stock-count-val')).toHaveText('0');
+
+    // Configure supply profile (usable 10, inbound 20, rop 10, target 40 => net need 10, 1 alert)
+    await page.locator('#p08-prof-variant-id').fill('71');
+    await page.locator('#p08-prof-item-name').fill('Four-Person Field Tent');
+    await page.locator('#p08-prof-usable').fill('10');
+    await page.locator('#p08-prof-reserved').fill('0');
+    await page.locator('#p08-prof-demand').fill('0');
+    await page.locator('#p08-prof-inbound').fill('20');
+    await page.locator('#p08-prof-rop').fill('10');
+    await page.locator('#p08-prof-target').fill('40');
+    await page.locator('#p08-prof-scale').selectOption('0');
+    await page.locator('#p08-save-profile-btn').click();
+    await expect(page.getByTestId('p08-feedback-banner')).toContainText('SUPPLY_PROFILE_CONFIGURED');
+    await expect(page.getByTestId('p08-gross-uncovered-val')).toHaveText('10');
+    await expect(page.getByTestId('p08-remaining-uncovered-val')).toHaveText('10');
+    await expect(page.getByTestId('p08-low-stock-count-val')).toHaveText('1');
+
+    // Intake: unpaid SO trigger blocked -> valid ROP RepF -> duplicate claim blocked -> submit
+    await page.locator('#p08-tab-intake').click();
+    await page.locator('#p08-repf-requester-id').fill('101');
+    await page.locator('#p08-repf-source-kind').selectOption('unpaid_so');
+    await page.locator('#p08-repf-qty').fill('10');
+    await page.locator('#p08-repf-estimate').fill('2500.00');
+    await page.locator('#p08-repf-justification').fill('Attempt unpaid SO relabel');
+    await page.locator('#p08-create-repf-btn').click();
+    await expect(page.getByTestId('p08-feedback-banner')).toContainText(
+      'UNPAID_SO_RELABEL_FORBIDDEN'
+    );
+
+    await page.locator('#p08-repf-source-kind').selectOption('rop_replenishment');
+    await page.locator('#p08-repf-justification').fill('ROP target stock replenishment');
+    await page.locator('#p08-create-repf-btn').click();
+    await expect(page.getByTestId('p08-feedback-banner')).toContainText('REPF_DRAFT_CREATED');
+    await expect(page.getByTestId('p08-remaining-uncovered-val')).toHaveText('0');
+
+    // Competing second RepF for 1 unit hits DUPLICATE_SUPPLY_COVERAGE
+    await page.locator('#p08-repf-qty').fill('1');
+    await page.locator('#p08-repf-estimate').fill('250.00');
+    await page.locator('#p08-create-repf-btn').click();
+    await expect(page.getByTestId('p08-feedback-banner')).toContainText('DUPLICATE_SUPPLY_COVERAGE');
+
+    await page.locator('[data-testid^="p08-submit-repf-"]').first().click();
+    await expect(page.getByTestId('p08-feedback-banner')).toContainText('REPF_SUBMITTED');
+
+    // Budget review: self-approval rejected -> independent approval -> lookup recovery
+    await page.locator('#p08-tab-budget').click();
+    await page.locator('#p08-budget-reviewer-id').fill('101');
+    await page.locator('#p08-budget-approved-amount').fill('2500.00');
+    await page.locator('#p08-budget-approve-btn').click();
+    await expect(page.getByTestId('p08-feedback-banner')).toContainText('INDEPENDENCE_REQUIRED');
+
+    await page.locator('#p08-budget-reviewer-id').fill('202');
+    await page.locator('#p08-budget-approve-btn').click();
+    await expect(page.getByTestId('p08-feedback-banner')).toContainText('REPF_BUDGET_APPROVED');
+
+    await page.locator('#p08-tab-history').click();
+    await page.locator('[data-testid^="p08-ledger-fill-"]').first().click();
+    await page.locator('#p08-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p08-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p08_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

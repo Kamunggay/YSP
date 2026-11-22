@@ -17,6 +17,7 @@ import { P04EvidenceWorkspace } from './P04EvidenceWorkspace';
 import { P05InventoryWorkspace } from './P05InventoryWorkspace';
 import { P06OpeningWorkspace } from './P06OpeningWorkspace';
 import { P07RequisitionWorkspace } from './P07RequisitionWorkspace';
+import { P08PurchasingWorkspace } from './P08PurchasingWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -34,6 +35,7 @@ export type AppRouteMode =
   | 'p05-inventory'
   | 'p06-opening'
   | 'p07-requisitions'
+  | 'p08-purchasing'
   | 'health';
 
 interface ResolvedRoute {
@@ -70,6 +72,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p07' || view === 'requisitions' || path === '/p07' || path === '/requisitions') {
     return { mode: 'p07-requisitions', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p08' || view === 'purchasing' || path === '/p08' || path === '/purchasing') {
+    return { mode: 'p08-purchasing', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -301,6 +306,17 @@ export function App() {
               >
                 Internal Requisitions &amp; Stock Reservations
               </button>
+              <button
+                type="button"
+                id="open-p08-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p08-purchasing');
+                }}
+              >
+                Purchase Requests &amp; Budget Review
+              </button>
 
               <button
                 type="button"
@@ -417,6 +433,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P07RequisitionWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p08-purchasing') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P08PurchasingWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
