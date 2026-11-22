@@ -3839,4 +3839,157 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P26 Carried Obligations, Once-Only 30-Day Trial, 14-Day Grace & Provider Separation', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p26');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Cutover Obligations, Staged Activation & Chapter Subscription Controls',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p26-empty-carried-notice')).toBeVisible();
+    await expect(page.getByTestId('p26-trial-status-val')).toHaveText('not_activated');
+    await expect(page.getByTestId('p26-buyer-revenue-val')).toHaveText('PHP 0.00');
+
+    // Tab 1: Opening IPC fence blocks double receipt of old supplier DR
+    await page.locator('#p26-ipc-ref').fill('IPC-2026-0001');
+    await page.locator('#p26-ipc-sku').fill('YSP-SHIRT-BLK');
+    await page.locator('#p26-ipc-qty').fill('120');
+    await page.locator('#p26-ipc-old-drs').fill('OLD-SUP-DR-88');
+    await page.locator('#p26-ipc-actor').fill('101');
+    await page.locator('#p26-ipc-at').fill('2026-11-01T08:00:00Z');
+    await page.locator('#p26-lock-ipc-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText('OPENING_IPC_GUARD_LOCKED');
+
+    await page.locator('#p26-carry-kind').selectOption('inbound_po');
+    await page.locator('#p26-carry-source-ref').fill('PO-OLD-2026-01');
+    await page.locator('#p26-carry-linked-ref').fill('OLD-SUP-DR-88');
+    await page.locator('#p26-carry-qty').fill('50');
+    await page.locator('#p26-carry-amount').fill('0.00');
+    await page.locator('#p26-carry-actor').fill('101');
+    await page.locator('#p26-carry-at').fill('2026-11-01T08:10:00Z');
+    await page.locator('#p26-carry-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText(
+      'IPC_STOCK_ALREADY_COUNTED_NO_SECOND_RECEIPT'
+    );
+
+    // Genuine carried inbound PO + carried payment OR
+    await page.locator('#p26-carry-source-ref').fill('PO-2026-OPEN-09');
+    await page.locator('#p26-carry-linked-ref').fill('PO-2026-OPEN-09-PEND');
+    await page.locator('#p26-carry-qty').fill('40');
+    await page.locator('#p26-carry-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText('CARRIED_OBLIGATION_RECORDED');
+
+    await page.locator('#p26-carry-kind').selectOption('carried_payment_or');
+    await page.locator('#p26-carry-source-ref').fill('SO-2026-OPEN-14');
+    await page.locator('#p26-carry-linked-ref').fill('OR-2026-CARRIED-401');
+    await page.locator('#p26-carry-qty').fill('0');
+    await page.locator('#p26-carry-amount').fill('1200.00');
+    await page.locator('#p26-carry-btn').click();
+    await expect(page.getByTestId('p26-carried-count-val')).toHaveText('2');
+    await expect(page.getByTestId('p26-buyer-revenue-val')).toHaveText('PHP 0.00');
+
+    // Tab 2: Authorize Gate 1 & activate once-only 30-day live trial
+    await page.locator('#p26-tab-activation').click();
+    await page.locator('#p26-gate-actor').fill('101');
+    await page.locator('#p26-gate-duty').fill('CHAPTER_HEAD');
+    await page.locator('#p26-gate-at').fill('2026-11-01T09:10:00Z');
+    await page.locator('#p26-authorize-gate-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText('ROLLOUT_GATE_AUTHORIZED');
+
+    await page.locator('#p26-act-actor').fill('101');
+    await page.locator('#p26-act-at').fill('2026-11-01T10:00:00Z');
+    await page.locator('#p26-activate-trial-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText('LIVE_TRIAL_ACTIVATED_ONCE');
+    await expect(page.getByTestId('p26-trial-ends-val')).toHaveText('2026-12-01T10:00:00Z');
+    await expect(page.getByTestId('p26-grace-ends-val')).toHaveText('2026-12-15T10:00:00Z');
+
+    // Rename preserves original trial clock and blocks second trial start
+    await page.locator('#p26-rename-name').fill('YSP Cebu Renamed');
+    await page.locator('#p26-rename-actor').fill('101');
+    await page.locator('#p26-rename-at').fill('2026-11-10T10:00:00Z');
+    await page.locator('#p26-rename-btn').click();
+    await expect(page.getByTestId('p26-trial-ends-val')).toHaveText('2026-12-01T10:00:00Z');
+
+    await page.locator('#p26-activate-trial-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText(
+      'TRIAL_ALREADY_ACTIVATED_ONCE_ONLY'
+    );
+
+    // Tab 3: Unpaid grace window + provider subscription separation + anti-auto-delete
+    await page.locator('#p26-tab-entitlement').click();
+    await page.locator('#p26-ent-actor').fill('102');
+    await page.locator('#p26-ent-chapter').fill('1');
+    await page.locator('#p26-ent-action').selectOption('new_officer_posting');
+    await page.locator('#p26-ent-at').fill('2026-12-01T10:00:01Z');
+    await page.locator('#p26-evaluate-ent-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText(
+      'TRIAL_EXPIRED_NEW_POSTING_BLOCKED'
+    );
+
+    await page.locator('#p26-ent-action').selectOption('queued_business_job');
+    await page.locator('#p26-evaluate-ent-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText(
+      'QUEUED_POSTING_BLOCKED_AT_EXPIRY'
+    );
+
+    await page.locator('#p26-ent-action').selectOption('scoped_read_export');
+    await page.locator('#p26-evaluate-ent-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText(
+      'GRACE_SCOPED_READ_EXPORT_ALLOWED'
+    );
+
+    await page.locator('#p26-ent-action').selectOption('essential_control_reconciliation');
+    await page.locator('#p26-evaluate-ent-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText(
+      'ESSENTIAL_CONTROL_PERMITTED_DURING_LAPSE'
+    );
+
+    await page.locator('#p26-sub-verifier').fill('900');
+    await page.locator('#p26-sub-ref').fill('PROV-SUB-2026-12');
+    await page.locator('#p26-sub-amount').fill('1999.00');
+    await page.locator('#p26-sub-paid-through').fill('2027-01-15T10:00:00Z');
+    await page.locator('#p26-sub-verified-at').fill('2026-12-16T09:00:00Z');
+    await page.locator('#p26-extend-sub-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText(
+      'PROVIDER_SUBSCRIPTION_EXTENDED'
+    );
+    await expect(page.getByTestId('p26-provider-billing-val')).toHaveText('PHP 1999.00');
+    await expect(page.getByTestId('p26-buyer-revenue-val')).toHaveText('PHP 0.00');
+
+    await page.locator('#p26-del-reason').fill('Expired trial cleanup attempt');
+    await page.locator('#p26-attempt-delete-btn').click();
+    await expect(page.getByTestId('p26-feedback-banner')).toContainText(
+      'AUTO_DELETION_FORBIDDEN_PRESERVATION_REQUIRED'
+    );
+
+    // Tab 4: Lookup recovery
+    await page.locator('#p26-tab-history').click();
+    await page.locator('[data-testid^="p26-ledger-fill-"]').first().click();
+    await page.locator('#p26-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p26-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p26-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p26-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p26_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

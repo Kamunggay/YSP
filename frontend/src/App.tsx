@@ -35,6 +35,7 @@ import { P22ManualOutageWorkspace } from './P22ManualOutageWorkspace';
 import { P23BoothCloseoutWorkspace } from './P23BoothCloseoutWorkspace';
 import { P24ReportsQueuesWorkspace } from './P24ReportsQueuesWorkspace';
 import { P25OperationsMapWorkspace } from './P25OperationsMapWorkspace';
+import { P26CutoverSubscriptionWorkspace } from './P26CutoverSubscriptionWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -70,6 +71,7 @@ export type AppRouteMode =
   | 'p23-booth-closeout'
   | 'p24-reports'
   | 'p25-operations-map'
+  | 'p26-cutover'
   | 'health';
 
 interface ResolvedRoute {
@@ -167,6 +169,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p25' || view === 'operations-map' || path === '/p25' || path === '/operations-map') {
     return { mode: 'p25-operations-map', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p26' || view === 'cutover' || path === '/p26' || path === '/cutover') {
+    return { mode: 'p26-cutover', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -595,6 +600,17 @@ export function App() {
                 }}
               >
                 Operations Architecture Map &amp; Scenario Tracer
+              </button>
+              <button
+                type="button"
+                id="open-p26-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p26-cutover');
+                }}
+              >
+                Cutover Obligations, Staged Activation &amp; Chapter Subscription
               </button>
 
               <button
@@ -1036,6 +1052,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P25OperationsMapWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p26-cutover') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P26CutoverSubscriptionWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
