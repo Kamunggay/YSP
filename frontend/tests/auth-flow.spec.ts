@@ -3464,4 +3464,169 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P23 Booth Close-Out 100/30/70, Float/Cash/GCash Math, GOV-06 Variance Approval & Closure Gate', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p23');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Independent Booth Returns, Variance & Remittance Close-Out',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p23-empty-events-notice')).toBeVisible();
+    await expect(page.getByTestId('p23-booth-custody-val')).toHaveText('0');
+    await expect(page.getByTestId('p23-sales-cash-due-val')).toHaveText('0.00');
+    await expect(page.getByTestId('p23-float-due-val')).toHaveText('0.00');
+
+    // Event 1: 100 checkout, 30 sold -> 70 expected; float 2000, sales 4500, refund 500, dep 1000, floatRet 2000 -> sales cash due 3000.00, float 0.00
+    await page.locator('#p23-ev-code').fill('CEBU-EVT-2026-000001');
+    await page.locator('#p23-ev-name').fill('Summit Close-Out');
+    await page.locator('#p23-ev-custodian').fill('301');
+    await page.locator('#p23-ev-cashier').fill('302');
+    await page.locator('#p23-ev-checked-out').fill('100');
+    await page.locator('#p23-ev-sold').fill('30');
+    await page.locator('#p23-ev-float').fill('2000.00');
+    await page.locator('#p23-ev-cash-sales').fill('4500.00');
+    await page.locator('#p23-ev-refunds').fill('500.00');
+    await page.locator('#p23-ev-prior-deps').fill('1000.00');
+    await page.locator('#p23-ev-prior-float').fill('2000.00');
+    await page.locator('#p23-ev-gcash-sales').fill('3000.00');
+    await page.locator('#p23-ev-gcash-prior').fill('3000.00');
+    await page.locator('#p23-init-event-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'BOOTH_CLOSEOUT_INITIALIZED'
+    );
+    await expect(page.getByTestId('p23-sales-cash-due-val')).toHaveText('3000.00');
+    await expect(page.getByTestId('p23-float-due-val')).toHaveText('0.00');
+
+    // Custodian 301 blocked -> independent counter 401 posts 70 return -> booth 0, stockroom -30
+    await page.locator('#p23-cnt-actor').fill('301');
+    await page.locator('#p23-cnt-usable').fill('70');
+    await page.locator('#p23-cnt-damaged').fill('0');
+    await page.locator('#p23-cnt-missing').fill('0');
+    await page.locator('#p23-cnt-hash').fill('a'.repeat(64));
+    await page.locator('#p23-cnt-at').fill('2026-11-16T18:00:00Z');
+    await page.locator('#p23-post-count-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'INDEPENDENT_CLOSING_COUNTER_REQUIRED'
+    );
+
+    await page.locator('#p23-cnt-actor').fill('401');
+    await page.locator('#p23-post-count-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'BOOTH_GOOD_RETURN_AND_COUNT_POSTED'
+    );
+    await expect(page.getByTestId('p23-booth-custody-val')).toHaveText('0');
+    await expect(page.getByTestId('p23-stockroom-delta-val')).toHaveText('-30');
+
+    // Tab 2: Closure blocked until PHP 3000.00 sales cash reconciled by independent officer 202
+    await page.locator('#p23-tab-resolve').click();
+    await page.locator('#p23-cls-actor').fill('202');
+    await page.locator('#p23-cls-at').fill('2026-11-16T18:10:00Z');
+    await page.locator('#p23-close-event-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'BOOTH_CLOSURE_BLOCKED_OPEN_OBLIGATIONS'
+    );
+
+    await page.locator('#p23-rem-actor').fill('302');
+    await page.locator('#p23-rem-cash').fill('3000.00');
+    await page.locator('#p23-rem-float').fill('0.00');
+    await page.locator('#p23-rem-gcash').fill('0.00');
+    await page.locator('#p23-rem-ref').fill('CASH-REM-3000');
+    await page.locator('#p23-rem-at').fill('2026-11-16T18:15:00Z');
+    await page.locator('#p23-reconcile-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'INDEPENDENT_RECONCILER_REQUIRED'
+    );
+
+    await page.locator('#p23-rem-actor').fill('202');
+    await page.locator('#p23-reconcile-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'BOOTH_REMITTANCE_RECONCILED'
+    );
+    await expect(page.getByTestId('p23-sales-cash-due-val')).toHaveText('0.00');
+
+    await page.locator('#p23-close-event-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText('BOOTH_EVENT_CLOSED');
+    await expect(page.getByTestId('p23-event-status-val')).toHaveText('closed');
+
+    // Event 2 (back on Tab 1): 50 checkout, 10 sold -> 35 usable return, 3 damaged, 2 missing -> GOV-06 variance check
+    await page.locator('#p23-tab-count').click();
+    await page.locator('#p23-ev-code').fill('CEBU-EVT-2026-000002');
+    await page.locator('#p23-ev-name').fill('Discrepant Event Close-Out');
+    await page.locator('#p23-ev-checked-out').fill('50');
+    await page.locator('#p23-ev-sold').fill('10');
+    await page.locator('#p23-ev-float').fill('1000.00');
+    await page.locator('#p23-ev-cash-sales').fill('1500.00');
+    await page.locator('#p23-ev-refunds').fill('0.00');
+    await page.locator('#p23-ev-prior-deps').fill('1500.00');
+    await page.locator('#p23-ev-prior-float').fill('1000.00');
+    await page.locator('#p23-ev-gcash-sales').fill('0.00');
+    await page.locator('#p23-ev-gcash-prior').fill('0.00');
+    await page.locator('#p23-init-event-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'BOOTH_CLOSEOUT_INITIALIZED'
+    );
+
+    await page.locator('#p23-cnt-usable').fill('35');
+    await page.locator('#p23-cnt-damaged').fill('3');
+    await page.locator('#p23-cnt-missing').fill('2');
+    await page.locator('#p23-post-count-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'BOOTH_GOOD_RETURN_AND_COUNT_POSTED'
+    );
+    await expect(page.getByTestId('p23-booth-custody-val')).toHaveText('5');
+
+    await page.locator('#p23-tab-resolve').click();
+    await page.locator('#p23-var-head').fill('401');
+    await page.locator('#p23-var-fin').fill('202');
+    await page.locator('#p23-var-note').fill('Quarantine 3 damaged units');
+    await page.locator('#p23-var-at').fill('2026-11-17T18:10:00Z');
+    await page.locator('#p23-approve-variance-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'PREPARER_OR_CUSTODIAN_VARIANCE_APPROVAL_FORBIDDEN'
+    );
+
+    await page.locator('#p23-var-head').fill('201');
+    await page.locator('#p23-var-fin').fill('201');
+    await page.locator('#p23-approve-variance-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'DUAL_DISTINCT_APPROVERS_REQUIRED'
+    );
+
+    await page.locator('#p23-var-fin').fill('202');
+    await page.locator('#p23-approve-variance-btn').click();
+    await expect(page.getByTestId('p23-feedback-banner')).toContainText(
+      'BOOTH_VARIANCE_ADJ_APPROVED'
+    );
+    await expect(page.getByTestId('p23-booth-custody-val')).toHaveText('0');
+
+    // Tab 3: Lookup recovery
+    await page.locator('#p23-tab-history').click();
+    await page.locator('[data-testid^="p23-ledger-fill-"]').first().click();
+    await page.locator('#p23-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p23-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p23-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p23-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p23_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

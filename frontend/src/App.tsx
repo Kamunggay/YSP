@@ -32,6 +32,7 @@ import { P19RefundExceptionWorkspace } from './P19RefundExceptionWorkspace';
 import { P20BoothCheckoutWorkspace } from './P20BoothCheckoutWorkspace';
 import { P21BoothSaleOrWorkspace } from './P21BoothSaleOrWorkspace';
 import { P22ManualOutageWorkspace } from './P22ManualOutageWorkspace';
+import { P23BoothCloseoutWorkspace } from './P23BoothCloseoutWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -64,6 +65,7 @@ export type AppRouteMode =
   | 'p20-booth-checkout'
   | 'p21-booth-sale'
   | 'p22-manual-outage'
+  | 'p23-booth-closeout'
   | 'health';
 
 interface ResolvedRoute {
@@ -152,6 +154,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p22' || view === 'manual-outage' || path === '/p22' || path === '/manual-outage') {
     return { mode: 'p22-manual-outage', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p23' || view === 'booth-closeout' || path === '/p23' || path === '/booth-closeout') {
+    return { mode: 'p23-booth-closeout', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -548,6 +553,17 @@ export function App() {
               >
                 Manual Outage Receipt Controls &amp; Later Entry
               </button>
+              <button
+                type="button"
+                id="open-p23-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p23-booth-closeout');
+                }}
+              >
+                Independent Booth Returns, Variance &amp; Remittance Close-Out
+              </button>
 
               <button
                 type="button"
@@ -934,6 +950,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P22ManualOutageWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p23-booth-closeout') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P23BoothCloseoutWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
