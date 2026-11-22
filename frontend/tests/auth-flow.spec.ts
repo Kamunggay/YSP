@@ -2432,4 +2432,124 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P15 Covered Customer Releases, SI-Only/Deposit Blocks, Revision Signature Invalidation & Repeated Partials', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p15');
+    await expect(
+      page.getByRole('heading', { name: 'Covered Customer Releases & Repeated Partials' })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p15-empty-orders-notice')).toBeVisible();
+    await expect(page.getByTestId('p15-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p15-remaining-coverage-val')).toHaveText('0.00');
+
+    // Register SI-only order (no OR) -> verify release preparation blocked
+    await page.locator('#p15-ord-so-ref').fill('CEBU-SO-2026-000001');
+    await page.locator('#p15-ord-si-ref').fill('CEBU-SI-2026-000001');
+    await page.locator('#p15-ord-variant-id').fill('71');
+    await page.locator('#p15-ord-item-name').fill('Field Tent');
+    await page.locator('#p15-ord-scale').selectOption('0');
+    await page.locator('#p15-ord-price').fill('250.00');
+    await page.locator('#p15-ord-accepted').fill('4');
+    await page.locator('#p15-ord-reserved').fill('4');
+    await page.locator('#p15-ord-usable').fill('4');
+    await page.locator('#p15-ord-rop').fill('2');
+    await page.locator('#p15-ord-coverage').fill('0.00');
+    await page.locator('#p15-ord-deposit').fill('0.00');
+    await page.locator('#p15-register-order-btn').click();
+    await expect(page.getByTestId('p15-feedback-banner')).toContainText('RELEASABLE_ORDER_REGISTERED');
+
+    await page.locator('#p15-tab-batches').click();
+    await page.locator('#p15-batch-preparer').fill('301');
+    await page.locator('#p15-batch-qty').fill('2');
+    await page.locator('#p15-batch-rec-name').fill('Maria Santos');
+    await page.locator('#p15-batch-rec-id').fill('9001');
+    await page.locator('#p15-prepare-batch-btn').click();
+    await expect(page.getByTestId('p15-feedback-banner')).toContainText(
+      'SI_OR_SCREENSHOT_ALONE_CANNOT_RELEASE'
+    );
+
+    // Register verified covered order (6 units at PHP 250 = 1500.00, 4 reserved initially, 400 deposit preserved)
+    await page.locator('#p15-tab-orders').click();
+    await page.locator('#p15-ord-so-ref').fill('CEBU-SO-2026-000002');
+    await page.locator('#p15-ord-si-ref').fill('CEBU-SI-2026-000002');
+    await page.locator('#p15-ord-or-ref').fill('CEBU-OR-2026-000005');
+    await page.locator('label[for="p15-ord-has-or"]').click();
+    await page.locator('#p15-ord-accepted').fill('6');
+    await page.locator('#p15-ord-reserved').fill('4');
+    await page.locator('#p15-ord-usable').fill('4');
+    await page.locator('#p15-ord-rop').fill('2');
+    await page.locator('#p15-ord-coverage').fill('1500.00');
+    await page.locator('#p15-ord-deposit').fill('400.00');
+    await page.locator('#p15-register-order-btn').click();
+    await expect(page.getByTestId('p15-feedback-banner')).toContainText('RELEASABLE_ORDER_REGISTERED');
+
+    // Prepare Batch 1 (2 units -> CEBU-CDR-2026-000001), bind signature, then revise recipient -> old hash stale
+    await page.locator('#p15-tab-batches').click();
+    await page.locator('#p15-batch-qty').fill('2');
+    await page.locator('#p15-prepare-batch-btn').click();
+    await expect(page.getByTestId('p15-feedback-banner')).toContainText('CUSTOMER_DR_PREPARED');
+
+    await page.locator('#p15-ev-signed-at').fill('2026-11-04T09:00:00Z');
+    await page.locator('#p15-ev-officer').fill('301');
+    await page.locator('#p15-ev-recipient').fill('9001');
+    await page.locator('#p15-ev-hash').fill('a'.repeat(64));
+    await page.locator('#p15-load-current-hash-btn').click();
+    await page.locator('label[for="p15-ev-ack-checkbox"]').click();
+    await page.locator('#p15-bind-evidence-btn').click();
+    await expect(page.getByTestId('p15-feedback-banner')).toContainText('CUSTOMER_DR_EVIDENCE_BOUND');
+
+    // Revise recipient -> signature invalidated -> stale post rejected -> reload digest, re-bind, post
+    await page.locator('#p15-batch-qty').fill('2');
+    await page.locator('#p15-batch-rec-name').fill('Maria Santos Rep');
+    await page.locator('#p15-batch-rec-id').fill('9002');
+    await page.locator('#p15-revise-batch-btn').click();
+    await expect(page.getByTestId('p15-feedback-banner')).toContainText('CUSTOMER_DR_REVISED');
+
+    await page.locator('#p15-post-release-btn').click();
+    await expect(page.getByTestId('p15-feedback-banner')).toContainText(
+      'STALE_BATCH_EVIDENCE_MISMATCH'
+    );
+
+    await page.locator('#p15-load-current-hash-btn').click();
+    await page.locator('#p15-ev-recipient').fill('9002');
+    await page.locator('label[for="p15-ev-ack-checkbox"]').click();
+    await page.locator('#p15-bind-evidence-btn').click();
+    await expect(page.getByTestId('p15-feedback-banner')).toContainText('CUSTOMER_DR_EVIDENCE_BOUND');
+
+    await page.locator('#p15-post-release-btn').click();
+    await expect(page.getByTestId('p15-feedback-banner')).toContainText('CUSTOMER_RELEASE_POSTED');
+    await expect(page.getByTestId('p15-total-released-val')).toHaveText('2');
+    await expect(page.getByTestId('p15-remaining-coverage-val')).toHaveText('1000.00');
+
+    // Verify coverage table & recovery
+    await page.locator('#p15-tab-coverage').click();
+    await expect(page.getByTestId('p15-batches-table')).toContainText('CEBU-CDR-2026-000001');
+    await expect(page.getByTestId('p15-batches-table')).toContainText('500.00');
+
+    await page.locator('#p15-tab-history').click();
+    await page.locator('[data-testid^="p15-ledger-fill-"]').first().click();
+    await page.locator('#p15-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p15-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p15_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

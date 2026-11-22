@@ -24,6 +24,7 @@ import { P11ActualIssueWorkspace } from './P11ActualIssueWorkspace';
 import { P12SalesOrderWorkspace } from './P12SalesOrderWorkspace';
 import { P13PaymentVerificationWorkspace } from './P13PaymentVerificationWorkspace';
 import { P14TwoClocksExpiryWorkspace } from './P14TwoClocksExpiryWorkspace';
+import { P15CustomerReleaseWorkspace } from './P15CustomerReleaseWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -48,6 +49,7 @@ export type AppRouteMode =
   | 'p12-sales'
   | 'p13-payments'
   | 'p14-clocks'
+  | 'p15-releases'
   | 'health';
 
 interface ResolvedRoute {
@@ -112,6 +114,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p14' || view === 'clocks' || path === '/p14' || path === '/clocks') {
     return { mode: 'p14-clocks', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p15' || view === 'releases' || path === '/p15' || path === '/releases') {
+    return { mode: 'p15-releases', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -420,6 +425,17 @@ export function App() {
               >
                 Two 48h Clocks, Funded Procurement &amp; Late Money
               </button>
+              <button
+                type="button"
+                id="open-p15-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p15-releases');
+                }}
+              >
+                Covered Customer Releases &amp; Repeated Partials
+              </button>
 
               <button
                 type="button"
@@ -662,6 +678,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P14TwoClocksExpiryWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p15-releases') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P15CustomerReleaseWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
