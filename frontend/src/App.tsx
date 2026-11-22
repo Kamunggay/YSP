@@ -37,6 +37,7 @@ import { P24ReportsQueuesWorkspace } from './P24ReportsQueuesWorkspace';
 import { P25OperationsMapWorkspace } from './P25OperationsMapWorkspace';
 import { P26CutoverSubscriptionWorkspace } from './P26CutoverSubscriptionWorkspace';
 import { P27HostReleaseWorkspace } from './P27HostReleaseWorkspace';
+import { P28RecoveryHandoffWorkspace } from './P28RecoveryHandoffWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -74,6 +75,7 @@ export type AppRouteMode =
   | 'p25-operations-map'
   | 'p26-cutover'
   | 'p27-host-release'
+  | 'p28-recovery'
   | 'health';
 
 interface ResolvedRoute {
@@ -177,6 +179,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p27' || view === 'host-release' || path === '/p27' || path === '/host-release') {
     return { mode: 'p27-host-release', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p28' || view === 'recovery-handoff' || path === '/p28' || path === '/recovery-handoff') {
+    return { mode: 'p28-recovery', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -627,6 +632,17 @@ export function App() {
                 }}
               >
                 Reproducible Host Releases &amp; Operating Controls
+              </button>
+              <button
+                type="button"
+                id="open-p28-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p28-recovery');
+                }}
+              >
+                Independent Off-Host Recovery &amp; Operating Handoff
               </button>
 
               <button
@@ -1104,6 +1120,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P27HostReleaseWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p28-recovery') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P28RecoveryHandoffWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

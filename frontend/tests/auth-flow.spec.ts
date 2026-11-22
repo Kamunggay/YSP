@@ -4136,4 +4136,160 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P28 Off-Host Backup, Independent Lead & Backup Regional Drills, Uncertain Reconciliation & Replay Reopen', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p28');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Independent Off-Host Recovery, Regional Drills & Operating Handoff',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p28-empty-drills-notice')).toBeVisible();
+    await expect(page.getByTestId('p28-reopen-status-val')).toHaveText('not_opened');
+    await expect(page.getByTestId('p28-backups-count-val')).toHaveText('0');
+
+    // Tab 1: Block same-region backup -> register off-host backup -> block >4h RTO -> pass Lead + Backup drills
+    await page.locator('#p28-bkp-ref').fill('BKP-SAME-REGION');
+    await page.locator('#p28-bkp-primary').fill('ap-southeast-1');
+    await page.locator('#p28-bkp-dest').fill('ap-southeast-1');
+    await page.locator('#p28-bkp-actor').fill('701');
+    await page.locator('#p28-bkp-at').fill('2026-11-22T05:00:00Z');
+    await page.locator('#p28-register-bkp-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText(
+      'SAME_REGION_BACKUP_INSUFFICIENT'
+    );
+
+    await page.locator('#p28-bkp-ref').fill('BKP-OFFHOST-SG-TO-TYO');
+    await page.locator('#p28-bkp-dest').fill('ap-northeast-1');
+    await page.locator('#p28-bkp-at').fill('2026-11-22T05:05:00Z');
+    await page.locator('#p28-register-bkp-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText('OFF_HOST_BACKUP_VERIFIED');
+
+    await page.locator('#p28-drill-ref').fill('DRILL-SLOW-RTO');
+    await page.locator('#p28-drill-bkp-ref').fill('BKP-OFFHOST-SG-TO-TYO');
+    await page.locator('#p28-drill-actor').fill('701');
+    await page.locator('#p28-drill-role').selectOption('technical_lead');
+    await page.locator('#p28-drill-commit-at').fill('2026-11-22T05:30:00Z');
+    await page.locator('#p28-drill-fail-at').fill('2026-11-22T06:00:00Z');
+    await page.locator('#p28-drill-restored-at').fill('2026-11-22T10:05:00Z');
+    await page.locator('#p28-run-drill-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText('RTO_EXCEEDED_4_HOURS');
+
+    await page.locator('#p28-drill-ref').fill('DRILL-LEAD-01');
+    await page.locator('#p28-drill-restored-at').fill('2026-11-22T07:30:00Z');
+    await page.locator('#p28-run-drill-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText(
+      'REGIONAL_RESTORE_DRILL_PASSED'
+    );
+
+    await page.locator('#p28-drill-ref').fill('DRILL-BACKUP-01');
+    await page.locator('#p28-drill-actor').fill('702');
+    await page.locator('#p28-drill-role').selectOption('named_backup');
+    await page.locator('#p28-drill-restored-at').fill('2026-11-22T07:45:00Z');
+    await page.locator('#p28-run-drill-btn').click();
+    await expect(page.getByTestId('p28-drills-count-val')).toHaveText('2');
+    await expect(page.getByTestId('p28-reopen-status-val')).toHaveText(
+      'blocked_pending_reconciliation'
+    );
+
+    // Tab 2: Log uncertain interval manual outage -> block technical executor -> Finance reconciles -> authorize reopen
+    await page.locator('#p28-tab-reconcile').click();
+    await page.locator('#p28-unc-cat').selectOption('manual_outage_sale');
+    await page.locator('#p28-unc-src').fill('MAN-OR-2026-0091');
+    await page.locator('#p28-unc-desc').fill('Offline booth cash sale during regional outage window');
+    await page.locator('#p28-unc-start').fill('2026-11-22T05:30:00Z');
+    await page.locator('#p28-unc-end').fill('2026-11-22T06:00:00Z');
+    await page.locator('#p28-unc-actor').fill('401');
+    await page.locator('#p28-unc-at').fill('2026-11-22T07:50:00Z');
+    await page.locator('#p28-log-unc-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText(
+      'UNCERTAIN_INTERVAL_ITEM_LOGGED'
+    );
+    await expect(page.getByTestId('p28-unresolved-count-val')).toHaveText('1');
+
+    await page.locator('#p28-rec-actor').fill('701');
+    await page.locator('#p28-rec-role').selectOption('TECHNICAL_EXECUTOR');
+    await page.locator('#p28-rec-ev').fill('GC-771290');
+    await page.locator('#p28-rec-note').fill('Attempt technical clear');
+    await page.locator('#p28-rec-at').fill('2026-11-22T07:55:00Z');
+    await page.locator('#p28-reconcile-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText(
+      'TECHNICAL_EXECUTOR_ALONE_CANNOT_CLEAR_BUSINESS_DISCREPANCY'
+    );
+
+    await page.locator('#p28-reopen-peer').fill('703');
+    await page.locator('#p28-reopen-finance').fill('302');
+    await page.locator('#p28-reopen-head').fill('101');
+    await page.locator('#p28-reopen-at').fill('2026-11-22T08:00:00Z');
+    await page.locator('#p28-reopen-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText(
+      'UNRESOLVED_UNCERTAIN_INTERVAL_BLOCKS_REOPEN'
+    );
+
+    await page.locator('#p28-rec-actor').fill('302');
+    await page.locator('#p28-rec-role').selectOption('FINANCE');
+    await page.locator('#p28-rec-ev').fill('MAN-OR-STUB-0091');
+    await page.locator('#p28-rec-note').fill('Matched stub #0091 with remitted booth cash');
+    await page.locator('#p28-rec-at').fill('2026-11-22T08:10:00Z');
+    await page.locator('#p28-reconcile-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText(
+      'UNCERTAIN_ITEM_RECONCILED_WITH_EVIDENCE'
+    );
+    await expect(page.getByTestId('p28-unresolved-count-val')).toHaveText('0');
+
+    await page.locator('#p28-reopen-at').fill('2026-11-22T08:15:00Z');
+    await page.locator('#p28-reopen-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText('SERVICE_REOPENING_AUTHORIZED');
+    await expect(page.getByTestId('p28-reopen-status-val')).toHaveText('reopened_authorized');
+
+    // Tab 3: Replay pre-committed & pending durable follow-up safely
+    await page.locator('#p28-tab-replay').click();
+    await page.locator('#p28-rep-key').fill('p13-or-seq-4');
+    await page.locator('#p28-rep-target').fill('OR-2026-000018');
+    await page.locator('#p28-rep-action').fill('Sync receipt notification snapshot');
+    await page.locator('label[for="p28-rep-already"]').click();
+    await page.locator('#p28-rep-actor').fill('701');
+    await page.locator('#p28-rep-at').fill('2026-11-22T08:20:00Z');
+    await page.locator('#p28-replay-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText(
+      'REPLAY_DEDUPLICATED_ZERO_DOUBLE_EFFECT'
+    );
+
+    await page.locator('#p28-rep-key').fill('p15-dr-seq-7');
+    await page.locator('#p28-rep-target').fill('DR-2026-000021');
+    await page.locator('label[for="p28-rep-already"]').click();
+    await page.locator('#p28-replay-btn').click();
+    await expect(page.getByTestId('p28-feedback-banner')).toContainText(
+      'REPLAY_FOLLOWUP_EXECUTED_ONCE'
+    );
+
+    // Tab 4: Recovery lookup
+    await page.locator('#p28-tab-history').click();
+    await page.locator('[data-testid^="p28-ledger-fill-"]').first().click();
+    await page.locator('#p28-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p28-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p28-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p28-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p28_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
