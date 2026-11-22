@@ -946,7 +946,7 @@ export function P08PurchasingWorkspace({
                       type="text"
                       className="form-control p03-mono-inline"
                       value={budgetReviewerInput}
-                      placeholder="Must differ from preparer (e.g. 202)"
+                      placeholder="Independent reviewer ID (e.g. 202)"
                       onChange={(e) => setBudgetReviewerInput(e.target.value)}
                     />
                   </div>
@@ -1031,7 +1031,7 @@ export function P08PurchasingWorkspace({
                       type="text"
                       className="form-control p03-mono-inline"
                       value={reviseQtyInput}
-                      placeholder="Leave blank to keep current"
+                      placeholder="Optional new quantity"
                       onChange={(e) => setReviseQtyInput(e.target.value)}
                     />
                   </div>

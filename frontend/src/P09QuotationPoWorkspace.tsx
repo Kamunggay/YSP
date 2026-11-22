@@ -821,7 +821,7 @@ export function P09QuotationPoWorkspace({
                       type="text"
                       className="form-control p03-mono-inline"
                       value={poApproverInput}
-                      placeholder="Must differ from preparer (e.g. 202)"
+                      placeholder="Independent approver ID (e.g. 202)"
                       onChange={(e) => setPoApproverInput(e.target.value)}
                     />
                   </div>
@@ -936,25 +936,25 @@ export function P09QuotationPoWorkspace({
                 <h2 id="p09-ack-heading" className="p03-section-title">
                   Record Supplier Acknowledgment
                 </h2>
-                <div className="form-group">
-                  <label htmlFor="p09-ack-po-select" className="form-label">
-                    Purchase Order
-                  </label>
-                  <select
-                    id="p09-ack-po-select"
-                    className="form-control"
-                    value={activePo?.po_id ?? ''}
-                    onChange={(e) => setSelectedPoId(e.target.value)}
-                  >
-                    <option value="">Select Purchase Order</option>
-                    {snapshot.purchase_orders.map((p) => (
-                      <option key={p.po_id} value={p.po_id}>
-                        {p.reference} — {PO_STATUS_LABELS[p.status]} (v{p.version})
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div className="p03-two-col">
+                  <div className="form-group">
+                    <label htmlFor="p09-ack-po-select" className="form-label">
+                      Purchase Order
+                    </label>
+                    <select
+                      id="p09-ack-po-select"
+                      className="form-control"
+                      value={activePo?.po_id ?? ''}
+                      onChange={(e) => setSelectedPoId(e.target.value)}
+                    >
+                      <option value="">Select Purchase Order</option>
+                      {snapshot.purchase_orders.map((p) => (
+                        <option key={p.po_id} value={p.po_id}>
+                          {p.reference} — {PO_STATUS_LABELS[p.status]} (v{p.version})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="form-group">
                     <label htmlFor="p09-ack-actor" className="form-label">
                       Recording Officer ID
@@ -968,28 +968,28 @@ export function P09QuotationPoWorkspace({
                       onChange={(e) => setAckActorInput(e.target.value)}
                     />
                   </div>
-                  <div className="form-group">
-                    <label htmlFor="p09-ack-timestamp" className="form-label">
-                      Acknowledged Timestamp (UTC)
-                    </label>
-                    <div className="p03-input-action-row">
-                      <input
-                        id="p09-ack-timestamp"
-                        type="text"
-                        className="form-control p03-mono-inline"
-                        value={ackTimestampInput}
-                        placeholder="e.g. 2026-11-23T08:00:00.000000Z"
-                        onChange={(e) => setAckTimestampInput(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        id="p09-ack-po-btn"
-                        className="btn-batcave-primary p03-shrink-btn"
-                        onClick={handleAcknowledgePo}
-                      >
-                        Record Acknowledgment
-                      </button>
-                    </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="p09-ack-timestamp" className="form-label">
+                    Acknowledged Timestamp (UTC)
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="p09-ack-timestamp"
+                      type="text"
+                      className="form-control p03-mono-inline"
+                      value={ackTimestampInput}
+                      placeholder="e.g. 2026-11-23T08:00:00.000000Z"
+                      onChange={(e) => setAckTimestampInput(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      id="p09-ack-po-btn"
+                      className="btn-batcave-primary p03-shrink-btn"
+                      onClick={handleAcknowledgePo}
+                    >
+                      Record Acknowledgment
+                    </button>
                   </div>
                 </div>
               </section>
@@ -1010,7 +1010,7 @@ export function P09QuotationPoWorkspace({
                       type="text"
                       className="form-control p03-mono-inline"
                       value={amendQtyInput}
-                      placeholder="Leave blank to keep current"
+                      placeholder="Optional new quantity"
                       onChange={(e) => setAmendQtyInput(e.target.value)}
                     />
                   </div>
@@ -1023,7 +1023,7 @@ export function P09QuotationPoWorkspace({
                       type="text"
                       className="form-control p03-mono-inline"
                       value={amendDeliveryInput}
-                      placeholder="Leave blank to keep current"
+                      placeholder="Optional new UTC timestamp"
                       onChange={(e) => setAmendDeliveryInput(e.target.value)}
                     />
                   </div>

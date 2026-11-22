@@ -2528,3 +2528,9 @@ html.dark .p05-cells-table th {
   line-height: 1;
   box-sizing: border-box;
 }
+
+select.form-control {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

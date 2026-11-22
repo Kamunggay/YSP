@@ -1094,7 +1094,7 @@ export function P07RequisitionWorkspace({
                       type="text"
                       className="form-control p03-mono-inline"
                       value={reviewActorIdInput}
-                      placeholder="Must differ from requester (e.g. 202)"
+                      placeholder="Independent reviewer ID (e.g. 202)"
                       onChange={(e) => setReviewActorIdInput(e.target.value)}
                     />
                   </div>
@@ -1194,7 +1194,7 @@ export function P07RequisitionWorkspace({
                     type="text"
                     className="form-control p03-mono-inline"
                     value={reviseQtyInput}
-                    placeholder="Leave blank to retain current quantity"
+                    placeholder="Optional new quantity"
                     onChange={(e) => setReviseQtyInput(e.target.value)}
                   />
                 </div>
@@ -1208,7 +1208,7 @@ export function P07RequisitionWorkspace({
                     type="text"
                     className="form-control"
                     value={reviseJustificationInput}
-                    placeholder="Leave blank to retain current justification"
+                    placeholder="Optional new justification"
                     onChange={(e) => setReviseJustificationInput(e.target.value)}
                   />
                 </div>

@@ -639,28 +639,28 @@ export function P11ActualIssueWorkspace({
                     <label htmlFor="p11-rf-scale-select" className="form-label">
                       Decimal Precision Scale
                     </label>
-                    <div className="p03-input-action-row">
-                      <select
-                        id="p11-rf-scale-select"
-                        className="form-control"
-                        value={rfScaleInput}
-                        onChange={(e) => setRfScaleInput(e.target.value)}
-                      >
-                        <option value="">Scale (0–6)</option>
-                        <option value="0">0 — Whole units</option>
-                        <option value="2">2 — Hundredths (0.01)</option>
-                        <option value="3">3 — Thousandths (0.001)</option>
-                      </select>
-                      <button
-                        type="button"
-                        id="p11-register-rf-btn"
-                        className="btn-batcave-primary p03-shrink-btn"
-                        onClick={handleRegisterRf}
-                      >
-                        Register Requisition Line
-                      </button>
-                    </div>
+                    <select
+                      id="p11-rf-scale-select"
+                      className="form-control"
+                      value={rfScaleInput}
+                      onChange={(e) => setRfScaleInput(e.target.value)}
+                    >
+                      <option value="">Scale (0–6)</option>
+                      <option value="0">0 — Whole units</option>
+                      <option value="2">2 — Hundredths (0.01)</option>
+                      <option value="3">3 — Thousandths (0.001)</option>
+                    </select>
                   </div>
+                </div>
+                <div className="p03-guard-buttons">
+                  <button
+                    type="button"
+                    id="p11-register-rf-btn"
+                    className="btn-batcave-primary"
+                    onClick={handleRegisterRf}
+                  >
+                    Register Requisition Line
+                  </button>
                 </div>
               </section>
 
@@ -721,25 +721,25 @@ export function P11ActualIssueWorkspace({
                     <label htmlFor="p11-replenish-qty-input" className="form-label">
                       Replenished Usable Quantity
                     </label>
-                    <div className="p03-input-action-row">
-                      <input
-                        id="p11-replenish-qty-input"
-                        type="text"
-                        className="form-control p03-mono-inline"
-                        value={repQtyInput}
-                        placeholder="e.g. 4"
-                        onChange={(e) => setRepQtyInput(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        id="p11-replenish-btn"
-                        className="btn-batcave-secondary p03-shrink-btn"
-                        onClick={handleReplenish}
-                      >
-                        Replenish Reservation
-                      </button>
-                    </div>
+                    <input
+                      id="p11-replenish-qty-input"
+                      type="text"
+                      className="form-control p03-mono-inline"
+                      value={repQtyInput}
+                      placeholder="e.g. 4"
+                      onChange={(e) => setRepQtyInput(e.target.value)}
+                    />
                   </div>
+                </div>
+                <div className="p03-guard-buttons">
+                  <button
+                    type="button"
+                    id="p11-replenish-btn"
+                    className="btn-batcave-secondary"
+                    onClick={handleReplenish}
+                  >
+                    Replenish Reservation
+                  </button>
                 </div>
               </section>
             </div>
@@ -1006,42 +1006,41 @@ export function P11ActualIssueWorkspace({
                   </div>
                 </div>
 
-                <div className="p03-two-col">
-                  <div className="form-group">
-                    <label htmlFor="p11-ev-signed-at-input" className="form-label">
-                      Signature Timestamp (UTC)
-                    </label>
+                <div className="form-group">
+                  <label htmlFor="p11-ev-signed-at-input" className="form-label">
+                    Signature Timestamp (UTC)
+                  </label>
+                  <input
+                    id="p11-ev-signed-at-input"
+                    type="text"
+                    className="form-control p03-mono-inline"
+                    value={evSignedAtInput}
+                    placeholder="e.g. 2026-11-22T12:40:00Z"
+                    onChange={(e) => setEvSignedAtInput(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="p11-ev-snapshot-hash-input" className="form-label">
+                    Linked Batch Snapshot Digest
+                  </label>
+                  <div className="p03-input-action-row">
                     <input
-                      id="p11-ev-signed-at-input"
+                      id="p11-ev-snapshot-hash-input"
                       type="text"
                       className="form-control p03-mono-inline"
-                      value={evSignedAtInput}
-                      placeholder="e.g. 2026-11-22T12:40:00Z"
-                      onChange={(e) => setEvSignedAtInput(e.target.value)}
+                      value={evSnapshotHashInput}
+                      placeholder="Load or paste 64-char batch snapshot digest"
+                      onChange={(e) => setEvSnapshotHashInput(e.target.value)}
                     />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="p11-ev-snapshot-hash-input" className="form-label">
-                      Linked Batch Snapshot Digest
-                    </label>
-                    <div className="p03-input-action-row">
-                      <input
-                        id="p11-ev-snapshot-hash-input"
-                        type="text"
-                        className="form-control p03-mono-inline"
-                        value={evSnapshotHashInput}
-                        placeholder="Load or paste current batch snapshot digest"
-                        onChange={(e) => setEvSnapshotHashInput(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        id="p11-load-current-hash-btn"
-                        className="btn-batcave-secondary p03-shrink-btn"
-                        onClick={handleLoadCurrentHash}
-                      >
-                        Load Current Digest
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      id="p11-load-current-hash-btn"
+                      className="btn-batcave-secondary p03-shrink-btn"
+                      onClick={handleLoadCurrentHash}
+                    >
+                      Load Current Digest
+                    </button>
                   </div>
                 </div>
 
@@ -1193,7 +1192,7 @@ export function P11ActualIssueWorkspace({
                       type="text"
                       className="form-control"
                       value={cancelReasonInput}
-                      placeholder="Document why remaining unissued quantity is no longer required"
+                      placeholder="Reason for canceling remaining unissued demand"
                       onChange={(e) => setCancelReasonInput(e.target.value)}
                     />
                     <button

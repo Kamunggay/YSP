@@ -544,30 +544,30 @@ export function P10SupplierReceivingWorkspace({
                     <label htmlFor="p10-po-scale-select" className="form-label">
                       Decimal Precision Scale
                     </label>
-                    <div className="p03-input-action-row">
-                      <select
-                        id="p10-po-scale-select"
-                        className="form-control"
-                        value={poScaleInput}
-                        onChange={(e) => setPoScaleInput(e.target.value)}
-                      >
-                        <option value="">Scale (0–6)</option>
-                        <option value="0">0 — Whole units</option>
-                        <option value="1">1 — Tenths (0.1)</option>
-                        <option value="2">2 — Hundredths (0.01)</option>
-                        <option value="3">3 — Thousandths (0.001)</option>
-                        <option value="6">6 — Six decimals</option>
-                      </select>
-                      <button
-                        type="button"
-                        id="p10-register-po-btn"
-                        className="btn-batcave-primary p03-shrink-btn"
-                        onClick={handleRegisterPo}
-                      >
-                        Register Open PO
-                      </button>
-                    </div>
+                    <select
+                      id="p10-po-scale-select"
+                      className="form-control"
+                      value={poScaleInput}
+                      onChange={(e) => setPoScaleInput(e.target.value)}
+                    >
+                      <option value="">Scale (0–6)</option>
+                      <option value="0">0 — Whole units</option>
+                      <option value="1">1 — Tenths (0.1)</option>
+                      <option value="2">2 — Hundredths (0.01)</option>
+                      <option value="3">3 — Thousandths (0.001)</option>
+                      <option value="6">6 — Six decimals</option>
+                    </select>
                   </div>
+                </div>
+                <div className="p03-guard-buttons">
+                  <button
+                    type="button"
+                    id="p10-register-po-btn"
+                    className="btn-batcave-primary"
+                    onClick={handleRegisterPo}
+                  >
+                    Register Open PO
+                  </button>
                 </div>
               </section>
             </div>
@@ -985,7 +985,7 @@ export function P10SupplierReceivingWorkspace({
                       type="text"
                       className="form-control"
                       value={claimClearanceNotesInput}
-                      placeholder="Confirm inspection approval to transfer held items to usable stock"
+                      placeholder="Record quality clearance to release held stock"
                       onChange={(e) => setClaimClearanceNotesInput(e.target.value)}
                     />
                     <button
