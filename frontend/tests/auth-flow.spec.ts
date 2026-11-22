@@ -1902,4 +1902,148 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P11 Signed Partial RF Issue, material revision signature invalidation, formal remainder closure, and lookup recovery without errors', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p11');
+    await expect(
+      page.getByRole('heading', { name: 'Signed Material Issues & Partial Fulfillment' })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p11-empty-rfs-notice')).toBeVisible();
+    await expect(page.getByTestId('p11-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p11-active-reserved-val')).toHaveText('0');
+    await expect(page.getByTestId('p11-total-issued-val')).toHaveText('0');
+    await expect(page.getByTestId('p11-open-rf-remaining-val')).toHaveText('0');
+
+    // Register approved RF (10 requested, 6 reserved, 6 usable)
+    await page.locator('#p11-rf-ref-input').fill('CEBU-RF-2026-000001');
+    await page.locator('#p11-rf-requester-input').fill('101');
+    await page.locator('#p11-rf-variant-input').fill('71');
+    await page.locator('#p11-rf-item-input').fill('Field Sleeping Pad');
+    await page.locator('#p11-rf-requested-input').fill('10');
+    await page.locator('#p11-rf-reserved-input').fill('6');
+    await page.locator('#p11-rf-usable-input').fill('6');
+    await page.locator('#p11-rf-scale-select').selectOption('0');
+    await page.locator('#p11-register-rf-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('APPROVED_RF_REGISTERED');
+    await expect(page.getByTestId('p11-active-reserved-val')).toHaveText('6');
+    await expect(page.getByTestId('p11-open-rf-remaining-val')).toHaveText('10');
+
+    // Switch to batches: verify exceeding active reservation is rejected
+    await page.locator('#p11-tab-batches').click();
+    await page.locator('#p11-batch-preparer-input').fill('301');
+    await page.locator('#p11-batch-qty-input').fill('7');
+    await page.locator('#p11-batch-recipient-id-input').fill('102');
+    await page.locator('#p11-batch-recipient-name-input').fill('Maria Santos');
+    await page.locator('#p11-batch-recipient-cap-input').fill('Relief Team Lead');
+    await page.locator('#p11-prepare-batch-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText(
+      'EXCEEDS_ACTIVE_RESERVATION'
+    );
+
+    // Prepare Batch 1 (4 units) -> CEBU-ISAR-2026-000001
+    await page.locator('#p11-batch-qty-input').fill('4');
+    await page.locator('#p11-prepare-batch-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('ISSUE_BATCH_PREPARED');
+    await expect(page.getByTestId('p11-batches-list')).toContainText('CEBU-ISAR-2026-000001');
+
+    // Verify missing recipient ack rejected, then check ack, bind & post Batch 1
+    await page.locator('#p11-ev-issuer-input').fill('301');
+    await page.locator('#p11-ev-recipient-input').fill('102');
+    await page.locator('#p11-ev-sig-hash-input').fill('c'.repeat(64));
+    await page.locator('#p11-ev-photo-hash-input').fill('d'.repeat(64));
+    await page.locator('#p11-ev-signed-at-input').fill('2026-11-22T12:40:00Z');
+    await page.locator('#p11-load-current-hash-btn').click();
+    await page.locator('#p11-bind-evidence-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText(
+      'MISSING_RECIPIENT_ACKNOWLEDGMENT'
+    );
+
+    await page.locator('label[for="p11-ev-ack-checkbox"]').click();
+    await page.locator('#p11-bind-evidence-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('ISSUE_EVIDENCE_BOUND');
+
+    await page.locator('#p11-post-batch-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('ISSUE_BATCH_POSTED');
+    await expect(page.getByTestId('p11-usable-on-hand-val')).toHaveText('2');
+    await expect(page.getByTestId('p11-active-reserved-val')).toHaveText('2');
+    await expect(page.getByTestId('p11-total-issued-val')).toHaveText('4');
+    await expect(page.getByTestId('p11-open-rf-remaining-val')).toHaveText('6');
+
+    // Prepare Batch 2 (2 units), bind, revise materially -> stale digest rejected -> re-load & post
+    await page.locator('#p11-batch-qty-input').fill('2');
+    await page.locator('#p11-prepare-batch-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('ISSUE_BATCH_PREPARED');
+    await page.locator('#p11-load-current-hash-btn').click();
+    await page.locator('#p11-bind-evidence-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('ISSUE_EVIDENCE_BOUND');
+
+    // Revise Batch 2 recipient capacity -> prior signature invalidated
+    await page.locator('#p11-batch-qty-input').fill('2');
+    await page.locator('#p11-batch-recipient-cap-input').fill('Lead Coordinator');
+    await page.locator('#p11-revise-batch-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('ISSUE_BATCH_REVISED');
+
+    await page.locator('#p11-post-batch-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText(
+      'STALE_BATCH_EVIDENCE_MISMATCH'
+    );
+
+    await page.locator('label[for="p11-ev-ack-checkbox"]').click();
+    await page.locator('#p11-bind-evidence-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText(
+      'STALE_BATCH_EVIDENCE_MISMATCH'
+    );
+
+    await page.locator('#p11-load-current-hash-btn').click();
+    await page.locator('#p11-post-batch-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('MISSING_ISSUANCE_EVIDENCE');
+
+    await page.locator('#p11-bind-evidence-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('ISSUE_EVIDENCE_BOUND');
+    await page.locator('#p11-post-batch-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('ISSUE_BATCH_POSTED');
+    await expect(page.getByTestId('p11-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p11-active-reserved-val')).toHaveText('0');
+    await expect(page.getByTestId('p11-total-issued-val')).toHaveText('6');
+    await expect(page.getByTestId('p11-open-rf-remaining-val')).toHaveText('4');
+
+    // Formally cancel remaining 4 units while keeping 6 issued intact
+    await page.locator('#p11-tab-closure').click();
+    await page.locator('#p11-cancel-actor-input').fill('201');
+    await page.locator('#p11-cancel-reason-input').fill('Event concluded; remaining 4 unneeded');
+    await page.locator('#p11-cancel-remainder-btn').click();
+    await expect(page.getByTestId('p11-feedback-banner')).toContainText('RF_REMAINDER_CANCELED');
+    await expect(page.getByTestId('p11-open-rf-remaining-val')).toHaveText('0');
+    await expect(page.getByTestId('p11-total-issued-val')).toHaveText('6');
+    await expect(page.getByTestId('p11-closure-list')).toContainText(
+      'Partially Fulfilled & Remainder Canceled'
+    );
+
+    // Lookup recovery
+    await page.locator('#p11-tab-history').click();
+    await page.locator('[data-testid^="p11-ledger-fill-"]').first().click();
+    await page.locator('#p11-lookup-key-btn').click();
+    await expect(page.getByTestId('p11-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p11_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
