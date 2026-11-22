@@ -229,6 +229,10 @@ export function S02OfficerDashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeBucket, setActiveBucket] = useState<QueueBucket>('needs_my_action');
   const [filterByMyDuties, setFilterByMyDuties] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<ReadonlyArray<WorkstationGroupId>>([
+    'governance',
+    'inventory',
+  ]);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [lastResult, setLastResult] = useState<S02ActionResult | null>(snapshot.last_action);
 
@@ -410,6 +414,7 @@ export function S02OfficerDashboard({
       if (normalizedQuery === '') return true;
       return (
         entry.shortTitle.toLowerCase().includes(normalizedQuery) ||
+        entry.navCode.toLowerCase().includes(normalizedQuery) ||
         entry.title.toLowerCase().includes(normalizedQuery) ||
         entry.description.toLowerCase().includes(normalizedQuery) ||
         entry.keywords.some((kw) => kw.includes(normalizedQuery))
@@ -420,6 +425,26 @@ export function S02OfficerDashboard({
       items: filteredItems,
     };
   }).filter((group) => group.items.length > 0);
+
+  const isForceExpanded = normalizedQuery !== '' || filterByMyDuties;
+  const allGroupsExpanded =
+    visibleGroups.length > 0 && visibleGroups.every((g) => expandedGroups.includes(g.id));
+
+  function toggleNavGroup(groupId: WorkstationGroupId) {
+    playClickPen(soundEnabled);
+    setExpandedGroups((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
+    );
+  }
+
+  function handleToggleExpandAll() {
+    playClickPen(soundEnabled);
+    if (allGroupsExpanded) {
+      setExpandedGroups([]);
+    } else {
+      setExpandedGroups(DASHBOARD_WORKSTATION_GROUPS.map((group) => group.id));
+    }
+  }
 
   const lifecycle = snapshot.chapter_lifecycle;
   const pulse = snapshot.operational_pulse;
@@ -448,10 +473,55 @@ export function S02OfficerDashboard({
           <input
             id="s02-filter-my-duties"
             type="checkbox"
+            className="s02-switch-input"
             checked={filterByMyDuties}
             onChange={(e) => setFilterByMyDuties(e.target.checked)}
           />
         </label>
+
+        <button
+          type="button"
+          id="s02-nav-home-active"
+          className="s02-nav-home-active"
+          aria-current="page"
+          onClick={() => {
+            playClickPen(soundEnabled);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        >
+          <span className="s02-nav-home-left">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+            <span>My Work</span>
+          </span>
+          <span className="s02-nav-active-dot" aria-hidden="true" />
+        </button>
+
+        <div className="s02-nav-section-header">
+          <span>Workspaces</span>
+          <button
+            type="button"
+            id="s02-sidebar-expand-all-btn"
+            className="s02-expand-all-btn"
+            onClick={handleToggleExpandAll}
+          >
+            {allGroupsExpanded ? 'Collapse all' : 'Expand all'}
+          </button>
+        </div>
 
         <nav className="s02-sidebar-nav" aria-label="Operational Modules">
           {visibleGroups.length === 0 ? (
@@ -459,34 +529,66 @@ export function S02OfficerDashboard({
               No workspaces matched your current filter.
             </p>
           ) : (
-            visibleGroups.map((group) => (
-              <div key={group.id} className="s02-nav-group">
-                <div className="s02-nav-group-label">
-                  <DomainIcon groupId={group.id} />
-                  <span>{group.title}</span>
-                </div>
-                <div className="s02-nav-group-items">
-                  {group.items.map((entry) => (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      id={entry.id}
-                      title={entry.title}
-                      className="s02-nav-item"
-                      onClick={() => {
-                        playClickPen(soundEnabled);
-                        onOpenRoute(entry.route);
-                      }}
-                    >
-                      <span className="s02-nav-item-text">{entry.shortTitle}</span>
-                      <span className="s02-nav-chevron" aria-hidden="true">
-                        ›
+            visibleGroups.map((group) => {
+              const isGroupExpanded = isForceExpanded || expandedGroups.includes(group.id);
+              return (
+                <div key={group.id} className="s02-nav-group">
+                  <button
+                    type="button"
+                    id={`s02-nav-group-toggle-${group.id}`}
+                    className="s02-nav-accordion-btn"
+                    aria-expanded={isGroupExpanded}
+                    aria-controls={`s02-nav-group-panel-${group.id}`}
+                    onClick={() => toggleNavGroup(group.id)}
+                  >
+                    <span className="s02-nav-accordion-left">
+                      <span className={`s02-domain-badge tone-${group.id}`} aria-hidden="true">
+                        <DomainIcon groupId={group.id} />
                       </span>
-                    </button>
-                  ))}
+                      <span className="s02-nav-group-title">{group.shortTitle}</span>
+                    </span>
+                    <span className="s02-nav-accordion-right">
+                      <span className="s02-nav-count">{group.items.length}</span>
+                      <svg
+                        className={`s02-accordion-chevron ${isGroupExpanded ? 'is-open' : ''}`}
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </span>
+                  </button>
+
+                  {isGroupExpanded ? (
+                    <div id={`s02-nav-group-panel-${group.id}`} className="s02-nav-tree">
+                      {group.items.map((entry) => (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          id={entry.id}
+                          title={entry.title}
+                          className="s02-nav-item"
+                          onClick={() => {
+                            playClickPen(soundEnabled);
+                            onOpenRoute(entry.route);
+                          }}
+                        >
+                          <span className="s02-nav-item-text">{entry.shortTitle}</span>
+                          <span className="s02-nav-code">{entry.navCode}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </nav>
 

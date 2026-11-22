@@ -4495,11 +4495,27 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     await expect(page.getByTestId('s02-kpi-rop')).toHaveText('0');
     await expect(page.getByTestId('s02-queue-empty')).toBeVisible();
 
-    // Confirm all 28 workspace launchers remain mounted and visible inside the sticky sidebar
+    // Verify organized accordion sidebar structure, Expand/Collapse All, and all 28 launchers
+    await expect(page.locator('#s02-nav-home-active')).toBeVisible();
+    for (const groupId of [
+      'governance',
+      'inventory',
+      'procurement',
+      'sales',
+      'booths',
+      'reports',
+      'operations',
+    ]) {
+      await expect(page.locator(`#s02-nav-group-toggle-${groupId}`)).toBeVisible();
+    }
+
+    await page.locator('#s02-sidebar-expand-all-btn').click();
     for (let pkg = 2; pkg <= 29; pkg++) {
       const padded = String(pkg).padStart(2, '0');
       await expect(page.locator(`#open-p${padded}-workspace-btn`)).toBeVisible();
     }
+    await page.locator('#s02-sidebar-expand-all-btn').click();
+    await expect(page.locator('#open-p24-workspace-btn')).toHaveCount(0);
 
     // Open telemetry & queue controls drawer
     await page.locator('#s02-toggle-controls-btn').click();
@@ -4595,9 +4611,10 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     await page.locator('#s02-record-jump-btn').click();
     await expect(page.getByTestId('p12-workspace')).toBeVisible();
 
-    // Return to Dashboard and verify workstation launch into P24 Reports workspace
+    // Return to Dashboard, expand Reports domain accordion, and verify launch into P24 Reports
     await page.locator('#p12-back-dashboard-btn').click();
     await expect(page.getByRole('heading', { name: 'My Work — Chapter Workspace' })).toBeVisible();
+    await page.locator('#s02-nav-group-toggle-reports').click();
     await page.locator('#open-p24-workspace-btn').click();
     await expect(page.getByTestId('p24-workspace')).toBeVisible();
 

@@ -50,6 +50,7 @@ export interface WorkstationEntry {
   readonly route: DashboardRouteTarget;
   readonly groupId: WorkstationGroupId;
   readonly shortTitle: string;
+  readonly navCode: string;
   readonly title: string;
   readonly description: string;
   readonly duties: ReadonlyArray<string>;
@@ -60,6 +61,7 @@ export interface WorkstationEntry {
 export interface WorkstationGroup {
   readonly id: WorkstationGroupId;
   readonly title: string;
+  readonly shortTitle: string;
   readonly subtitle: string;
   readonly items: ReadonlyArray<WorkstationEntry>;
 }
@@ -68,6 +70,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
   {
     id: 'governance',
     title: 'Governance & Setup',
+    shortTitle: 'Governance',
     subtitle: 'Chapter identity, approved policy gates, immutable audit records, and signed evidence.',
     items: [
       {
@@ -75,6 +78,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p02-admin',
         groupId: 'governance',
         shortTitle: 'Chapter Setup',
+        navCode: 'ADM',
         title: 'Chapter Administration & Setup',
         description: 'Manage chapter context, officer duties, policy approvals, and provider boundaries.',
         duties: ['Chapter Head', 'Chapter Administrator'],
@@ -86,6 +90,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p03-records',
         groupId: 'governance',
         shortTitle: 'Records & Audit',
+        navCode: 'DOC',
         title: 'Record & Operation Workspace',
         description: 'Inspect document revisions, durable idempotent operations, and audit trails.',
         duties: ['Chapter Head', 'Finance Officer', 'Inventory Custodian'],
@@ -97,6 +102,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p04-evidence',
         groupId: 'governance',
         shortTitle: 'Signed Handover',
+        navCode: 'EVD',
         title: 'Ready Evidence & Signed Handover',
         description: 'Capture dual-mode batch signatures, paper scans, and canonical evidence hashes.',
         duties: ['Inventory Custodian', 'Releasing Officer', 'Receiving Officer'],
@@ -108,6 +114,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
   {
     id: 'inventory',
     title: 'Stockroom & Inventory',
+    shortTitle: 'Inventory',
     subtitle: 'Catalog eligibility across seven views, opening counts, and independent variance controls.',
     items: [
       {
@@ -115,6 +122,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p05-inventory',
         groupId: 'inventory',
         shortTitle: 'Inventory Catalog',
+        navCode: 'INV',
         title: 'Inventory Catalog & Stock Eligibility',
         description: 'Review seven non-overlapping stock views, ROP policies, and disjoint hold clearance.',
         duties: ['Inventory Custodian', 'Procurement Officer'],
@@ -126,6 +134,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p06-opening',
         groupId: 'inventory',
         shortTitle: 'Opening Baseline',
+        navCode: 'IPC',
         title: 'Opening Physical Count & Baseline Acceptance',
         description: 'Perform opening physical counts, receiving inspection splits, and atomic baseline lock.',
         duties: ['Inventory Custodian', 'Chapter Head', 'Finance Officer'],
@@ -137,6 +146,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p17-variance-adj',
         groupId: 'inventory',
         shortTitle: 'Variance Recounts',
+        navCode: 'ADJ',
         title: 'Independent Counts & Stock-Variance Adjustments',
         description: 'Execute blind recounts and dual-approved stock variance adjustment postings.',
         duties: ['Inventory Custodian', 'Finance Officer', 'Chapter Head'],
@@ -148,6 +158,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
   {
     id: 'procurement',
     title: 'Procurement & Supplies',
+    shortTitle: 'Procurement',
     subtitle: 'Internal requisitions, budget reviews, quotations, purchase orders, and inbound receiving.',
     items: [
       {
@@ -155,6 +166,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p07-requisitions',
         groupId: 'procurement',
         shortTitle: 'Requisitions (RF)',
+        navCode: 'RF',
         title: 'Internal Requisitions & Stock Reservations',
         description: 'Submit requisitions, handle return-revise reviews, and lock eligible stock holds.',
         duties: ['Requesting Officer', 'Inventory Custodian', 'Chapter Head'],
@@ -166,6 +178,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p08-purchasing',
         groupId: 'procurement',
         shortTitle: 'Budget & Net Need',
+        navCode: 'PR',
         title: 'Purchase Requests & Budget Review',
         description: 'Calculate uncovered RF and ROP net needs and secure chapter budget approval.',
         duties: ['Procurement Officer', 'Finance Officer', 'Chapter Head'],
@@ -177,6 +190,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p09-quotations',
         groupId: 'procurement',
         shortTitle: 'Quotations & POs',
+        navCode: 'PO',
         title: 'Quotations, Supplier Selection & Purchase Orders',
         description: 'Compare supplier quotations against minimum thresholds and issue approved POs.',
         duties: ['Procurement Officer', 'Finance Officer'],
@@ -188,6 +202,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p10-receiving',
         groupId: 'procurement',
         shortTitle: 'Supplier Receiving',
+        navCode: 'RM',
         title: 'Supplier Delivery, Partial Receiving & Discrepancies',
         description: 'Inspect inbound deliveries, split accepted/damaged RM lots, and track PO balances.',
         duties: ['Receiving Officer', 'Inventory Custodian'],
@@ -199,6 +214,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p11-issues',
         groupId: 'procurement',
         shortTitle: 'Material Issues',
+        navCode: 'ISS',
         title: 'Signed Material Issues & Partial Fulfillment',
         description: 'Issue partial or full stock against approved requisitions with signed recipient proof.',
         duties: ['Inventory Custodian', 'Releasing Officer'],
@@ -210,6 +226,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
   {
     id: 'sales',
     title: 'Sales, Billing & Cashiering',
+    shortTitle: 'Sales & Billing',
     subtitle: 'Customer orders, payment verification, 48h clocks, releases, donations, claims, and refunds.',
     items: [
       {
@@ -217,6 +234,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p12-sales',
         groupId: 'sales',
         shortTitle: 'Sales Orders & SI',
+        navCode: 'SO',
         title: 'Sales Orders, Buyer Acceptance & Invoicing',
         description: 'Review customer orders, split stock coverage, and issue billing-only sales invoices.',
         duties: ['Sales Officer', 'Finance Officer'],
@@ -228,6 +246,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p13-payments',
         groupId: 'sales',
         shortTitle: 'Payments & OR',
+        navCode: 'OR',
         title: 'Payment Verification, Official Receipts & Line Credit',
         description: 'Verify payment slips, prevent duplicate references, issue ORs, and allocate credit.',
         duties: ['Finance Officer', 'Cashier'],
@@ -239,6 +258,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p14-clocks',
         groupId: 'sales',
         shortTitle: '48h Clocks & Holds',
+        navCode: '48H',
         title: 'Two 48h Clocks, Funded Procurement & Late Money',
         description: 'Monitor dual 48-hour payment/reservation timers and resolve late-payment exceptions.',
         duties: ['Finance Officer', 'Inventory Custodian', 'Procurement Officer'],
@@ -250,6 +270,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p15-releases',
         groupId: 'sales',
         shortTitle: 'Customer Releases',
+        navCode: 'DR',
         title: 'Covered Customer Releases & Repeated Partials',
         description: 'Release paid customer orders with signed delivery receipts across partial batches.',
         duties: ['Releasing Officer', 'Inventory Custodian'],
@@ -261,6 +282,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p16-donations',
         groupId: 'sales',
         shortTitle: 'In-Kind Donations',
+        navCode: 'DA',
         title: 'In-Kind Donations & Bounded Donor Restrictions',
         description: 'Receive non-cash donations while isolating donor-restricted inventory pools.',
         duties: ['Receiving Officer', 'Inventory Custodian', 'Chapter Head'],
@@ -272,6 +294,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p18-claims',
         groupId: 'sales',
         shortTitle: 'Claims & Returns',
+        navCode: 'CLM',
         title: 'Customer Claims, Inspected Returns & Replacements',
         description: 'Validate linked OR/DR customer claims, inspect defective items, and sign replacements.',
         duties: ['Sales Officer', 'Inventory Custodian', 'Finance Officer'],
@@ -283,6 +306,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p19-refunds',
         groupId: 'sales',
         shortTitle: 'Refunds & Exchanges',
+        navCode: 'RFD',
         title: 'Refunds, Unequal Exchanges & Funded Exceptions',
         description: 'Execute verified refund payouts, settle unequal exchanges, and close exceptions.',
         duties: ['Finance Officer', 'Cashier', 'Chapter Head'],
@@ -294,6 +318,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
   {
     id: 'booths',
     title: 'Campus Booths & Events',
+    shortTitle: 'Campus Booths',
     subtitle: 'Signed booth custody checkouts, rapid POS carts, outage paper receipts, and closeout.',
     items: [
       {
@@ -301,6 +326,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p20-booth-checkout',
         groupId: 'booths',
         shortTitle: 'Booth Checkout',
+        navCode: 'BTH',
         title: 'Approved Booth Setup & Signed Custody Checkout',
         description: 'Approve campus booth events and transfer stock into isolated booth custody.',
         duties: ['Chapter Head', 'Inventory Custodian', 'Booth Lead'],
@@ -312,6 +338,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p21-booth-sale',
         groupId: 'booths',
         shortTitle: 'Live Booth Cart',
+        navCode: 'POS',
         title: 'Immediate Booth Cart, Verified Sale & Receipts',
         description: 'Process live booth sales carts with instant OR issuance from booth custody.',
         duties: ['Booth Lead', 'Cashier'],
@@ -323,6 +350,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p22-manual-outage',
         groupId: 'booths',
         shortTitle: 'Outage Receipts',
+        navCode: 'MAN',
         title: 'Manual Outage Receipt Controls & Later Entry',
         description: 'Enforce pre-assigned paper receipt ranges and once-only delayed outage posting.',
         duties: ['Booth Lead', 'Cashier', 'Finance Officer'],
@@ -334,6 +362,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p23-booth-closeout',
         groupId: 'booths',
         shortTitle: 'Booth Close-Out',
+        navCode: 'BCO',
         title: 'Independent Booth Returns, Variance & Remittance Close-Out',
         description: 'Reconcile booth returns, cash float, dual-approved variance, and final remittance.',
         duties: ['Finance Officer', 'Inventory Custodian', 'Booth Lead'],
@@ -345,6 +374,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
   {
     id: 'reports',
     title: 'Reports & Architecture',
+    shortTitle: 'Reports & Map',
     subtitle: 'Seven stock views, accessible queues, scoped exports, operations map, and scenario tracer.',
     items: [
       {
@@ -352,6 +382,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p24-reports',
         groupId: 'reports',
         shortTitle: 'Reports & Queues',
+        navCode: 'RPT',
         title: 'Reports, Alerts, Immutable Outputs & Accessible Queues',
         description: 'View seven-view reports, manage uncertain-first queues, and retry scoped CSV/PDFs.',
         duties: ['Chapter Head', 'Finance Officer', 'Inventory Custodian'],
@@ -363,6 +394,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p25-operations-map',
         groupId: 'reports',
         shortTitle: 'Operations Map',
+        navCode: 'MAP',
         title: 'Operations Architecture Map & Scenario Tracer',
         description: 'Inspect five operational perspectives, text alternatives, and live scenario tracing.',
         duties: ['Chapter Head', 'Technical Lead', 'Auditor'],
@@ -374,6 +406,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
   {
     id: 'operations',
     title: 'Release, Cutover & Assurance',
+    shortTitle: 'Release & Ops',
     subtitle: 'Carried obligations, trial/grace lifecycle, host maintenance, recovery drills, and dossier.',
     items: [
       {
@@ -381,6 +414,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p26-cutover',
         groupId: 'operations',
         shortTitle: 'Cutover & Trial',
+        navCode: 'SUB',
         title: 'Cutover Obligations, Staged Activation & Chapter Subscription',
         description: 'Isolate opening carried obligations and govern 30-day trial and 14-day grace limits.',
         duties: ['Chapter Head', 'Finance Officer'],
@@ -392,6 +426,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p27-host-release',
         groupId: 'operations',
         shortTitle: 'Host Releases',
+        navCode: 'REL',
         title: 'Reproducible Host Releases & Operating Controls',
         description: 'Validate host security, coordinate maintenance fencing, scheduler lease, and telemetry.',
         duties: ['Technical Lead', 'Operations Operator'],
@@ -403,6 +438,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p28-recovery',
         groupId: 'operations',
         shortTitle: 'Recovery Drills',
+        navCode: 'DRL',
         title: 'Independent Off-Host Recovery & Operating Handoff',
         description: 'Verify multi-region backups, timed restore drills, and independent reopen handoffs.',
         duties: ['Technical Lead', 'Finance Officer', 'Chapter Head'],
@@ -414,6 +450,7 @@ export const DASHBOARD_WORKSTATION_GROUPS: ReadonlyArray<WorkstationGroup> = [
         route: 'p29-acceptance',
         groupId: 'operations',
         shortTitle: 'Acceptance Dossier',
+        navCode: 'ACC',
         title: 'Full Regression, Connected Walkthrough & Acceptance Dossier',
         description: 'Run connected professor walkthroughs, verify coverage targets, and issue release verdicts.',
         duties: ['Chapter Head', 'Finance Officer', 'Independent Reviewer'],
