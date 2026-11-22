@@ -1801,4 +1801,105 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P10 Supplier Delivery, partial RM split, held custody clearance, claim resolution, and lookup recovery without errors', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p10');
+    await expect(
+      page.getByRole('heading', { name: 'Supplier Delivery, Partial Receiving & Discrepancies' })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p10-empty-pos-notice')).toBeVisible();
+    await expect(page.getByTestId('p10-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p10-held-val')).toHaveText('0');
+    await expect(page.getByTestId('p10-rejected-val')).toHaveText('0');
+    await expect(page.getByTestId('p10-po-outstanding-val')).toHaveText('0');
+
+    // Register open Purchase Order CEBU-PO-2026-000001 (100 units)
+    await page.locator('#p10-po-ref-input').fill('CEBU-PO-2026-000001');
+    await page.locator('#p10-po-supplier-input').fill('Visayas Medical Supply Co.');
+    await page.locator('#p10-po-variant-input').fill('71');
+    await page.locator('#p10-po-item-input').fill('Emergency Hygiene Kits');
+    await page.locator('#p10-po-qty-input').fill('100');
+    await page.locator('#p10-po-scale-select').selectOption('0');
+    await page.locator('#p10-register-po-btn').click();
+    await expect(page.getByTestId('p10-feedback-banner')).toContainText('OPEN_PO_REGISTERED');
+    await expect(page.getByTestId('p10-po-outstanding-val')).toHaveText('100');
+
+    // Verify missing Supplier DR blocks posting (MISSING_RECEIVING_SOURCE)
+    await page.locator('#p10-tab-receiving').click();
+    await page.locator('#p10-rm-inspector-input').fill('401');
+    await page.locator('#p10-rm-variant-input').fill('71');
+    await page.locator('#p10-rm-delivered-input').fill('60');
+    await page.locator('#p10-rm-accepted-input').fill('40');
+    await page.locator('#p10-rm-held-input').fill('10');
+    await page.locator('#p10-rm-rejected-input').fill('10');
+    await page.locator('#p10-rm-missing-input').fill('40');
+    await page.locator('#p10-rm-timestamp-input').fill('2026-11-22T12:30:00Z');
+    await page.locator('#p10-rm-notes-input').fill('40 usable, 10 held, 10 damaged, 40 backordered');
+    const validSha = 'a'.repeat(64);
+    await page.locator('#p10-rm-evidence-hash-input').fill(validSha);
+    await page.locator('#p10-rm-discrepancy-hash-input').fill('b'.repeat(64));
+    await page.locator('#p10-post-rm-btn').click();
+    await expect(page.getByTestId('p10-feedback-banner')).toContainText('MISSING_RECEIVING_SOURCE');
+
+    // Verify Supplier DR & Post Partial RM -> CEBU-RM-2026-000001
+    await page.locator('label[for="p10-rm-has-dr-checkbox"]').click();
+    await page.locator('#p10-rm-dr-ref-input').fill('DR-2026-8841');
+    await page.locator('#p10-post-rm-btn').click();
+    await expect(page.getByTestId('p10-feedback-banner')).toContainText('SUPPLIER_RM_POSTED');
+    await expect(page.getByTestId('p10-receipts-table')).toContainText('CEBU-RM-2026-000001');
+    await expect(page.getByTestId('p10-usable-on-hand-val')).toHaveText('40');
+    await expect(page.getByTestId('p10-held-val')).toHaveText('10');
+    await expect(page.getByTestId('p10-rejected-val')).toHaveText('10');
+    await expect(page.getByTestId('p10-po-outstanding-val')).toHaveText('60');
+
+    // Accept held custody once -> 50 usable, 0 held, 50 PO outstanding
+    await page.locator('#p10-tab-claims').click();
+    await page.locator('#p10-claim-actor-input').fill('402');
+    await page.locator('#p10-claim-clearance-notes-input').fill('Seal verified intact by QA');
+    await page.locator('#p10-accept-held-btn').click();
+    await expect(page.getByTestId('p10-feedback-banner')).toContainText('HELD_CUSTODY_ACCEPTED');
+    await expect(page.getByTestId('p10-usable-on-hand-val')).toHaveText('50');
+    await expect(page.getByTestId('p10-held-val')).toHaveText('0');
+    await expect(page.getByTestId('p10-po-outstanding-val')).toHaveText('50');
+
+    // Reject second held transfer on same claim (HELD_CUSTODY_ALREADY_TRANSFERRED)
+    await page.locator('#p10-claim-clearance-notes-input').fill('Attempt duplicate transfer');
+    await page.locator('#p10-accept-held-btn').click();
+    await expect(page.getByTestId('p10-feedback-banner')).toContainText(
+      'HELD_CUSTODY_ALREADY_TRANSFERRED'
+    );
+
+    // Resolve claim formally (SUPPLIER_CLAIM_RESOLVED)
+    await page.locator('#p10-claim-resolution-select').selectOption('credit_note');
+    await page.locator('#p10-claim-resolution-notes-input').fill('Credit memo CM-2026-19 issued');
+    await page.locator('#p10-resolve-claim-btn').click();
+    await expect(page.getByTestId('p10-feedback-banner')).toContainText('SUPPLIER_CLAIM_RESOLVED');
+
+    // Lookup committed operation recovery (OPERATION_RECOVERED)
+    await page.locator('#p10-tab-history').click();
+    await page.locator('[data-testid^="p10-ledger-fill-"]').first().click();
+    await page.locator('#p10-lookup-key-btn').click();
+    await expect(page.getByTestId('p10-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p10_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

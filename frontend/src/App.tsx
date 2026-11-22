@@ -19,6 +19,7 @@ import { P06OpeningWorkspace } from './P06OpeningWorkspace';
 import { P07RequisitionWorkspace } from './P07RequisitionWorkspace';
 import { P08PurchasingWorkspace } from './P08PurchasingWorkspace';
 import { P09QuotationPoWorkspace } from './P09QuotationPoWorkspace';
+import { P10SupplierReceivingWorkspace } from './P10SupplierReceivingWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -38,6 +39,7 @@ export type AppRouteMode =
   | 'p07-requisitions'
   | 'p08-purchasing'
   | 'p09-quotations'
+  | 'p10-receiving'
   | 'health';
 
 interface ResolvedRoute {
@@ -80,6 +82,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p09' || view === 'quotations' || path === '/p09' || path === '/quotations') {
     return { mode: 'p09-quotations', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p10' || view === 'receiving' || path === '/p10' || path === '/receiving') {
+    return { mode: 'p10-receiving', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -333,6 +338,17 @@ export function App() {
               >
                 Quotations, Supplier Selection &amp; Purchase Orders
               </button>
+              <button
+                type="button"
+                id="open-p10-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p10-receiving');
+                }}
+              >
+                Supplier Delivery, Partial Receiving &amp; Discrepancies
+              </button>
 
               <button
                 type="button"
@@ -485,6 +501,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P09QuotationPoWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p10-receiving') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P10SupplierReceivingWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
