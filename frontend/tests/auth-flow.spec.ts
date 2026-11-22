@@ -2889,4 +2889,203 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P19 Refund Payouts, Unequal Exchange Payment Gate, and Funded Exception Resolution', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p19');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Refunds, Unequal Exchanges & Funded Exceptions',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p19-empty-contexts-notice')).toBeVisible();
+    await expect(page.getByTestId('p19-net-credit-val')).toHaveText('0.00');
+    await expect(page.getByTestId('p19-approved-unexecuted-val')).toHaveText('0.00');
+    await expect(page.getByTestId('p19-executed-refunds-val')).toHaveText('0.00');
+    await expect(page.getByTestId('p19-exchange-collected-val')).toHaveText('0.00');
+    await expect(page.getByTestId('p19-open-obligations-val')).toHaveText('0');
+
+    // Context 1: Track 1 SO refund flow (PHP 1000.00 credit - PHP 250.00 consumed = PHP 750.00 refundable)
+    await page.locator('#p19-ctx-kind').selectOption('track1_so');
+    await page.locator('#p19-ctx-src-ref').fill('CEBU-SO-2026-000001');
+    await page.locator('#p19-ctx-or-ref').fill('CEBU-OR-2026-000001');
+    await page.locator('#p19-ctx-adj-ref').fill('CEBU-ADJ-CLM-2026-000001');
+    await page.locator('#p19-ctx-buyer').fill('Maria Santos');
+    await page.locator('#p19-ctx-credit').fill('1000.00');
+    await page.locator('#p19-ctx-consumed').fill('250.00');
+    await page.locator('#p19-ctx-po-amt').fill('0.00');
+    await page.locator('#p19-ctx-res-qty').fill('0');
+    await page.locator('#p19-register-ctx-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'FINANCIAL_CONTEXT_REGISTERED'
+    );
+    await expect(page.getByTestId('p19-net-credit-val')).toHaveText('750.00');
+
+    // Over-refund guard & same-actor guard before independent Finance approval
+    await page.locator('#p19-ref-prep').fill('101');
+    await page.locator('#p19-ref-fin').fill('202');
+    await page.locator('#p19-ref-amt').fill('800.00');
+    await page.locator('#p19-ref-at').fill('2026-11-09T08:00:00Z');
+    await page.locator('#p19-ref-reason').fill('Customer refund approval');
+    await page.locator('#p19-approve-refund-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'REFUND_EXCEEDS_AVAILABLE_CREDIT'
+    );
+
+    await page.locator('#p19-ref-fin').fill('101');
+    await page.locator('#p19-ref-amt').fill('500.00');
+    await page.locator('#p19-approve-refund-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText('INDEPENDENCE_REQUIRED');
+
+    // Approve PHP 500.00 -> net verified credit stays 750.00 & executed total stays 0.00
+    await page.locator('#p19-ref-fin').fill('202');
+    await page.locator('#p19-approve-refund-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'REFUND_APPROVED_PENDING_EXECUTION'
+    );
+    await expect(page.getByTestId('p19-net-credit-val')).toHaveText('750.00');
+    await expect(page.getByTestId('p19-approved-unexecuted-val')).toHaveText('500.00');
+    await expect(page.getByTestId('p19-executed-refunds-val')).toHaveText('0.00');
+
+    // Execute actual verified payout once -> net credit drops to 250.00
+    await page.locator('#p19-exec-actor').fill('203');
+    await page.locator('#p19-exec-channel').selectOption('official_gcash');
+    await page.locator('#p19-exec-pay-ref').fill('GC-PAYOUT-9901');
+    await page.locator('#p19-exec-at').fill('2026-11-09T09:00:00Z');
+    await page.locator('#p19-exec-hash').fill('a'.repeat(64));
+    await page.locator('#p19-execute-refund-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText('VERIFIED_REFUND_EXECUTED');
+    await expect(page.getByTestId('p19-net-credit-val')).toHaveText('250.00');
+    await expect(page.getByTestId('p19-approved-unexecuted-val')).toHaveText('0.00');
+    await expect(page.getByTestId('p19-executed-refunds-val')).toHaveText('500.00');
+
+    await page.locator('#p19-execute-refund-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText('REFUND_ALREADY_EXECUTED');
+
+    // Context 2: Booth claim unequal exchange (PHP 250 -> PHP 400 = PHP 150 due)
+    await page.locator('#p19-ctx-kind').selectOption('booth_or');
+    await page.locator('#p19-ctx-src-ref').fill('BOOTH-CEBU-2026');
+    await page.locator('#p19-ctx-or-ref').fill('CEBU-OR-BOOTH-0001');
+    await page.locator('#p19-ctx-adj-ref').fill('CEBU-ADJ-CLM-2026-000002');
+    await page.locator('#p19-ctx-buyer').fill('Juan Dela Cruz');
+    await page.locator('#p19-ctx-credit').fill('250.00');
+    await page.locator('#p19-ctx-consumed').fill('250.00');
+    await page.locator('#p19-register-ctx-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'FINANCIAL_CONTEXT_REGISTERED'
+    );
+
+    await page.locator('#p19-tab-exchange').click();
+    await page.locator('#p19-ex-actor').fill('101');
+    await page.locator('#p19-ex-at').fill('2026-11-10T08:00:00Z');
+    await page.locator('#p19-ex-ret-val').fill('250.00');
+    await page.locator('#p19-ex-rep-val').fill('400.00');
+    await page.locator('label[for="p19-ex-fab-checkbox"]').click();
+    await page.locator('#p19-prepare-exchange-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'BOOTH_CLAIM_SO_FABRICATION_FORBIDDEN'
+    );
+
+    await page.locator('label[for="p19-ex-fab-checkbox"]').click();
+    await page.locator('#p19-prepare-exchange-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'UNEQUAL_EXCHANGE_PREPARED'
+    );
+
+    // Release blocked before additional verified OR payment
+    await page.locator('#p19-ex-sig-hash').fill('b'.repeat(64));
+    await page.locator('#p19-ex-rel-at').fill('2026-11-10T08:10:00Z');
+    await page.locator('#p19-release-ex-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'ADDITIONAL_VERIFIED_PAYMENT_REQUIRED'
+    );
+
+    // Verify additional OR and release higher-value replacement
+    await page.locator('#p19-ex-ver-actor').fill('202');
+    await page.locator('#p19-ex-or-ref').fill('CEBU-OR-2026-000050');
+    await page.locator('#p19-ex-ver-at').fill('2026-11-10T08:15:00Z');
+    await page.locator('#p19-verify-ex-pay-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'ADDITIONAL_EXCHANGE_PAYMENT_VERIFIED'
+    );
+
+    await page.locator('#p19-ex-rel-at').fill('2026-11-10T08:20:00Z');
+    await page.locator('#p19-release-ex-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'UNEQUAL_EXCHANGE_RELEASED'
+    );
+    await expect(page.getByTestId('p19-exchange-collected-val')).toHaveText('150.00');
+
+    // Context 3: Funded cancellation with linked open PO & reserved stock
+    await page.locator('#p19-tab-refunds').click();
+    await page.locator('#p19-ctx-kind').selectOption('track1_so');
+    await page.locator('#p19-ctx-src-ref').fill('CEBU-SO-2026-000009');
+    await page.locator('#p19-ctx-or-ref').fill('CEBU-OR-2026-000009');
+    await page.locator('#p19-ctx-adj-ref').fill('CEBU-ADJ-EXC-2026-000001');
+    await page.locator('#p19-ctx-buyer').fill('Carlos Reyes');
+    await page.locator('#p19-ctx-credit').fill('400.00');
+    await page.locator('#p19-ctx-consumed').fill('0.00');
+    await page.locator('#p19-ctx-po-ref').fill('CEBU-PO-2026-000004');
+    await page.locator('#p19-ctx-po-amt').fill('400.00');
+    await page.locator('#p19-ctx-res-qty').fill('3');
+    await page.locator('#p19-register-ctx-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'FINANCIAL_CONTEXT_REGISTERED'
+    );
+
+    await page.locator('#p19-tab-exceptions').click();
+    await page.locator('#p19-exc-kind').selectOption('funded_cancellation');
+    await page.locator('#p19-exc-actor').fill('101');
+    await page.locator('#p19-exc-init-at').fill('2026-11-10T09:00:00Z');
+    await page.locator('label[for="p19-exc-forfeit-checkbox"]').click();
+    await page.locator('#p19-initiate-exc-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'AUTOMATIC_FORFEITURE_OR_RELEASE_FORBIDDEN'
+    );
+
+    await page.locator('label[for="p19-exc-forfeit-checkbox"]').click();
+    await page.locator('#p19-initiate-exc-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText('FUNDED_EXCEPTION_OPENED');
+    await expect(page.getByTestId('p19-open-obligations-val')).toHaveText('1');
+
+    await page.locator('#p19-exc-approver').fill('202');
+    await page.locator('#p19-exc-res-at').fill('2026-11-10T10:00:00Z');
+    await page.locator('#p19-exc-po-res').fill('Retain PO as chapter safety stock');
+    await page.locator('#p19-exc-stock-res').fill('Transfer 3 reserved units cleanly');
+    await page.locator('#p19-exc-fund-res').fill('Approve PHP 400.00 refund payout');
+    await page.locator('#p19-exc-reason').fill('Mutual cancellation under exception policy');
+    await page.locator('#p19-resolve-exc-btn').click();
+    await expect(page.getByTestId('p19-feedback-banner')).toContainText(
+      'FUNDED_OBLIGATIONS_RESOLVED'
+    );
+    await expect(page.getByTestId('p19-open-obligations-val')).toHaveText('0');
+
+    // Tab 4: Operation Recovery Lookup
+    await page.locator('#p19-tab-history').click();
+    await page.locator('[data-testid^="p19-ledger-fill-"]').first().click();
+    await page.locator('#p19-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p19-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p19-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p19-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p19_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

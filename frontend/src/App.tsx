@@ -28,6 +28,7 @@ import { P15CustomerReleaseWorkspace } from './P15CustomerReleaseWorkspace';
 import { P16DonationRestrictionWorkspace } from './P16DonationRestrictionWorkspace';
 import { P17CountVarianceAdjWorkspace } from './P17CountVarianceAdjWorkspace';
 import { P18ClaimReturnReplacementWorkspace } from './P18ClaimReturnReplacementWorkspace';
+import { P19RefundExceptionWorkspace } from './P19RefundExceptionWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -56,6 +57,7 @@ export type AppRouteMode =
   | 'p16-donations'
   | 'p17-variance-adj'
   | 'p18-claims'
+  | 'p19-refunds'
   | 'health';
 
 interface ResolvedRoute {
@@ -132,6 +134,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p18' || view === 'claims' || path === '/p18' || path === '/claims') {
     return { mode: 'p18-claims', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p19' || view === 'refunds' || path === '/p19' || path === '/refunds') {
+    return { mode: 'p19-refunds', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -484,6 +489,17 @@ export function App() {
               >
                 Customer Claims, Inspected Returns &amp; Replacements
               </button>
+              <button
+                type="button"
+                id="open-p19-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p19-refunds');
+                }}
+              >
+                Refunds, Unequal Exchanges &amp; Funded Exceptions
+              </button>
 
               <button
                 type="button"
@@ -798,6 +814,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P18ClaimReturnReplacementWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p19-refunds') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P19RefundExceptionWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
