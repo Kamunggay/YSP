@@ -3359,4 +3359,109 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P22 Manual Outage Range Checks, Offline GCash Block, Duplicate Prevention & Once-Only Entry', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p22');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Manual Outage Receipt Controls & Later Entry',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p22-empty-series-notice')).toBeVisible();
+    await expect(page.getByTestId('p22-custody-remaining-val')).toHaveText('0');
+    await expect(page.getByTestId('p22-entered-sales-val')).toHaveText('0.00');
+    await expect(page.getByTestId('p22-second-or-val')).toHaveText('0');
+
+    // Allocate manual series 101..105 with 10 booth custody
+    await page.locator('#p22-ser-event').fill('CEBU-EVT-2026-000001');
+    await page.locator('#p22-ser-prefix').fill('MAN-CEBU-OR');
+    await page.locator('#p22-ser-start').fill('101');
+    await page.locator('#p22-ser-end').fill('105');
+    await page.locator('#p22-ser-custody').fill('10');
+    await page.locator('#p22-ser-auth').fill('202');
+    await page.locator('#p22-allocate-series-btn').click();
+    await expect(page.getByTestId('p22-feedback-banner')).toContainText('MANUAL_SERIES_ALLOCATED');
+
+    // Out-of-range #199 blocked -> unconfirmed GCash #101 blocked
+    await page.locator('#p22-man-or-num').fill('199');
+    await page.locator('#p22-man-channel').selectOption('cash');
+    await page.locator('#p22-man-pay-ref').fill('CASH-MAN-101');
+    await page.locator('#p22-man-amount').fill('300.00');
+    await page.locator('#p22-man-qty').fill('2');
+    await page.locator('#p22-man-orig-at').fill('2026-11-15T11:05:00Z');
+    await page.locator('#p22-man-ent-at').fill('2026-11-15T13:10:00Z');
+    await page.locator('#p22-man-officer').fill('302');
+    await page.locator('#p22-man-note').fill('Signed carbon slip #101');
+    await page.locator('#p22-enter-sale-btn').click();
+    await expect(page.getByTestId('p22-feedback-banner')).toContainText(
+      'MANUAL_OR_OUT_OF_ALLOCATED_RANGE'
+    );
+
+    await page.locator('#p22-man-or-num').fill('101');
+    await page.locator('#p22-man-channel').selectOption('official_gcash');
+    await page.locator('#p22-enter-sale-btn').click();
+    await expect(page.getByTestId('p22-feedback-banner')).toContainText(
+      'UNCONFIRMED_OFFLINE_GCASH_CREDIT_FORBIDDEN'
+    );
+
+    // Valid cash sale #101 -> posts once with 0 second ORs -> duplicate blocked
+    await page.locator('#p22-man-channel').selectOption('cash');
+    await page.locator('#p22-enter-sale-btn').click();
+    await expect(page.getByTestId('p22-feedback-banner')).toContainText('MANUAL_OUTAGE_SALE_ENTERED');
+    await expect(page.getByTestId('p22-custody-remaining-val')).toHaveText('8');
+    await expect(page.getByTestId('p22-entered-sales-val')).toHaveText('300.00');
+    await expect(page.getByTestId('p22-second-or-val')).toHaveText('0');
+
+    await page.locator('#p22-enter-sale-btn').click();
+    await expect(page.getByTestId('p22-feedback-banner')).toContainText(
+      'DUPLICATE_MANUAL_OR_OR_PAYMENT_REF'
+    );
+
+    // Enter #103 -> surfaces missing gap #102 & records exception
+    await page.locator('#p22-man-or-num').fill('103');
+    await page.locator('#p22-man-pay-ref').fill('CASH-MAN-103');
+    await page.locator('#p22-enter-sale-btn').click();
+    await expect(page.getByTestId('p22-feedback-banner')).toContainText('MANUAL_OUTAGE_SALE_ENTERED');
+
+    await page.locator('#p22-tab-exceptions').click();
+    await expect(page.getByTestId('p22-missing-gaps-text')).toContainText('MAN-CEBU-OR-0102');
+    await page.locator('#p22-exc-or-num').fill('102');
+    await page.locator('#p22-exc-kind').selectOption('missing_receipt');
+    await page.locator('#p22-exc-officer').fill('302');
+    await page.locator('#p22-exc-at').fill('2026-11-15T13:25:00Z');
+    await page.locator('#p22-exc-note').fill('Manual slip #102 missing in booklet');
+    await page.locator('#p22-record-exc-btn').click();
+    await expect(page.getByTestId('p22-feedback-banner')).toContainText(
+      'MANUAL_RECEIPT_EXCEPTION_RECORDED'
+    );
+
+    // Tab 3: Lookup recovery
+    await page.locator('#p22-tab-history').click();
+    await page.locator('[data-testid^="p22-ledger-fill-"]').first().click();
+    await page.locator('#p22-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p22-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p22-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p22-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p22_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

@@ -31,6 +31,7 @@ import { P18ClaimReturnReplacementWorkspace } from './P18ClaimReturnReplacementW
 import { P19RefundExceptionWorkspace } from './P19RefundExceptionWorkspace';
 import { P20BoothCheckoutWorkspace } from './P20BoothCheckoutWorkspace';
 import { P21BoothSaleOrWorkspace } from './P21BoothSaleOrWorkspace';
+import { P22ManualOutageWorkspace } from './P22ManualOutageWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -62,6 +63,7 @@ export type AppRouteMode =
   | 'p19-refunds'
   | 'p20-booth-checkout'
   | 'p21-booth-sale'
+  | 'p22-manual-outage'
   | 'health';
 
 interface ResolvedRoute {
@@ -147,6 +149,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p21' || view === 'booth-sale' || path === '/p21' || path === '/booth-sale') {
     return { mode: 'p21-booth-sale', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p22' || view === 'manual-outage' || path === '/p22' || path === '/manual-outage') {
+    return { mode: 'p22-manual-outage', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -532,6 +537,17 @@ export function App() {
               >
                 Immediate Booth Cart, Verified Sale &amp; Receipts
               </button>
+              <button
+                type="button"
+                id="open-p22-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p22-manual-outage');
+                }}
+              >
+                Manual Outage Receipt Controls &amp; Later Entry
+              </button>
 
               <button
                 type="button"
@@ -900,6 +916,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P21BoothSaleOrWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p22-manual-outage') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P22ManualOutageWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
