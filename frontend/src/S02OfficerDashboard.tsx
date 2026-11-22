@@ -414,7 +414,6 @@ export function S02OfficerDashboard({
       if (normalizedQuery === '') return true;
       return (
         entry.shortTitle.toLowerCase().includes(normalizedQuery) ||
-        entry.navCode.toLowerCase().includes(normalizedQuery) ||
         entry.title.toLowerCase().includes(normalizedQuery) ||
         entry.description.toLowerCase().includes(normalizedQuery) ||
         entry.keywords.some((kw) => kw.includes(normalizedQuery))
@@ -581,7 +580,6 @@ export function S02OfficerDashboard({
                           }}
                         >
                           <span className="s02-nav-item-text">{entry.shortTitle}</span>
-                          <span className="s02-nav-code">{entry.navCode}</span>
                         </button>
                       ))}
                     </div>

@@ -3000,7 +3000,7 @@ html.dark .s02-accordion-chevron {
 .s02-nav-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.45rem;
   width: 100%;
   height: 30px;
@@ -3027,29 +3027,11 @@ html.dark .s02-nav-item {
 }
 
 .s02-nav-item-text {
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.s02-nav-code {
-  flex-shrink: 0;
-  padding: 1px 5px;
-  border-radius: 5px;
-  font-family: var(--font-mono);
-  font-size: 0.64rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: rgb(var(--g500));
-  background-color: var(--glass-field-bg);
-}
-
-html.dark .s02-nav-code {
-  color: rgba(244, 244, 245, 0.56);
-}
-
-.s02-nav-item:hover .s02-nav-code {
-  color: rgb(var(--ink));
 }
 
 .s02-sidebar-footer {
