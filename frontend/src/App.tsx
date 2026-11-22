@@ -21,6 +21,7 @@ import { P08PurchasingWorkspace } from './P08PurchasingWorkspace';
 import { P09QuotationPoWorkspace } from './P09QuotationPoWorkspace';
 import { P10SupplierReceivingWorkspace } from './P10SupplierReceivingWorkspace';
 import { P11ActualIssueWorkspace } from './P11ActualIssueWorkspace';
+import { P12SalesOrderWorkspace } from './P12SalesOrderWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -42,6 +43,7 @@ export type AppRouteMode =
   | 'p09-quotations'
   | 'p10-receiving'
   | 'p11-issues'
+  | 'p12-sales'
   | 'health';
 
 interface ResolvedRoute {
@@ -97,6 +99,9 @@ function resolveInitialRoute(): ResolvedRoute {
     path === '/issuance'
   ) {
     return { mode: 'p11-issues', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p12' || view === 'sales-orders' || path === '/p12' || path === '/sales-orders') {
+    return { mode: 'p12-sales', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -372,6 +377,17 @@ export function App() {
               >
                 Signed Material Issues &amp; Partial Fulfillment
               </button>
+              <button
+                type="button"
+                id="open-p12-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p12-sales');
+                }}
+              >
+                Sales Orders, Buyer Acceptance &amp; Invoicing
+              </button>
 
               <button
                 type="button"
@@ -560,6 +576,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P11ActualIssueWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p12-sales') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P12SalesOrderWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

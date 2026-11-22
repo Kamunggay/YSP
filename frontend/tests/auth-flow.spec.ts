@@ -2046,4 +2046,137 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P12 Sales Order Review, Unsaved Draft Preservation, Stock Split, Buyer Acceptance & Billing-Only SI', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p12');
+    await expect(
+      page.getByRole('heading', { name: 'Sales Orders, Buyer Acceptance & Invoicing' })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p12-empty-pools-notice')).toBeVisible();
+    await expect(page.getByTestId('p12-empty-orders-notice')).toBeVisible();
+    await expect(page.getByTestId('p12-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p12-so-reserved-val')).toHaveText('0');
+    await expect(page.getByTestId('p12-available-val')).toHaveText('0');
+    await expect(page.getByTestId('p12-backorders-val')).toHaveText('0');
+
+    // Configure stock pool (10 usable, 6 RF reserved -> 4 available)
+    await page.locator('#p12-pool-variant-id').fill('71');
+    await page.locator('#p12-pool-item-name').fill('Four-Person Field Tent');
+    await page.locator('#p12-pool-usable').fill('10');
+    await page.locator('#p12-pool-rf-reserved').fill('6');
+    await page.locator('#p12-pool-unit-price').fill('250.00');
+    await page.locator('#p12-pool-max-discount').fill('50.00');
+    await page.locator('#p12-pool-scale').selectOption('0');
+    await page.locator('#p12-configure-pool-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('SALE_STOCK_POOL_CONFIGURED');
+    await expect(page.getByTestId('p12-usable-on-hand-val')).toHaveText('10');
+    await expect(page.getByTestId('p12-available-val')).toHaveText('4');
+
+    // Enter draft & verify unsaved edit preservation across tab switch
+    await page.locator('#p12-so-officer-id').fill('101');
+    await page.locator('#p12-so-variant-id').fill('71');
+    await page.locator('#p12-so-buyer-name').fill('Maria Santos');
+    await page.locator('#p12-so-buyer-contact').fill('09171234567');
+    await page.locator('#p12-so-qty').fill('7');
+    await page.locator('#p12-so-scale').selectOption('0');
+    await page.locator('#p12-so-unit-price').fill('250.00');
+    await page.locator('#p12-so-discount').fill('100.00');
+    await page.locator('#p12-so-requested-at').fill('2026-11-01T08:00:00Z');
+    await page.locator('#p12-so-terms').fill('50% deposit on backorder');
+
+    await page.locator('#p12-tab-review').click();
+    await expect(page.getByTestId('p12-unsaved-draft-pill')).toBeVisible();
+    await page.locator('#p12-tab-intake').click();
+    await expect(page.locator('#p12-so-buyer-name')).toHaveValue('Maria Santos');
+    await expect(page.locator('#p12-so-qty')).toHaveValue('7');
+
+    // Create draft & submit -> CEBU-SO-2026-000001
+    await page.locator('#p12-create-draft-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('SO_DRAFT_CREATED');
+    await page.locator('[data-testid^="p12-submit-so-"]').first().click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('SO_SUBMITTED');
+    await expect(page.getByTestId('p12-orders-list')).toContainText('CEBU-SO-2026-000001');
+
+    // Review tab: self-approval rejected -> excess discount rejected -> return -> revise -> resubmit -> approve
+    await page.locator('#p12-tab-review').click();
+    await page.locator('#p12-review-actor-id').fill('101');
+    await page.locator('#p12-approve-so-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('INDEPENDENCE_REQUIRED');
+
+    await page.locator('#p12-review-actor-id').fill('202');
+    await page.locator('#p12-approve-so-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('UNAPPROVED_DISCOUNT_EXCEEDS_LIMIT');
+
+    await page.locator('#p12-review-reason').fill('Reduce discount within approved PHP 50 cap');
+    await page.locator('#p12-return-so-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('SO_RETURNED');
+
+    await page.locator('#p12-revise-discount').fill('50.00');
+    await page.locator('#p12-review-reason').fill('Adjusted discount to PHP 50.00');
+    await page.locator('#p12-revise-so-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('SO_REVISED_TO_DRAFT');
+
+    await page.locator('#p12-resubmit-so-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('SO_SUBMITTED');
+
+    await page.locator('#p12-approve-so-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('SO_APPROVED');
+
+    // Commit stock split (4 reserved available, 3 backorder; usable on-hand stays 10)
+    await page.locator('#p12-split-actor-id').fill('301');
+    await page.locator('#p12-split-at').fill('2026-11-01T09:00:00Z');
+    await page.locator('#p12-commit-split-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('SO_STOCK_SPLIT_COMMITTED');
+    await expect(page.getByTestId('p12-usable-on-hand-val')).toHaveText('10');
+    await expect(page.getByTestId('p12-so-reserved-val')).toHaveText('4');
+    await expect(page.getByTestId('p12-available-val')).toHaveText('0');
+    await expect(page.getByTestId('p12-split-ledger')).toContainText('Awaiting Acceptance');
+
+    // Buyer Acceptance & Full-Order SI
+    await page.locator('#p12-tab-acceptance').click();
+    await page.locator('#p12-acc-actor-id').fill('101');
+    await page.locator('#p12-acc-decision').selectOption('accept_all');
+    await page.locator('#p12-acc-channel').fill('Phone Call');
+    await page.locator('#p12-acc-recorded-at').fill('2026-11-01T11:00:00Z');
+    await page.locator('#p12-acc-outcome').fill('Buyer confirmed 4 ready and 3 backorder');
+    await page.locator('#p12-record-acceptance-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('BUYER_ACCEPTANCE_RECORDED');
+    await expect(page.getByTestId('p12-backorders-val')).toHaveText('3');
+
+    await page.locator('#p12-si-actor-id').fill('401');
+    await page.locator('#p12-si-issued-at').fill('2026-11-01T11:05:00Z');
+    await page.locator('#p12-issue-si-btn').click();
+    await expect(page.getByTestId('p12-feedback-banner')).toContainText('SI_ISSUED');
+    await expect(page.getByTestId('p12-invoices-table')).toContainText('CEBU-SI-2026-000001');
+    await expect(page.getByTestId('p12-invoices-table')).toContainText('None (Billing Only)');
+
+    // Recovery lookup
+    await page.locator('#p12-tab-history').click();
+    await page.locator('[data-testid^="p12-ledger-fill-"]').first().click();
+    await page.locator('#p12-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p12-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p12-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p12-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p12_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
