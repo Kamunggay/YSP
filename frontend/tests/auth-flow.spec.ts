@@ -2552,4 +2552,103 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P16 Donation Receiving, Non-Cash Invariant, Same-SKU Restriction Segregation & Resolution', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p16');
+    await expect(
+      page.getByRole('heading', {
+        name: 'In-Kind Donations & Bounded Donor Restrictions',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p16-empty-da-notice')).toBeVisible();
+    await expect(page.getByTestId('p16-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p16-cash-or-count-val')).toHaveText('0');
+
+    // Acknowledge distribution_only DA -> creates 0 cash ORs
+    await page.locator('#p16-da-donor').fill('Cebu Relief Foundation');
+    await page.locator('#p16-da-officer').fill('101');
+    await page.locator('#p16-da-variant').fill('71');
+    await page.locator('#p16-da-item').fill('Four-Person Field Tent');
+    await page.locator('#p16-da-qty').fill('10');
+    await page.locator('#p16-da-scale').selectOption('0');
+    await page.locator('#p16-da-val').fill('250.00');
+    await page.locator('#p16-da-basis').fill('Sponsor invoice');
+    await page.locator('#p16-da-mode').selectOption('distribution_only');
+    await page.locator('#p16-da-at').fill('2026-11-05T08:00:00Z');
+    await page.locator('#p16-da-condition').fill('Relief distribution only');
+    await page.locator('#p16-ack-da-btn').click();
+    await expect(page.getByTestId('p16-feedback-banner')).toContainText('DA_ACKNOWLEDGED');
+    await expect(page.getByTestId('p16-cash-or-count-val')).toHaveText('0');
+
+    // Tab 2: Post DA RM (8 accepted, 2 rejected) + Register same-SKU PO commercial lot (5 saleable)
+    await page.locator('#p16-tab-lots').click();
+    await page.locator('#p16-rm-inspector').fill('301');
+    await page.locator('#p16-rm-at').fill('2026-11-05T08:30:00Z');
+    await page.locator('#p16-rm-accepted').fill('8');
+    await page.locator('#p16-rm-rejected').fill('2');
+    await page.locator('#p16-post-da-rm-btn').click();
+    await expect(page.getByTestId('p16-feedback-banner')).toContainText('DA_RM_POSTED');
+    await expect(page.getByTestId('p16-restricted-val')).toHaveText('8');
+
+    await page.locator('#p16-po-ref').fill('CEBU-PO-2026-000001');
+    await page.locator('#p16-po-rm-ref').fill('CEBU-RM-2026-000001');
+    await page.locator('#p16-po-variant').fill('71');
+    await page.locator('#p16-po-qty').fill('5');
+    await page.locator('#p16-po-item').fill('Four-Person Field Tent');
+    await page.locator('#p16-register-po-lot-btn').click();
+    await expect(page.getByTestId('p16-feedback-banner')).toContainText('COMMERCIAL_LOT_REGISTERED');
+    await expect(page.getByTestId('p16-saleable-val')).toHaveText('5');
+
+    // Select DA lot for allocation test -> Sale blocked -> Ordinary override blocked -> Internal RF succeeds
+    await page.locator('[data-testid^="p16-select-lot-"]').first().click();
+    await page.locator('#p16-alloc-kind').selectOption('track1_sale');
+    await page.locator('#p16-alloc-ref').fill('CEBU-SO-2026-000010');
+    await page.locator('#p16-alloc-qty').fill('3');
+    await page.locator('#p16-alloc-actor').fill('301');
+    await page.locator('#p16-alloc-at').fill('2026-11-05T09:00:00Z');
+    await page.locator('#p16-allocate-lot-btn').click();
+    await expect(page.getByTestId('p16-feedback-banner')).toContainText(
+      'DISTRIBUTION_ONLY_SALE_FORBIDDEN'
+    );
+
+    await page.locator('label[for="p16-alloc-override"]').click();
+    await page.locator('#p16-allocate-lot-btn').click();
+    await expect(page.getByTestId('p16-feedback-banner')).toContainText(
+      'ORDINARY_OVERRIDE_FORBIDDEN'
+    );
+
+    await page.locator('label[for="p16-alloc-override"]').click();
+    await page.locator('#p16-alloc-kind').selectOption('internal_rf');
+    await page.locator('#p16-alloc-ref').fill('CEBU-RF-2026-000003');
+    await page.locator('#p16-allocate-lot-btn').click();
+    await expect(page.getByTestId('p16-feedback-banner')).toContainText('LOT_ALLOCATED');
+    await expect(page.getByTestId('p16-restricted-val')).toHaveText('5');
+
+    // Lookup recovery
+    await page.locator('#p16-tab-history').click();
+    await page.locator('[data-testid^="p16-ledger-fill-"]').first().click();
+    await page.locator('#p16-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p16-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p16_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
