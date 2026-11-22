@@ -26,6 +26,7 @@ import { P13PaymentVerificationWorkspace } from './P13PaymentVerificationWorkspa
 import { P14TwoClocksExpiryWorkspace } from './P14TwoClocksExpiryWorkspace';
 import { P15CustomerReleaseWorkspace } from './P15CustomerReleaseWorkspace';
 import { P16DonationRestrictionWorkspace } from './P16DonationRestrictionWorkspace';
+import { P17CountVarianceAdjWorkspace } from './P17CountVarianceAdjWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -52,6 +53,7 @@ export type AppRouteMode =
   | 'p14-clocks'
   | 'p15-releases'
   | 'p16-donations'
+  | 'p17-variance-adj'
   | 'health';
 
 interface ResolvedRoute {
@@ -122,6 +124,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p16' || view === 'donations' || path === '/p16' || path === '/donations') {
     return { mode: 'p16-donations', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p17' || view === 'variance-adj' || path === '/p17' || path === '/variance-adj') {
+    return { mode: 'p17-variance-adj', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -452,6 +457,17 @@ export function App() {
               >
                 In-Kind Donations &amp; Bounded Donor Restrictions
               </button>
+              <button
+                type="button"
+                id="open-p17-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p17-variance-adj');
+                }}
+              >
+                Independent Counts &amp; Stock-Variance Adjustments
+              </button>
 
               <button
                 type="button"
@@ -730,6 +746,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P16DonationRestrictionWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p17-variance-adj') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P17CountVarianceAdjWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

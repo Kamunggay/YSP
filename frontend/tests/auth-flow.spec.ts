@@ -2651,4 +2651,126 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P17 Count Variance ADJ, Direct Edit Lock, Recount & GOV-06 Preparer/Custodian/Dual-Slot Bar', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p17');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Independent Counts & Stock-Variance Adjustments',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p17-empty-positions-notice')).toBeVisible();
+    await expect(page.getByTestId('p17-usable-on-hand-val')).toHaveText('0');
+
+    // Register locked position (10 usable, custodian 105) + attempt direct edit
+    await page.locator('#p17-pos-variant').fill('71');
+    await page.locator('#p17-pos-item').fill('Four-Person Field Tent');
+    await page.locator('#p17-pos-loc').fill('LOC-MAIN');
+    await page.locator('#p17-pos-custodian').fill('105');
+    await page.locator('#p17-pos-usable').fill('10');
+    await page.locator('#p17-pos-quar').fill('0');
+    await page.locator('#p17-pos-scale').selectOption('0');
+    await page.locator('#p17-register-pos-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText(
+      'LOCKED_BASELINE_POSITION_REGISTERED'
+    );
+    await expect(page.getByTestId('p17-usable-on-hand-val')).toHaveText('10');
+
+    await page.locator('#p17-direct-edit-val').fill('12');
+    await page.locator('#p17-direct-edit-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText(
+      'DIRECT_BALANCE_EDIT_FORBIDDEN'
+    );
+
+    // Tab 2: Initiate positive gain +2 (no balance change yet) + independent recount by 302
+    await page.locator('#p17-tab-recount').click();
+    await page.locator('#p17-adj-preparer').fill('101');
+    await page.locator('#p17-adj-kind').selectOption('positive_gain_discovery');
+    await page.locator('#p17-adj-qty').fill('2');
+    await page.locator('#p17-adj-at').fill('2026-11-06T08:00:00Z');
+    await page.locator('#p17-adj-hash').fill('a'.repeat(64));
+    await page.locator('#p17-adj-reason').fill('Found sealed carton post-cutoff');
+    await page.locator('#p17-initiate-adj-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText('VARIANCE_ADJ_INITIATED');
+    await expect(page.getByTestId('p17-usable-on-hand-val')).toHaveText('10');
+
+    await page.locator('#p17-rec-actor').fill('302');
+    await page.locator('#p17-rec-qty').fill('2');
+    await page.locator('#p17-rec-notes').fill('Verified 2 intact tents');
+    await page.locator('#p17-rec-at').fill('2026-11-06T08:30:00Z');
+    await page.locator('#p17-record-recount-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText(
+      'INDEPENDENT_RECOUNT_RECORDED'
+    );
+
+    // Tab 3: Preparer & Custodian barred -> Head 201 approved -> same 201 barred from Finance -> Fallback 203 succeeds -> Post once (usable 12)
+    await page.locator('#p17-tab-approvals').click();
+    await page.locator('#p17-app-slot').selectOption('chapter_head_slot');
+    await page.locator('#p17-app-actor').fill('101');
+    await page.locator('#p17-app-at').fill('2026-11-06T08:40:00Z');
+    await page.locator('#p17-approve-slot-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText(
+      'PREPARER_OR_CUSTODIAN_BARRED'
+    );
+
+    await page.locator('#p17-app-actor').fill('105');
+    await page.locator('#p17-approve-slot-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText(
+      'PREPARER_OR_CUSTODIAN_BARRED'
+    );
+
+    await page.locator('#p17-app-actor').fill('201');
+    await page.locator('#p17-approve-slot-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText('VARIANCE_SLOT_APPROVED');
+
+    await page.locator('#p17-app-slot').selectOption('finance_slot');
+    await page.locator('#p17-approve-slot-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText(
+      'DUAL_DUTY_SAME_PERSON_INSUFFICIENT'
+    );
+
+    await page.locator('#p17-app-actor').fill('203');
+    await page.locator('label[for="p17-app-fallback-checkbox"]').click();
+    await page.locator('#p17-approve-slot-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText('VARIANCE_SLOT_APPROVED');
+
+    await page.locator('#p17-post-actor').fill('301');
+    await page.locator('#p17-post-at').fill('2026-11-06T09:00:00Z');
+    await page.locator('#p17-post-adj-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText('VARIANCE_ADJ_POSTED');
+    await expect(page.getByTestId('p17-usable-on-hand-val')).toHaveText('12');
+    await expect(page.getByTestId('p17-adjs-table')).toContainText(
+      'GAIN-LOT-CEBU-ADJ-VAR-2026-000001'
+    );
+
+    // Repost blocked -> idempotent recovery lookup
+    await page.locator('#p17-post-adj-btn').click();
+    await expect(page.getByTestId('p17-feedback-banner')).toContainText('ADJ_ALREADY_POSTED');
+
+    await page.locator('#p17-tab-history').click();
+    await page.locator('[data-testid^="p17-ledger-fill-"]').first().click();
+    await page.locator('#p17-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p17-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p17_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
