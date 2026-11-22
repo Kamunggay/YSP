@@ -2313,4 +2313,123 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P14 Two 48h Clocks, Scoped Backorder Funding, Funded RepF Gate & Late-Payment Resolution', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p14');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Two 48h Clocks, Funded Procurement & Late Money',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p14-empty-orders-notice')).toBeVisible();
+    await expect(page.getByTestId('p14-usable-on-hand-val')).toHaveText('0');
+
+    // Register Dual-Clock Order: usable 10, rf 4, unpaid SO 3, paid SO 2, accepted backorder 5 (1 avail)
+    await page.locator('#p14-reg-so-ref').fill('CEBU-SO-2026-000001');
+    await page.locator('#p14-reg-variant-id').fill('71');
+    await page.locator('#p14-reg-item-name').fill('Four-Person Field Tent');
+    await page.locator('#p14-reg-scale').selectOption('0');
+    await page.locator('#p14-reg-usable').fill('10');
+    await page.locator('#p14-reg-rf').fill('4');
+    await page.locator('#p14-reg-unpaid-so').fill('3');
+    await page.locator('#p14-reg-paid-so').fill('2');
+    await page.locator('#p14-reg-backorder').fill('5');
+    await page.locator('#p14-reg-sale-amt').fill('1000.00');
+    await page.locator('#p14-reg-proc-cost').fill('400.00');
+    await page.locator('#p14-reg-created-at').fill('2026-11-01T08:00:00Z');
+    await page.locator('#p14-reg-accepted-at').fill('2026-11-01T10:00:00Z');
+    await page.locator('label[for="p14-reg-cost-approved"]').click();
+    await page.locator('#p14-register-order-btn').click();
+    await expect(page.getByTestId('p14-feedback-banner')).toContainText('DUAL_CLOCK_ORDER_REGISTERED');
+    await expect(page.getByTestId('p14-usable-on-hand-val')).toHaveText('10');
+    await expect(page.getByTestId('p14-unpaid-so-val')).toHaveText('3');
+    await expect(page.getByTestId('p14-paid-so-val')).toHaveText('2');
+    await expect(page.getByTestId('p14-available-val')).toHaveText('1');
+
+    // Tab 2: Screenshot & Backdating rejected -> valid backorder deposit protects backorder only
+    await page.locator('#p14-tab-funding').click();
+    await page.locator('#p14-fund-scope').selectOption('backorder_deposit');
+    await page.locator('#p14-fund-evidence').selectOption('pending_screenshot');
+    await page.locator('#p14-fund-amount').fill('400.00');
+    await page.locator('#p14-fund-actor').fill('202');
+    await page.locator('#p14-fund-verified-at').fill('2026-11-01T12:00:00Z');
+    await page.locator('#p14-record-funding-btn').click();
+    await expect(page.getByTestId('p14-feedback-banner')).toContainText(
+      'UNVERIFIED_PAYMENT_CANNOT_PROTECT'
+    );
+
+    await page.locator('#p14-fund-evidence').selectOption('verified_or');
+    await page.locator('#p14-fund-or-ref').fill('CEBU-OR-2026-000001');
+    await page.locator('#p14-record-funding-btn').click();
+    await expect(page.getByTestId('p14-feedback-banner')).toContainText('SCOPED_FUNDING_RECORDED');
+    await expect(page.getByTestId('p14-funded-backorder-val')).toHaveText('5');
+    await expect(page.getByTestId('p14-unpaid-so-val')).toHaveText('3');
+
+    // Tab 3: Evaluate Clock 1 expiry -> only unpaid 3 expire (available becomes 4, usable stays 10, funded stays 5)
+    await page.locator('#p14-tab-expiry').click();
+    await page.locator('#p14-eval-actor').fill('301');
+    await page.locator('#p14-eval-time').fill('2026-11-03T08:00:00Z');
+    await page.locator('#p14-evaluate-clocks-btn').click();
+    await expect(page.getByTestId('p14-feedback-banner')).toContainText('CLOCKS_EVALUATED');
+    await expect(page.getByTestId('p14-usable-on-hand-val')).toHaveText('10');
+    await expect(page.getByTestId('p14-unpaid-so-val')).toHaveText('0');
+    await expect(page.getByTestId('p14-paid-so-val')).toHaveText('2');
+    await expect(page.getByTestId('p14-funded-backorder-val')).toHaveText('5');
+    await expect(page.getByTestId('p14-available-val')).toHaveText('4');
+
+    // Another officer consumes 4 available units -> late payment routes to Finance refund without over-allocating
+    await page.locator('#p14-consume-qty').fill('4');
+    await page.locator('#p14-consume-elsewhere-btn').click();
+    await expect(page.getByTestId('p14-available-val')).toHaveText('0');
+
+    await page.locator('#p14-late-or-ref').fill('CEBU-OR-2026-000009');
+    await page.locator('#p14-late-qty').fill('2');
+    await page.locator('#p14-late-at').fill('2026-11-03T09:00:00Z');
+    await page.locator('#p14-late-fallback').selectOption('route_to_finance_refund');
+    await page.locator('#p14-resolve-late-btn').click();
+    await expect(page.getByTestId('p14-feedback-banner')).toContainText('LATE_PAYMENT_RESOLVED');
+    await expect(page.getByTestId('p14-late-list')).toContainText('route_to_finance_refund');
+
+    // Tab 2: Unpaid SO relabel blocked -> Funded RepF forward succeeds
+    await page.locator('#p14-tab-funding').click();
+    await page.locator('#p14-repf-actor').fill('202');
+    await page.locator('#p14-repf-at').fill('2026-11-03T09:10:00Z');
+    await page.locator('label[for="p14-repf-relabel-checkbox"]').click();
+    await page.locator('#p14-forward-repf-btn').click();
+    await expect(page.getByTestId('p14-feedback-banner')).toContainText(
+      'UNPAID_SO_RELABEL_FORBIDDEN'
+    );
+
+    await page.locator('label[for="p14-repf-relabel-checkbox"]').click();
+    await page.locator('#p14-forward-repf-btn').click();
+    await expect(page.getByTestId('p14-feedback-banner')).toContainText('REPF_FUNDED_FORWARDED');
+    await expect(page.getByTestId('p14-repf-list')).toContainText('CEBU-REPF-SO-2026-000001');
+
+    // Recovery lookup
+    await page.locator('#p14-tab-history').click();
+    await page.locator('[data-testid^="p14-ledger-fill-"]').first().click();
+    await page.locator('#p14-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p14-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p14_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
