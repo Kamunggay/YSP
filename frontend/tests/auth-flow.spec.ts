@@ -4458,4 +4458,142 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('operates S-02 My Work Officer Dashboard: unseeded pulse, uncertain-first queue, GOV-06 blocker, prefix jump & workstation launch', async ({ page }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text());
+    });
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+
+    await page.goto('/?view=dashboard');
+    await expect(page.getByRole('heading', { name: 'My Work — Chapter Workspace' })).toBeVisible();
+
+    // Verify pixel-exact vertical alignment and height across the top command search bar and action buttons
+    const searchBox = await page.locator('#s02-command-search').boundingBox();
+    const jumpBox = await page.locator('#s02-record-jump-btn').boundingBox();
+    const signOutBox = await page.locator('#s02-sign-out-btn').boundingBox();
+    expect(searchBox).not.toBeNull();
+    expect(jumpBox).not.toBeNull();
+    expect(signOutBox).not.toBeNull();
+    if (searchBox && jumpBox && signOutBox) {
+      expect(Math.abs(searchBox.y - jumpBox.y)).toBeLessThanOrEqual(1);
+      expect(Math.abs(searchBox.height - jumpBox.height)).toBeLessThanOrEqual(1);
+      expect(Math.abs(jumpBox.y - signOutBox.y)).toBeLessThanOrEqual(1);
+      expect(Math.abs(jumpBox.height - signOutBox.height)).toBeLessThanOrEqual(1);
+    }
+
+    await expect(page.getByTestId('s02-kpi-usable')).toHaveText('0');
+    await expect(page.getByTestId('s02-kpi-available')).toHaveText('0');
+    await expect(page.getByTestId('s02-kpi-cash')).toContainText('₱0.00');
+    await expect(page.getByTestId('s02-queue-empty')).toBeVisible();
+
+    // Confirm all 28 workspace launchers remain mounted and visible inside the 7 domain hubs
+    for (let pkg = 2; pkg <= 29; pkg++) {
+      const padded = String(pkg).padStart(2, '0');
+      await expect(page.locator(`#open-p${padded}-workspace-btn`)).toBeVisible();
+    }
+
+    // Open telemetry & queue controls drawer
+    await page.locator('#s02-toggle-controls-btn').click();
+    await expect(page.getByTestId('s02-controls-drawer')).toBeVisible();
+
+    // 1. Enqueue ordinary RF item
+    await page.locator('#s02-q-ref').fill('RF-2026-001');
+    await page.locator('#s02-q-title').fill('Standard Requisition Review');
+    await page.locator('#s02-q-duty').fill('Inventory Custodian');
+    await page.locator('#s02-q-route').selectOption('p07-requisitions');
+    await page.locator('#s02-q-due').fill('2026-11-24T12:00:00Z');
+    await page.locator('#s02-q-rank').fill('3');
+    await page.locator('#s02-q-preparer').fill('Officer Two');
+    await page.locator('#s02-q-category').fill('Requisition');
+    await page.locator('#s02-q-summary').fill('Verify eligible stockroom allocation.');
+    await page.locator('label[for="s02-q-independent"]').click();
+    await page.locator('#s02-enqueue-item-btn').click();
+
+    // 2. Enqueue overdue SO item
+    await page.locator('#s02-q-ref').fill('SO-2026-002');
+    await page.locator('#s02-q-title').fill('48h Reservation Expiring');
+    await page.locator('#s02-q-duty').fill('Finance Officer');
+    await page.locator('#s02-q-route').selectOption('p12-sales');
+    await page.locator('#s02-q-due').fill('2026-11-22T09:00:00Z');
+    await page.locator('#s02-q-rank').fill('2');
+    await page.locator('#s02-q-preparer').fill('Officer Three');
+    await page.locator('#s02-q-category').fill('48h Clock');
+    await page.locator('#s02-q-summary').fill('Buyer payment deadline exceeded.');
+    await page.locator('label[for="s02-q-overdue"]').click();
+    await page.locator('#s02-enqueue-item-btn').click();
+
+    // 3. Enqueue uncertain OR item prepared by 'Verified Officer' to trigger GOV-06 blocker
+    await page.locator('#s02-q-ref').fill('OR-2026-003');
+    await page.locator('#s02-q-title').fill('Interrupted OR Posting');
+    await page.locator('#s02-q-duty').fill('Finance Officer');
+    await page.locator('#s02-q-route').selectOption('p13-payments');
+    await page.locator('#s02-q-due').fill('2026-11-23T08:00:00Z');
+    await page.locator('#s02-q-rank').fill('5');
+    await page.locator('#s02-q-preparer').fill('Verified Officer');
+    await page.locator('#s02-q-category').fill('Uncertain Posting');
+    await page.locator('#s02-q-summary').fill('Check payment ledger outcome before retry.');
+    await page.locator('label[for="s02-q-overdue"]').click();
+    await page.locator('label[for="s02-q-uncertain"]').click();
+    await page.locator('#s02-enqueue-item-btn').click();
+
+    // Verify uncertain-first ordering in rendered DOM
+    const queueItems = page.getByTestId('s02-queue-item');
+    await expect(queueItems).toHaveCount(3);
+    await expect(queueItems.nth(0)).toHaveAttribute('data-record-ref', 'OR-2026-003');
+    await expect(queueItems.nth(1)).toHaveAttribute('data-record-ref', 'SO-2026-002');
+    await expect(queueItems.nth(2)).toHaveAttribute('data-record-ref', 'RF-2026-001');
+
+    // Verify GOV-06 blocker on OR-2026-003 prepared by Verified Officer
+    await expect(queueItems.nth(0).getByTestId('s02-independence-blocker')).toBeVisible();
+
+    // Inspect alert keeps task in Needs My Action and increments inspection count
+    await page.getByTestId('s02-inspect-OR-2026-003').click();
+    await expect(page.getByTestId('s02-feedback-banner')).toContainText('ALERT_INSPECTED_TASK_REMAINS_OPEN');
+    await expect(queueItems.nth(0)).toContainText('Inspections: 1');
+    await expect(page.locator('#s02-queue-tab-needs')).toContainText('Needs My Action (3)');
+
+    // Update operational pulse KPIs
+    await page.locator('#s02-pulse-usable').fill('42');
+    await page.locator('#s02-pulse-available').fill('30');
+    await page.locator('#s02-pulse-clocks').fill('2');
+    await page.locator('#s02-pulse-slips').fill('3');
+    await page.locator('#s02-pulse-cash').fill('1250.50');
+    await page.locator('#s02-pulse-booth').fill('15');
+    await page.locator('#s02-pulse-rop').fill('1');
+    await page.locator('#s02-update-pulse-btn').click();
+
+    await expect(page.getByTestId('s02-kpi-usable')).toHaveText('42');
+    await expect(page.getByTestId('s02-kpi-available')).toHaveText('30');
+    await expect(page.getByTestId('s02-kpi-clocks')).toHaveText('2');
+    await expect(page.getByTestId('s02-kpi-cash')).toContainText('₱1,250.50');
+    await expect(page.getByTestId('s02-kpi-booth-rop')).toContainText('15 units / 1 ROP');
+
+    // Update chapter lifecycle & maintenance fencing
+    await page.locator('#s02-life-phase').selectOption('grace_read_export');
+    await page.locator('#s02-life-days').fill('14');
+    await page.locator('label[for="s02-life-fenced"]').click();
+    await page.locator('#s02-life-notice').fill('Scheduled DB backup until 22:30 UTC.');
+    await page.locator('#s02-update-lifecycle-btn').click();
+
+    await expect(page.getByTestId('s02-maintenance-banner')).toBeVisible();
+    await expect(page.getByTestId('s02-lifecycle-banner')).toBeVisible();
+    await expect(page.getByTestId('s02-subscription-pill')).toContainText('14-Day Read & Export Grace (14d remaining)');
+
+    // Fast record prefix jump to P12 Sales Order workspace
+    await page.locator('#s02-command-search').fill('SO-2026-002');
+    await page.locator('#s02-record-jump-btn').click();
+    await expect(page.getByTestId('p12-workspace')).toBeVisible();
+
+    // Return to Dashboard and verify workstation launch into P24 Reports workspace
+    await page.locator('#p12-back-dashboard-btn').click();
+    await expect(page.getByRole('heading', { name: 'My Work — Chapter Workspace' })).toBeVisible();
+    await page.locator('#open-p24-workspace-btn').click();
+    await expect(page.getByTestId('p24-workspace')).toBeVisible();
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
