@@ -38,6 +38,7 @@ import { P25OperationsMapWorkspace } from './P25OperationsMapWorkspace';
 import { P26CutoverSubscriptionWorkspace } from './P26CutoverSubscriptionWorkspace';
 import { P27HostReleaseWorkspace } from './P27HostReleaseWorkspace';
 import { P28RecoveryHandoffWorkspace } from './P28RecoveryHandoffWorkspace';
+import { P29AcceptanceDossierWorkspace } from './P29AcceptanceDossierWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -76,6 +77,7 @@ export type AppRouteMode =
   | 'p26-cutover'
   | 'p27-host-release'
   | 'p28-recovery'
+  | 'p29-acceptance'
   | 'health';
 
 interface ResolvedRoute {
@@ -182,6 +184,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p28' || view === 'recovery-handoff' || path === '/p28' || path === '/recovery-handoff') {
     return { mode: 'p28-recovery', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p29' || view === 'acceptance' || path === '/p29' || path === '/acceptance') {
+    return { mode: 'p29-acceptance', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -643,6 +648,17 @@ export function App() {
                 }}
               >
                 Independent Off-Host Recovery &amp; Operating Handoff
+              </button>
+              <button
+                type="button"
+                id="open-p29-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p29-acceptance');
+                }}
+              >
+                Full Regression, Connected Walkthrough &amp; Acceptance Dossier
               </button>
 
               <button
@@ -1138,6 +1154,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P28RecoveryHandoffWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p29-acceptance') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P29AcceptanceDossierWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

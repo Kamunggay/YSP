@@ -4292,4 +4292,170 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P29 Connected Professor Walkthrough, Coverage Matrix, Honest Demo vs Production Release Verdict', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p29');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Full Regression, Connected Walkthrough & Acceptance Dossier',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p29-empty-dossier-notice')).toBeVisible();
+    await expect(page.getByTestId('p29-steps-count-val')).toHaveText('0 / 9');
+    await expect(page.getByTestId('p29-verdict-label-val')).toHaveText('pending_verification');
+    await expect(page.getByTestId('p29-prod-accepted-val')).toHaveText('false');
+
+    // Tab 1: Block disconnected mock build -> record all 9 connected steps
+    await page.locator('#p29-step-num').fill('1');
+    await page.locator('#p29-step-title').fill('Setup & Opening IPC');
+    await page.locator('#p29-step-records').fill('IPC-1, RM-1');
+    await page.locator('#p29-step-actor').fill('101');
+    await page.locator('#p29-step-at').fill('2026-11-22T09:01:00Z');
+    await page.locator('label[for="p29-step-mock"]').click();
+    await page.locator('#p29-record-step-btn').click();
+    await expect(page.getByTestId('p29-feedback-banner')).toContainText(
+      'DISCONNECTED_DEMO_BUILD_FORBIDDEN'
+    );
+
+    await page.locator('label[for="p29-step-mock"]').click();
+    for (let step = 1; step <= 9; step += 1) {
+      await page.locator('#p29-step-num').fill(String(step));
+      await page.locator('#p29-step-title').fill(`Connected Walkthrough Scenario ${step}`);
+      await page.locator('#p29-step-records').fill(`REC-${step}-A, REC-${step}-B`);
+      await page.locator('#p29-step-at').fill(`2026-11-22T09:0${step}:00Z`);
+      await page.locator('#p29-record-step-btn').click();
+      await expect(page.getByTestId('p29-feedback-banner')).toContainText(
+        'CONNECTED_DEMO_STEP_RECORDED'
+      );
+    }
+    await expect(page.getByTestId('p29-steps-count-val')).toHaveText('9 / 9');
+
+    // Save labeled academic test evidence bundle (AC-22 recovery still pending)
+    await page.locator('#p29-ev-ref').fill('EV-ACADEMIC-2026-11');
+    await page.locator('#p29-ev-actor').fill('101');
+    await page.locator('#p29-ev-at').fill('2026-11-22T09:15:00Z');
+    await page.locator('#p29-record-ev-btn').click();
+    await expect(page.getByTestId('p29-feedback-banner')).toContainText(
+      'COVERAGE_EVIDENCE_BUNDLE_RECORDED'
+    );
+
+    // Tab 2: Open critical defect -> confirm blocks verdict -> resolve defect
+    await page.locator('#p29-tab-defects').click();
+    await page.locator('#p29-def-ref').fill('DEF-CRIT-01');
+    await page.locator('#p29-def-pkg').fill('P14');
+    await page.locator('#p29-def-summary').fill('Pending clock race verification');
+    await page.locator('#p29-def-actor').fill('101');
+    await page.locator('#p29-def-at').fill('2026-11-22T09:16:00Z');
+    await page.locator('#p29-submit-defect-btn').click();
+    await expect(page.getByTestId('p29-open-crit-val')).toHaveText('1');
+
+    await page.locator('#p29-tab-verdict').click();
+    await page.locator('#p29-ver-actor').fill('101');
+    await page.locator('#p29-ver-at').fill('2026-11-22T09:17:00Z');
+    await page.locator('#p29-eval-verdict-btn').click();
+    await expect(page.getByTestId('p29-feedback-banner')).toContainText(
+      'OPEN_CRITICAL_DEFECT_BLOCKS_RELEASE'
+    );
+
+    await page.locator('#p29-tab-defects').click();
+    await page.locator('#p29-def-status').selectOption('resolved');
+    await page.locator('#p29-def-summary').fill('Clock race fixed and verified');
+    await page.locator('#p29-def-at').fill('2026-11-22T09:20:00Z');
+    await page.locator('#p29-submit-defect-btn').click();
+    await expect(page.getByTestId('p29-open-crit-val')).toHaveText('0');
+
+    // Tab 3: Honest Academic Demo verdict passed while production remains blocked pending gates
+    await page.locator('#p29-tab-verdict').click();
+    await page.locator('#p29-ver-mode').selectOption('academic_functional_demo');
+    await page.locator('#p29-eval-verdict-btn').click();
+    await expect(page.getByTestId('p29-feedback-banner')).toContainText(
+      'ACADEMIC_FUNCTIONAL_DEMO_READY'
+    );
+    await expect(page.getByTestId('p29-acad-ready-val')).toHaveText('true');
+    await expect(page.getByTestId('p29-prod-accepted-val')).toHaveText('false');
+    await expect(page.getByTestId('p29-verdict-label-val')).toHaveText(
+      'academic_functional_demo_only'
+    );
+
+    await page.locator('#p29-ver-mode').selectOption('complete_production_release');
+    await page.locator('#p29-eval-verdict-btn').click();
+    await expect(page.getByTestId('p29-feedback-banner')).toContainText(
+      'COMPLETE_RELEASE_BLOCKED_PENDING_GATES'
+    );
+
+    // Tab 1: Complete production candidate bundle + AC-22 recovery + P27 readiness
+    await page.locator('#p29-tab-walkthrough').click();
+    await page.locator('#p29-ev-ref').fill('EV-PROD-CANDIDATE-2026-11');
+    await page.locator('#p29-ev-env').selectOption('production_candidate');
+    await page.locator('#p29-ev-gates').fill('11');
+    await page.locator('label[for="p29-ev-ac22"]').click();
+    await page.locator('label[for="p29-ev-p27"]').click();
+    await page.locator('#p29-ev-at').fill('2026-11-22T10:00:00Z');
+    await page.locator('#p29-record-ev-btn').click();
+
+    // Tab 2: Developer signoff denied -> distinct Chapter Head + Finance operational signoffs
+    await page.locator('#p29-tab-defects').click();
+    await page.locator('#p29-sig-role').selectOption('DEVELOPER');
+    await page.locator('#p29-sig-actor').fill('801');
+    await page.locator('#p29-sig-note').fill('Developer stage check');
+    await page.locator('#p29-sig-at').fill('2026-11-22T10:05:00Z');
+    await page.locator('#p29-record-signoff-btn').click();
+    await expect(page.getByTestId('p29-feedback-banner')).toContainText(
+      'DEVELOPER_ALONE_CANNOT_OPEN_LIVE_OPERATIONS'
+    );
+
+    await page.locator('#p29-sig-role').selectOption('CHAPTER_HEAD');
+    await page.locator('#p29-sig-actor').fill('101');
+    await page.locator('#p29-sig-note').fill('Approved live chapter launch');
+    await page.locator('#p29-sig-at').fill('2026-11-22T10:10:00Z');
+    await page.locator('#p29-record-signoff-btn').click();
+
+    await page.locator('#p29-sig-role').selectOption('FINANCE');
+    await page.locator('#p29-sig-actor').fill('102');
+    await page.locator('#p29-sig-note').fill('Approved money & OR controls');
+    await page.locator('#p29-sig-at').fill('2026-11-22T10:15:00Z');
+    await page.locator('#p29-record-signoff-btn').click();
+
+    // Tab 3: Complete Production Release Accepted
+    await page.locator('#p29-tab-verdict').click();
+    await page.locator('#p29-ver-mode').selectOption('complete_production_release');
+    await page.locator('#p29-ver-at').fill('2026-11-22T10:20:00Z');
+    await page.locator('#p29-eval-verdict-btn').click();
+    await expect(page.getByTestId('p29-feedback-banner')).toContainText(
+      'COMPLETE_PRODUCTION_RELEASE_ACCEPTED'
+    );
+    await expect(page.getByTestId('p29-prod-accepted-val')).toHaveText('true');
+    await expect(page.getByTestId('p29-verdict-label-val')).toHaveText(
+      'complete_production_release_accepted'
+    );
+
+    // Tab 4: Recovery lookup
+    await page.locator('#p29-tab-history').click();
+    await page.locator('[data-testid^="p29-ledger-fill-"]').first().click();
+    await page.locator('#p29-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p29-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p29-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p29-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p29_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
