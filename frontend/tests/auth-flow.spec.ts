@@ -1466,4 +1466,151 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P07 Internal Requisition intake, unsaved edit preservation, return-revise-approve lifecycle, reservation AC-01 conflict, cancellation fence & recovery', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p07');
+    await expect(
+      page.getByRole('heading', { name: 'Internal Requisitions & Stock Reservations' })
+    ).toBeVisible();
+
+    // Zero-data initial state check
+    await expect(page.getByTestId('p07-empty-queue-notice')).toBeVisible();
+    await expect(page.getByTestId('p07-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p07-rf-reserved-val')).toHaveText('0');
+    await expect(page.getByTestId('p07-available-val')).toHaveText('0');
+    await expect(page.getByTestId('p07-shortage-val')).toHaveText('0');
+    await expect(page.locator('#p07-draft-requester-id')).toHaveValue('');
+    await expect(page.locator('#p07-draft-qty')).toHaveValue('');
+
+    // Fill draft & verify unsaved edit preservation across tab switch
+    await page.locator('#p07-draft-requester-id').fill('101');
+    await page.locator('#p07-draft-unit-id').fill('UNIT-LOGISTICS');
+    await page.locator('#p07-draft-needed-at').fill('2026-12-01T09:00:00.000000Z');
+    await page.locator('#p07-draft-justification').fill('Relief shelter staging');
+    await page.locator('#p07-draft-line-id').fill('rf-line-501');
+    await page.locator('#p07-draft-variant-id').fill('71');
+    await page.locator('#p07-draft-sku').fill('TENT-4P');
+    await page.locator('#p07-draft-item-name').fill('Four-Person Field Tent');
+    await page.locator('#p07-draft-qty').fill('10');
+    await page.locator('#p07-draft-scale').selectOption('0');
+
+    await page.locator('#p07-tab-review').click();
+    await expect(page.getByTestId('p07-unsaved-draft-pill')).toBeVisible();
+    await page.locator('#p07-tab-intake').click();
+    await expect(page.locator('#p07-draft-justification')).toHaveValue('Relief shelter staging');
+    await expect(page.locator('#p07-draft-qty')).toHaveValue('10');
+
+    // Create draft & submit for once-only CEBU-RF-2026-000001 reference
+    await page.locator('#p07-create-draft-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RF_DRAFT_CREATED');
+    await page.locator('[data-testid^="p07-submit-rf-"]').first().click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RF_SUBMITTED');
+    await expect(page.getByTestId('p07-queue-list')).toContainText('CEBU-RF-2026-000001');
+
+    // Switch to Review: self-approval rejected -> return -> revise -> resubmit -> independent approve
+    await page.locator('#p07-tab-review').click();
+    await page.locator('#p07-review-actor-id').fill('101');
+    await page.locator('#p07-approve-rf-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('INDEPENDENCE_REQUIRED');
+
+    await page.locator('#p07-review-actor-id').fill('202');
+    await page.locator('#p07-review-reason').fill('Verify unit staging allocation');
+    await page.locator('#p07-return-rf-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RF_RETURNED');
+
+    await page.locator('#p07-revise-reason').fill('Confirmed logistics allocation');
+    await page.locator('#p07-revise-rf-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RF_REVISED_TO_DRAFT');
+
+    await page.locator('#p07-submit-selected-rf-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RF_SUBMITTED');
+
+    await page.locator('#p07-review-actor-id').fill('202');
+    await page.locator('#p07-review-actor-name').fill('Approver Two');
+    await page.locator('#p07-approve-rf-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RF_APPROVED');
+    await expect(page.getByTestId('p07-selected-rf-summary')).toContainText('CEBU-RF-2026-000001');
+
+    // Switch to Reservations: register lot (10 usable), prepare partial (6) & competing (10)
+    await page.locator('#p07-tab-reservations').click();
+    await page.locator('#p07-lot-id').fill('lot-71');
+    await page.locator('#p07-lot-variant-id').fill('71');
+    await page.locator('#p07-lot-item-name').fill('Four-Person Field Tent');
+    await page.locator('#p07-lot-qty').fill('10');
+    await page.locator('#p07-lot-scale').selectOption('0');
+    await page.locator('#p07-register-lot-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('STOCK_LOT_REGISTERED');
+    await expect(page.getByTestId('p07-usable-on-hand-val')).toHaveText('10');
+
+    await page.locator('#p07-res-actor-id').fill('301');
+    await page.locator('#p07-res-offset').fill('0');
+    await page.locator('#p07-res-qty').fill('6');
+    await page.locator('#p07-prepare-res-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RESERVATION_PREPARED');
+
+    await page.locator('#p07-res-actor-id').fill('302');
+    await page.locator('#p07-res-offset').fill('0');
+    await page.locator('#p07-res-qty').fill('10');
+    await page.locator('#p07-prepare-res-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RESERVATION_PREPARED');
+
+    // Commit first preparation (6 units) -> succeeds; competing second commit (10 units) -> AVAILABILITY_CONFLICT
+    await page.locator('[data-testid^="p07-commit-prep-"]').first().click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RESERVATION_COMMITTED');
+    await expect(page.getByTestId('p07-usable-on-hand-val')).toHaveText('10');
+    await expect(page.getByTestId('p07-rf-reserved-val')).toHaveText('6');
+    await expect(page.getByTestId('p07-available-val')).toHaveText('4');
+
+    await page.locator('[data-testid^="p07-commit-prep-"]').first().click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('AVAILABILITY_CONFLICT');
+    await expect(page.getByTestId('p07-rf-reserved-val')).toHaveText('6');
+
+    // Cancellation while reservation active -> COMMITMENT_CONFLICT; release -> RF_CANCELED
+    await page.locator('#p07-tab-review').click();
+    await page.locator('#p07-review-reason').fill('Event rescheduled');
+    await page.locator('#p07-cancel-rf-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('COMMITMENT_CONFLICT');
+
+    await page.locator('#p07-tab-reservations').click();
+    await page.locator('#p07-res-manage-reason').fill('Release reservation prior to cancel');
+    await page.locator('[data-testid^="p07-release-res-"]').first().click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RESERVATION_RELEASED');
+    await expect(page.getByTestId('p07-rf-reserved-val')).toHaveText('0');
+    await expect(page.getByTestId('p07-available-val')).toHaveText('10');
+
+    await page.locator('#p07-tab-review').click();
+    await page.locator('#p07-cancel-rf-btn').click();
+    await expect(page.getByTestId('p07-feedback-banner')).toContainText('RF_CANCELED');
+
+    // Audit History & Operation Status Recovery lookup
+    await page.locator('#p07-tab-history').click();
+    await expect(page.getByTestId('p07-history-list')).toContainText('commitRfReservation');
+    await expect(page.getByTestId('p07-history-list')).toContainText('cancelInternalRf');
+
+    await page.locator('[data-testid^="p07-ledger-fill-"]').first().click();
+    await page.locator('#p07-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p07-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p07-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p07-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p07_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
