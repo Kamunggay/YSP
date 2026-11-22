@@ -22,6 +22,7 @@ import { P09QuotationPoWorkspace } from './P09QuotationPoWorkspace';
 import { P10SupplierReceivingWorkspace } from './P10SupplierReceivingWorkspace';
 import { P11ActualIssueWorkspace } from './P11ActualIssueWorkspace';
 import { P12SalesOrderWorkspace } from './P12SalesOrderWorkspace';
+import { P13PaymentVerificationWorkspace } from './P13PaymentVerificationWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -44,6 +45,7 @@ export type AppRouteMode =
   | 'p10-receiving'
   | 'p11-issues'
   | 'p12-sales'
+  | 'p13-payments'
   | 'health';
 
 interface ResolvedRoute {
@@ -102,6 +104,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p12' || view === 'sales-orders' || path === '/p12' || path === '/sales-orders') {
     return { mode: 'p12-sales', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p13' || view === 'payments' || path === '/p13' || path === '/payments') {
+    return { mode: 'p13-payments', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -388,6 +393,17 @@ export function App() {
               >
                 Sales Orders, Buyer Acceptance &amp; Invoicing
               </button>
+              <button
+                type="button"
+                id="open-p13-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p13-payments');
+                }}
+              >
+                Payment Verification, Official Receipts &amp; Line Credit
+              </button>
 
               <button
                 type="button"
@@ -594,6 +610,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P12SalesOrderWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p13-payments') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P13PaymentVerificationWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

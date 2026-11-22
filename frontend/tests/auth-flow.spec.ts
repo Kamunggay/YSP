@@ -2179,4 +2179,138 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P13 Payment Verification, Screenshot/Duplicate Guards, 400+600 OR Installments, Line Credit & Reconciliation', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p13');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Payment Verification, Official Receipts & Line Credit',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p13-empty-accounts-notice')).toBeVisible();
+    await expect(page.getByTestId('p13-empty-orders-notice')).toBeVisible();
+    await expect(page.getByTestId('p13-verified-credit-val')).toHaveText('0.00');
+
+    // Reject unapproved personal wallet channel
+    await page.locator('#p13-acc-channel').selectOption('personal_unapproved');
+    await page.locator('#p13-acc-code').fill('GCASH-PERSONAL');
+    await page.locator('#p13-acc-label').fill('Personal Account');
+    await page.locator('#p13-acc-finance-id').fill('201');
+    await page.locator('#p13-register-account-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('UNAPPROVED_PAYMENT_CHANNEL');
+
+    // Register official GCash + Cash Desk accounts + Billable SO (PHP 1000.00 due)
+    await page.locator('#p13-acc-channel').selectOption('official_gcash');
+    await page.locator('#p13-acc-code').fill('GCASH-CEBU-01');
+    await page.locator('#p13-acc-label').fill('YSP Official GCash');
+    await page.locator('#p13-register-account-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('OFFICIAL_ACCOUNT_REGISTERED');
+
+    await page.locator('#p13-acc-channel').selectOption('cash');
+    await page.locator('#p13-acc-code').fill('CASH-CEBU-DESK');
+    await page.locator('#p13-acc-label').fill('Chapter Cash Desk');
+    await page.locator('#p13-register-account-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('OFFICIAL_ACCOUNT_REGISTERED');
+
+    await page.locator('#p13-bill-so-ref').fill('CEBU-SO-2026-000001');
+    await page.locator('#p13-bill-si-ref').fill('CEBU-SI-2026-000001');
+    await page.locator('#p13-bill-buyer').fill('Maria Santos');
+    await page.locator('#p13-bill-total').fill('1000.00');
+    await page.locator('#p13-bill-avail-val').fill('600.00');
+    await page.locator('#p13-bill-backorder-cost').fill('400.00');
+    await page.locator('#p13-register-bill-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('BILLABLE_SO_REGISTERED');
+
+    // Tab 2: Submit screenshot-only PHP 400.00 -> duplicate blocked -> screenshot-alone OR blocked -> confirm credit & issue OR #1
+    await page.locator('#p13-tab-verify').click();
+    await page.locator('#p13-pay-payer').fill('Maria Santos');
+    await page.locator('#p13-pay-collector').fill('101');
+    await page.locator('#p13-pay-channel').selectOption('official_gcash');
+    await page.locator('#p13-pay-account').fill('GCASH-CEBU-01');
+    await page.locator('#p13-pay-ext-ref').fill('GC-771201');
+    await page.locator('#p13-pay-amount').fill('400.00');
+    await page.locator('#p13-pay-ev-kind').selectOption('screenshot_only');
+    await page.locator('#p13-pay-received-at').fill('2026-11-02T09:00:00Z');
+    await page.locator('#p13-submit-payment-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('PAYMENT_EVIDENCE_STAGED');
+
+    await page.locator('#p13-pay-ext-ref').fill('GC-771201');
+    await page.locator('#p13-pay-amount').fill('400.00');
+    await page.locator('#p13-submit-payment-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('DUPLICATE_PAYMENT_REFERENCE');
+
+    await page.locator('#p13-ver-verifier-id').fill('202');
+    await page.locator('#p13-ver-at').fill('2026-11-02T09:05:00Z');
+    await page.locator('#p13-verify-or-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('SCREENSHOT_ALONE_INSUFFICIENT');
+
+    await page.locator('label[for="p13-ver-confirmed-checkbox"]').click();
+    await page.locator('#p13-verify-or-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('OR_ISSUED');
+    await expect(page.getByTestId('p13-verified-credit-val')).toHaveText('400.00');
+
+    // Submit distinct PHP 600.00 cash installment -> issue Full Settlement OR #2 (total 1000.00)
+    await page.locator('#p13-pay-channel').selectOption('cash');
+    await page.locator('#p13-pay-account').fill('CASH-CEBU-DESK');
+    await page.locator('#p13-pay-ext-ref').fill('CASH-RCP-0902');
+    await page.locator('#p13-pay-amount').fill('600.00');
+    await page.locator('#p13-pay-ev-kind').selectOption('physical_cash_counted');
+    await page.locator('#p13-submit-payment-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('PAYMENT_EVIDENCE_STAGED');
+
+    await page.locator('#p13-verify-or-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('OR_ISSUED');
+    await expect(page.getByTestId('p13-verified-credit-val')).toHaveText('1000.00');
+
+    // Tab 3: Allocate credit & reconcile independently
+    await page.locator('#p13-tab-allocate').click();
+    await page.locator('#p13-alloc-finance-id').fill('201');
+    await page.locator('#p13-alloc-at').fill('2026-11-02T14:12:00Z');
+    await page.locator('#p13-alloc-coverage').fill('600.00');
+    await page.locator('#p13-alloc-funding').fill('400.00');
+    await page.locator('#p13-allocate-credit-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('CREDIT_ALLOCATED');
+    await expect(page.getByTestId('p13-verified-credit-val')).toHaveText('1000.00');
+    await expect(page.getByTestId('p13-release-coverage-val')).toHaveText('600.00');
+    await expect(page.getByTestId('p13-procurement-funding-val')).toHaveText('400.00');
+
+    // Verifier 202 blocked from self-reconciling -> 203 succeeds
+    await page.locator('#p13-rec-actor-id').fill('202');
+    await page.locator('#p13-rec-at').fill('2026-11-02T16:00:00Z');
+    await page.locator('#p13-reconcile-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('INDEPENDENCE_REQUIRED');
+
+    await page.locator('#p13-rec-actor-id').fill('203');
+    await page.locator('#p13-reconcile-btn').click();
+    await expect(page.getByTestId('p13-feedback-banner')).toContainText('FINANCE_RECONCILED');
+    await expect(page.getByTestId('p13-or-table')).toContainText('CEBU-OR-2026-000001');
+    await expect(page.getByTestId('p13-or-table')).toContainText('CEBU-OR-2026-000002');
+
+    // Lookup recovery
+    await page.locator('#p13-tab-history').click();
+    await page.locator('[data-testid^="p13-ledger-fill-"]').first().click();
+    await page.locator('#p13-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p13-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p13_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
