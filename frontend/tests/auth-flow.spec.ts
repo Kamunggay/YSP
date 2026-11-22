@@ -3992,4 +3992,148 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P27 Reproducible Host Manifest, Maintenance Fencing, Failed Release Lock, Scheduler Lease & Credit Telemetry', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p27');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Reproducible Host Releases, Maintenance Fencing & Operating Controls',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p27-empty-manifests-notice')).toBeVisible();
+    await expect(page.getByTestId('p27-service-mode-val')).toHaveText('operational');
+    await expect(page.getByTestId('p27-writes-blocked-val')).toHaveText('false');
+
+    // Tab 1: Block public DB port -> pin valid manifest -> block maintenance during booth -> enter valid maintenance fence
+    await page.locator('#p27-rel-tag').fill('v1.6.0-rc1');
+    await page.locator('#p27-rel-fe-hash').fill('sha256-fe-160');
+    await page.locator('#p27-rel-be-digest').fill('sha256-be-160');
+    await page.locator('#p27-rel-schema').fill('2026_11_22_0016');
+    await page.locator('#p27-rel-actor').fill('101');
+    await page.locator('#p27-rel-at').fill('2026-11-22T01:05:00Z');
+    await page.locator('label[for="p27-rel-private-db"]').click();
+    await page.locator('#p27-register-rel-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText('PUBLIC_MYSQL_PORT_FORBIDDEN');
+
+    await page.locator('label[for="p27-rel-private-db"]').click();
+    await page.locator('#p27-register-rel-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText('RELEASE_MANIFEST_REGISTERED');
+
+    await page.locator('#p27-maint-ref').fill('MAINT-2026-11-B');
+    await page.locator('#p27-maint-lead').fill('101');
+    await page.locator('#p27-maint-affected').fill('All business postings');
+    await page.locator('#p27-maint-started').fill('2026-11-22T02:05:00Z');
+    await page.locator('#p27-maint-next').fill('2026-11-22T02:35:00Z');
+    await page.locator('label[for="p27-maint-outside-booth"]').click();
+    await page.locator('#p27-start-maint-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText(
+      'MAINTENANCE_DURING_ACTIVE_BOOTH_BLOCKED'
+    );
+
+    await page.locator('label[for="p27-maint-outside-booth"]').click();
+    await page.locator('#p27-start-maint-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText(
+      'MAINTENANCE_WRITE_FENCE_ENABLED'
+    );
+    await expect(page.getByTestId('p27-service-mode-val')).toHaveText('maintenance_fenced');
+    await expect(page.getByTestId('p27-writes-blocked-val')).toHaveText('true');
+
+    // Tab 2: Simulate migration failure -> postings remain blocked + old image rollback forbidden -> recover cleanly
+    await page.locator('#p27-tab-deploy').click();
+    await page.locator('#p27-dep-actor').fill('101');
+    await page.locator('#p27-dep-at').fill('2026-11-22T03:10:00Z');
+    await page.locator('label[for="p27-dep-sim-fail"]').click();
+    await page.locator('label[for="p27-dep-incompat-schema"]').click();
+    await page.locator('#p27-deploy-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText(
+      'FAILED_RELEASE_POSTINGS_REMAIN_BLOCKED'
+    );
+    await expect(page.getByTestId('p27-service-mode-val')).toHaveText('failed_release_locked');
+
+    await page.locator('#p27-test-blocked-write-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText(
+      'SERVICE_FENCED_WRITE_BLOCKED_EXPLICITLY'
+    );
+    await page.locator('#p27-test-unsafe-rollback-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText(
+      'INCOMPATIBLE_SCHEMA_OLD_IMAGE_ROLLBACK_FORBIDDEN'
+    );
+
+    // Recover via clean patched release
+    await page.locator('#p27-tab-manifest').click();
+    await page.locator('#p27-rel-tag').fill('v1.6.1');
+    await page.locator('#p27-register-rel-btn').click();
+    await page.locator('#p27-maint-ref').fill('MAINT-2026-11-D');
+    await page.locator('#p27-start-maint-btn').click();
+
+    await page.locator('#p27-tab-deploy').click();
+    await page.locator('#p27-dep-tag').fill('v1.6.1');
+    await page.locator('label[for="p27-dep-sim-fail"]').click();
+    await page.locator('label[for="p27-dep-incompat-schema"]').click();
+    await page.locator('#p27-deploy-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText(
+      'RELEASE_DEPLOYED_AND_REOPENED'
+    );
+    await expect(page.getByTestId('p27-service-mode-val')).toHaveText('operational');
+    await expect(page.getByTestId('p27-current-rel-val')).toHaveText('v1.6.1');
+
+    // Tab 3: Singleton scheduler lock + 4-user load/credit telemetry
+    await page.locator('#p27-tab-scheduler').click();
+    await page.locator('#p27-sched-id').fill('sched-node-alpha');
+    await page.locator('#p27-sched-at').fill('2026-11-22T04:00:00Z');
+    await page.locator('#p27-acquire-sched-btn').click();
+    await expect(page.getByTestId('p27-scheduler-val')).toHaveText('sched-node-alpha');
+
+    await page.locator('#p27-sched-id').fill('sched-node-beta');
+    await page.locator('#p27-sched-at').fill('2026-11-22T04:00:30Z');
+    await page.locator('#p27-acquire-sched-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText(
+      'DUPLICATE_SCHEDULER_PREVENTED'
+    );
+
+    await page.locator('#p27-tel-actor').fill('101');
+    await page.locator('#p27-tel-officers').fill('4');
+    await page.locator('#p27-tel-jobs').fill('3');
+    await page.locator('#p27-tel-mem').fill('84');
+    await page.locator('#p27-tel-cpu').fill('76');
+    await page.locator('#p27-tel-lat').fill('2450');
+    await page.locator('#p27-tel-lag').fill('180');
+    await page.locator('#p27-tel-credit').fill('19.50');
+    await page.locator('#p27-tel-reserve').fill('20.00');
+    await page.locator('#p27-tel-at').fill('2026-11-22T04:10:00Z');
+    await page.locator('#p27-record-tel-btn').click();
+    await expect(page.getByTestId('p27-feedback-banner')).toContainText(
+      'TELEMETRY_RECORDED_NO_AUTO_SPENDING'
+    );
+    await expect(page.getByTestId('p27-triggers-count-val')).toHaveText('4');
+
+    // Tab 4: Recovery lookup
+    await page.locator('#p27-tab-history').click();
+    await page.locator('[data-testid^="p27-ledger-fill-"]').first().click();
+    await page.locator('#p27-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p27-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p27-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p27-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p27_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });

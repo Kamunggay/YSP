@@ -36,6 +36,7 @@ import { P23BoothCloseoutWorkspace } from './P23BoothCloseoutWorkspace';
 import { P24ReportsQueuesWorkspace } from './P24ReportsQueuesWorkspace';
 import { P25OperationsMapWorkspace } from './P25OperationsMapWorkspace';
 import { P26CutoverSubscriptionWorkspace } from './P26CutoverSubscriptionWorkspace';
+import { P27HostReleaseWorkspace } from './P27HostReleaseWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -72,6 +73,7 @@ export type AppRouteMode =
   | 'p24-reports'
   | 'p25-operations-map'
   | 'p26-cutover'
+  | 'p27-host-release'
   | 'health';
 
 interface ResolvedRoute {
@@ -172,6 +174,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p26' || view === 'cutover' || path === '/p26' || path === '/cutover') {
     return { mode: 'p26-cutover', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p27' || view === 'host-release' || path === '/p27' || path === '/host-release') {
+    return { mode: 'p27-host-release', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -611,6 +616,17 @@ export function App() {
                 }}
               >
                 Cutover Obligations, Staged Activation &amp; Chapter Subscription
+              </button>
+              <button
+                type="button"
+                id="open-p27-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p27-host-release');
+                }}
+              >
+                Reproducible Host Releases &amp; Operating Controls
               </button>
 
               <button
@@ -1070,6 +1086,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P26CutoverSubscriptionWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p27-host-release') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P27HostReleaseWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}
