@@ -3783,41 +3783,41 @@ html.dark .s02-readiness-key {
   background-color: rgb(var(--g400));
 }
 
-.s02-rail-footer {
-  padding-top: 0.65rem;
-  border-top: 1px solid var(--glass-divider);
+.s02-canvas-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 0.15rem;
 }
 
-.s02-quiet-toggle-btn {
+.s02-demo-toggle-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  width: 100%;
-  height: 34px;
-  padding: 0 0.75rem;
-  border-radius: 10px;
-  background-color: transparent;
-  border: 1px solid var(--glass-field-border);
-  color: rgb(var(--g600));
+  gap: 0.4rem;
+  height: 30px;
+  padding: 0 0.65rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgb(var(--g500));
   font-family: var(--font-sans);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
-html.dark .s02-quiet-toggle-btn {
-  color: rgba(244, 244, 245, 0.72);
+html.dark .s02-demo-toggle-btn {
+  color: rgba(244, 244, 245, 0.56);
 }
 
-.s02-quiet-toggle-btn:hover {
+.s02-demo-toggle-btn:hover {
   color: rgb(var(--ink));
-  border-color: rgb(var(--ink));
+  border-color: var(--glass-field-border);
   background-color: var(--glass-hover-bg);
 }
 
-/* Collapsible Queue & Telemetry Controls Drawer */
+/* Collapsible Demo & Simulation Controls Drawer */
 .s02-controls-drawer {
   display: flex;
   flex-direction: column;

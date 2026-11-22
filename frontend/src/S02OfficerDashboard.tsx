@@ -1046,11 +1046,11 @@ export function S02OfficerDashboard({
               </div>
             </section>
 
-            {/* Card B: Chapter Readiness & Status */}
+            {/* Card B: Chapter Status */}
             <section className="surface-card s02-rail-card" aria-labelledby="s02-readiness-heading">
               <div className="s02-rail-header">
                 <h2 id="s02-readiness-heading" className="s02-panel-title">
-                  Chapter Readiness
+                  Chapter Status
                 </h2>
               </div>
 
@@ -1062,7 +1062,7 @@ export function S02OfficerDashboard({
                   </dd>
                 </div>
                 <div className="s02-readiness-row">
-                  <dt className="s02-readiness-key">Subscription</dt>
+                  <dt className="s02-readiness-key">Chapter Plan</dt>
                   <dd className="s02-readiness-val">
                     <span
                       className={`s02-status-dot ${
@@ -1086,86 +1086,70 @@ export function S02OfficerDashboard({
                   </dd>
                 </div>
                 <div className="s02-readiness-row">
-                  <dt className="s02-readiness-key">Host Status</dt>
-                  <dd className="s02-readiness-val">
-                    <span
-                      className={`s02-status-dot ${
-                        lifecycle.maintenance_fenced ? 'is-red' : 'is-green'
-                      }`}
-                      aria-hidden="true"
-                    />
-                    <span data-testid="s02-host-status-pill">
-                      {lifecycle.maintenance_fenced ? 'Maintenance Fenced' : 'Operational'}
-                    </span>
-                  </dd>
-                </div>
-                <div className="s02-readiness-row">
                   <dt className="s02-readiness-key">Governance</dt>
                   <dd className="s02-readiness-val slot-constraints">
                     {dashboardSession?.governanceConstraints ??
-                      'Standard chapter governance rules apply'}
+                      'Standard chapter rules apply'}
                   </dd>
                 </div>
               </dl>
-
-              <div className="s02-rail-footer">
-                <button
-                  type="button"
-                  id="s02-toggle-controls-btn"
-                  className="s02-quiet-toggle-btn"
-                  aria-expanded={controlsOpen}
-                  onClick={() => {
-                    playClickPen(soundEnabled);
-                    setControlsOpen((prev) => !prev);
-                  }}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <line x1="4" y1="21" x2="4" y2="14" />
-                    <line x1="4" y1="10" x2="4" y2="3" />
-                    <line x1="12" y1="21" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12" y2="3" />
-                    <line x1="20" y1="21" x2="20" y2="16" />
-                    <line x1="20" y1="12" x2="20" y2="3" />
-                    <line x1="1" y1="14" x2="7" y2="14" />
-                    <line x1="9" y1="8" x2="15" y2="8" />
-                    <line x1="17" y1="16" x2="23" y2="16" />
-                  </svg>
-                  <span>
-                    {controlsOpen ? 'Hide Queue & Telemetry Controls' : 'Manage Queue & Telemetry'}
-                  </span>
-                </button>
-              </div>
             </section>
           </div>
         </div>
 
-        {/* Hidden-by-Default Queue, Telemetry & Replay Operations Drawer */}
+        <div className="s02-canvas-footer">
+          <button
+            type="button"
+            id="s02-toggle-controls-btn"
+            className="s02-demo-toggle-btn"
+            aria-expanded={controlsOpen}
+            onClick={() => {
+              playClickPen(soundEnabled);
+              setControlsOpen((prev) => !prev);
+            }}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="4" y1="21" x2="4" y2="14" />
+              <line x1="4" y1="10" x2="4" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12" y2="3" />
+              <line x1="20" y1="21" x2="20" y2="16" />
+              <line x1="20" y1="12" x2="20" y2="3" />
+              <line x1="1" y1="14" x2="7" y2="14" />
+              <line x1="9" y1="8" x2="15" y2="8" />
+              <line x1="17" y1="16" x2="23" y2="16" />
+            </svg>
+            <span>{controlsOpen ? 'Hide Demo Controls' : 'Demo Controls'}</span>
+          </button>
+        </div>
+
+        {/* Collapsible Demo & Simulation Controls Drawer */}
         {controlsOpen ? (
           <section className="surface-card s02-controls-drawer" data-testid="s02-controls-drawer">
             <div className="s02-drawer-header">
               <div>
-                <h2 className="s02-panel-title">Queue, Telemetry &amp; Lifecycle Controls</h2>
+                <h2 className="s02-panel-title">Demo &amp; Simulation Controls</h2>
                 <p className="s02-panel-subtitle">
-                  Post operational pulse updates, queue officer alerts, configure chapter
-                  subscription phases, and recover operations.
+                  Simulate work queue items, dashboard counters, chapter plan status, and maintenance
+                  notices during walkthroughs or testing.
                 </p>
               </div>
             </div>
 
             <div className="p03-grid">
-              {/* Control Card A: Enqueue Work Queue Alert */}
+              {/* Control Card A: Simulate Work Queue Item */}
               <div className="p04-line-card">
-                <h3 className="s02-drawer-subhead">Enqueue Scoped Work Item</h3>
+                <h3 className="s02-drawer-subhead">Simulate Work Queue Item</h3>
                 <div className="p03-two-col">
                   <div className="form-group">
                     <label htmlFor="s02-q-bucket" className="form-label">
@@ -1356,10 +1340,10 @@ export function S02OfficerDashboard({
                 </button>
               </div>
 
-              {/* Control Card B: Operational Pulse & Chapter Lifecycle */}
+              {/* Control Card B: Summary Counters & Plan Notice */}
               <div className="p02-column-stack">
                 <div className="p04-line-card">
-                  <h3 className="s02-drawer-subhead">Update Operational Pulse Metrics</h3>
+                  <h3 className="s02-drawer-subhead">Simulate Summary Counters</h3>
                   <div className="p03-two-col">
                     <div className="form-group">
                       <label htmlFor="s02-pulse-usable" className="form-label">
@@ -1468,7 +1452,7 @@ export function S02OfficerDashboard({
                 </div>
 
                 <div className="p04-line-card">
-                  <h3 className="s02-drawer-subhead">Update Subscription Phase &amp; Host Fence</h3>
+                  <h3 className="s02-drawer-subhead">Simulate Plan &amp; Maintenance Notice</h3>
                   <div className="p03-two-col">
                     <div className="form-group">
                       <label htmlFor="s02-life-phase" className="form-label">
@@ -1537,7 +1521,7 @@ export function S02OfficerDashboard({
                 </div>
 
                 <div className="p04-line-card">
-                  <h3 className="s02-drawer-subhead">Durable Operation Replay &amp; Lookup</h3>
+                  <h3 className="s02-drawer-subhead">Operation Replay Lookup</h3>
                   <div className="p03-input-action-row">
                     <input
                       id="s02-lookup-key"

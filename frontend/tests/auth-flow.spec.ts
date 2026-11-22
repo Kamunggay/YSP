@@ -4517,7 +4517,9 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     await page.locator('#s02-sidebar-expand-all-btn').click();
     await expect(page.locator('#open-p24-workspace-btn')).toHaveCount(0);
 
-    // Open telemetry & queue controls drawer
+    // Verify Host Status does not appear on normal officer UI, then open demo controls drawer
+    await expect(page.getByTestId('s02-host-status-pill')).toHaveCount(0);
+    await expect(page.getByTestId('s02-maintenance-banner')).toHaveCount(0);
     await page.locator('#s02-toggle-controls-btn').click();
     await expect(page.getByTestId('s02-controls-drawer')).toBeVisible();
 
