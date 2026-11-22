@@ -33,6 +33,7 @@ import { P20BoothCheckoutWorkspace } from './P20BoothCheckoutWorkspace';
 import { P21BoothSaleOrWorkspace } from './P21BoothSaleOrWorkspace';
 import { P22ManualOutageWorkspace } from './P22ManualOutageWorkspace';
 import { P23BoothCloseoutWorkspace } from './P23BoothCloseoutWorkspace';
+import { P24ReportsQueuesWorkspace } from './P24ReportsQueuesWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -66,6 +67,7 @@ export type AppRouteMode =
   | 'p21-booth-sale'
   | 'p22-manual-outage'
   | 'p23-booth-closeout'
+  | 'p24-reports'
   | 'health';
 
 interface ResolvedRoute {
@@ -157,6 +159,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p23' || view === 'booth-closeout' || path === '/p23' || path === '/booth-closeout') {
     return { mode: 'p23-booth-closeout', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p24' || view === 'reports' || path === '/p24' || path === '/reports') {
+    return { mode: 'p24-reports', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -564,6 +569,17 @@ export function App() {
               >
                 Independent Booth Returns, Variance &amp; Remittance Close-Out
               </button>
+              <button
+                type="button"
+                id="open-p24-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p24-reports');
+                }}
+              >
+                Reports, Alerts, Immutable Outputs &amp; Accessible Queues
+              </button>
 
               <button
                 type="button"
@@ -968,6 +984,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P23BoothCloseoutWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p24-reports') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P24ReportsQueuesWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

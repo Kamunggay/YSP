@@ -3629,4 +3629,120 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P24 Seven Stock Views (10/4/3->3), Uncertain-First Work Queues, Scoped CSV Safety & Non-Reposting Retry', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p24');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Reports, Alerts, Immutable Outputs & Accessible Queues',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p24-empty-projections-notice')).toBeVisible();
+    await expect(page.getByTestId('p24-usable-on-hand-val')).toHaveText('0');
+    await expect(page.getByTestId('p24-available-val')).toHaveText('0');
+
+    // Record 10 on-hand / 4 RF / 3 SO -> 3 available + separate booth/quarantine/inbound views
+    await page.locator('#p24-proj-sku').fill('MERCH-KIT-01');
+    await page.locator('#p24-proj-name').fill('Chapter Advocacy Tee');
+    await page.locator('#p24-proj-usable').fill('10');
+    await page.locator('#p24-proj-rf').fill('4');
+    await page.locator('#p24-proj-so').fill('3');
+    await page.locator('#p24-proj-booth').fill('20');
+    await page.locator('#p24-proj-quar').fill('2');
+    await page.locator('#p24-proj-inbound').fill('50');
+    await page.locator('#p24-record-proj-btn').click();
+    await expect(page.getByTestId('p24-feedback-banner')).toContainText('STOCK_PROJECTION_RECORDED');
+    await expect(page.getByTestId('p24-usable-on-hand-val')).toHaveText('10');
+    await expect(page.getByTestId('p24-available-val')).toHaveText('3');
+    await expect(page.getByTestId('p24-rf-reserved-val')).toHaveText('4');
+    await expect(page.getByTestId('p24-so-reserved-val')).toHaveText('3');
+    await expect(page.getByTestId('p24-booth-custody-val')).toHaveText('20');
+    await expect(page.getByTestId('p24-quarantined-val')).toHaveText('2');
+    await expect(page.getByTestId('p24-inbound-po-val')).toHaveText('50');
+
+    // Tab 2: Work queues pin uncertain outcome first with zero mutations on filter
+    await page.locator('#p24-tab-queues').click();
+    await page.locator('#p24-q-bucket').selectOption('needs_my_action');
+    await page.locator('#p24-q-ref').fill('CEBU-SO-2026-000010');
+    await page.locator('#p24-q-duty').fill('finance_verifier');
+    await page.locator('#p24-q-cat').fill('deposit_deadline');
+    await page.locator('#p24-q-urgency').fill('1');
+    await page.locator('#p24-q-summary').fill('Deposit expires in 2 hours');
+    await page.locator('#p24-enqueue-btn').click();
+
+    await page.locator('#p24-q-ref').fill('CEBU-DR-2026-000008');
+    await page.locator('#p24-q-duty').fill('dispatch_custodian');
+    await page.locator('#p24-q-cat').fill('uncertain_outcome');
+    await page.locator('#p24-q-urgency').fill('3');
+    await page.locator('label[for="p24-q-uncertain"]').click();
+    await page.locator('#p24-q-summary').fill('Verify uncertain release result');
+    await page.locator('#p24-enqueue-btn').click();
+
+    await page.locator('#p24-filter-needs-btn').click();
+    await expect(page.getByTestId('p24-feedback-banner')).toContainText('WORK_QUEUE_FILTERED');
+    await expect(page.getByTestId('p24-queue-list')).toContainText('UNCERTAIN FIRST');
+    const firstItemText = await page.getByTestId('p24-queue-list').locator('.p03-queue-item').first().textContent();
+    expect(firstItemText).toContain('CEBU-DR-2026-000008');
+
+    // Tab 3: Cross-chapter/disabled blocked, CSV formula escaping + non-reposting retry
+    await page.locator('#p24-tab-exports').click();
+    await page.locator('#p24-exp-chapter').fill('2');
+    await page.locator('#p24-exp-actor').fill('202');
+    await page.locator('#p24-exp-duties').fill('finance_verifier');
+    await page.locator('#p24-exp-req-duty').fill('finance_verifier');
+    await page.locator('#p24-exp-cell').fill('=SUM(A1:A2),+100');
+    await page.locator('#p24-exp-at').fill('2026-11-18T10:00:00Z');
+    await page.locator('#p24-generate-report-btn').click();
+    await expect(page.getByTestId('p24-feedback-banner')).toContainText(
+      'CROSS_CHAPTER_EXPORT_FORBIDDEN'
+    );
+
+    await page.locator('#p24-exp-chapter').fill('1');
+    await page.locator('label[for="p24-exp-disabled"]').click();
+    await page.locator('#p24-generate-report-btn').click();
+    await expect(page.getByTestId('p24-feedback-banner')).toContainText(
+      'DISABLED_OR_UNAUTHORIZED_EXPORT_BLOCKED'
+    );
+
+    await page.locator('label[for="p24-exp-disabled"]').click();
+    await page.locator('#p24-generate-report-btn').click();
+    await expect(page.getByTestId('p24-feedback-banner')).toContainText('REPORT_OUTPUT_GENERATED');
+    await expect(page.getByTestId('p24-report-preview')).toContainText("'=SUM(A1:A2)");
+    await expect(page.getByTestId('p24-report-preview')).toContainText('reposted: false');
+
+    await page.locator('#p24-retry-report-btn').click();
+    await expect(page.getByTestId('p24-feedback-banner')).toContainText(
+      'REPORT_OUTPUT_RETRIED_NO_REPOST'
+    );
+    await expect(page.getByTestId('p24-report-preview')).toContainText('retries: 1');
+
+    // Tab 4: Recovery lookup
+    await page.locator('#p24-tab-history').click();
+    await page.locator('[data-testid^="p24-ledger-fill-"]').first().click();
+    await page.locator('#p24-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p24-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p24-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p24-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p24_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
