@@ -29,6 +29,7 @@ import { P16DonationRestrictionWorkspace } from './P16DonationRestrictionWorkspa
 import { P17CountVarianceAdjWorkspace } from './P17CountVarianceAdjWorkspace';
 import { P18ClaimReturnReplacementWorkspace } from './P18ClaimReturnReplacementWorkspace';
 import { P19RefundExceptionWorkspace } from './P19RefundExceptionWorkspace';
+import { P20BoothCheckoutWorkspace } from './P20BoothCheckoutWorkspace';
 
 const messages = {
   checking: { title: 'Checking connection', description: 'Contacting the service and checking database connectivity.' },
@@ -58,6 +59,7 @@ export type AppRouteMode =
   | 'p17-variance-adj'
   | 'p18-claims'
   | 'p19-refunds'
+  | 'p20-booth-checkout'
   | 'health';
 
 interface ResolvedRoute {
@@ -137,6 +139,9 @@ function resolveInitialRoute(): ResolvedRoute {
   }
   if (view === 'p19' || view === 'refunds' || path === '/p19' || path === '/refunds') {
     return { mode: 'p19-refunds', screen: 'login', signupStep: 'create-chapter' };
+  }
+  if (view === 'p20' || view === 'booth-checkout' || path === '/p20' || path === '/booth-checkout') {
+    return { mode: 'p20-booth-checkout', screen: 'login', signupStep: 'create-chapter' };
   }
 
   if (view === 'connect-auth' || path === '/connect-auth') {
@@ -500,6 +505,17 @@ export function App() {
               >
                 Refunds, Unequal Exchanges &amp; Funded Exceptions
               </button>
+              <button
+                type="button"
+                id="open-p20-workspace-btn"
+                className="btn-batcave-secondary"
+                onClick={() => {
+                  playClickPen(soundEnabled);
+                  setRouteMode('p20-booth-checkout');
+                }}
+              >
+                Approved Booth Setup &amp; Signed Custody Checkout
+              </button>
 
               <button
                 type="button"
@@ -832,6 +848,24 @@ export function App() {
         onDismissToast={dismissToast}
       >
         <P19RefundExceptionWorkspace
+          soundEnabled={soundEnabled}
+          onBackToDashboard={() => setRouteMode('dashboard')}
+          onNotify={(tone, text) => showToast({ tone, text })}
+        />
+      </BatCaveShell>
+    );
+  }
+
+  if (routeMode === 'p20-booth-checkout') {
+    return (
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+      >
+        <P20BoothCheckoutWorkspace
           soundEnabled={soundEnabled}
           onBackToDashboard={() => setRouteMode('dashboard')}
           onNotify={(tone, text) => showToast({ tone, text })}

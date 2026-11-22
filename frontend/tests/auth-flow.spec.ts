@@ -3088,4 +3088,149 @@ test.describe('Sign-In & Onboarding Complete Flows', () => {
     expect(consoleErrors).toEqual([]);
     expect(pageErrors).toEqual([]);
   });
+
+  test('executes P20 Booth Event Setup, Self-Approval Block, Restricted Lot Guard & Signed 100-Unit Checkout', async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('pageerror', (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto('/?view=p20');
+    await expect(
+      page.getByRole('heading', {
+        name: 'Approved Booth Setup & Signed Custody Checkout',
+      })
+    ).toBeVisible();
+
+    await expect(page.getByTestId('p20-empty-events-notice')).toBeVisible();
+    await expect(page.getByTestId('p20-stockroom-usable-val')).toHaveText('0');
+    await expect(page.getByTestId('p20-booth-custody-val')).toHaveText('0');
+    await expect(page.getByTestId('p20-float-liability-val')).toHaveText('0.00');
+    await expect(page.getByTestId('p20-sales-revenue-val')).toHaveText('0.00');
+
+    // Register unrestricted saleable lot (150) & restricted donor lot (60)
+    await page.locator('#p20-lot-variant').fill('81');
+    await page.locator('#p20-lot-sku').fill('MERCH-KIT-01');
+    await page.locator('#p20-lot-name').fill('Chapter Advocacy Tee');
+    await page.locator('#p20-lot-qty').fill('150');
+    await page.locator('#p20-lot-price').fill('150.00');
+    await page.locator('#p20-lot-restriction').selectOption('unrestricted_saleable');
+    await page.locator('#p20-register-lot-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText(
+      'STOCKROOM_LOT_REGISTERED'
+    );
+
+    await page.locator('#p20-lot-variant').fill('82');
+    await page.locator('#p20-lot-sku').fill('DON-KIT-99');
+    await page.locator('#p20-lot-name').fill('Donor Hygiene Kit');
+    await page.locator('#p20-lot-qty').fill('60');
+    await page.locator('#p20-lot-price').fill('100.00');
+    await page.locator('#p20-lot-restriction').selectOption('distribution_only');
+    await page.locator('#p20-register-lot-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText(
+      'STOCKROOM_LOT_REGISTERED'
+    );
+    await expect(page.getByTestId('p20-stockroom-usable-val')).toHaveText('210');
+
+    // Draft booth event setup
+    await page.locator('#p20-ev-name').fill('Cebu Youth Summit Booth');
+    await page.locator('#p20-ev-dates').fill('2026-11-15 to 2026-11-16');
+    await page.locator('#p20-ev-requester').fill('101');
+    await page.locator('#p20-ev-custodian').fill('301');
+    await page.locator('#p20-ev-cashier').fill('302');
+    await page.locator('#p20-ev-float').fill('2000.00');
+    await page.locator('#p20-ev-schedule').fill('Same-day close-out');
+    await page.locator('#p20-create-setup-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText('BOOTH_SETUP_DRAFTED');
+
+    // Tab 2: Checkout while setup is unapproved -> blocked
+    await page.locator('#p20-tab-checkout').click();
+    await page.locator('#p20-chk-actor').fill('301');
+    await page.locator('#p20-chk-qty').fill('100');
+    await page.locator('#p20-chk-at').fill('2026-11-15T07:00:00Z');
+    await page.locator('#p20-execute-checkout-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText('BOOTH_SETUP_NOT_APPROVED');
+
+    // Back to Tab 1: Self-approval blocked -> independent approval sets PHP 2000 float with 0.00 revenue
+    await page.locator('#p20-tab-setup').click();
+    await page.locator('#p20-ev-approver').fill('101');
+    await page.locator('#p20-ev-app-at').fill('2026-11-15T07:05:00Z');
+    await page.locator('#p20-approve-setup-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText('SELF_APPROVAL_FORBIDDEN');
+
+    await page.locator('#p20-ev-approver').fill('202');
+    await page.locator('#p20-approve-setup-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText('BOOTH_SETUP_APPROVED');
+    await expect(page.getByTestId('p20-float-liability-val')).toHaveText('2000.00');
+    await expect(page.getByTestId('p20-sales-revenue-val')).toHaveText('0.00');
+
+    // Tab 2: Currently selected lot is DON-KIT-99 (restricted) -> blocked
+    await page.locator('#p20-tab-checkout').click();
+    await page.locator('#p20-execute-checkout-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText(
+      'RESTRICTED_LOT_BOOTH_SALE_FORBIDDEN'
+    );
+
+    // Switch to unrestricted MERCH-KIT-01 (first option value)
+    const lotOptions = await page.locator('#p20-active-lot-select option').evaluateAll((opts) =>
+      opts.map((o) => ({ value: (o as HTMLOptionElement).value, text: o.textContent ?? '' }))
+    );
+    const unrestrictedOption = lotOptions.find((o) => o.text.includes('MERCH-KIT-01'));
+    expect(unrestrictedOption).toBeTruthy();
+    await page.locator('#p20-active-lot-select').selectOption(unrestrictedOption!.value);
+
+    // Signature for 80 != checkout 100 -> rejected -> fresh signature 100 -> executes (-100 / +100)
+    await page.locator('#p20-sig-custodian').fill('301');
+    await page.locator('#p20-sig-mode').selectOption('canvas_pad');
+    await page.locator('#p20-sig-hash').fill('a'.repeat(64));
+    await page.locator('#p20-sig-qty').fill('80');
+    await page.locator('#p20-sig-at').fill('2026-11-15T07:15:00Z');
+    await page.locator('#p20-bind-sig-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText(
+      'CHECKOUT_SIGNATURE_BOUND'
+    );
+
+    await page.locator('#p20-execute-checkout-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText(
+      'MISSING_OR_STALE_CHECKOUT_SIGNATURE'
+    );
+
+    await page.locator('#p20-sig-qty').fill('100');
+    await page.locator('#p20-sig-mode').selectOption('paper_upload');
+    await page.locator('#p20-bind-sig-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText(
+      'CHECKOUT_SIGNATURE_BOUND'
+    );
+
+    await page.locator('#p20-execute-checkout-btn').click();
+    await expect(page.getByTestId('p20-feedback-banner')).toContainText(
+      'BOOTH_CUSTODY_CHECKED_OUT'
+    );
+    await expect(page.getByTestId('p20-stockroom-usable-val')).toHaveText('110');
+    await expect(page.getByTestId('p20-booth-custody-val')).toHaveText('100');
+    await expect(page.getByTestId('p20-sales-revenue-val')).toHaveText('0.00');
+
+    // Tab 3: Operation recovery lookup
+    await page.locator('#p20-tab-history').click();
+    await page.locator('[data-testid^="p20-ledger-fill-"]').first().click();
+    await page.locator('#p20-lookup-by-key-btn').click();
+    await expect(page.getByTestId('p20-lookup-result')).toContainText('OPERATION_RECOVERED');
+    await page.locator('#p20-lookup-by-ulid-btn').click();
+    await expect(page.getByTestId('p20-lookup-result')).toContainText('OPERATION_RECOVERED');
+
+    await page.evaluate(() => {
+      window.localStorage.removeItem('ysp_p20_context');
+    });
+
+    expect(consoleErrors).toEqual([]);
+    expect(pageErrors).toEqual([]);
+  });
 });
