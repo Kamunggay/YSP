@@ -1,7 +1,7 @@
 ---
-version: 1.4.3-react-ts
+version: 1.5.0-react-ts
 name: Code Anastasya Design System (React + Strict TypeScript + CSS)
-description: "Complete, micro-detailed specification for the Code Anastasya Minimal Monochrome & Frosted Liquid-Glass Design System tailored for React 19, Strict TypeScript (.tsx / .ts), Vite, and plain CSS. Covers Light Frosted Acrylic and Dark Smoked Obsidian themes, exact box/container/input opacities, RGB triplet & --glass-* tokens, Geist / Geist Mono / Geist Pixel typography, Stitch-inspired diagonal gradient flare backdrop, CodeAnastasyaBackdrop.tsx halftone dot physics, circular View Transitions useThemeMode.ts + ThemeSwitcher.tsx, every button/switch/input/select/card/badge/toast with exact pixel metrics and TSX SVG components, and typed Web Audio soundEngine.ts."
+description: "Complete, micro-detailed specification for the Code Anastasya Minimal Monochrome & Frosted Liquid-Glass Design System tailored for React 19, Strict TypeScript (.tsx / .ts), Vite, and plain CSS. Covers Light Frosted Acrylic and Dark Smoked Obsidian themes, High-Legibility Operational Glass calibration, exact box/container/input opacities, RGB triplet & --glass-* tokens, Geist / Geist Mono / Geist Pixel typography, Stitch-inspired diagonal gradient flare backdrop, CodeAnastasyaBackdrop.tsx halftone dot physics, Split-Stage Login Showcase & Centered Auth/Onboarding Wizard, S-02 Executive Officer Command Center & 7-Domain Accordion Sidebar, Stage 1-5 Operational Workspaces (P02-P29), circular View Transitions useThemeMode.ts + ThemeSwitcher.tsx, every button/switch/input/select/card/badge/toast with exact pixel metrics and TSX SVG components, and typed Web Audio soundEngine.ts."
 target-stack: "React 19 + Strict TypeScript (verbatimModuleSyntax, noUncheckedIndexedAccess, exactOptionalPropertyTypes) + Plain CSS + Vite"
 author: Laurence Glenn Parojinog (Reenznly) / SinceYesterday DevWorks-R000
 authorized-project: "Kamunggay / YSP (@ysp/frontend — YSP Chapter Operations)"
@@ -134,6 +134,16 @@ boxes-opacity:
   toast-pill-light: "95% (0.95)"
   toast-pill-dark: "94% (0.94)"
 
+operational-glass:
+  profile: "High-Legibility Production Profile (@ysp/frontend style.css)"
+  light-bg: "86% -> 74% -> 80% (rgba alphas 0.86 / 0.74 / 0.80)"
+  dark-bg: "84% -> 78% (rgba alphas 0.84 / 0.78)"
+  menu-bg: "94% (0.94 Light & Dark)"
+  field-bg: "3.6% Light / 5.5% Dark"
+  field-focus: "94% Light / 88% Dark"
+  field-border: "12% Light & Dark"
+  chip-bg: "68% Light / 6.5% Dark"
+
 typography:
   families:
     sans: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
@@ -170,10 +180,24 @@ layout:
   content-max-width: none
   viewport-gutter: "clamp(1rem, 1.4vw, 1.5rem)"
   workspace-padding: "1.25rem clamp(1rem, 1.4vw, 1.5rem) 2.5rem clamp(1rem, 1.4vw, 1.5rem)"
-  breakpoints: { mobile-flare: 767px, sm: 640px, lg: 1024px, wide-grid: 1440px }
+  breakpoints: { mobile-flare: 767px, sm: 640px, md-rail: 960px, lg: 1024px, body-collapse: 1180px, wide-grid: 1440px }
   desktop-grid: "clamp(380px, 25vw, 460px) 1fr"
   desktop-gap: "clamp(1.25rem, 1.5vw, 1.75rem)"
   wide-feed-grid: "repeat(2, minmax(0, 1fr))"
+  login-workspace:
+    desktop-grid: "minmax(0, 1fr) clamp(430px, 35vw, 620px)"
+    stage-min-height: "calc(100dvh - 61px)"
+    centered-auth-max-width: 660px
+  s02-shell:
+    grid: "268px minmax(0, 1fr)"
+    gap: "0.85rem"
+    padding: "0.75rem clamp(0.375rem, 0.55vw, 0.5rem) 1.5rem"
+    sidebar-sticky-top: 72px
+    kpi-grid: "repeat(4, minmax(0, 1fr))"
+    body-grid: "minmax(0, 1.65fr) minmax(340px, 1fr)"
+  p03-workspace-shell:
+    padding: "0.5rem clamp(0.375rem, 0.55vw, 0.5rem) 1.25rem"
+    content-grid: "repeat(2, minmax(0, 1fr))"
 
 halftone-canvas:
   grid-spacing: 15
@@ -205,7 +229,7 @@ gradient-flare:
 # Code Anastasya Design System — React + Strict TypeScript & CSS Edition
 
 > A minimal monochrome & frosted liquid-glass design system with a Stitch-inspired diagonal gradient flare and pointer-reactive halftone backdrop, engineered natively for **React 19 + Strict TypeScript (`.tsx` / `.ts`) + Plain CSS + Vite**.
-> **Document File:** `docs/CodeAnastasya.md` &nbsp;·&nbsp; **Version:** `1.4.3-react-ts` &nbsp;·&nbsp; **Authorized Project:** `Kamunggay / YSP` (`@ysp/frontend`) &nbsp;·&nbsp; **Author:** Laurence Glenn Parojinog (`Reenznly`) / SinceYesterday DevWorks-R000
+> **Document File:** `docs/CodeAnastasya.md` &nbsp;·&nbsp; **Version:** `1.5.0-react-ts` &nbsp;·&nbsp; **Authorized Project:** `Kamunggay / YSP` (`@ysp/frontend`) &nbsp;·&nbsp; **Author:** Laurence Glenn Parojinog (`Reenznly`) / SinceYesterday DevWorks-R000
 
 > [!CAUTION]
 > **Proprietary License & AI Agent Approval Gate:**
@@ -229,9 +253,13 @@ gradient-flare:
 1. [Principles & Visual Architecture](#1-principles--visual-architecture)
 2. [Complete Color & Frosted Glass Token Dictionary](#2-complete-color--frosted-glass-token-dictionary)
    - [2.6 Exact Box, Container, Input & Overlay Opacity Specification](#26-exact-box-container-input--overlay-opacity-specification)
+   - [2.7 High-Legibility Operational Glass Calibration (`@ysp/frontend` Production Profile)](#27-high-legibility-operational-glass-calibration-yspfrontend-production-profile)
 3. [Typography & Complete Element Type Scale](#3-typography--complete-element-type-scale)
 4. [Radii, Spacing, Borders, Shadows & Scrollbars](#4-radii-spacing-borders-shadows--scrollbars)
 5. [Layout, Sticky Header & Responsive Grids](#5-layout-sticky-header--responsive-grids)
+   - [5.3 Split-Stage Login Showcase & Open Centered Auth/Onboarding Shell (`login.css`)](#53-split-stage-login-showcase--open-centered-authonboarding-shell-logincss)
+   - [5.4 S-02 Executive Officer Command Center & Edge-to-Edge Shell (`.s02-shell`)](#54-s-02-executive-officer-command-center--edge-to-edge-shell-s02-shell)
+   - [5.5 Stage 1–5 Operational Domain Workspaces (`.p03-workspace-shell`, P02–P29)](#55-stage-15-operational-domain-workspaces-p03-workspace-shell-p02p29)
 6. [Motion, Keyframes & Circular View Transition (TypeScript)](#6-motion-keyframes--circular-view-transition-typescript)
 7. [Exhaustive Component, Box, Input & Button Specification (CSS + TSX)](#7-exhaustive-component-box-input--button-specification-css--tsx)
    - [7.1 Frosted Glass Boxes (`.surface-card`, `.dashboard-controls-card`, `.request-card`, `#empty-state-view`)](#71-frosted-glass-boxes)
@@ -241,6 +269,9 @@ gradient-flare:
    - [7.5 Complete Catalog of All 10 Buttons & Interactive Controls](#75-complete-catalog-of-all-10-buttons--interactive-controls)
    - [7.6 Read-Only Pills, Badges, Chips & Floating Pill Toast (`ToastPill.tsx`)](#76-read-only-pills-badges-chips--floating-pill-toast-toastpilltsx)
    - [7.7 Complete SVG Icon Catalog (Strict TSX JSX Components)](#77-complete-svg-icon-catalog-strict-tsx-jsx-components)
+   - [7.8 Auth, MFA, Session Ledger & Callout Banner Primitives](#78-auth-mfa-session-ledger--callout-banner-primitives)
+   - [7.9 S-02 Executive Dashboard Components (Accordion Sidebar, 38px Jump Bar, KPI Strip, Priority Queue & Chapter Status)](#79-s-02-executive-dashboard-components-accordion-sidebar-38px-jump-bar-kpi-strip-priority-queue--chapter-status)
+   - [7.10 Operational Workspace Primitives (Segmented Filter Pills, Dual-Mode Signature Pad, 7-View Tables & Anti-Squeeze Form Guards)](#710-operational-workspace-primitives-segmented-filter-pills-dual-mode-signature-pad-7-view-tables--anti-squeeze-form-guards)
 8. [Interactive Halftone & Stitch Flare Backdrop (`CodeAnastasyaBackdrop.tsx`)](#8-interactive-halftone--stitch-flare-backdrop-codeanastasyabackdroptsx)
 9. [Optional Web Audio & Multi-Sound Feedback Engine (`soundEngine.ts`)](#9-optional-web-audio--multi-sound-feedback-engine-soundenginets)
 10. [Theming & Persistence (`useThemeMode.ts`)](#10-theming--persistence-usethememodets)
@@ -478,23 +509,57 @@ html.dark {
 
 *Note on interactive element `opacity` modifiers (never used on container boxes):* Only clickable/stateful micro-elements modulate CSS `opacity`: `.btn-primary-cta:hover` (`0.86`), `:disabled` (`0.45`), `.btn-quick-fill:hover` (`0.65`), `.toast-close` (`0.6` rest → `1` hover with `rgba(128, 128, 128, 0.15)` circle), and `.custom-select-option-check` (`0` → `1` when selected).
 
+### 2.7 High-Legibility Operational Glass Calibration (`@ysp/frontend` Production Profile)
+
+`@ysp/frontend` pairs the **Classic Atmospheric Profile** (§2.4–§2.5, suited for showcase and lightweight feed cards) with a **High-Legibility Operational Glass Profile** active in `frontend/src/style.css` (lines 60–74 & 113–127) so dense financial ledgers, 7-view inventory matrices, and 28-module navigation panels remain crisp over moving halftone dots and aurora beams while preserving `opacity: 1` containers and `blur(24px)` backdrop refraction:
+
+| Token | Classic Atmospheric (§2.4) | High-Legibility Production Light (`:root`) | High-Legibility Production Dark (`html.dark`) |
+| :--- | :--- | :--- | :--- |
+| `--glass-bg` | `0.56 -> 0.34 -> 0.44` / `0.62 -> 0.50` | `linear-gradient(145deg, rgba(255, 255, 255, 0.86) 0%, rgba(241, 245, 255, 0.74) 52%, rgba(246, 244, 255, 0.80) 100%)` | `linear-gradient(145deg, rgba(24, 26, 38, 0.84) 0%, rgba(12, 13, 21, 0.78) 100%)` |
+| `--glass-menu-bg` | `0.76` / `0.84` | `rgba(252, 253, 255, 0.94)` | `rgba(18, 20, 30, 0.94)` |
+| `--glass-field-bg` | `0.032` / `0.045` | `rgba(15, 23, 42, 0.036)` | `rgba(255, 255, 255, 0.055)` |
+| `--glass-field-focus` | `0.88` / `0.78` | `rgba(255, 255, 255, 0.94)` | `rgba(16, 18, 28, 0.88)` |
+| `--glass-field-border` | `0.10` / `0.11` | `rgba(15, 23, 42, 0.12)` | `rgba(255, 255, 255, 0.12)` |
+| `--glass-chip-bg` | `0.48` / `0.055` | `rgba(255, 255, 255, 0.68)` | `rgba(255, 255, 255, 0.065)` |
+
+- **When to use each profile:** Use **§2.4–§2.5** for spacious hero cards or low-density dashboards where maximum backdrop translucency is desired; use **§2.7** (plus `blur(20px)` frosted field overrides on `.auth-centered-card` / `.onboarding-card` in `login.css`) for multi-column accounting/inventory forms and text-heavy operational views. Neither profile ever sets CSS `opacity < 1` on outer card containers.
+
 ---
 
 ## 3. Typography & Complete Element Type Scale
 
 ### 3.1 Font Loading (`frontend/index.html` + `src/style.css`)
 
-```html
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-```
+For strict Content-Security-Policy (`font-src 'self'`) production builds (`frontend/nginx.conf`), self-host the variable `.woff2` files directly from the `geist` npm package in `src/style.css`:
 
 ```css
 @font-face {
-  font-family: 'Geist Pixel';
-  src: url('https://cdn.jsdelivr.net/gh/vercel/geist-pixel-font@main/fonts/webfonts/GeistPixel-Square.woff2') format('woff2');
+  font-family: 'Geist';
+  src: url('../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
   font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('../node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Pixel';
+  src: url('../node_modules/geist/dist/fonts/geist-pixel/GeistPixel-Square.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+html {
+  font-size: 16px;
+  font-synthesis: none;
 }
 
 :root {
@@ -504,16 +569,25 @@ html.dark {
 }
 ```
 
+When third-party font CDNs are permitted outside `font-src 'self'`, `Google Fonts` (`Geist`, `Geist Mono`) plus `cdn.jsdelivr.net/.../GeistPixel-Square.woff2` may be used as a fallback.
+
 ### 3.2 Complete Element-by-Element Type Scale
 
 | Selector / Element | Font Family | Size (`rem` / `px`) | Weight | Line-Height | Letter-Spacing | Transform | Color |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `.s02-kpi-value` | `--font-sans` | `1.7rem` (`27.2px`, `tabular-nums`) | `700` | `1.15` | `-0.025em` | `none` | `rgb(var(--ink))` |
+| `.s02-page-title` | `--font-pixel` | `clamp(1.35rem, 1.9vw, 1.68rem)` | `400` | `1.15` | `-0.01em` | `none` | `rgb(var(--ink))` |
+| `.p03-section-title` | `--font-pixel` | `1.18rem` (`18.88px`) | `400` | `1.25` | `normal` | `none` | `rgb(var(--ink))` |
 | `.form-card-title` / panel heading | `--font-pixel` | `1.15rem` (`18.4px`) | `400` | `1.2` | `-0.01em` | `none` | `rgb(var(--ink))` |
 | `.brand-title` (`h1` in header) | `--font-pixel` | `1.125rem` (`18px`) | `400` | `1` | `-0.01em` | `none` | `rgb(var(--ink))` |
+| `.s02-panel-title` | `--font-sans` | `1.02rem` (`16.32px`) | `600` | `1.25` | `-0.015em` | `none` | `rgb(var(--ink))` |
 | `.empty-title` (`h3`) | `--font-pixel` | `1rem` (`16px`) | `400` | `1.5` (inherited) | `normal` | `none` | `rgb(var(--ink))` |
-| `.btn-primary-cta` | `--font-pixel` | `0.9375rem` (`15px`) | `400` | `1.5` (inherited) | `0.04em` | `none` | `rgb(var(--bg))` |
+| `.btn-primary-cta`, `.btn-batcave-primary` | `--font-pixel` | `0.9375rem` (`15px`) | `400` | `1.5` (inherited) | `0.04em` | `none` | `rgb(var(--bg))` |
 | `.card-title-name` (`h3` on card) | `--font-sans` | `0.9375rem` (`15px`) | `600` | `1.5` (inherited) | `-0.015em` | `none` | `rgb(var(--ink))` |
 | `.form-control`, `.custom-select-trigger` | `--font-sans` | `0.875rem` (`14px`) | `400` | `1.5` (`1.45` `textarea`) | `normal` | `none` | `rgb(var(--ink))` |
+| `.s02-nav-group-title` | `--font-sans` | `0.82rem` (`13.12px`) | `600` | `1.3` | `normal` | `none` | `rgb(var(--ink))` |
+| `.s02-nav-item` | `--font-sans` | `0.8rem` (`12.8px`) | `500` | `1` | `normal` | `none` | `rgb(var(--g700))` (dark `rgba(244,244,245,0.78)`) |
+| `.btn-batcave-secondary` | `--font-sans` | `0.8125rem` (`13px`) | `500` | `1.3` | `normal` | `none` | `rgb(var(--ink))` |
 | `.form-label` | `--font-sans` | `0.8125rem` (`13px`) | `500` | `1.5` | `-0.01em` | `none` | `rgb(var(--g700))` |
 | `.form-card-subtitle` | `--font-sans` | `0.8125rem` (`13px`) | `400` | `1.5` | `normal` | `none` | `rgb(var(--g500))` |
 | `.empty-subtitle` | `--font-sans` | `0.8125rem` (`13px`) | `400` | `1.4` | `normal` | `none` | `rgb(var(--g500))` |
@@ -526,7 +600,7 @@ html.dark {
 | `.form-footer-note` | `--font-mono` | `0.6875rem` (`11px`) | `400` | `1.5` | `0.03em` | `uppercase` | `rgb(var(--g500))` |
 | `.btn-quick-fill` / text link | `--font-mono` | `0.6875rem` (`11px`) | `500` | `1.5` | `0.03em` | `uppercase` | `rgb(var(--ink))` |
 | `.metric-chip` | `--font-mono` | `0.6875rem` (`11px`) | `500` (val `600`) | `1.5` | `0.04em` | `uppercase` | `rgb(var(--g500))` (`ink` value) |
-| `.filter-tab-btn` | `--font-mono` | `0.6875rem` (`11px`) | `500` (`.active` `600`) | `1.5` | `0.04em` | `uppercase` | `rgb(var(--g500))` (`bg` active) |
+| `.filter-tab-btn`, `.p03-filter-pill` | `--font-mono` | `0.6875rem`–`0.7rem` | `500`–`600` | `1`–`1.5` | `0.04em` | `uppercase` | `g500`/`g600` (`bg` active) |
 | `.btn-reset-filters` | `--font-mono` | `0.6875rem` (`11px`) | `500` | `1.5` | `0.04em` | `uppercase` | `rgb(var(--ink))` |
 | `.id-chip` / `code` token pill | `--font-mono` | `0.6875rem` (`11px`) | `600` | `1.5` | `0.02em` | `none` | `rgb(var(--ink))` |
 | `.card-meta-time` | `--font-mono` | `0.6875rem` (`11px`) | `400` | `1.5` | `normal` | `none` | `rgb(var(--g400))` |
@@ -709,11 +783,115 @@ html.dark {
 
 | Media Query | Rules Triggered |
 | :--- | :--- |
+| `@media (max-width: 1180px)` | `.s02-kpi-grid` switches from 4 columns to `repeat(2, minmax(0, 1fr))`; `.s02-body-grid` collapses from `minmax(0, 1.65fr) minmax(340px, 1fr)` to `1fr` |
+| `@media (max-width: 1080px)` | `.p02-policies-grid` collapses to `1fr` and resets `:last-child:nth-child(odd)` grid span |
+| `@media (max-width: 1023px)` | `.login-workspace` switches from split-stage grid to centered flex stage over full-bleed `.login-brand-stage`, turning `.login-card-col .surface-card` into a floating glass card (`blur(16px)`) |
+| `@media (max-width: 960px)` | `.s02-shell` collapses to `1fr` with `position: static; max-height: none` on `.s02-sidebar`; `.p03-grid`, `.p02-members-grid`, `.p03-birdseye-grid`, `.p03-times-grid`, `.p03-lookup-row`, `.p03-lookup-action-grid`, `.p03-comparison-grid` collapse to `1fr`; `.p03-formal-grid` and `.p02-three-col-grid` switch to `repeat(2, minmax(0, 1fr))` |
 | `@media (max-width: 767px)` | `.stitch-flare-left` (`left: -26vw; width: 96vw; height: 44vh; filter: blur(46px)`), `.stitch-flare-right` (`right: -26vw; top: 22vh; width: 90vw; height: 40vh; filter: blur(48px)`), `.stitch-flare-ambient` (`left: 4vw; width: 92vw; filter: blur(56px)`) |
+| `@media (max-width: 640px)` | `#app-header` padding tightens (`0 1rem`), header co-brand marks shrink (`.brand-ysp-mark: 30px`, `.brand-clubs-mark: 18px`, `.brand-title: 1rem`); `.s02-kpi-grid`, `.s02-quick-grid`, `.p03-axes-bar`, `.p03-two-col`, `.p03-action-pair`, `.p03-guard-buttons`, `.p03-formal-grid`, `.p02-three-col-grid` stack to `1fr`; `.p03-filter-pill-bar` enables touch scrolling |
+| `@media (max-width: 520px)` | `.auth-secondary-row` collapses from 2 columns to `1fr` |
 | `@media (min-width: 640px)` | `.search-metrics-row` switches from `flex-direction: column` (`gap: 0.625rem`) to `flex-direction: row; align-items: center; justify-content: space-between;` |
-| `@media (min-width: 1024px)` | `.main-workspace` switches to `clamp(380px, 25vw, 460px) 1fr` with `clamp(1.25rem, 1.5vw, 1.75rem)` gap; `.left-column` sticks at `top: 78px` |
+| `@media (min-width: 1024px)` | `.main-workspace` switches to `clamp(380px, 25vw, 460px) 1fr` with `clamp(1.25rem, 1.5vw, 1.75rem)` gap and `.left-column` sticks at `top: 78px`; `.login-workspace` switches to split-stage `minmax(0, 1fr) clamp(430px, 35vw, 620px)` with docked full-height right panel |
 | `@media (min-width: 1440px)` | `.cards-feed-grid` switches to 2-column CSS Grid (`repeat(2, minmax(0, 1fr))`), `.glass-card { height: 100% }`, `.glass-card:only-child { grid-column: 1 / -1 }` |
 | `@media (prefers-reduced-motion: reduce)` | Freezes `.stitch-flare` animations (`animation: none;`) at static angles; skips View Transitions wipe in TypeScript hook |
+
+### 5.3 Split-Stage Login Showcase & Open Centered Auth/Onboarding Shell (`login.css`)
+
+```text
+DESKTOP (>= 1024px) SPLIT-STAGE LOGIN (.login-workspace):
++--------------------------------------------------------+-----------------------------------------+
+| .login-brand-stage (1fr, min-h: calc(100dvh - 61px))   | .login-card-col (clamp(430px,35vw,620px))|
+|  - Full-bleed .login-crystal-stage / canvas            |  .surface-card (r:0, border-left:1px,    |
+|  - Ambient 3D crystal & cryo vapor over halftone field |   full height, inner children max-w:480) |
++--------------------------------------------------------+-----------------------------------------+
+
+CENTERED AUTH / 7-FRAME ONBOARDING (.auth-centered-stage):
++---------------------------------------------------------------------------------------------------+
+|  [.nav-back-btn 34x34] + .form-card-title (Geist Pixel) + subtitle (centered .auth-centered-card  |
+|  max-w: 660px; direct backdrop blur(20px) fields, OTP digit grid, QR panels & .session-ledger)    |
++---------------------------------------------------------------------------------------------------+
+```
+
+```css
+/* Co-brand header lockup (style.css) */
+.brand-ysp-mark   { height: 36px; width: auto; display: block; object-fit: contain; transform: translateY(-2px); }
+.brand-collab-x   { display: inline-flex; align-items: center; justify-content: center; width: 11px; height: 11px; color: rgba(10, 10, 10, 0.48); flex-shrink: 0; }
+html.dark .brand-collab-x { color: rgba(255, 255, 255, 0.56); }
+.brand-clubs-mark { height: 22px; width: auto; display: block; object-fit: contain; filter: invert(1); opacity: 0.48; flex-shrink: 0; }
+html.dark .brand-clubs-mark { filter: none; opacity: 0.56; }
+
+/* Split-stage sign-in shell (login.css) */
+.login-workspace { position: relative; z-index: 1; flex: 1; width: 100%; display: grid; grid-template-columns: 1fr; gap: 2rem; padding: 1.5rem 1rem 2.5rem; align-items: center; justify-items: center; }
+@media (min-width: 1024px) {
+  .login-workspace { min-height: calc(100dvh - 61px); padding: 0; grid-template-columns: minmax(0, 1fr) clamp(430px, 35vw, 620px); gap: 0; align-items: stretch; justify-items: stretch; }
+  .login-brand-stage { height: 100%; min-height: calc(100dvh - 61px); padding: 0; }
+  .login-card-col { max-width: none; width: 100%; align-items: stretch; justify-content: stretch; }
+  .login-card-col .surface-card {
+    width: 100%; height: 100%; border-radius: 0; border-top: none; border-right: none; border-bottom: none;
+    border-left: 1px solid var(--glass-border);
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.45), -16px 0 42px -12px rgba(0, 0, 0, 0.10);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: clamp(2rem, 4vh, 3.5rem) clamp(2rem, 3.2vw, 3.5rem);
+  }
+  html.dark .login-card-col .surface-card { box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.08), -18px 0 48px -12px rgba(0, 0, 0, 0.72); }
+  .login-card-col .surface-card > * { width: 100%; max-width: 480px; }
+}
+
+/* Open centered stage for MFA, Recovery, Revoked, Verified & 7-Frame Onboarding */
+.auth-centered-stage { position: relative; z-index: 1; flex: 1; width: 100%; padding: clamp(2rem, 5vh, 3.5rem) clamp(1.25rem, 3vw, 2.5rem) 4rem; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+.auth-centered-card { width: 100%; max-width: 660px; }
+```
+
+### 5.4 S-02 Executive Officer Command Center & Edge-to-Edge Shell (`.s02-shell`)
+
+The S-02 Command Center pairs the sticky `1440px` header (`#app-header`) with an edge-to-edge (`max-width: none`) operational shell below so multi-metric officer workspaces use the full viewport width with zero artificial side gutters:
+
+```text
++-----------------------+---------------------------------------------------------------------------+
+| .s02-sidebar (268px,  | .s02-main-canvas (minmax(0, 1fr))                                         |
+| sticky top:72px,      |  .s02-canvas-header: [Title (Geist Pixel)] | [Search 38px + Jump 38px] |
+| max-h: calc(100vh-84))|  [Conditional Maintenance / Grace Banner only when active]                |
+|  - Officer Avatar/Slot|  .s02-kpi-grid (4 equal cards, tabular-nums counters)                     |
+|  - My duties switch   |  .s02-body-grid (1.65fr | minmax(340px, 1fr)):                            |
+|  - Active My Work pill|   +-- Priority Queue (Tabs: Needs / Waiting / Resolved) --+-- Daily 2x3 --+ |
+|  - 7 Accordion Groups |   | Uncertain & Overdue pinned first; empty clear state |   Chapter     | |
+|    (plain English)    |   | Action cards w/ GOV-06 independence callouts       |   Status Card | |
+|  - Sign out footer    |  .s02-canvas-footer: [Quiet "Demo Controls" ghost toggle -> Drawer]       |
++-----------------------+---------------------------------------------------------------------------+
+```
+
+```css
+.s02-shell {
+  position: relative; z-index: 2; width: 100%; max-width: none; margin: 0;
+  padding: 0.75rem clamp(0.375rem, 0.55vw, 0.5rem) 1.5rem;
+  display: grid; grid-template-columns: 268px minmax(0, 1fr); gap: 0.85rem; align-items: start;
+}
+.s02-sidebar {
+  position: sticky; top: 72px; max-height: calc(100vh - 84px);
+  display: flex; flex-direction: column; gap: 0.58rem; padding: 0.85rem; border-radius: 18px; overflow: hidden;
+}
+.s02-main-canvas { display: flex; flex-direction: column; gap: 1.05rem; min-width: 0; }
+.s02-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.9rem; }
+.s02-body-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(340px, 1fr); gap: 0.9rem; align-items: stretch; }
+```
+
+### 5.5 Stage 1–5 Operational Domain Workspaces (`.p03-workspace-shell`, `P02`–`P29`)
+
+All 28 domain workspaces (`P02` Administration through `P29` Acceptance Dossier) share an edge-to-edge shell matching `.s02-shell` with a two-row command header and balanced 2-column operational cards:
+
+```css
+.p03-workspace-shell { position: relative; z-index: 1; flex: 1; width: 100%; padding: 0.5rem clamp(0.375rem, 0.55vw, 0.5rem) 1.25rem; }
+.p03-workspace-inner { width: 100%; max-width: none; margin: 0 auto; display: flex; flex-direction: column; gap: 0.65rem; }
+.p03-top-header { display: flex; flex-direction: column; gap: 0.55rem; padding: 0.7rem 1rem; }
+.p03-header-search-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; width: 100%; }
+.p03-header-nav-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; width: 100%; padding-top: 0.55rem; border-top: 1px solid var(--glass-divider); }
+.p03-grid, .p03-birdseye-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; align-items: start; }
+.p03-birdseye-grid { gap: 1rem; }
+.p03-birdseye-grid > .surface-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.p02-members-grid { display: grid; grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr); gap: 0.85rem; align-items: start; }
+.p02-policies-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; align-items: stretch; }
+.p02-policies-grid > .p03-history-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+```
 
 ---
 
@@ -1827,6 +2005,216 @@ All SVGs use React camelCase SVG attributes (`strokeWidth`, `strokeLinecap`, `st
 
 ---
 
+### 7.8 Auth, MFA, Session Ledger & Callout Banner Primitives
+
+Authentication screens, MFA challenges, onboarding wizards, and operational banners extend the core button and form grammar with pill-shaped primary/secondary buttons (`login.css`), 6-digit OTP inputs, glowing callout banners, and canonical verified-session ledger rows:
+
+```css
+/* Pill Action Buttons (login.css) */
+#btn-submit-request,
+.btn-batcave-primary {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 44px;
+  padding: 0.625rem 1.125rem; background-color: rgb(var(--ink)); border: 1px solid rgb(var(--ink));
+  border-radius: var(--radius-full); font-family: var(--font-pixel); font-size: 0.9375rem;
+  font-weight: 400; letter-spacing: 0.04em; color: rgb(var(--bg)); cursor: pointer;
+  margin-top: 0.25rem; transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+#btn-submit-request:hover:not(:disabled),
+.btn-batcave-primary:hover:not(:disabled) { opacity: 0.86; transform: translateY(-1px); }
+#btn-submit-request:disabled,
+.btn-batcave-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.btn-batcave-secondary {
+  display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 38px;
+  padding: 0.45rem 0.875rem; background-color: var(--glass-chip-bg);
+  border: 1px solid var(--glass-field-border); border-radius: var(--radius-full);
+  font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 500; color: rgb(var(--ink));
+  cursor: pointer; transition: all var(--transition-fast);
+}
+.btn-batcave-secondary:hover:not(:disabled) { border-color: rgb(var(--ink)); background-color: var(--glass-hover-bg); transform: translateY(-1px); }
+
+/* 6-Digit Authenticator OTP Matrix */
+.otp-digit-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5rem; }
+.otp-digit-input {
+  width: 100%; height: 48px; padding: 0; text-align: center; background-color: var(--glass-field-bg);
+  border: 1px solid var(--glass-field-border); border-radius: 10px; font-family: var(--font-mono);
+  font-size: 1.125rem; font-weight: 600; font-variant-numeric: tabular-nums; color: rgb(var(--ink));
+  outline: none; transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+.otp-digit-input:focus { border-color: rgb(var(--ink)); box-shadow: 0 0 0 1px rgb(var(--ink)); background-color: var(--glass-field-focus); }
+
+/* Callout Banners (.callout-banner, .is-error, .is-warning) */
+.callout-banner {
+  display: flex; align-items: flex-start; gap: 0.625rem; padding: 0.6875rem 0.875rem;
+  background-color: var(--glass-chip-bg); border: 1px solid var(--glass-field-border);
+  border-radius: 10px; font-size: 0.8125rem; line-height: 1.45; color: rgb(var(--g600));
+}
+html.dark .callout-banner { color: rgb(var(--g500)); }
+.callout-banner.is-error { border-color: var(--color-error-border); background-color: var(--color-error-bg); color: var(--color-error); }
+.callout-banner.is-warning { border-color: rgba(245, 158, 11, 0.55); background-color: rgba(254, 243, 199, 0.78); color: #92400e; }
+html.dark .callout-banner.is-warning { background-color: rgba(120, 53, 15, 0.45); border-color: rgba(245, 158, 11, 0.45); color: #fde68a; }
+.callout-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 0.375rem; }
+.callout-dot.dot-error   { background-color: var(--color-error); box-shadow: 0 0 8px rgba(220, 38, 38, 0.55); }
+.callout-dot.dot-warning { background-color: var(--dot-pending); box-shadow: 0 0 8px rgba(245, 158, 11, 0.55); }
+.callout-dot.dot-info    { background-color: var(--dot-progress); box-shadow: 0 0 8px rgba(99, 102, 241, 0.55); }
+.callout-dot.dot-success { background-color: var(--dot-resolved); box-shadow: 0 0 8px rgba(34, 197, 94, 0.55); }
+
+/* Verified Session Ledger & Preserved Session Context Slots */
+.session-ledger { background-color: var(--glass-field-bg); border: 1px solid var(--glass-field-border); border-radius: 10px; overflow: hidden; }
+.session-ledger-row { display: flex; flex-direction: column; gap: 2px; padding: 0.625rem 0.875rem; }
+.session-ledger-row + .session-ledger-row { border-top: 1px solid var(--glass-divider); }
+.session-ledger-key { font-family: var(--font-mono); font-size: 0.625rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: rgb(var(--g500)); }
+.session-ledger-val { font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 500; color: rgb(var(--ink)); word-break: break-word; }
+.kamunggay-verified-name-slot { display: inline; font-weight: 600; color: rgb(var(--ink)); }
+```
+
+Canonical DOM slot classes `.kamunggay-verified-name-slot`, `.slot-chapter`, `.slot-duties`, and `.slot-constraints` bind across both Login Verification (`LoginPage.tsx`) and the S-02 Dashboard (`S02OfficerDashboard.tsx`) so session identity and chapter constraints remain verifiable across routes.
+
+---
+
+### 7.9 S-02 Executive Dashboard Components (Accordion Sidebar, 38px Jump Bar, KPI Strip, Priority Queue & Chapter Status)
+
+#### A. Sticky 7-Domain Accordion Sidebar (`268px` Rail, `style.css`)
+- **Profile Strip (`.s02-sidebar-profile`):** `38×38px` circular initials `.s02-avatar` (`rgba(79, 70, 229, 0.12)` / `#4338ca` Light; `rgba(129, 140, 248, 0.16)` / `#c7d2fe` Dark) paired with `.s02-officer-name` (`0.9rem`, weight `600`, ellipsis) and `.s02-officer-duties` (`0.73rem`).
+- **Duty Scope Switch (`.s02-duty-filter-row` + `.s02-switch-input`):** Interactive `32×18px` pill toggle (`My duties only`), thumb `12×12px` (`translateX(14px)` checked in `#4f46e5` Light / `#818cf8` Dark).
+- **Active Workspace Anchor (`.s02-nav-home-active`):** `36px` indigo-tinted pill anchoring **My Work** with `6px` `.s02-nav-active-dot`.
+- **7 Domain Icon Badges (`.s02-domain-badge` `24×24px`, `border-radius: 7px`):**
+
+| Domain Class | Light Background / Text | Dark Background / Text |
+| :--- | :--- | :--- |
+| `.tone-governance` | `rgba(99, 102, 241, 0.12)` / `#4f46e5` | `rgba(129, 140, 248, 0.18)` / `#a5b4fc` |
+| `.tone-inventory` | `rgba(14, 165, 233, 0.12)` / `#0284c7` | `rgba(56, 189, 248, 0.18)` / `#7dd3fc` |
+| `.tone-procurement` | `rgba(59, 130, 246, 0.12)` / `#2563eb` | `rgba(96, 165, 250, 0.18)` / `#93c5fd` |
+| `.tone-sales` | `rgba(22, 163, 74, 0.12)` / `#16a34a` | `rgba(34, 197, 94, 0.18)` / `#86efac` |
+| `.tone-booths` | `rgba(168, 85, 247, 0.12)` / `#7c3aed` | `rgba(192, 132, 252, 0.18)` / `#d8b4fe` |
+| `.tone-reports` | `rgba(245, 158, 11, 0.14)` / `#d97706` | `rgba(245, 158, 11, 0.18)` / `#fcd34d` |
+| `.tone-operations` | `rgba(100, 116, 139, 0.14)` / `#475569` | `rgba(148, 163, 184, 0.18)` / `#cbd5e1` |
+
+- **Collapsible Tree Guide Rails & Plain-English Items (Jargon-Free Rule):**
+
+```css
+.s02-nav-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 19px; height: 18px; padding: 0 5px; border-radius: 9999px;
+  background-color: var(--glass-field-bg); border: 1px solid var(--glass-field-border);
+  font-family: var(--font-mono); font-size: 0.66rem; font-weight: 600; color: rgb(var(--g600));
+}
+.s02-accordion-chevron { color: rgb(var(--g500)); transition: transform var(--transition-fast), color var(--transition-fast); }
+.s02-accordion-chevron.is-open { transform: rotate(90deg); color: rgb(var(--ink)); }
+.s02-nav-tree {
+  margin: 0.16rem 0 0.28rem 15px; padding-left: 10px;
+  border-left: 1.5px solid var(--glass-divider); display: flex; flex-direction: column; gap: 2px;
+}
+.s02-nav-item {
+  display: flex; align-items: center; justify-content: flex-start; gap: 0.45rem;
+  width: 100%; height: 30px; padding: 0 0.55rem; border: none; border-radius: 8px;
+  background: transparent; color: rgb(var(--g700)); font-family: var(--font-sans);
+  font-size: 0.8rem; font-weight: 500; text-align: left; cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+html.dark .s02-nav-item { color: rgba(244, 244, 245, 0.78); }
+.s02-nav-item:hover { background-color: var(--glass-hover-bg); color: rgb(var(--ink)); }
+.s02-nav-item-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+```
+
+> [!IMPORTANT]
+> **Jargon-Free Navigation Rule (`@ysp/frontend`):** Sidebar leaf items display plain officer-facing English labels (`Chapter Setup`, `Records & Audit`, `Signed Handover`, `Inventory Catalog`, `Opening Baseline`, `Variance Recounts`) plus universally understood accounting parentheticals (`Requisitions (RF)`, `Quotations & POs`, `Sales Orders & SI`, `Payments & OR`). **Never** attach cryptic 3-letter developer badges (`ADM`, `EVD`, `IPC`, `ADJ`, `BCO`, `DRL`) inside `.s02-nav-item`.
+
+#### B. Subpixel-Locked `38px` Spotlight Command & Record Jump Bar
+Because `.btn-batcave-primary` defaults to `min-height: 44px; margin-top: 0.25rem;`, scoping the S-02 header command bar forces exact `<= 1px` baseline parity across the search field, Jump CTA, and Clear button:
+
+```css
+.s02-command-bar { display: flex; align-items: center; gap: 0.5rem; flex: 1 1 360px; max-width: 520px; justify-content: flex-end; }
+.s02-command-input-wrap { position: relative; flex: 1 1 auto; min-width: 240px; display: flex; align-items: center; }
+[data-testid="s02-dashboard-workspace"] .s02-command-input {
+  width: 100%; height: 38px; min-height: 38px; margin: 0; padding: 0 0.85rem 0 2.35rem;
+  border-radius: var(--radius-full); font-family: var(--font-sans); font-size: 0.83rem; box-sizing: border-box;
+}
+[data-testid="s02-dashboard-workspace"] .s02-command-bar .s02-jump-btn,
+[data-testid="s02-dashboard-workspace"] .s02-command-bar .s02-clear-btn {
+  width: auto; flex-shrink: 0; height: 38px; min-height: 38px; margin: 0; padding: 0 1rem;
+  line-height: 1; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+  white-space: nowrap; font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 600; letter-spacing: -0.01em;
+}
+```
+
+#### C. 4-Card KPI Pulse Strip (`.s02-kpi-card` `r:16px`)
+- Cards use `padding: 1rem 1.1rem; gap: 0.45rem;`.
+- `.s02-kpi-icon` (`30×30px`, `border-radius: 9px`) uses tinted tones `.tone-indigo` (`#4f46e5`/`#a5b4fc`), `.tone-amber` (`#d97706`/`#fcd34d`), `.tone-emerald` (`#16a34a`/`#86efac`), and `.tone-violet` (`#7c3aed`/`#d8b4fe`).
+- `.s02-kpi-value` renders `1.7rem` weight `700` `tabular-nums` metrics above `0.78rem` sub-metrics (`.s02-kpi-num-inline`).
+
+#### D. Priority Queue & Dark-Safe Segmented Tabs (`.s02-queue-panel`)
+- **Segmented Bucket Tabs:** `.s02-segmented-tabs` (`padding: 3px; border-radius: 9999px;`) holds `28px` `.s02-seg-tab` pills (`Needs My Action`, `Waiting`, `Resolved`). **Explicit dark-mode active overrides** (`html.dark .s02-seg-tab.is-active`) are mandatory alongside light rules so dark hover states do not wash out inverted white-on-white labels:
+
+```css
+.s02-seg-tab { height: 28px; padding: 0 0.78rem; border: none; border-radius: var(--radius-full); background: transparent; font-family: var(--font-sans); font-size: 0.78rem; font-weight: 500; color: rgb(var(--g600)); cursor: pointer; white-space: nowrap; }
+html.dark .s02-seg-tab { color: rgba(244, 244, 245, 0.68); }
+.s02-seg-tab:hover, html.dark .s02-seg-tab:hover { color: rgb(var(--ink)); }
+.s02-seg-tab.is-active, .s02-seg-tab.is-active:hover,
+html.dark .s02-seg-tab.is-active, html.dark .s02-seg-tab.is-active:hover {
+  background-color: rgb(var(--ink)); color: rgb(var(--bg)); font-weight: 600;
+}
+```
+
+- **Priority Cards (`.s02-queue-card` `r:12px`):** `border-left: 3px solid` encodes urgency hierarchy (`#dc2626` + `rgba(220,38,38,0.36)` for `.is-uncertain` pinned first; `#d97706` + `rgba(245,158,11,0.42)` for `.is-overdue`), paired with `23px` monospace `.s02-record-pill`, `22px` `.s02-status-tag` / `.s02-duty-chip`, `34px` row action buttons (`.s02-queue-actions`), and `.s02-empty-state` (`min-height: 280px`, `44×44px` emerald check circle).
+
+#### E. Right Rail: Daily Workflows `2×3` Grid, Officer-Clean Chapter Status & Quiet Demo Footer
+- **Daily Workflows (`.s02-quick-grid`):** `repeat(2, minmax(0, 1fr))` grid of `64px` min-height `.s02-quick-tile` buttons (`r:12px`, `28×28px` `.s02-quick-icon`, hover `border-color: rgb(var(--ink))`).
+- **Chapter Status Card (Officer-Clean Surface):** Displays only business-relevant rows (`.s02-readiness-list`, `.s02-readiness-row`, `7px` `.s02-status-dot` `.is-green` / `.is-amber` / `.is-red` / `.is-neutral`): **Active Chapter** (`.slot-chapter`), **Chapter Plan** (`s02-subscription-pill`), and **Governance** (`.slot-constraints`, fallback `Standard chapter rules apply`).
+  - **Prohibition:** Never render permanent infrastructure/DevOps rows (`Host Status: Operational`) or developer `"Manage Queue & Telemetry"` buttons inside officer cards. Active maintenance or grace warnings render exclusively as conditional top `.callout-banner` notices (`data-testid="s02-maintenance-banner"`, `data-testid="s02-lifecycle-banner"`) when active.
+- **Quiet Footer Demo Toggle (`.s02-canvas-footer`):** Low-contrast right-aligned ghost trigger `.s02-demo-toggle-btn` (`height: 30px`, `Demo Controls` / `Hide Demo Controls`) expanding `.s02-controls-drawer` (`r:18px`, `38px` form controls) below the body grid for walkthrough simulation.
+
+---
+
+### 7.10 Operational Workspace Primitives (Segmented Filter Pills, Dual-Mode Signature Pad, 7-View Tables & Anti-Squeeze Form Guards)
+
+Across Stages 1–5 (`P02`–`P29`), shared `.p03-*`, `.p04-*`, and `.p05-*` primitives extend Code Anastasya into complex workflow surfaces:
+
+```css
+/* Top Bar Segmented Filter Pills (.p03-filter-pill-bar, 38px container / 28px pills) */
+.p03-filter-pill-bar {
+  display: inline-flex; align-items: center; gap: 2px; height: 38px; padding: 4px; box-sizing: border-box;
+  border-radius: var(--radius-full); background-color: rgba(15, 23, 42, 0.04); border: 1px solid rgba(15, 23, 42, 0.11);
+}
+html.dark .p03-filter-pill-bar { background-color: rgba(255, 255, 255, 0.045); border-color: rgba(255, 255, 255, 0.14); }
+.p03-filter-pill {
+  display: inline-flex; align-items: center; justify-content: center; height: 28px; padding: 0 0.85rem;
+  border-radius: var(--radius-full); border: none; background: transparent;
+  font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; line-height: 1; color: rgb(var(--g600)); cursor: pointer; white-space: nowrap;
+}
+.p03-filter-pill.is-active, html.dark .p03-filter-pill.is-active { background-color: rgb(var(--ink)); color: rgb(var(--bg)); }
+
+/* Card Attention Rings, Formal Grids & Checkboxes */
+.p03-card.is-needs-action       { border-color: rgba(245, 158, 11, 0.62); box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25), var(--glass-shadow); }
+.p03-card.is-serious-attention  { border-color: rgba(220, 38, 38, 0.72);  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.32), var(--glass-shadow); }
+.p03-formal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
+.p03-formal-cell { display: flex; flex-direction: column; gap: 0.16rem; padding: 0.52rem 0.7rem; border-radius: 10px; background-color: rgba(255, 255, 255, 0.52); border: 1px solid rgba(15, 23, 42, 0.10); }
+html.dark .p03-formal-cell { background-color: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.10); }
+.p03-checkbox-row { position: relative; width: 100%; min-height: 38px; padding: 0.45rem 0.75rem; border-radius: 10px; background-color: var(--glass-field-bg); border: 1px solid var(--glass-field-border); display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; cursor: pointer; }
+.p03-checkbox-row.is-checked { border-color: rgb(var(--ink)); background-color: var(--glass-hover-bg); font-weight: 500; }
+
+/* Inline 38px Input+Button Parity & Anti-Squeeze Select Rule (P07-P11+) */
+.p03-input-action-row { display: flex; gap: 0.5rem; align-items: center; }
+.p03-input-action-row .form-control { flex: 1 1 auto; min-width: 0; height: 38px; min-height: 38px; margin: 0; }
+.p03-input-action-row .btn-batcave-primary,
+.p03-input-action-row .btn-batcave-secondary { height: 38px; min-height: 38px; padding: 0 1.05rem; margin: 0; line-height: 1; box-sizing: border-box; }
+select.form-control { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 2.5rem; }
+
+/* P04 Dual-Mode Interactive Signature Pad */
+.p04-signature-pad-wrap { position: relative; width: 100%; border-radius: 14px; border: 1px dashed var(--glass-field-border); background-color: rgba(255, 255, 255, 0.72); overflow: hidden; }
+html.dark .p04-signature-pad-wrap { background-color: rgba(15, 23, 42, 0.62); }
+.p04-signature-canvas { display: block; width: 100%; height: 180px; cursor: crosshair; touch-action: none; }
+
+/* P05 7-View Eligibility Matrix & Data Tables */
+.p05-seven-views-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 0.55rem; }
+.p05-table-wrap { width: 100%; overflow-x: auto; border-radius: 10px; border: 1px solid var(--glass-field-border); }
+.p05-cells-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left; color: rgb(var(--ink)); }
+.p05-cells-table th { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: rgb(var(--g600)); background-color: var(--glass-field-bg); }
+```
+
+---
+
 ## 8. Interactive Halftone & Stitch Flare Backdrop (`CodeAnastasyaBackdrop.tsx`)
 
 ### 8.1 Complete Backdrop & Stitch Flare CSS
@@ -2213,8 +2601,12 @@ Optional audio layer if audio feedback is desired in the project:
 | Write all components in **React `.tsx` + Strict TypeScript `.ts` + CSS** | Create `.js` runtime scripts or mutate DOM outside canvas/ViewTransition hooks |
 | Guard array indexing (`for (const dot of dots)`) for `noUncheckedIndexedAccess` | Index arrays unchecked (`dots[i].x`) or suppress errors with `any` |
 | Use `import type` for type-only imports (`verbatimModuleSyntax: true`) | Mix value and type imports without `type` |
-| Keep `#app-header` centered (`max-width: 1440px`, `60px` height) & workspace fluid | Constrain `.main-workspace` to `max-width: 1400px` on wide screens |
-| Use Light Mode cool frosted gradient (`56% -> 34% -> 44%` alpha) + Dark `62% -> 50%` alpha + `inset 0 1px 0` top rim (`element opacity: 1`) | Inflate `--glass-bg` stops to `0.75–0.86+` or set CSS `opacity < 1` on card containers (turns glass flat/opaque or fades text) |
+| Keep `#app-header` centered (`max-width: 1440px`, `60px` height) & workspace fluid | Constrain `.main-workspace`, `.s02-shell`, or `.p03-workspace-shell` with centered side margins that leave horizontal outer whitespace |
+| Lock inline input + CTA pairs (e.g. `.s02-command-bar`, `.p03-input-action-row`) to explicit `height: 38px; min-height: 38px; margin: 0; box-sizing: border-box;` (`<= 1px` delta) | Pair `38px` inputs against default `44px` `.btn-batcave-primary` buttons carrying `margin-top: 0.25rem` |
+| Define explicit `html.dark .is-active` rules (`rgb(var(--ink))` fill / `rgb(var(--bg))` text) on segmented tabs (`.s02-seg-tab`, `.p03-filter-pill`) | Rely on light-only active selectors that invert to unreadable white-on-white labels under `html.dark` hover/base rules |
+| Label sidebar links in plain officer-facing English (`Chapter Setup`, `Signed Handover`, `Requisitions (RF)`) | Stamp cryptic 3-letter developer codes (`ADM`, `EVD`, `IPC`, `ADJ`, `BCO`, `DRL`) into sidebar pills |
+| Keep `Chapter Status` focused on officer context (`Active Chapter`, `Chapter Plan`, `Governance`), show active maintenance via conditional `.callout-banner` notices, and tuck walkthrough tools under quiet footer `Demo Controls` | Expose permanent `Host Status: Operational` infrastructure rows or `"Telemetry"` DevOps buttons inside regular officer cards |
+| Use Light Mode frosted gradients (`56% -> 34% -> 44%` Classic §2.4, or `86% -> 74% -> 80%` High-Legibility §2.7) + Dark smoked gradients + `inset 0 1px 0` top rim (`element opacity: 1`) | Collapse cards into flat unblurred fills or set CSS `opacity < 1` on card containers (fades text and borders) |
 | Replace active single-pill toast in React state | Stack multiple notification banners vertically |
 
 ---
@@ -2331,6 +2723,7 @@ To prevent accidental copying or unapproved edits by AI coding assistants within
 ---
 
 *Changelog*
+- **1.5.0-react-ts** (2026-11-25): Updated specification with latest `@ysp/frontend` production designs: High-Legibility Operational Glass profile (**§2.7**), self-hosted variable `geist` font rules (**§3.1–§3.2**), Split-Stage Login Showcase & Open Centered Auth/Onboarding shell (**§5.3**, **§7.8**), edge-to-edge **S-02 Executive Officer Command Center** (**§5.4**, **§7.9** with jargon-free accordion tree, `38px` alignment-locked command bar, dark-safe segmented tabs, and officer-clean `Chapter Status` card), Stage 1–5 operational workspace primitives (**§5.5**, **§7.10**), and updated **§12 Do's and Don'ts**.
 - **1.4.3-react-ts** (2026-11-17): Added **§15.5 AI Agent Governance & Organization Approval Protocol** and integrated workspace prompt enforcement (`GEMINI.md` + `.agent/hooks.json` `PreToolUse` `force_ask` guard).
 - **1.4.2-react-ts** (2026-11-17): Renamed specification file from `DESIGN.md` to **`CodeAnastasya.md`**, added **§14 References & Design Attribution**, and added **§15 Proprietary License & Legal Enforcement** restricting **Code Anastasya** strictly to `Kamunggay / YSP` (`@ysp/frontend`) with legal enforcement terms against unauthorized external use.
 - **1.4.1-react-ts** (2026-11-17): Designated the design system **Code Anastasya** (`CodeAnastasyaBackdrop.tsx`, `code-anastasya.css`, `code_anastasya_theme`, `code_anastasya_sounds_enabled`) while retaining all exact tokens and box opacities.
