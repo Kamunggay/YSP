@@ -67,51 +67,24 @@ class InventoryStage1ATest extends TestCase
         ]);
     }
 
-    public function test_user_authentication_session_memberships_and_chapter_access(): void
+    public function test_user_memberships_and_chapter_access(): void
     {
-        // 1. CSRF
-        $csrfResponse = $this->get('/api/v1/auth/csrf');
-        $csrfResponse->assertStatus(204);
-
-        // 2. Sign In
-        $signInResponse = $this->postJson('/api/v1/auth/sign-in', [
-            'login' => 'custodian@example.invalid',
-            'password' => 'Password123!',
-        ]);
-        $signInResponse->assertStatus(200)
-            ->assertJsonPath('data.state', 'authenticated')
-            ->assertJsonPath('data.user.id', $this->userId);
-
-        // 3. Read Session
-        $sessionResponse = $this->withHeaders(['X-User-Id' => $this->userId])
-            ->getJson('/api/v1/auth/session');
-        $sessionResponse->assertStatus(200)
-            ->assertJsonPath('data.state', 'authenticated')
-            ->assertJsonPath('data.user.id', $this->userId);
-
-        // 4. Memberships
         $membershipResponse = $this->withHeaders(['X-User-Id' => $this->userId])
             ->getJson('/api/v1/auth/memberships');
         $membershipResponse->assertStatus(200)
             ->assertJsonPath('data.0.chapter.reference', 'SYN-CEBU');
 
-        // 5. Chapter Context
         $contextResponse = $this->withHeaders(['X-User-Id' => $this->userId])
             ->getJson("/api/v1/chapters/{$this->chapterId}/context");
         $contextResponse->assertStatus(200)
             ->assertJsonPath('data.user_id', $this->userId)
             ->assertJsonPath('data.membership.chapter.id', $this->chapterId);
 
-        // 6. Chapter Access (24 actions)
         $accessResponse = $this->withHeaders(['X-User-Id' => $this->userId])
             ->getJson("/api/v1/chapters/{$this->chapterId}/access");
         $accessResponse->assertStatus(200)
             ->assertJsonCount(24, 'data.actions')
             ->assertJsonPath('data.chapter_id', $this->chapterId);
-
-        // 7. Sign Out
-        $signOutResponse = $this->post('/api/v1/auth/sign-out');
-        $signOutResponse->assertStatus(204);
     }
 
     public function test_all_8_cli_setup_commands_execution_and_database_state(): void

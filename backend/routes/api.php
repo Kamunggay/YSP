@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActualIssueController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BrowserSessionController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\CatalogueController;
 use App\Http\Controllers\ChapterAccessController;
@@ -21,10 +22,10 @@ Route::get('/health', HealthController::class);
 
 // ================= AUTH & SESSION (13 endpoints) =================
 Route::prefix('v1/auth')->group(function () {
-    Route::get('/csrf', [AuthController::class, 'csrf']);
-    Route::post('/sign-in', [AuthController::class, 'signIn']);
-    Route::get('/session', [AuthController::class, 'session']);
-    Route::post('/sign-out', [AuthController::class, 'signOut']);
+    Route::get('/csrf', [BrowserSessionController::class, 'csrf']);
+    Route::post('/sign-in', [BrowserSessionController::class, 'signIn']);
+    Route::get('/session', [BrowserSessionController::class, 'session']);
+    Route::post('/sign-out', [BrowserSessionController::class, 'signOut']);
     Route::post('/authenticator/enrollments', [AuthController::class, 'beginEnrollment']);
     Route::post('/authenticator/enrollments/confirm', [AuthController::class, 'confirmEnrollment']);
     Route::post('/authenticator/challenge', [AuthController::class, 'completeAuthenticatorChallenge']);
