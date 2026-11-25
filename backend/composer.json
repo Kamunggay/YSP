@@ -10,7 +10,8 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
-        "laravel/framework": "^13.17"
+        "laravel/framework": "^13.17",
+        "spomky-labs/otphp": "~11.5.1"
     },
     "require-dev": {
         "laravel/pint": "^1.27",

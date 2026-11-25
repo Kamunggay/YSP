@@ -26,12 +26,12 @@ Route::prefix('v1/auth')->group(function () {
     Route::post('/sign-in', [BrowserSessionController::class, 'signIn']);
     Route::get('/session', [BrowserSessionController::class, 'session']);
     Route::post('/sign-out', [BrowserSessionController::class, 'signOut']);
-    Route::post('/authenticator/enrollments', [AuthController::class, 'beginEnrollment']);
-    Route::post('/authenticator/enrollments/confirm', [AuthController::class, 'confirmEnrollment']);
-    Route::post('/authenticator/challenge', [AuthController::class, 'completeAuthenticatorChallenge']);
-    Route::post('/recovery/challenge', [AuthController::class, 'completeRecoveryChallenge']);
-    Route::get('/recovery-codes', [AuthController::class, 'recoveryCodes']);
-    Route::post('/recovery-codes/rotate', [AuthController::class, 'rotateRecoveryCodes']);
+    Route::post('/authenticator/enrollments', [BrowserSessionController::class, 'beginEnrollment']);
+    Route::post('/authenticator/enrollments/confirm', [BrowserSessionController::class, 'confirmEnrollment']);
+    Route::post('/authenticator/challenge', [BrowserSessionController::class, 'completeAuthenticatorChallenge']);
+    Route::post('/recovery/challenge', [BrowserSessionController::class, 'completeRecoveryChallenge']);
+    Route::get('/recovery-codes', [BrowserSessionController::class, 'recoveryCodes']);
+    Route::post('/recovery-codes/rotate', [BrowserSessionController::class, 'rotateRecoveryCodes']);
     Route::get('/memberships', [AuthController::class, 'memberships']);
     Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeSession']);
 });

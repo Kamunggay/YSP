@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use OTPHP\TOTP;
 use Tests\TestCase;
 
 class BrowserSessionTest extends TestCase
@@ -198,6 +199,188 @@ class BrowserSessionTest extends TestCase
         $this->assertTrue(Str::isUuid($response->json('request_id')));
         $this->assertSame(['error', 'request_id'], array_keys($response->json()));
         $this->assertSame(['code', 'message'], array_keys($response->json('error')));
+    }
+
+    public function test_mfa_enrollment_requires_the_current_browser_and_promotes_once(): void
+    {
+        $officer = $this->officer();
+        DB::table('provider_role_grants')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $officer->id,
+            'role_code' => 'provisioner',
+            'granted_by_user_id' => $officer->id,
+            'starts_at' => now(),
+            'reason' => 'Synthetic MFA policy fixture',
+        ]);
+        $continuation = $this->signIn($this->startBrowser(), $officer)->assertOk()
+            ->assertJsonPath('data.next_step', 'enroll_authenticator');
+        $this->requestAuth('GET', 'recovery-codes', $continuation)->assertForbidden()
+            ->assertJsonPath('error.code', 'mfa_incomplete');
+
+        $password = ['password' => self::PASSWORD];
+        $beginKey = (string) Str::uuid();
+        $pending = $this->requestAuth('POST', 'authenticator/enrollments', $continuation, $password, $beginKey)
+            ->assertCreated()->assertHeader('X-Action-Replayed', 'false')->assertHeader('Cache-Control', 'no-store')
+            ->assertJsonPath('data.expires_at', now()->addMinutes(5)->toISOString());
+        $this->requestAuth('POST', 'authenticator/enrollments', $continuation, $password, $beginKey)
+            ->assertCreated()->assertHeader('X-Action-Replayed', 'true')->assertExactJson($pending->json());
+        $this->travel(61)->seconds();
+        $proof = $password + [
+            'enrollment_id' => $pending->json('data.enrollment_id'),
+            'authenticator_code' => $this->authenticatorCode($pending->json('data.secret')),
+        ];
+        $otherBrowser = $this->signIn($this->startBrowser(), $officer)->assertOk();
+        $this->requestAuth('POST', 'authenticator/enrollments/confirm', $otherBrowser, $proof)
+            ->assertConflict()->assertJsonPath('error.code', 'enrollment_expired');
+        $key = (string) Str::uuid();
+        $full = $this->requestAuth('POST', 'authenticator/enrollments/confirm', $continuation, $proof, $key)
+            ->assertOk()->assertHeader('X-Action-Replayed', 'false')
+            ->assertJsonPath('data.session.authentication_method', 'authenticator')
+            ->assertJsonPath('data.session.mfa_required', true)->assertJsonCount(10, 'data.recovery_set.codes');
+        $this->assertCookiePair($full);
+        $this->requestAuth('GET', 'session', $continuation)->assertUnauthorized();
+        $this->requestAuth('POST', 'authenticator/enrollments/confirm', $full, $proof, $key)
+            ->assertOk()->assertHeader('X-Action-Replayed', 'true')->assertExactJson($full->json());
+        $this->requestAuth('GET', 'recovery-codes', $full)->assertOk()
+            ->assertJsonPath('data.recovery_set.id', $full->json('data.recovery_set.id'))
+            ->assertJsonPath('data.recovery_set.remaining', 10)->assertJsonMissingPath('data.recovery_set.codes');
+    }
+
+    public function test_mfa_authenticator_step_is_once_only_across_browsers(): void
+    {
+        $officer = $this->officer();
+        [$seed] = $this->enrollAuthenticator($officer);
+        $continuation = $this->signIn($this->startBrowser(), $officer)->assertOk()
+            ->assertJsonPath('data.next_step', 'challenge_authenticator');
+        $this->requestAuth('POST', 'recovery-codes/rotate', $continuation)->assertForbidden()
+            ->assertJsonPath('error.code', 'mfa_incomplete');
+        $this->requestAuth('POST', 'authenticator/challenge', $continuation, ['authenticator_code' => 123456])
+            ->assertUnprocessable()->assertJsonPath('error.fields.0.pointer', '/authenticator_code');
+        $this->requestAuth('POST', 'authenticator/challenge', $continuation, [
+            'authenticator_code' => $this->authenticatorCode($seed),
+        ])->assertForbidden()->assertJsonPath('error.code', 'invalid_factor');
+        $this->travel(61)->seconds();
+        $proof = ['authenticator_code' => $this->authenticatorCode($seed, 30)];
+        $key = (string) Str::uuid();
+        $completed = $this->requestAuth('POST', 'authenticator/challenge', $continuation, $proof, $key)
+            ->assertOk()->assertHeader('X-Action-Replayed', 'false')->assertJsonPath('data.authentication_method', 'authenticator');
+        $this->requestAuth('GET', 'session', $completed)->assertExactJson($completed->json());
+        $this->requestAuth('GET', 'session', $continuation)->assertUnauthorized();
+        $replay = $this->requestAuth('POST', 'authenticator/challenge', $completed, $proof, $key)
+            ->assertOk()->assertExactJson($completed->json())->assertHeader('X-Action-Replayed', 'true');
+        $this->assertSame($this->cookies($completed), $this->cookies($replay));
+        $this->requestAuth('POST', 'authenticator/challenge', $completed, $proof)
+            ->assertConflict()->assertJsonPath('error.code', 'session_state_conflict');
+
+        $another = $this->signIn($this->startBrowser(), $officer)->assertOk();
+        $this->requestAuth('POST', 'authenticator/challenge', $another, $proof, $key)
+            ->assertForbidden()->assertJsonPath('error.code', 'invalid_factor');
+        $this->requestAuth('GET', 'session', $another)->assertJsonPath('data.state', 'continuation');
+        $this->requestAuth('POST', 'authenticator/challenge', $another, [
+            'authenticator_code' => $this->authenticatorCode($seed),
+        ])->assertOk();
+    }
+
+    public function test_mfa_recovery_consumption_rotation_and_secret_delivery_expiry(): void
+    {
+        $officer = $this->officer();
+        [$seed, $full, $confirmation, $confirmationKey] = $this->enrollAuthenticator($officer);
+        $set = $full->json('data.recovery_set');
+        $this->assertCount(10, array_unique($set['codes']));
+        foreach ($set['codes'] as $code) {
+            $this->assertMatchesRegularExpression('/^[A-Z2-7]{4}(?:-[A-Z2-7]{4}){3}$/', $code);
+        }
+        $this->travel(61)->seconds();
+        $continuation = $this->signIn($this->startBrowser(), $officer);
+        $key = (string) Str::uuid();
+        $proof = ['recovery_code' => $set['codes'][0]];
+        $recovered = $this->requestAuth('POST', 'recovery/challenge', $continuation, $proof, $key)
+            ->assertOk()->assertJsonPath('data.authentication_method', 'recovery_code')->assertHeader('X-Action-Replayed', 'false');
+        $this->requestAuth('POST', 'recovery/challenge', $recovered, $proof, $key)->assertOk()
+            ->assertExactJson($recovered->json())->assertHeader('X-Action-Replayed', 'true');
+        $this->requestAuth('POST', 'authenticator/enrollments/confirm', $full, $confirmation, $confirmationKey)
+            ->assertConflict()->assertJsonPath('error.code', 'secret_delivery_expired');
+        $second = $this->signIn($this->startBrowser(), $officer);
+        $this->requestAuth('POST', 'recovery/challenge', $second, $proof)->assertForbidden()
+            ->assertJsonPath('error.code', 'invalid_factor');
+        $this->requestAuth('GET', 'recovery-codes', $recovered)
+            ->assertExactJson(['data' => ['recovery_set' => [
+                'id' => $set['id'], 'remaining' => 9, 'created_at' => $set['created_at'], 'expires_at' => $set['expires_at'],
+            ]]]);
+
+        $this->travel(61)->seconds();
+        $rotation = ['password' => self::PASSWORD, 'authenticator_code' => $this->authenticatorCode($seed)];
+        $rotationKey = (string) Str::uuid();
+        $this->requestAuth('POST', 'recovery-codes/rotate', $recovered, $rotation + ['expected_recovery_set_id' => null], $rotationKey)
+            ->assertConflict()->assertJsonPath('error.code', 'recovery_set_conflict');
+        $rotation['expected_recovery_set_id'] = $set['id'];
+        $rotated = $this->requestAuth('POST', 'recovery-codes/rotate', $recovered, $rotation, $rotationKey)
+            ->assertOk()->assertHeaderMissing('Set-Cookie')->assertHeader('X-Action-Replayed', 'false')
+            ->assertJsonPath('data.session.authentication_method', 'authenticator')
+            ->assertJsonPath('data.session.expires_at', $recovered->json('data.expires_at'));
+        $this->assertNotSame($set['id'], $rotated->json('data.recovery_set.id'));
+        $this->requestAuth('POST', 'recovery-codes/rotate', $recovered, $rotation, $rotationKey)
+            ->assertOk()->assertExactJson($rotated->json())->assertHeader('X-Action-Replayed', 'true');
+        $changed = array_replace($rotation, ['expected_recovery_set_id' => null]);
+        $this->requestAuth('POST', 'recovery-codes/rotate', $recovered, $changed, $rotationKey)
+            ->assertConflict()->assertJsonPath('error.code', 'action_key_conflict');
+        $this->requestAuth('POST', 'recovery/challenge', $second, ['recovery_code' => $set['codes'][1]])
+            ->assertForbidden()->assertJsonPath('error.code', 'invalid_factor');
+        $this->travel(5)->minutes();
+        $this->requestAuth('POST', 'recovery-codes/rotate', $recovered, $rotation, $rotationKey)
+            ->assertConflict()->assertJsonPath('error.code', 'secret_delivery_expired');
+
+        $this->requestAuth('POST', 'sign-out', $recovered)->assertNoContent();
+        $this->requestAuth('GET', 'recovery-codes', $recovered)->assertUnauthorized();
+        $this->artisan('app:reset-mfa', ['--target-id' => $officer->id])->assertSuccessful();
+        $this->requestAuth('GET', 'session', $full)->assertUnauthorized();
+        $this->requestAuth('POST', 'recovery/challenge', $second, ['recovery_code' => $rotated->json('data.recovery_set.codes.0')])
+            ->assertUnauthorized();
+    }
+
+    public function test_mfa_proof_throttling_and_continuation_expiry(): void
+    {
+        $officer = $this->officer();
+        [$seed] = $this->enrollAuthenticator($officer);
+        $this->travel(61)->seconds();
+        $continuation = $this->signIn($this->startBrowser(), $officer);
+        $recovery = ['recovery_code' => 'AAAA-AAAA-AAAA-AAAA'];
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->requestAuth('POST', 'recovery/challenge', $continuation, $recovery, headers: ['REMOTE_ADDR' => '192.0.2.42'])
+                ->assertForbidden()->assertJsonPath('error.code', 'invalid_factor');
+        }
+        $key = (string) Str::uuid();
+        $proof = ['authenticator_code' => $this->authenticatorCode($seed, 30)];
+        $this->requestAuth('POST', 'authenticator/challenge', $continuation, $proof, $key)
+            ->assertTooManyRequests()->assertHeader('Retry-After', '60')->assertJsonPath('error.code', 'throttled');
+        $this->travel(60)->seconds();
+        $this->requestAuth('POST', 'authenticator/challenge', $continuation, $proof, $key)->assertOk();
+
+        $expiring = $this->signIn($this->startBrowser(), $officer)->assertOk();
+        $this->travel(10)->minutes();
+        $this->requestAuth('POST', 'authenticator/challenge', $expiring, ['authenticator_code' => $this->authenticatorCode($seed)])
+            ->assertUnauthorized()->assertJsonPath('error.code', 'unauthenticated');
+    }
+
+    private function enrollAuthenticator(User $officer): array
+    {
+        $browser = $this->signIn($this->startBrowser(), $officer)->assertOk();
+        $password = ['password' => self::PASSWORD];
+        $pending = $this->requestAuth('POST', 'authenticator/enrollments', $browser, $password)->assertCreated();
+        $seed = $pending->json('data.secret');
+        $proof = $password + [
+            'enrollment_id' => $pending->json('data.enrollment_id'),
+            'authenticator_code' => $this->authenticatorCode($seed),
+        ];
+        $key = (string) Str::uuid();
+        $full = $this->requestAuth('POST', 'authenticator/enrollments/confirm', $browser, $proof, $key)->assertOk();
+
+        return [$seed, $full, $proof, $key];
+    }
+
+    private function authenticatorCode(string $seed, int $offset = 0): string
+    {
+        return TOTP::createFromSecret($seed)->at(now()->timestamp + $offset);
     }
 
     private function officer(array $attributes = []): User

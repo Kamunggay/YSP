@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\User;
 use App\Models\UserMfaCredential;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ResetMfaCommand extends BaseControlledCommand
@@ -33,26 +35,35 @@ class ResetMfaCommand extends BaseControlledCommand
             return 0;
         }
 
-        $newVersion = $expectedVersion + 1;
-        $mfa = UserMfaCredential::where('user_id', $targetId)->first();
-        if ($mfa) {
-            $mfa->update([
-                'is_confirmed' => false,
-                'recovery_codes' => null,
-                'version' => $newVersion,
-            ]);
-        }
+        $result = DB::transaction(function () use ($targetId, $expectedVersion, $actionKey, $operatorId) {
+            $user = User::whereKey($targetId)->lockForUpdate()->first();
+            $newVersion = $expectedVersion + 1;
+            if ($user) {
+                $user->increment('version');
+                $mfa = $user->mfaCredential()->first();
+                if ($mfa) {
+                    $mfa->revokeRecoverySet();
+                    $mfa->update(UserMfaCredential::PENDING_FIELDS + [
+                        'secret' => '',
+                        'encrypted_seed' => null,
+                        'accepted_totp_steps' => null,
+                        'is_confirmed' => false,
+                        'version' => $newVersion,
+                    ]);
+                }
+            }
 
-        $result = $this->commitResult(
-            procedureId: 'resetMfa',
-            actionKey: $actionKey,
-            targetId: $targetId,
-            version: $newVersion,
-            sessionEffect: 'require_reenrollment',
-            chapterId: null,
-            operatorId: $operatorId,
-            details: ['target_id' => $targetId]
-        );
+            return $this->commitResult(
+                procedureId: 'resetMfa',
+                actionKey: $actionKey,
+                targetId: $targetId,
+                version: $newVersion,
+                sessionEffect: 'require_reenrollment',
+                chapterId: null,
+                operatorId: $operatorId,
+                details: ['target_id' => $targetId]
+            );
+        }, 3);
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
 

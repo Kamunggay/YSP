@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\PasswordSignInInput;
+use App\Http\Requests\AuthInput;
 use App\Models\BrowserSession;
 use App\Models\User;
+use App\Services\BrowserMfa;
+use App\Services\MfaDenied;
 use Closure;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Encryption\MissingAppKeyException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -28,6 +31,7 @@ class BrowserSessionController extends Controller
             }
 
             if (! $session || ($session->user_id && ! $session->currentUser())) {
+                $session?->clearPendingEnrollment();
                 $session?->delete();
                 $session = new BrowserSession(['expires_at' => now()->addHours(2)]);
                 $token = $session->rotateToken();
@@ -48,13 +52,9 @@ class BrowserSessionController extends Controller
             if (strtolower(trim(explode(';', $request->header('Content-Type', ''))[0])) !== 'application/json') {
                 return $this->failure(415, 'unsupported_media_type', 'Use application/json.');
             }
-            try {
-                $body = PasswordSignInInput::decode($request);
-            } catch (JsonException) {
-                return $this->malformed();
-            }
+            $body = AuthInput::decode($request);
 
-            if ($fields = PasswordSignInInput::errors($body)) {
+            if ($fields = AuthInput::errors($body)) {
                 return $this->failure(422, 'invalid_input', 'Correct the indicated fields.', $fields);
             }
 
@@ -123,23 +123,113 @@ class BrowserSessionController extends Controller
                 return $this->malformed();
             }
 
+            $session->clearPendingEnrollment();
             $session->delete();
 
             return $this->cookies(response()->noContent(), null, null);
         });
     }
 
-    private function handle(Request $request, Closure $operation, bool $checkOrigin = false, bool $checkLoginLimit = false): Response
+    public function beginEnrollment(Request $request): Response
+    {
+        return $this->mfa($request, 'begin');
+    }
+
+    public function confirmEnrollment(Request $request): Response
+    {
+        return $this->mfa($request, 'confirm');
+    }
+
+    public function completeAuthenticatorChallenge(Request $request): Response
+    {
+        return $this->mfa($request, 'authenticator');
+    }
+
+    public function completeRecoveryChallenge(Request $request): Response
+    {
+        return $this->mfa($request, 'recovery');
+    }
+
+    public function recoveryCodes(Request $request): Response
+    {
+        return $this->mfa($request, 'status');
+    }
+
+    public function rotateRecoveryCodes(Request $request): Response
+    {
+        return $this->mfa($request, 'rotate');
+    }
+
+    private function mfa(Request $request, string $operation): Response
+    {
+        return $this->handle($request, function (?BrowserSession $session, ?string $token, ?int $ipDelay) use ($request, $operation) {
+            $proof = $operation !== 'status';
+            $user = $session?->currentUser(write: $proof && $ipDelay === null);
+            if (! $user || ! $session->expires_at->isFuture() || ! $session->refreshProgress($user)) {
+                return $this->failure(401, 'unauthenticated', 'Sign in again.');
+            }
+
+            if ($ipDelay !== null) {
+                return $this->throttled(max($ipDelay, $this->attempt('account:'.$user->id, 5, countAttempt: false)));
+            }
+
+            $mfa = new BrowserMfa($session, $user, $this->validPassword(...));
+            if ($operation === 'status') {
+                $status = $mfa->recoveryStatus();
+                if ($request->getQueryString() !== null || $request->getContent() !== '') {
+                    return $this->malformed();
+                }
+
+                return response()->json(['data' => $status]);
+            }
+            if ($operation === 'rotate') {
+                $mfa->fullFactor();
+            }
+            if ($request->getQueryString() !== null || ! $this->validActionKey($request)) {
+                return $this->malformed();
+            }
+            if (strtolower(trim(explode(';', $request->header('Content-Type', ''))[0])) !== 'application/json') {
+                return $this->failure(415, 'unsupported_media_type', 'Use application/json.');
+            }
+
+            $keys = BrowserMfa::INPUTS[$operation];
+            $body = AuthInput::decode($request);
+            if ($fields = AuthInput::errors($body, $keys)) {
+                return $this->failure(422, 'invalid_input', 'Correct the indicated fields.', $fields);
+            }
+            if ($delay = $this->attempt('account:'.$user->id, 5)) {
+                return $this->throttled($delay);
+            }
+
+            $input = array_replace(array_fill_keys($keys, null), (array) $body);
+            [$result, $token, $replay] = $mfa->perform($operation, $request->header('X-Action-Key'), $input, $token);
+
+            if (in_array($operation, ['confirm', 'authenticator', 'recovery'], true)) {
+                return $this->sessionEstablished($result, $token, $session->csrf_token, $replay);
+            }
+
+            return response()->json(['data' => $result], $operation === 'begin' ? 201 : 200, [
+                'X-Action-Replayed' => $replay ? 'true' : 'false',
+            ]);
+        }, protectedMfa: true);
+    }
+
+    private function validActionKey(Request $request): bool
+    {
+        return preg_match(AuthInput::UUID, $request->header('X-Action-Key', '')) === 1;
+    }
+
+    private function handle(Request $request, Closure $operation, bool $checkOrigin = false, bool $checkLoginLimit = false, bool $protectedMfa = false): Response
     {
         $unsafe = $request->isMethod('POST');
 
         try {
             $ipDelay = $this->attempt('ip:'.hash('sha256', (string) $request->ip()), 60);
-            if ($ipDelay && ! $checkLoginLimit) {
+            if ($ipDelay && ! $checkLoginLimit && ! ($protectedMfa && $unsafe)) {
                 return $this->noStore($this->throttled($ipDelay));
             }
 
-            $response = DB::transaction(function () use ($request, $operation, $unsafe, $checkOrigin, $ipDelay) {
+            $response = DB::transaction(function () use ($request, $operation, $unsafe, $checkOrigin, $ipDelay, $protectedMfa) {
                 foreach (['Origin', 'Referer', 'Sec-Fetch-Site', 'Content-Type', 'X-Action-Key', 'X-XSRF-TOKEN'] as $name) {
                     if (count($request->headers->all($name)) > 1) {
                         return $this->malformed();
@@ -155,25 +245,35 @@ class BrowserSessionController extends Controller
                 $token = $request->cookie('ysp_session');
                 $session = is_string($token) && preg_match('/\A[a-f0-9]{64}\z/', $token)
                     ? BrowserSession::where('token_hash', hash('sha256', $token))
-                        ->where('expires_at', '>', now())->lockForUpdate()->first()
+                        ->when(! $protectedMfa, fn ($query) => $query->where('expires_at', '>', now()))
+                        ->lockForUpdate()->first()
                     : null;
 
                 if ($unsafe && (! $session || ! hash_equals($session->csrf_token, $request->header('X-XSRF-TOKEN', '')))) {
                     return $this->failure(419, 'csrf_mismatch', 'Refresh browser CSRF protection.');
                 }
-                if (($unsafe || $checkOrigin) && $request->getQueryString() !== null) {
+                if ($protectedMfa && $session && ! $session->expires_at->isFuture()) {
+                    return $this->failure(401, 'unauthenticated', 'Sign in again.');
+                }
+                if (! $protectedMfa && ($unsafe || $checkOrigin) && $request->getQueryString() !== null) {
                     return $this->malformed();
                 }
-                if ($unsafe && ! preg_match('/\A[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/', $request->header('X-Action-Key', ''))) {
+                if (! $protectedMfa && $unsafe && ! $this->validActionKey($request)) {
                     return $this->malformed();
                 }
 
-                return $operation($session, $token, $ipDelay);
+                try {
+                    return $operation($session, $token, $ipDelay);
+                } catch (JsonException) {
+                    return $this->malformed();
+                } catch (MfaDenied $denied) {
+                    return $this->failure($denied->status, $denied->error, $denied->getMessage());
+                }
             }, 3);
             if ($ipDelay && $response->getStatusCode() !== 429) {
                 $response = $this->throttled($ipDelay);
             }
-        } catch (PDOException|MissingAppKeyException|LockTimeoutException) {
+        } catch (PDOException|MissingAppKeyException|LockTimeoutException|DecryptException) {
             $response = $this->failure(503, 'unavailable', 'Authentication service is unavailable.');
         }
 

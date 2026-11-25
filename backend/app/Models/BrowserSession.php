@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 class BrowserSession extends Model
@@ -23,6 +24,29 @@ class BrowserSession extends Model
         'sign_in_receipt' => 'array',
     ];
 
+    public function mfaReceipts(): HasMany
+    {
+        return $this->hasMany(BrowserMfaReceipt::class);
+    }
+
+    public function clearPendingEnrollment(): void
+    {
+        UserMfaCredential::where('pending_browser_session_id', $this->id)->where('is_confirmed', false)
+            ->update(UserMfaCredential::PENDING_FIELDS + ['encrypted_seed' => null]);
+    }
+
+    public function completeMfa(string $method): string
+    {
+        $this->next_step = null;
+        $this->authentication_method = $method;
+        $this->authenticated_at = now()->startOfSecond();
+        $this->expires_at = $this->authenticated_at->addHours(2);
+        $token = $this->rotateToken();
+        $this->save();
+
+        return $token;
+    }
+
     public function rotateToken(): string
     {
         $token = bin2hex(random_bytes(32));
@@ -32,21 +56,22 @@ class BrowserSession extends Model
         return $token;
     }
 
-    public function currentUser(): ?User
+    public function currentUser(bool $write = false): ?User
     {
         if (! $this->user_id) {
             return null;
         }
 
-        return User::whereKey($this->user_id)
+        $account = User::whereKey($this->user_id)
             ->whereIn('status', ['active', 'enabled'])
-            ->where('version', $this->user_version)
-            ->sharedLock()
-            ->first();
+            ->where('version', $this->user_version);
+
+        return ($write ? $account->lockForUpdate() : $account->sharedLock())->first();
     }
 
     public function acceptPassword(User $user, string $key, string $fingerprint): array
     {
+        $this->authentication_method = 'password';
         $this->user_id = $user->id;
         $this->user_version = $user->version;
         $this->authenticated_at = now()->startOfSecond();
@@ -64,13 +89,14 @@ class BrowserSession extends Model
     {
         if (! $user) {
             if ($this->user_id) {
+                $this->clearPendingEnrollment();
                 $this->delete();
             }
 
             return false;
         }
 
-        if ($this->next_step !== null) {
+        if ($this->next_step !== null || $this->authentication_method !== 'password') {
             return true;
         }
 
@@ -100,8 +126,8 @@ class BrowserSession extends Model
         return $data + ($this->next_step
             ? ['next_step' => $this->next_step]
             : [
-                'authentication_method' => 'password',
-                'mfa_required' => false,
+                'authentication_method' => $this->authentication_method,
+                'mfa_required' => $this->authentication_method !== 'password' && $this->requiresMfa($user),
                 'authenticated_at' => $this->authenticated_at->toISOString(),
             ]);
     }

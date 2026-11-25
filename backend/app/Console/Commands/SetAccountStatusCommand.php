@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Models\UserMfaCredential;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class SetAccountStatusCommand extends BaseControlledCommand
@@ -34,25 +36,31 @@ class SetAccountStatusCommand extends BaseControlledCommand
             return 0;
         }
 
-        $user = User::find($targetId);
-        $newVersion = $expectedVersion + 1;
-        if ($user) {
-            $user->update([
-                'status' => $status,
-                'version' => $newVersion,
-            ]);
-        }
+        $result = DB::transaction(function () use ($targetId, $status, $expectedVersion, $actionKey, $operatorId) {
+            $user = User::whereKey($targetId)->lockForUpdate()->first();
+            $newVersion = $user ? $user->version + 1 : $expectedVersion + 1;
+            if ($user) {
+                $user->update(['status' => $status, 'version' => $newVersion]);
+                if ($status === 'disabled' && ($mfa = $user->mfaCredential()->first())) {
+                    $mfa->revokeRecoverySet();
+                    if (! $mfa->is_confirmed) {
+                        $mfa->fill(UserMfaCredential::PENDING_FIELDS + ['encrypted_seed' => null]);
+                    }
+                    $mfa->save();
+                }
+            }
 
-        $result = $this->commitResult(
-            procedureId: 'setAccountStatus',
-            actionKey: $actionKey,
-            targetId: $targetId ?? (string) Str::uuid(),
-            version: $newVersion,
-            sessionEffect: 'revoke_all',
-            chapterId: null,
-            operatorId: $operatorId,
-            details: ['status' => $status]
-        );
+            return $this->commitResult(
+                procedureId: 'setAccountStatus',
+                actionKey: $actionKey,
+                targetId: $targetId ?? (string) Str::uuid(),
+                version: $newVersion,
+                sessionEffect: 'revoke_all',
+                chapterId: null,
+                operatorId: $operatorId,
+                details: ['status' => $status]
+            );
+        }, 3);
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
 
