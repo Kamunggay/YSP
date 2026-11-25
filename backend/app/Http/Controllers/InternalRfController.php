@@ -10,6 +10,7 @@ use App\Services\Authority\ChapterAuthority;
 use App\Services\Inventory\InternalRfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class InternalRfController extends Controller
 {
@@ -69,7 +70,7 @@ class InternalRfController extends Controller
 
             return response()->json($envelope, 201, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray((string) Str::uuid()), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
@@ -97,7 +98,7 @@ class InternalRfController extends Controller
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray((string) Str::uuid()), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
@@ -107,11 +108,11 @@ class InternalRfController extends Controller
         $actionKey = $this->actionKey($request);
 
         try {
-            $envelope = $this->rfService->submit($chapterId, $rfId, $actorId, $request->all(), $actionKey);
+            $envelope = $this->rfService->submit($chapterId, $rfId, $actorId, $request->all(), $actionKey, $request->attributes->get(ChapterAuthority::class));
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray((string) Str::uuid()), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
@@ -125,7 +126,7 @@ class InternalRfController extends Controller
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray((string) Str::uuid()), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
@@ -139,7 +140,7 @@ class InternalRfController extends Controller
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray((string) Str::uuid()), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
@@ -153,7 +154,7 @@ class InternalRfController extends Controller
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray((string) Str::uuid()), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
@@ -167,7 +168,7 @@ class InternalRfController extends Controller
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray((string) Str::uuid()), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
@@ -184,7 +185,7 @@ class InternalRfController extends Controller
             ->where('rf_id', $rfId)
             ->orderBy('version')
             ->get()
-            ->filter(fn (InternalRfVersion $version) => $this->canReadSnapshot($request, $version));
+            ->filter(fn (InternalRfVersion $version) => $this->canReadSnapshot($request, $rf, $version));
 
         return response()->json([
             'data' => $versions->map(fn (InternalRfVersion $v) => [
@@ -217,7 +218,7 @@ class InternalRfController extends Controller
             ->where('version', (int) $version)
             ->first();
 
-        if (! $verRow || ! $this->canReadSnapshot($request, $verRow)) {
+        if (! $verRow || ! $this->canReadSnapshot($request, $rf, $verRow)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => "RF version {$version} not found."],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -239,14 +240,14 @@ class InternalRfController extends Controller
         ], 200, ['Cache-Control' => 'no-store']);
     }
 
-    public function listInternalRfRelatedRecords(string $chapterId, string $rfId): JsonResponse
+    public function listInternalRfRelatedRecords(Request $request, string $chapterId, string $rfId): JsonResponse
     {
         try {
-            $related = $this->rfService->getRelatedRecords($chapterId, $rfId);
+            $related = $this->rfService->getRelatedRecords($chapterId, $rfId, $request->attributes->get(ChapterAuthority::class));
 
             return response()->json(['data' => $related], 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray((string) Str::uuid()), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
@@ -303,12 +304,15 @@ class InternalRfController extends Controller
         return response()->json($decoded ?? ['data' => $record->response_body], 200, ['Cache-Control' => 'no-store']);
     }
 
-    private function canReadSnapshot(Request $request, InternalRfVersion $version): bool
+    private function canReadSnapshot(Request $request, InternalRf $rf, InternalRfVersion $version): bool
     {
         $authority = $request->attributes->get(ChapterAuthority::class);
         $unit = $version->snapshot_json['requesting_unit_id'] ?? null;
 
-        return $authority->allows('rf.read', $unit) && $authority->allows('history.read', $unit);
+        $decision = $unit === $rf->requesting_unit_id && ! $authority->allows('history.read', $unit)
+            ? $authority->rfDecisionScope($rf) : null;
+
+        return $authority->allows('rf.read', $unit, $decision) && $authority->allows('history.read', $unit, $decision);
     }
 
     private function canReadReceipt(Request $request, IdempotencyRecord $record): bool
@@ -327,10 +331,16 @@ class InternalRfController extends Controller
         $rf = InternalRf::where('chapter_id', $record->chapter_id)->whereKey($record->resource_id)->first();
         $oldUnit = data_get(json_decode($record->response_body, true), 'data.result.requesting_unit_id');
 
-        return $rf && $authority->canReadRf($rf)
-            && ($action !== 'rf.approve' || $authority->routedRfApprover($rf))
-            && $authority->allows($action, $rf->requesting_unit_id)
-            && $authority->allows($action, $oldUnit);
+        if (! $rf || ! $authority->canReadRf($rf)) {
+            return false;
+        }
+        $approver = $action === 'rf.approve' ? $authority->routedRfApprover($rf) : null;
+        if ($action === 'rf.approve' && ! $approver) {
+            return false;
+        }
+        $decision = $approver && $oldUnit === $rf->requesting_unit_id ? $authority->rfDecisionScope($rf) : null;
+
+        return $authority->allows($action, $rf->requesting_unit_id, $decision) && $authority->allows($action, $oldUnit, $decision);
     }
 
     private function actorId(Request $request): string

@@ -50,7 +50,7 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stag
     Route::get('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'versions'])->middleware('stage-one.action:evidence.read,history.read');
     Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'replace'])->middleware('stage-one.action:evidence.prepare', 'idempotent');
     Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion'])->middleware('stage-one.action:evidence.read,history.read');
-    Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment'])->middleware('stage-one.action:evidence.read');
+    Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment'])->middleware('stage-one.action:evidence.read,history.read');
 
     // Catalogue Operations (static paths before dynamic {operation_id})
     Route::get('/catalogue/operations/by-key', [CatalogueController::class, 'findOperationByKey'])->middleware('stage-one.action:catalogue.maintain');
@@ -139,7 +139,7 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stag
     Route::get('/internal-rfs/{rf_id}', [InternalRfController::class, 'readInternalRf'])->middleware('stage-one.action:rf.read');
     Route::get('/internal-rfs/{rf_id}/history', [InternalRfController::class, 'listInternalRfHistory'])->middleware('stage-one.action:rf.read,history.read');
     Route::get('/internal-rfs/{rf_id}/versions/{version}', [InternalRfController::class, 'readInternalRfVersion'])->middleware('stage-one.action:rf.read,history.read');
-    Route::get('/internal-rfs/{rf_id}/related-records', [InternalRfController::class, 'listInternalRfRelatedRecords'])->middleware('stage-one.action:rf.read');
+    Route::get('/internal-rfs/{rf_id}/related-records', [InternalRfController::class, 'listInternalRfRelatedRecords'])->middleware('stage-one.action:rf.read,history.read');
 
     Route::post('/internal-rfs', [InternalRfController::class, 'createInternalRf'])->middleware('stage-one.action:rf.draft', 'idempotent');
     Route::put('/internal-rfs/{rf_id}', [InternalRfController::class, 'replaceInternalRfDraft'])->middleware('stage-one.action:rf.draft', 'idempotent');

@@ -17,6 +17,7 @@ class EnforceBrowserAuthority
 {
     public function handle(Request $request, Closure $next, ?string $budget = null): Response
     {
+        $ipDelay = null;
         try {
             $ipDelay = $budget ? BrowserSessionHttp::attempt(
                 'ip:'.hash('sha256', (string) $request->ip()), 60, namespace: 'chapter-authority'
@@ -66,7 +67,7 @@ class EnforceBrowserAuthority
         } catch (HttpResponseException $exception) {
             $response = $exception->getResponse();
         } catch (ContractException $denied) {
-            $response = $ipDelay ?? null
+            $response = $ipDelay !== null
                 ? self::error(new ContractException(429, 'throttled', 'Try again after the indicated delay.'))->header('Retry-After', (string) $ipDelay)
                 : self::error($denied);
         } catch (PDOException|LockTimeoutException) {

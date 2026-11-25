@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Shared\CanonicalJson;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,5 +23,16 @@ class PolicyRecord extends Model
     public function chapter(): BelongsTo
     {
         return $this->belongsTo(Chapter::class, 'chapter_id');
+    }
+
+    public function setupEvidence(): array
+    {
+        $digest = CanonicalJson::sha256($this->rules_json);
+
+        return AuditLog::where('chapter_id', $this->chapter_id)
+            ->where('action', 'controlled:recordPolicy')->where('entity_id', $this->id)
+            ->orderByDesc('created_at')->orderByDesc('id')->sharedLock()->get()
+            ->first(fn (AuditLog $audit) => ($audit->details['version'] ?? null) === (int) $this->policy_version
+                && ($audit->details['value_sha256'] ?? null) === $digest)?->details ?? [];
     }
 }

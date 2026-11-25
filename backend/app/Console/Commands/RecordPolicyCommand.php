@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\PolicyRecord;
+use App\Services\Shared\CanonicalJson;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -66,7 +67,13 @@ class RecordPolicyCommand extends BaseControlledCommand
                 sessionEffect: 'recheck_authority',
                 chapterId: $chapterId,
                 operatorId: $operatorId,
-                details: ['setting_key' => $settingKey]
+                details: [
+                    'setting_key' => $settingKey,
+                    'subject_id' => $payload['input']['subject_id'] ?? null,
+                    'value_schema_reference' => $payload['input']['value_schema_reference'] ?? null,
+                    'version' => $newVersion,
+                    'value_sha256' => CanonicalJson::sha256($rulesJson),
+                ]
             );
         });
 

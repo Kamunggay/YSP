@@ -3,9 +3,12 @@
 namespace Tests\Feature\Stage1A;
 
 use App\Models\ActualIssue;
+use App\Models\AuditLog;
 use App\Models\Chapter;
 use App\Models\InternalRf;
+use App\Models\OpeningCount;
 use App\Models\User;
+use App\Services\Shared\CanonicalJson;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -316,19 +319,91 @@ class BrowserSessionTest extends TestCase
         foreach ([$primary, $alternate] as $officer) {
             $officer->memberships()->create(['chapter_id' => $chapter->id]);
         }
-        $primary->dutyGrants()->create(['chapter_id' => $chapter->id, 'duty_code' => 'INVENTORY', 'scope' => $scope]);
+        $primaryGrant = $primary->dutyGrants()->create(['chapter_id' => $chapter->id, 'duty_code' => 'INDEPENDENT_REVIEWER', 'scope' => $scope]);
         $grant = $alternate->dutyGrants()->create([
-            'chapter_id' => $chapter->id, 'duty_code' => 'INVENTORY', 'is_alternate' => true,
+            'chapter_id' => $chapter->id, 'duty_code' => 'INDEPENDENT_REVIEWER', 'is_alternate' => true,
             'replaces_user_id' => $primary->id, 'scope' => $scope,
             'valid_from' => now()->addMinute(), 'valid_until' => now()->addMinutes(2),
         ]);
+        $grant->refresh();
         $path = self::ORIGIN.'/api/v1/chapters/'.$chapter->id.'/context';
         $cookies = $this->cookies($this->signIn($this->startBrowser(), $alternate)->assertOk());
         $this->call('GET', $path, cookies: $cookies)->assertOk()->assertJsonPath('data.membership.duties', []);
         $this->travel(1)->minute();
-        $this->call('GET', $path, cookies: $cookies)->assertOk()->assertJsonPath('data.membership.duty_grants.0.id', $grant->id);
+        $this->call('GET', $path, cookies: $cookies)->assertOk()->assertJsonPath('data.membership.duties', []);
+        AuditLog::create([
+            'chapter_id' => $chapter->id, 'user_id' => $primary->id, 'action' => 'controlled:setAlternate',
+            'entity_type' => 'setAlternate', 'entity_id' => $grant->id,
+            'details' => [
+                'grant_sha256' => $grant->approvalDigest(), 'decision_scope_reference' => 'synthetic-count',
+                'approvals' => [['id' => (string) Str::uuid(), 'authority' => 'CHAPTER_HEAD']],
+            ],
+        ]);
+        $current = $this->call('GET', $path, cookies: $cookies)->assertOk()->assertJsonPath('data.membership.duty_grants.0.id', $grant->id);
+        $primaryGrant->update(['status' => 'revoked', 'version' => 2]);
+        $revoked = $this->call('GET', $path, cookies: $cookies)->assertOk()->assertJsonPath('data.membership.duties', []);
+        $this->assertGreaterThan($current->json('data.membership.authority_version'), $revoked->json('data.membership.authority_version'));
+        $primaryGrant->update(['status' => 'active', 'version' => 3]);
         $this->travel(1)->minute();
         $this->call('GET', $path, cookies: $cookies)->assertOk()->assertJsonPath('data.membership.duties', []);
+    }
+
+    public function test_current_chapter_authority_projects_verified_setup_and_blocks_rf_submission(): void
+    {
+        $officer = $this->officer();
+        $chapter = Chapter::create(['code' => 'CEBU', 'name' => 'Cebu']);
+        $officer->memberships()->create(['chapter_id' => $chapter->id]);
+        $officer->dutyGrants()->create(['chapter_id' => $chapter->id, 'duty_code' => 'COMMITTEE_REQUESTER']);
+        $rf = InternalRf::create(['chapter_id' => $chapter->id, 'requester_user_id' => $officer->id]);
+        $policy = $chapter->policyRecords()->create([
+            'policy_code' => 'rf_approval_route', 'effective_from' => now(),
+            'rules_json' => ['routes' => [], 'approval_owner' => 'CHAPTER_HEAD'],
+        ]);
+        $path = self::ORIGIN.'/api/v1/chapters/'.$chapter->id;
+        $cookies = $this->cookies($this->signIn($this->startBrowser(), $officer)->assertOk());
+        $this->call('GET', $path.'/access', cookies: $cookies)->assertOk()
+            ->assertJsonPath('data.actions.11.blockers.0.state', 'unapproved');
+        $this->call('POST', $path.'/internal-rfs/'.$rf->id.'/submit', cookies: $cookies,
+            server: ['HTTP_ORIGIN' => self::ORIGIN, 'HTTP_X_XSRF_TOKEN' => $cookies['XSRF-TOKEN']])
+            ->assertConflict()->assertJsonPath('error.code', 'setup_blocked')
+            ->assertJsonPath('setup_blockers.0.state', 'unapproved')->assertJsonPath('current', null);
+
+        $routes = ['routes' => [[
+            'requesting_unit_id' => (string) Str::uuid(), 'primary_approver_grant_id' => (string) Str::uuid(),
+            'alternate_authorization_ids' => [],
+        ]]];
+        $policy->update(['rules_json' => $routes, 'policy_version' => 2]);
+        AuditLog::create([
+            'chapter_id' => $chapter->id, 'user_id' => $officer->id, 'action' => 'controlled:recordPolicy',
+            'entity_type' => 'recordPolicy', 'entity_id' => $policy->id,
+            'details' => [
+                'version' => 2, 'value_sha256' => CanonicalJson::sha256($routes), 'subject_id' => null,
+                'value_schema_reference' => '#/components/schemas/RfApprovalRoutePolicyValue',
+                'approvals' => [['id' => (string) Str::uuid(), 'authority' => 'CHAPTER_HEAD']],
+            ],
+        ]);
+        $this->call('GET', $path.'/access', cookies: $cookies)->assertOk()
+            ->assertJsonPath('data.actions.11.state', 'context_required')
+            ->assertJsonPath('data.actions.11.blockers', []);
+    }
+
+    public function test_current_chapter_authority_does_not_allow_head_to_sign_the_finance_slot(): void
+    {
+        $head = $this->officer();
+        $chapter = Chapter::create(['code' => 'CEBU', 'name' => 'Cebu']);
+        $head->memberships()->create(['chapter_id' => $chapter->id]);
+        $head->dutyGrants()->create(['chapter_id' => $chapter->id, 'duty_code' => 'CHAPTER_HEAD']);
+        $ipc = OpeningCount::create(['chapter_id' => $chapter->id, 'created_by' => $head->id, 'status' => 'AWAITING_AUTHORIZATION']);
+        [, $browser] = $this->enrollAuthenticator($head);
+        $cookies = $this->cookies($browser);
+        $path = self::ORIGIN.'/api/v1/chapters/'.$chapter->id.'/ipcs/'.$ipc->id.'/authorizations';
+        $this->call('POST', $path, cookies: $cookies, server: [
+            'HTTP_ORIGIN' => self::ORIGIN, 'HTTP_X_XSRF_TOKEN' => $cookies['XSRF-TOKEN'], 'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_ACTION_KEY' => (string) Str::uuid(),
+        ], content: json_encode([
+            'expected_revision' => 1, 'material_version' => 1, 'duty' => 'FINANCE', 'signed_at' => now()->toISOString(),
+        ], JSON_THROW_ON_ERROR))->assertForbidden()->assertJsonPath('error.code', 'duty_denied');
+        $this->assertNull($ipc->fresh()->authorized_finance_by);
     }
 
     private function assertError(TestResponse $response, int $status, string $code): void

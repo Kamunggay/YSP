@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Chapter;
-use App\Models\ChapterMembership;
 use App\Models\EvidenceBinding;
 use App\Models\EvidenceBlob;
 use App\Models\EvidenceRecord;
@@ -494,43 +493,8 @@ class PaperEvidenceController extends Controller
 
     public function retrieveAttachment(Request $request, string $chapter_id, string $evidence_id, string $version_id, string $attachment_id): Response|JsonResponse
     {
-        $userId = $request->user()->id;
-        if (! $userId) {
-            return response()->json([
-                'error' => 'AUTHENTICATION_REQUIRED',
-                'message' => 'Caller identity or active session is required to retrieve evidence attachments.',
-            ], 401);
-        }
-
-        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
-        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
-
-        // Verify chapter membership
-        $membership = ChapterMembership::where('chapter_id', $targetChapterId)
-            ->where('user_id', $userId)
-            ->where('membership_status', 'active')
-            ->first();
-
-        if (! $membership) {
-            return response()->json([
-                'error' => 'MEMBERSHIP_REQUIRED',
-                'message' => "User does not have an active membership in chapter {$targetChapterId}.",
-            ], 403);
-        }
-
-        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)
-            ->where('chapter_id', $targetChapterId)
-            ->first();
-
-        if (! $evidenceRecord) {
-            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence record not found.']], 404);
-        }
-
-        $blob = EvidenceBlob::where('evidence_id', $evidence_id)
-            ->where('id', $attachment_id)
-            ->first();
-
-        if (! $blob) {
+        $blob = EvidenceBlob::where('evidence_id', $evidence_id)->whereKey($attachment_id)->first();
+        if (! $blob || $blob->payload_path !== "evidence/{$chapter_id}/{$evidence_id}/{$version_id}/{$attachment_id}") {
             return response()->json(['error' => ['code' => 'not_found', 'message' => 'Attachment not found.']], 404);
         }
 

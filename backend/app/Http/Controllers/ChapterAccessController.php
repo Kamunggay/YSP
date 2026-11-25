@@ -80,31 +80,17 @@ class ChapterAccessController extends Controller
                     ? 'allowed' : 'context_required';
 
                 $settings = match ($action) {
-                    'rf.submit', 'rf.approve' => ['rf_approval_route' => 'CHAPTER_HEAD'],
-                    'opening_rm.post' => ['reference_series' => 'CHAPTER_HEAD', 'valuation_rounding' => 'FINANCE'],
+                    'rf.submit', 'rf.approve' => ['rf_approval_route' => ['CHAPTER_HEAD', 'RfApprovalRoutePolicyValue']],
+                    'opening_rm.post' => [
+                        'reference_series' => ['CHAPTER_HEAD', 'OpeningReferencePolicyValue'],
+                        'valuation_rounding' => ['FINANCE', 'OpeningValuationPolicyValue'],
+                    ],
                     default => [],
                 };
-                foreach ($settings as $key => $owner) {
-                    $matching = $policies->where('policy_code', $key)->filter(fn ($policy) => ($policy->rules_json['subject_id'] ?? null) === null
-                        && ($key !== 'reference_series' || ($policy->rules_json['value_schema_reference'] ?? null) === '#/components/schemas/OpeningReferencePolicyValue'));
-                    $approved = $matching->filter(fn ($policy) => ($policy->rules_json['approval_owner'] ?? null) === $owner);
-                    $now = now();
-                    if ($approved->contains(fn ($policy) => $policy->effective_from && $policy->effective_from <= $now
-                        && ($policy->effective_until === null || $policy->effective_until > $now))) {
-                        continue;
+                foreach ($settings as $key => [$owner, $schema]) {
+                    if ($blocker = $authority->policyBlocker($policies, $key, $owner, $schema)) {
+                        $blockers[] = $blocker;
                     }
-                    $blockers[] = [
-                        'setting_key' => $key,
-                        'subject_id' => null,
-                        'state' => match (true) {
-                            $matching->isEmpty() => 'missing',
-                            $approved->isEmpty() => 'unapproved',
-                            $approved->contains(fn ($policy) => $policy->effective_from === null || $policy->effective_from > $now) => 'not_effective',
-                            default => 'expired',
-                        },
-                        'approval_owner' => $owner,
-                        'message' => 'Current approved setup is required for this action.',
-                    ];
                 }
                 if ($blockers) {
                     $state = 'setup_blocked';

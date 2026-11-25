@@ -4,7 +4,10 @@ namespace App\Http\Middleware;
 
 use App\Exceptions\ContractException;
 use App\Models\ActualIssue;
+use App\Models\EvidenceRecord;
 use App\Models\InternalRf;
+use App\Models\OpeningRm;
+use App\Models\StockHold;
 use App\Services\Authority\ChapterAuthority;
 use Closure;
 use Illuminate\Http\Request;
@@ -23,6 +26,12 @@ class EnforceStageOneAction
 
         if (! $request->isMethodSafe()) {
             $authority->lockPoliciesFor($actions);
+        }
+
+        if ($request->is('*/evidence', '*/evidence/*')) {
+            $this->authorizeEvidenceTarget($request, $authority);
+
+            return $this->response($request, $next);
         }
 
         $rfId = $request->route('rf_id');
@@ -50,12 +59,20 @@ class EnforceStageOneAction
             }
         }
 
-        $rfList = $request->isMethod('GET') && $request->route()->getActionMethod() === 'listInternalRfs';
-        $receipt = $request->isMethod('GET') && ($request->is('*/internal-rfs/operation-results', '*/internal-rfs/operation-results/*', '*/actual-issue-operations/*', '*/reservation-operations/*'));
+        $rfList = $request->route()->getActionMethod() === 'listInternalRfs';
+        $receipt = $request->isMethod('GET') && $request->is('*/internal-rfs/operation-results', '*/internal-rfs/operation-results/*', '*/actual-issue-operations/*', '*/reservation-operations/*');
         if (! $rfList && ! $receipt) {
             foreach ($actions as $action) {
-                if ($action !== 'rf.draft' || $rf) {
-                    $authority->requireAction($action, $rf?->requesting_unit_id);
+                if ($action === 'ipc.authorize' || ($action === 'rf.draft' && ! $rf) || ($action === 'rf.read' && $rf)) {
+                    continue;
+                }
+                if ($action === 'rf.approve' && $rf && $authority->routedRfApprover($rf)) {
+                    continue;
+                }
+                $unit = $rf?->requesting_unit_id;
+                if (! $authority->allows($action, $unit)) {
+                    $decision = $action === 'history.read' && $rf ? $authority->rfDecisionScope($rf) : null;
+                    $authority->requireAction($action, $unit, $decision);
                 }
             }
         }
@@ -71,6 +88,55 @@ class EnforceStageOneAction
             }
         }
 
+        return $this->response($request, $next);
+    }
+
+    private function authorizeEvidenceTarget(Request $request, ChapterAuthority $authority): void
+    {
+        $chapterId = $authority->chapter->id;
+        $evidence = $request->route('evidence_id')
+            ? EvidenceRecord::where('chapter_id', $chapterId)->whereKey($request->route('evidence_id'))->sharedLock()->first()
+            : null;
+        $purpose = $evidence?->purpose ?? $request->input('purpose');
+        $target = $evidence?->record_id ?? $request->input('record_id');
+        $editing = ! $request->isMethodSafe();
+        if ($editing && ! $request->route('evidence_id') && (! is_string($target)
+            || ! in_array($purpose, ['opening_receipt', 'hold_clearance', 'actual_issue'], true))) {
+            $message = 'Select a valid evidence target.';
+            throw new ContractException(422, 'invalid_evidence', $message, [
+                'error' => ['code' => 'invalid_evidence', 'message' => $message, 'fields' => [
+                    ['pointer' => '/record_id', 'code' => 'invalid_target', 'message' => $message],
+                ]],
+            ]);
+        }
+
+        $allowed = false;
+        $unit = null;
+
+        if (is_string($target) && (! $request->route('evidence_id') || $evidence)) {
+            $allowed = match ($purpose) {
+                'opening_receipt' => $authority->allows($editing ? 'opening_rm.prepare' : 'opening_rm.read')
+                    && OpeningRm::where('chapter_id', $chapterId)->whereKey($target)->exists(),
+                'hold_clearance' => $authority->allows($editing ? 'hold.clear' : 'stock.read')
+                    && StockHold::where('chapter_id', $chapterId)->whereKey($target)->exists(),
+                default => false,
+            };
+            if ($purpose === 'actual_issue') {
+                $issue = ActualIssue::where('chapter_id', $chapterId)->whereKey($target)->first();
+                $rf = $issue?->rf()->where('chapter_id', $chapterId)->first();
+                $unit = $rf?->requesting_unit_id;
+                $allowed = $rf && $authority->canReadRf($rf) && $authority->allows('issue.prepare', $unit);
+            }
+        }
+
+        if (! $allowed || ! $authority->allows($editing ? 'evidence.prepare' : 'evidence.read', $unit)
+            || ($request->route('version_id') && ! $authority->allows('history.read', $unit))) {
+            throw new ContractException(404, 'evidence_not_found', 'Evidence not found.');
+        }
+    }
+
+    private function response(Request $request, Closure $next): Response
+    {
         $response = $next($request);
         if ($response->getStatusCode() === 404) {
             $code = match (true) {

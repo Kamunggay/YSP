@@ -54,6 +54,7 @@ final class ChapterAuthority
         public readonly Chapter $chapter,
         public readonly Collection $grants,
         public readonly int $version,
+        private readonly array $alternateScopes,
     ) {}
 
     public static function forChapter(User $user, string $chapterId): self
@@ -72,37 +73,48 @@ final class ChapterAuthority
     {
         $allGrants = $chapter->dutyGrants()->where('user_id', $membership->user_id)->orderBy('id')->sharedLock()->get();
         $now = now();
-        $current = fn (DutyGrant $grant) => $grant->status === 'active'
-            && in_array($grant->duty_code, self::DUTIES, true)
-            && ($grant->valid_from === null || $grant->valid_from <= $now)
-            && ($grant->valid_until === null || $grant->valid_until > $now)
-            && ($grant->valid_from === null || $grant->valid_until === null || $grant->valid_from < $grant->valid_until);
-        $grants = $allGrants->filter(function (DutyGrant $grant) use ($current, $chapter) {
-            if (! $current($grant)) {
-                return false;
-            }
+        $version = (int) $membership->version + (int) $allGrants->sum('version');
+        $alternateScopes = [];
+        $grants = $allGrants->filter(function (DutyGrant $grant) use ($now, $chapter, &$version, &$alternateScopes) {
             if (! $grant->is_alternate) {
-                return true;
+                return self::current($grant, $now);
             }
-            if ($grant->valid_from === null || $grant->valid_until === null || ! $grant->replaces_user_id
-                || $grant->replaces_user_id === $grant->user_id) {
+            if (! $grant->replaces_user_id || $grant->replaces_user_id === $grant->user_id) {
                 return false;
             }
 
-            $primary = User::whereKey($grant->replaces_user_id)->whereIn('status', ['active', 'enabled'])->sharedLock()->first();
-            if (! $primary || ! $primary->memberships()->where('chapter_id', $chapter->id)
-                ->where('membership_status', 'active')->sharedLock()->first()) {
+            $primary = User::whereKey($grant->replaces_user_id)->sharedLock()->first();
+            $membership = $primary?->memberships()->where('chapter_id', $chapter->id)->sharedLock()->first();
+            $sources = $chapter->dutyGrants()->where('user_id', $grant->replaces_user_id)->where('duty_code', $grant->duty_code)
+                ->where('is_alternate', false)->orderBy('id')->sharedLock()->get();
+            $version += (int) $primary?->version + (int) $membership?->version + (int) $sources->sum('version');
+
+            if (! self::current($grant, $now) || ! $grant->valid_from || ! $grant->valid_until || ! $grant->scope
+                || ! $primary || ! in_array($primary->status, ['active', 'enabled'], true)
+                || $membership?->membership_status !== 'active'
+                || ! $sources->contains(fn (DutyGrant $source) => self::current($source, $now)
+                    && self::covers($source, $grant->scope['unit_id'] ?? null, $grant->scope['limit_php'] ?? null))) {
                 return false;
             }
 
-            return $chapter->dutyGrants()->where('user_id', $primary->id)->where('duty_code', $grant->duty_code)
-                ->where('is_alternate', false)->orderBy('id')->sharedLock()->get()
-                ->contains(fn (DutyGrant $source) => $current($source)
-                    && self::covers($source, $grant->scope['unit_id'] ?? null, $grant->scope['limit_php'] ?? null));
+            $scope = $grant->alternateDecisionScope();
+            if ($scope === null) {
+                return false;
+            }
+
+            $alternateScopes[$grant->id] = $scope;
+
+            return true;
         });
 
-        return new self($membership, $chapter, $grants->values(),
-            (int) $membership->version + (int) $allGrants->sum('version'));
+        return new self($membership, $chapter, $grants->values(), $version, $alternateScopes);
+    }
+
+    private static function current(DutyGrant $grant, $now): bool
+    {
+        return $grant->status === 'active' && in_array($grant->duty_code, self::DUTIES, true)
+            && ($grant->valid_from === null || $grant->valid_from <= $now)
+            && ($grant->valid_until === null || $grant->valid_until > $now);
     }
 
     public function duties(): array
@@ -130,19 +142,86 @@ final class ChapterAuthority
             return null;
         }
 
-        $now = now();
-        $policies = $this->chapter->policyRecords()->where('policy_code', 'rf_approval_route')
-            ->orderByDesc('policy_version')->sharedLock()->get();
-        $policy = $policies->first(fn (PolicyRecord $record) => ($record->rules_json['approval_owner'] ?? null) === 'CHAPTER_HEAD'
-            && ($record->rules_json['subject_id'] ?? null) === null
-            && $record->effective_from && $record->effective_from <= $now
-            && ($record->effective_until === null || $record->effective_until > $now));
+        $policy = $this->chapter->policyRecords()->where('policy_code', 'rf_approval_route')
+            ->orderByDesc('policy_version')->sharedLock()->get()
+            ->first(fn (PolicyRecord $record) => $this->policyState($record, 'CHAPTER_HEAD', 'RfApprovalRoutePolicyValue') === 'effective');
         $route = collect($policy?->rules_json['routes'] ?? [])->firstWhere('requesting_unit_id', $rf->requesting_unit_id);
-        $ids = array_merge([$route['primary_approver_grant_id'] ?? null], $route['alternate_authorization_ids'] ?? []);
+        if (! $route) {
+            return null;
+        }
+
+        $primaryId = $route['primary_approver_grant_id'] ?? null;
+        $primary = $this->chapter->dutyGrants()->whereKey($primaryId)->where('is_alternate', false)
+            ->where('duty_code', 'RF_APPROVER')->sharedLock()->first();
+        if (! $primary || ! self::current($primary, now()) || ! self::covers($primary, $rf->requesting_unit_id)) {
+            return null;
+        }
+
+        $decision = "rf_approval_route:{$policy->id}:{$rf->requesting_unit_id}";
 
         return $this->grants->first(fn (DutyGrant $grant) => $grant->duty_code === 'RF_APPROVER'
             && self::covers($grant, $rf->requesting_unit_id)
-            && in_array($grant->id, $ids, true));
+            && ($grant->id === $primary->id || ($grant->is_alternate && $grant->replaces_user_id === $primary->user_id
+                && in_array($grant->id, $route['alternate_authorization_ids'] ?? [], true)
+                && ($this->alternateScopes[$grant->id] ?? null) === $decision)));
+    }
+
+    public function rfDecisionScope(InternalRf $rf): ?string
+    {
+        $grant = $this->routedRfApprover($rf);
+
+        return $grant ? ($this->alternateScopes[$grant->id] ?? null) : null;
+    }
+
+    public function policyState(PolicyRecord $policy, string $owner, string $schema): ?string
+    {
+        $evidence = $policy->setupEvidence();
+        if (($evidence['subject_id'] ?? null) !== null
+            || (isset($evidence['value_schema_reference']) && $evidence['value_schema_reference'] !== '#/components/schemas/'.$schema)) {
+            return null;
+        }
+        if (! isset($evidence['value_schema_reference'])
+            || ! collect($evidence['approvals'] ?? [])->contains('authority', $owner)) {
+            return 'unapproved';
+        }
+        if (! $policy->effective_from || $policy->effective_from->isFuture()) {
+            return 'not_effective';
+        }
+
+        return $policy->effective_until && ! $policy->effective_until->isFuture() ? 'expired' : 'effective';
+    }
+
+    public static function setupBlocker(string $setting, string $owner, string $state): array
+    {
+        return [
+            'setting_key' => $setting, 'subject_id' => null, 'state' => $state, 'approval_owner' => $owner,
+            'message' => 'Current approved setup is required for this action.',
+        ];
+    }
+
+    public function rfRouteBlocker(): ?array
+    {
+        $policies = $this->chapter->policyRecords()->where('policy_code', 'rf_approval_route')->sharedLock()->get();
+
+        return $this->policyBlocker($policies, 'rf_approval_route', 'CHAPTER_HEAD', 'RfApprovalRoutePolicyValue');
+    }
+
+    public function policyBlocker(Collection $policies, string $key, string $owner, string $schema): ?array
+    {
+        $states = $policies->where('policy_code', $key)->map(fn (PolicyRecord $policy) => $this->policyState($policy, $owner, $schema));
+        foreach (['effective', 'not_effective', 'expired', 'unapproved'] as $state) {
+            if ($states->containsStrict($state)) {
+                return $state === 'effective' ? null : self::setupBlocker($key, $owner, $state);
+            }
+        }
+
+        return self::setupBlocker($key, $owner, 'missing');
+    }
+
+    public function allowsDuty(string $duty, ?string $unitId = null, ?string $decisionScope = null): bool
+    {
+        return $this->grants->contains(fn (DutyGrant $grant) => $grant->duty_code === $duty && self::covers($grant, $unitId)
+            && (! $grant->is_alternate || ($this->alternateScopes[$grant->id] ?? null) === $decisionScope));
     }
 
     public function canReadRf(InternalRf $rf): bool
@@ -161,17 +240,16 @@ final class ChapterAuthority
         });
     }
 
-    public function requireAction(string $action, ?string $unitId = null, ?string $amount = null): void
+    public function requireAction(string $action, ?string $unitId = null, ?string $decisionScope = null): void
     {
-        if (! $this->allows($action, $unitId, $amount)) {
+        if (! $this->allows($action, $unitId, $decisionScope)) {
             throw new ContractException(403, 'duty_denied', 'Current duty does not permit this action.');
         }
     }
 
-    public function allows(string $action, ?string $unitId = null, ?string $amount = null): bool
+    public function allows(string $action, ?string $unitId = null, ?string $decisionScope = null): bool
     {
-        return $this->grants->contains(fn (DutyGrant $grant) => in_array($grant->duty_code, self::ACTION_DUTIES[$action], true)
-            && self::covers($grant, $unitId, $amount));
+        return collect(self::ACTION_DUTIES[$action])->contains(fn ($duty) => $this->allowsDuty($duty, $unitId, $decisionScope));
     }
 
     public static function covers(DutyGrant $grant, ?string $unitId, ?string $amount = null): bool

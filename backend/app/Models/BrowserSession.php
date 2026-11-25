@@ -101,7 +101,7 @@ class BrowserSession extends Model
             return true;
         }
 
-        if ($user->mfaCredential()->where('is_confirmed', true)->exists()) {
+        if ($user->mfaCredential()->where('is_confirmed', true)->sharedLock()->first(['id'])) {
             $this->next_step = 'challenge_authenticator';
         } elseif ($this->requiresMfa($user)) {
             $this->next_step = 'enroll_authenticator';
@@ -143,7 +143,7 @@ class BrowserSession extends Model
             ->where('starts_at', '<=', $now)
             ->whereNull('revoked_at')
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', $now))
-            ->exists() || $user->dutyGrants()
+            ->sharedLock()->first(['id']) !== null || $user->dutyGrants()
             ->whereIn('duty_code', ['CHAPTER_HEAD', 'FINANCE', 'RF_APPROVER', 'SALES_REVIEWER', 'BUDGET_APPROVER'])
             ->where('status', 'active')
             ->where(fn (Builder $query) => $query->whereNull('valid_from')->orWhere('valid_from', '<=', $now))
@@ -151,6 +151,6 @@ class BrowserSession extends Model
             ->whereIn('chapter_id', $user->memberships()->where('membership_status', 'active')
                 ->whereHas('chapter', fn (Builder $query) => $query->whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS))
                 ->select('chapter_id'))
-            ->exists();
+            ->sharedLock()->first(['id']) !== null;
     }
 }

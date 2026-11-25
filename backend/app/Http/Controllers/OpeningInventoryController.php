@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ContractException;
 use App\Models\EvidenceBinding;
 use App\Models\IdempotencyRecord;
 use App\Models\InventoryLot;
@@ -228,69 +229,35 @@ class OpeningInventoryController extends Controller
      */
     public function authorizeIpc(Request $request, string $chapterId, string $ipcId): JsonResponse
     {
-        $ipc = OpeningCount::where('chapter_id', $chapterId)
-            ->where('id', $ipcId)
-            ->first();
-
-        if (! $ipc) {
-            return response()->json([
-                'error' => 'IPC_NOT_FOUND',
-                'message' => "IPC {$ipcId} was not found in chapter {$chapterId}.",
-            ], 404, ['Cache-Control' => 'no-store']);
+        $duty = $request->input('duty');
+        if (! in_array($duty, ['CHAPTER_HEAD', 'FINANCE'], true)) {
+            throw new ContractException(422, 'invalid_input', 'Select a valid authorization duty.');
         }
 
-        if (! in_array($ipc->status, ['AWAITING_AUTHORIZATION', 'DRAFT'])) {
-            return response()->json([
-                'error' => 'INVALID_STATE',
-                'message' => "IPC cannot be authorized in status {$ipc->status}.",
-            ], 409, ['Cache-Control' => 'no-store']);
+        $authority = $request->attributes->get(ChapterAuthority::class);
+        if (! $authority->allowsDuty($duty, decisionScope: 'ipc_authorization:'.$ipcId)) {
+            throw new ContractException(403, 'duty_denied', 'Current duty does not permit this authorization.');
+        }
+
+        $ipc = OpeningCount::where('chapter_id', $chapterId)->whereKey($ipcId)->lockForUpdate()->first();
+        if (! $ipc) {
+            throw new ContractException(404, 'resource_not_found', 'Resource not found.');
+        }
+        if (! in_array($ipc->status, ['AWAITING_AUTHORIZATION', 'DRAFT'], true)) {
+            throw new ContractException(409, 'state_conflict', 'The IPC cannot be authorized in its current state.');
         }
 
         $userId = $request->user()->id;
-        $role = strtoupper((string) $request->input('role', $request->input('duty_code', $request->input('slot', ''))));
-
-        $headUser = $request->input('authorized_head_by');
-        $financeUser = $request->input('authorized_finance_by');
-
-        if ($headUser && $financeUser && $headUser === $financeUser) {
-            return response()->json([
-                'error' => 'SEGREGATION_OF_DUTIES_VIOLATION',
-                'message' => 'Chapter Head and Finance authorizations must be performed by distinct individuals (GOV-05, GOV-06).',
-            ], 422, ['Cache-Control' => 'no-store']);
+        $otherOfficer = $duty === 'CHAPTER_HEAD' ? $ipc->authorized_finance_by : $ipc->authorized_head_by;
+        if ($otherOfficer === $userId) {
+            throw new ContractException(403, 'independence_required', 'This IPC requires an independent decision.');
         }
-
-        if ($role === 'HEAD' || str_contains($role, 'HEAD')) {
-            if ($ipc->authorized_finance_by && $ipc->authorized_finance_by === $userId) {
-                return response()->json([
-                    'error' => 'SEGREGATION_OF_DUTIES_VIOLATION',
-                    'message' => 'Chapter Head and Finance authorizations must be performed by distinct individuals (GOV-05, GOV-06).',
-                ], 422, ['Cache-Control' => 'no-store']);
-            }
+        if ($duty === 'CHAPTER_HEAD') {
             $ipc->authorized_head_by = $userId;
-            $ipc->authorized_head_signature = $request->input('signature', 'SIG-HEAD-'.$userId);
-        } elseif ($role === 'FINANCE' || str_contains($role, 'FINANCE')) {
-            if ($ipc->authorized_head_by && $ipc->authorized_head_by === $userId) {
-                return response()->json([
-                    'error' => 'SEGREGATION_OF_DUTIES_VIOLATION',
-                    'message' => 'Chapter Head and Finance authorizations must be performed by distinct individuals (GOV-05, GOV-06).',
-                ], 422, ['Cache-Control' => 'no-store']);
-            }
-            $ipc->authorized_finance_by = $userId;
-            $ipc->authorized_finance_signature = $request->input('signature', 'SIG-FINANCE-'.$userId);
+            $ipc->authorized_head_signature = $request->input('signed_at');
         } else {
-            if (! $ipc->authorized_head_by) {
-                $ipc->authorized_head_by = $userId;
-                $ipc->authorized_head_signature = 'SIG-HEAD-'.$userId;
-            } else {
-                if ($ipc->authorized_head_by === $userId) {
-                    return response()->json([
-                        'error' => 'SEGREGATION_OF_DUTIES_VIOLATION',
-                        'message' => 'Chapter Head and Finance authorizations must be performed by distinct individuals (GOV-05, GOV-06).',
-                    ], 422, ['Cache-Control' => 'no-store']);
-                }
-                $ipc->authorized_finance_by = $userId;
-                $ipc->authorized_finance_signature = 'SIG-FINANCE-'.$userId;
-            }
+            $ipc->authorized_finance_by = $userId;
+            $ipc->authorized_finance_signature = $request->input('signed_at');
         }
 
         return DB::transaction(function () use ($ipc, $chapterId, $userId) {
