@@ -90,7 +90,7 @@ return new class extends Migration
         });
 
         Schema::table('idempotency_records', function (Blueprint $table) {
-            $table->string('operation_name')->nullable()->index('idemp_op_name_idx');
+            $table->string('operation_name', 128)->nullable()->index('idemp_op_name_idx');
             $table->string('resource_id')->nullable();
             $table->string('state')->default('committed');
 

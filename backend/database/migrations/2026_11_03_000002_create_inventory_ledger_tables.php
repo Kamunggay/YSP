@@ -41,13 +41,13 @@ return new class extends Migration
 
         Schema::create('inventory_lots', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('chapter_id')->index();
-            $table->string('variant_id')->index();
-            $table->string('unit_id');
-            $table->string('location_id');
-            $table->string('lot_code')->default('DEFAULT');
-            $table->string('condition')->default('USABLE'); // USABLE, QUARANTINE, REJECTED
-            $table->string('custody')->default('STOCKROOM'); // STOCKROOM, BOOTH
+            $table->string('chapter_id', 64)->index();
+            $table->string('variant_id', 64)->index();
+            $table->string('unit_id', 64);
+            $table->string('location_id', 64);
+            $table->string('lot_code', 128)->default('DEFAULT');
+            $table->string('condition', 32)->default('USABLE'); // USABLE, QUARANTINE, REJECTED
+            $table->string('custody', 32)->default('STOCKROOM'); // STOCKROOM, BOOTH
             $table->string('custodian_user_id')->nullable();
             $table->decimal('quantity_on_hand', 12, 4)->default(0);
             $table->integer('quantity_scale')->default(0);

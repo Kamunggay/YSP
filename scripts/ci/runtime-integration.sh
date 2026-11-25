@@ -43,15 +43,33 @@ initial_state=$(schema_state)
 echo 'Fresh application database has no tables.'
 "${compose[@]}" exec -T backend php artisan migrate --force
 first_state=$(schema_state)
-[[ $first_state == '{"tables":["migrations"],"migrations":[]}' ]] || {
-  echo 'Initial migration did not create only the empty scaffold ledger.' >&2
-  exit 1
-}
+FIRST_STATE="$first_state" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+import sys
+
+state = json.loads(os.environ['FIRST_STATE'])
+expected_migrations = sorted(p.stem for p in Path('backend/database/migrations').glob('*.php'))
+tables = state.get('tables', [])
+migrations = state.get('migrations', [])
+recorded = [m['migration'] for m in migrations]
+
+if 'migrations' not in tables:
+    sys.exit('Initial migration did not create the migrations table.')
+if recorded != expected_migrations or any(int(m['batch']) != 1 for m in migrations):
+    sys.exit(f'Recorded migrations mismatch: expected {expected_migrations}, got {migrations}')
+if expected_migrations and len(tables) <= 1:
+    sys.exit('Initial migration recorded migrations but created no application tables.')
+if not expected_migrations and tables != ['migrations']:
+    sys.exit(f'Empty scaffold migration created unexpected tables: {tables}')
+print(f'Initial migration applied {len(recorded)} migrations and created {len(tables)} tables.')
+PY
 "${compose[@]}" exec -T backend php artisan migrate --force
 repeat_state=$(schema_state)
 [[ $repeat_state == "$first_state" ]] || {
   echo 'Repeat migration changed the migration state.' >&2
   exit 1
 }
-echo 'Only the scaffold ledger exists; repeat migration preserved state.'
+echo 'Repeat migration preserved schema and migration state.'
 "${compose[@]}" exec -T backend php artisan test --stop-on-failure --filter=ConnectivityTest
