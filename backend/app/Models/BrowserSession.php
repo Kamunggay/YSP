@@ -45,6 +45,21 @@ class BrowserSession extends Model
             ->first();
     }
 
+    public function acceptPassword(User $user, string $key, string $fingerprint): array
+    {
+        $this->user_id = $user->id;
+        $this->user_version = $user->version;
+        $this->authenticated_at = now()->startOfSecond();
+        $this->expires_at = $this->authenticated_at->addHours(2);
+        $token = $this->rotateToken();
+        $this->refreshProgress($user);
+        $result = $this->projection($user);
+        $this->sign_in_receipt = ['key' => $key, 'fingerprint' => $fingerprint, 'result' => $result];
+        $this->save();
+
+        return [$result, $token];
+    }
+
     public function refreshProgress(?User $user): bool
     {
         if (! $user) {

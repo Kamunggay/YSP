@@ -40,9 +40,9 @@ class BrowserSessionController extends Controller
 
     public function signIn(Request $request): Response
     {
-        return $this->handle($request, function (BrowserSession $session, string $token) use ($request) {
-            if ($session->user_id && ! $session->refreshProgress($session->currentUser())) {
-                return $this->failure(401, 'unauthenticated', 'Sign in again.');
+        return $this->handle($request, function (BrowserSession $session, string $token, ?int $ipDelay) use ($request) {
+            if ($ipDelay === null && $session->user_id && ! $session->refreshProgress($session->currentUser())) {
+                return $this->invalidCredentials();
             }
 
             if (strtolower(trim(explode(';', $request->header('Content-Type', ''))[0])) !== 'application/json') {
@@ -60,8 +60,9 @@ class BrowserSessionController extends Controller
 
             $secret = app('encrypter')->getKey();
             $login = mb_strtolower($body->login);
-            if ($retry = $this->attempt('login:'.hash_hmac('sha256', $login, $secret), 5)) {
-                return $this->throttled($retry);
+            $loginDelay = $this->attempt('login:'.hash_hmac('sha256', $login, $secret), 5, countAttempt: $ipDelay === null);
+            if ($ipDelay || $loginDelay) {
+                return $this->throttled(max($ipDelay, $loginDelay));
             }
 
             $key = $request->header('X-Action-Key');
@@ -87,21 +88,13 @@ class BrowserSessionController extends Controller
                 $user = null;
             }
             if (! $this->validPassword($body->password, $user)) {
-                return $this->failure(401, 'invalid_credentials', 'Sign-in failed.');
+                return $this->invalidCredentials();
             }
 
-            $session->user_id = $user->id;
-            $session->user_version = $user->version;
-            $session->authenticated_at = now()->startOfSecond();
-            $session->expires_at = $session->authenticated_at->addHours(2);
-            $token = $session->rotateToken();
-            $session->refreshProgress($user);
-            $result = $session->projection($user);
-            $session->sign_in_receipt = ['key' => $key, 'fingerprint' => $fingerprint, 'result' => $result];
-            $session->save();
+            [$result, $token] = $session->acceptPassword($user, $key, $fingerprint);
 
             return $this->sessionEstablished($result, $token, $session->csrf_token, false);
-        });
+        }, checkLoginLimit: true);
     }
 
     public function session(Request $request): Response
@@ -136,16 +129,17 @@ class BrowserSessionController extends Controller
         });
     }
 
-    private function handle(Request $request, Closure $operation, bool $checkOrigin = false): Response
+    private function handle(Request $request, Closure $operation, bool $checkOrigin = false, bool $checkLoginLimit = false): Response
     {
         $unsafe = $request->isMethod('POST');
 
         try {
-            if ($retry = $this->attempt('ip:'.hash('sha256', (string) $request->ip()), 60)) {
-                return $this->noStore($this->throttled($retry));
+            $ipDelay = $this->attempt('ip:'.hash('sha256', (string) $request->ip()), 60);
+            if ($ipDelay && ! $checkLoginLimit) {
+                return $this->noStore($this->throttled($ipDelay));
             }
 
-            $response = DB::transaction(function () use ($request, $operation, $unsafe, $checkOrigin) {
+            $response = DB::transaction(function () use ($request, $operation, $unsafe, $checkOrigin, $ipDelay) {
                 foreach (['Origin', 'Referer', 'Sec-Fetch-Site', 'Content-Type', 'X-Action-Key', 'X-XSRF-TOKEN'] as $name) {
                     if (count($request->headers->all($name)) > 1) {
                         return $this->malformed();
@@ -153,6 +147,9 @@ class BrowserSessionController extends Controller
                 }
                 if (($unsafe || $checkOrigin) && ! $this->originAllowed($request, $unsafe)) {
                     return $this->failure(403, 'origin_denied', 'Browser origin denied.');
+                }
+                if (! $unsafe && ! $checkOrigin && ! $this->requestMatchesOrigin($request)) {
+                    return $this->failure(401, 'unauthenticated', 'Sign in again.');
                 }
 
                 $token = $request->cookie('ysp_session');
@@ -171,8 +168,11 @@ class BrowserSessionController extends Controller
                     return $this->malformed();
                 }
 
-                return $operation($session, $token);
+                return $operation($session, $token, $ipDelay);
             }, 3);
+            if ($ipDelay && $response->getStatusCode() !== 429) {
+                $response = $this->throttled($ipDelay);
+            }
         } catch (PDOException|MissingAppKeyException|LockTimeoutException) {
             $response = $this->failure(503, 'unavailable', 'Authentication service is unavailable.');
         }
@@ -197,8 +197,7 @@ class BrowserSessionController extends Controller
     private function originAllowed(Request $request, bool $unsafe): bool
     {
         $origin = rtrim(config('app.url'), '/');
-        $scheme = parse_url($origin, PHP_URL_SCHEME);
-        if (($scheme !== 'https' && ! $this->loopbackHttp()) || $scheme.'://'.$request->getHttpHost() !== $origin) {
+        if (! $this->requestMatchesOrigin($request)) {
             return false;
         }
 
@@ -219,6 +218,12 @@ class BrowserSessionController extends Controller
         $port = isset($referer['port']) ? ':'.$referer['port'] : '';
 
         return $origin === $referer['scheme'].'://'.$referer['host'].$port;
+    }
+
+    private function requestMatchesOrigin(Request $request): bool
+    {
+        return ($request->isSecure() || $this->loopbackHttp())
+            && $request->getSchemeAndHttpHost() === rtrim(config('app.url'), '/');
     }
 
     private function loopbackHttp(): bool
@@ -244,23 +249,27 @@ class BrowserSessionController extends Controller
         return password_verify($password, $hash);
     }
 
-    private function attempt(string $key, int $limit): ?int
+    private function attempt(string $key, int $limit, bool $countAttempt = true): ?int
     {
         $key = 'browser-auth:'.$key;
         $cache = Cache::store('database');
 
-        return $cache->lock($key, 15)->block(2, function () use ($cache, $key, $limit) {
+        $attempt = function () use ($cache, $key, $limit, $countAttempt) {
             $now = now()->timestamp;
             $attempts = array_values(array_filter($cache->get($key, []), fn (int $timestamp) => $timestamp > $now - 60));
             if (count($attempts) >= $limit) {
                 return $attempts[0] + 60 - $now;
             }
 
-            $attempts[] = $now;
-            $cache->put($key, $attempts, 60);
+            if ($countAttempt) {
+                $attempts[] = $now;
+                $cache->put($key, $attempts, 60);
+            }
 
             return null;
-        });
+        };
+
+        return $countAttempt ? $cache->lock($key, 15)->block(2, $attempt) : $attempt();
     }
 
     private function sessionEstablished(array $result, string $token, string $csrf, bool $replay): Response
@@ -288,6 +297,11 @@ class BrowserSessionController extends Controller
     private function malformed(): Response
     {
         return $this->failure(400, 'malformed_request', 'Invalid request syntax.');
+    }
+
+    private function invalidCredentials(): Response
+    {
+        return $this->failure(401, 'invalid_credentials', 'Sign-in failed.');
     }
 
     private function failure(int $status, string $code, string $message, array $fields = []): Response

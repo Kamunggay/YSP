@@ -56,6 +56,9 @@ class BrowserSessionTest extends TestCase
 
     public function test_origin_csrf_and_closed_request_validation(): void
     {
+        $this->call('GET', 'http://ysp.example.invalid/api/v1/auth/csrf', server: [
+            'HTTP_SEC_FETCH_SITE' => 'same-origin', 'HTTP_X_FORWARDED_PROTO' => 'https',
+        ])->assertForbidden();
         $this->requestAuth('GET', 'csrf', headers: ['HTTP_SEC_FETCH_SITE' => 'cross-site'])
             ->assertForbidden()->assertHeaderMissing('Access-Control-Allow-Credentials')->assertHeaderMissing('Set-Cookie');
         $this->requestAuth('GET', 'csrf', headers: ['HTTP_REFERER' => self::ORIGIN.'/sign-in'])->assertNoContent();
@@ -75,6 +78,13 @@ class BrowserSessionTest extends TestCase
             ->assertJsonPath('error.code', 'invalid_input');
         $this->assertSame(['/login', '/password', '/extra~1~0'], array_column($invalid->json('error.fields'), 'pointer'));
         $this->assertSame(['invalid_type', 'required', 'unexpected_field'], array_column($invalid->json('error.fields'), 'code'));
+
+        $this->requestAuth('POST', 'sign-in', $browser, ['login' => 'invalid', 'password' => self::PASSWORD])
+            ->assertUnprocessable()->assertJsonPath('error.fields.0.code', 'invalid_format');
+        $this->requestAuth('POST', 'sign-in', $browser, [
+            'login' => str_repeat('a', 240).'@example.invalid', 'password' => str_repeat(' ', 1025),
+        ])->assertUnprocessable()
+            ->assertJsonPath('error.fields.0.code', 'too_long')->assertJsonPath('error.fields.1.code', 'too_long');
     }
 
     public function test_invalid_credentials_and_sliding_throttle(): void
@@ -109,7 +119,13 @@ class BrowserSessionTest extends TestCase
         $limited = $this->requestAuth('POST', 'sign-out', $browser);
         $this->assertError($limited, 429, 'throttled');
         $limited->assertHeader('Retry-After', '60');
-        $this->requestAuth('GET', 'session', headers: ['REMOTE_ADDR' => '192.0.2.2'])->assertUnauthorized();
+
+        $this->travel(20)->seconds();
+        $body = ['login' => 'unknown@example.invalid', 'password' => self::PASSWORD];
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->requestAuth('POST', 'sign-in', $browser, $body, headers: ['REMOTE_ADDR' => '192.0.2.2'])->assertUnauthorized();
+        }
+        $this->requestAuth('POST', 'sign-in', $browser, $body)->assertTooManyRequests()->assertHeader('Retry-After', '60');
     }
 
     public function test_current_policy_and_expired_continuation(): void
@@ -172,6 +188,7 @@ class BrowserSessionTest extends TestCase
 
         $officer->update(['status' => 'disabled', 'version' => 2]);
         $officer->update(['status' => 'enabled', 'version' => 3]);
+        $this->assertError($this->signIn($other, $officer), 401, 'invalid_credentials');
         $this->requestAuth('GET', 'session', $other)->assertUnauthorized();
     }
 
