@@ -24,7 +24,7 @@ class CatalogueController extends Controller
 
     private function getActorId(Request $request): string
     {
-        return $request->header('X-User-Id') ?? session('user_id') ?? (string) Str::uuid();
+        return $request->user()->id;
     }
 
     private function formatUnit(CatalogueUnit $unit): array
@@ -831,7 +831,8 @@ class CatalogueController extends Controller
             return response()->json(['error' => ['code' => 'invalid_input', 'message' => 'action_key parameter is required.']], 422);
         }
 
-        $operation = CatalogueOperation::where('operation_key', $actionKey)->first();
+        $operation = CatalogueOperation::where('chapter_id', $chapter_id)->where('result->actor_id', $request->user()->id)
+            ->where('operation_key', $actionKey)->first();
         if (! $operation) {
             return response()->json(['error' => ['code' => 'not_found', 'message' => 'Operation not found.']], 404);
         }
@@ -841,9 +842,10 @@ class CatalogueController extends Controller
         return response()->json(['data' => $result]);
     }
 
-    public function readOperation(string $chapter_id, string $operation_id): JsonResponse
+    public function readOperation(Request $request, string $chapter_id, string $operation_id): JsonResponse
     {
-        $operation = CatalogueOperation::where('id', $operation_id)->orWhere('operation_key', $operation_id)->first();
+        $operation = CatalogueOperation::where('chapter_id', $chapter_id)->where('result->actor_id', $request->user()->id)
+            ->whereKey($operation_id)->first();
         if (! $operation) {
             return response()->json(['error' => ['code' => 'not_found', 'message' => 'Operation not found.']], 404);
         }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\BrowserSessionHttp;
 use App\Http\Requests\AuthInput;
 use App\Models\BrowserSession;
 use App\Models\User;
@@ -12,14 +13,12 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Encryption\MissingAppKeyException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
 use PDOException;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 class BrowserSessionController extends Controller
 {
@@ -60,7 +59,7 @@ class BrowserSessionController extends Controller
 
             $secret = app('encrypter')->getKey();
             $login = mb_strtolower($body->login);
-            $loginDelay = $this->attempt('login:'.hash_hmac('sha256', $login, $secret), 5, countAttempt: $ipDelay === null);
+            $loginDelay = BrowserSessionHttp::attempt('login:'.hash_hmac('sha256', $login, $secret), 5, countAttempt: $ipDelay === null);
             if ($ipDelay || $loginDelay) {
                 return $this->throttled(max($ipDelay, $loginDelay));
             }
@@ -170,7 +169,7 @@ class BrowserSessionController extends Controller
             }
 
             if ($ipDelay !== null) {
-                return $this->throttled(max($ipDelay, $this->attempt('account:'.$user->id, 5, countAttempt: false)));
+                return $this->throttled(max($ipDelay, BrowserSessionHttp::attempt('account:'.$user->id, 5, countAttempt: false)));
             }
 
             $session->refreshProgress($user);
@@ -197,7 +196,7 @@ class BrowserSessionController extends Controller
             if ($fields = AuthInput::errors($body, $keys)) {
                 return $this->failure(422, 'invalid_input', 'Correct the indicated fields.', $fields);
             }
-            if ($delay = $this->attempt('account:'.$user->id, 5)) {
+            if ($delay = BrowserSessionHttp::attempt('account:'.$user->id, 5)) {
                 return $this->throttled($delay);
             }
 
@@ -224,9 +223,9 @@ class BrowserSessionController extends Controller
         $unsafe = $request->isMethod('POST');
 
         try {
-            $ipDelay = $this->attempt('ip:'.hash('sha256', (string) $request->ip()), 60);
+            $ipDelay = BrowserSessionHttp::attempt('ip:'.hash('sha256', (string) $request->ip()), 60);
             if ($ipDelay && ! $checkLoginLimit && ! ($protectedMfa && $unsafe)) {
-                return $this->noStore($this->throttled($ipDelay));
+                return BrowserSessionHttp::noStore($this->throttled($ipDelay));
             }
 
             $response = DB::transaction(function () use ($request, $operation, $unsafe, $checkOrigin, $ipDelay, $protectedMfa) {
@@ -235,19 +234,15 @@ class BrowserSessionController extends Controller
                         return $this->malformed();
                     }
                 }
-                if (($unsafe || $checkOrigin) && ! $this->originAllowed($request, $unsafe)) {
+                if (($unsafe || $checkOrigin) && ! BrowserSessionHttp::originAllowed($request, $unsafe)) {
                     return $this->failure(403, 'origin_denied', 'Browser origin denied.');
                 }
-                if (! $unsafe && ! $checkOrigin && ! $this->requestMatchesOrigin($request)) {
+                if (! $unsafe && ! $checkOrigin && ! BrowserSessionHttp::requestMatchesOrigin($request)) {
                     return $this->failure(401, 'unauthenticated', 'Sign in again.');
                 }
 
                 $token = $request->cookie('ysp_session');
-                $session = is_string($token) && preg_match('/\A[a-f0-9]{64}\z/', $token)
-                    ? BrowserSession::where('token_hash', hash('sha256', $token))
-                        ->when(! $protectedMfa, fn ($query) => $query->where('expires_at', '>', now()))
-                        ->lockForUpdate()->first()
-                    : null;
+                $session = BrowserSessionHttp::session($request, $protectedMfa);
 
                 if ($unsafe && (! $session || ! hash_equals($session->csrf_token, $request->header('X-XSRF-TOKEN', '')))) {
                     return $this->failure(419, 'csrf_mismatch', 'Refresh browser CSRF protection.');
@@ -277,61 +272,7 @@ class BrowserSessionController extends Controller
             $response = $this->failure(503, 'unavailable', 'Authentication service is unavailable.');
         }
 
-        return $this->noStore($response);
-    }
-
-    private function noStore(Response $response): Response
-    {
-        // Symfony normally adds private, while the contract specifies the literal no-store value.
-        $response->headers = new class($response->headers->all() + ['Cache-Control' => 'no-store']) extends ResponseHeaderBag
-        {
-            protected function computeCacheControlValue(): string
-            {
-                return 'no-store';
-            }
-        };
-
-        return $response;
-    }
-
-    private function originAllowed(Request $request, bool $unsafe): bool
-    {
-        $origin = rtrim(config('app.url'), '/');
-        if (! $this->requestMatchesOrigin($request)) {
-            return false;
-        }
-
-        $supplied = $request->header('Origin');
-        if ($unsafe || $supplied !== null) {
-            return $supplied === $origin && ($unsafe || in_array($request->header('Sec-Fetch-Site'), [null, 'same-origin'], true));
-        }
-
-        if ($site = $request->header('Sec-Fetch-Site')) {
-            return $site === 'same-origin';
-        }
-
-        $referer = parse_url($request->header('Referer', ''));
-        if (! isset($referer['scheme'], $referer['host']) || isset($referer['user']) || isset($referer['pass'])) {
-            return false;
-        }
-
-        $port = isset($referer['port']) ? ':'.$referer['port'] : '';
-
-        return $origin === $referer['scheme'].'://'.$referer['host'].$port;
-    }
-
-    private function requestMatchesOrigin(Request $request): bool
-    {
-        return ($request->isSecure() || $this->loopbackHttp())
-            && $request->getSchemeAndHttpHost() === rtrim(config('app.url'), '/');
-    }
-
-    private function loopbackHttp(): bool
-    {
-        $origin = parse_url(config('app.url'));
-
-        return app()->environment('local') && ($origin['scheme'] ?? null) === 'http'
-            && in_array($origin['host'] ?? null, ['localhost', '127.0.0.1', '[::1]'], true);
+        return BrowserSessionHttp::noStore($response);
     }
 
     private function validPassword(#[\SensitiveParameter] string $password, ?User $user): bool
@@ -349,29 +290,6 @@ class BrowserSessionController extends Controller
         return password_verify($password, $hash);
     }
 
-    private function attempt(string $key, int $limit, bool $countAttempt = true): ?int
-    {
-        $key = 'browser-auth:'.$key;
-        $cache = Cache::store('database');
-
-        $attempt = function () use ($cache, $key, $limit, $countAttempt) {
-            $now = now()->timestamp;
-            $attempts = array_values(array_filter($cache->get($key, []), fn (int $timestamp) => $timestamp > $now - 60));
-            if (count($attempts) >= $limit) {
-                return $attempts[0] + 60 - $now;
-            }
-
-            if ($countAttempt) {
-                $attempts[] = $now;
-                $cache->put($key, $attempts, 60);
-            }
-
-            return null;
-        };
-
-        return $countAttempt ? $cache->lock($key, 15)->block(2, $attempt) : $attempt();
-    }
-
     private function sessionEstablished(array $result, string $token, string $csrf, bool $replay): Response
     {
         return $this->cookies(response()->json(['data' => $result], headers: [
@@ -381,7 +299,7 @@ class BrowserSessionController extends Controller
 
     private function cookies(Response $response, ?string $token, ?string $csrf): Response
     {
-        $secure = ! $this->loopbackHttp();
+        $secure = ! BrowserSessionHttp::loopbackHttp();
         $expires = $token === null ? 1 : 0;
         $response->headers->setCookie(new Cookie('ysp_session', $token, $expires, '/', null, $secure, true, false, 'lax'));
         $response->headers->setCookie(new Cookie('XSRF-TOKEN', $csrf, $expires, '/', null, $secure, false, false, 'lax'));

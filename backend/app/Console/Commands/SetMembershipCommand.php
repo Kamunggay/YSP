@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\ChapterMembership;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class SetMembershipCommand extends BaseControlledCommand
@@ -39,26 +41,30 @@ class SetMembershipCommand extends BaseControlledCommand
         }
 
         $newVersion = $expectedVersion + 1;
-        ChapterMembership::updateOrCreate(
-            ['id' => $targetId],
-            [
-                'chapter_id' => $chapterId,
-                'user_id' => $userId,
-                'membership_status' => $status,
-                'version' => $newVersion,
-            ]
-        );
+        $result = DB::transaction(function () use ($targetId, $chapterId, $userId, $status, $newVersion, $actionKey, $operatorId) {
+            User::whereIn('id', array_filter([(string) $userId]))->orderBy('id')->lockForUpdate()->get();
 
-        $result = $this->commitResult(
-            procedureId: 'setMembership',
-            actionKey: $actionKey,
-            targetId: $targetId,
-            version: $newVersion,
-            sessionEffect: 'recheck_authority',
-            chapterId: $chapterId,
-            operatorId: $operatorId,
-            details: ['user_id' => $userId, 'status' => $status]
-        );
+            ChapterMembership::updateOrCreate(
+                ['id' => $targetId],
+                [
+                    'chapter_id' => $chapterId,
+                    'user_id' => $userId,
+                    'membership_status' => $status,
+                    'version' => $newVersion,
+                ]
+            );
+
+            return $this->commitResult(
+                procedureId: 'setMembership',
+                actionKey: $actionKey,
+                targetId: $targetId,
+                version: $newVersion,
+                sessionEffect: 'recheck_authority',
+                chapterId: $chapterId,
+                operatorId: $operatorId,
+                details: ['user_id' => $userId, 'status' => $status]
+            );
+        });
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
 

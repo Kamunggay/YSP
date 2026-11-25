@@ -10,6 +10,7 @@ use App\Models\OpeningCount;
 use App\Models\OpeningCountLine;
 use App\Models\OpeningRecordHistory;
 use App\Models\OpeningRm;
+use App\Services\Authority\ChapterAuthority;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Inventory\Participants\PrepareOpeningInventoryParticipant;
 use App\Services\Inventory\StockViewQueryService;
@@ -65,7 +66,7 @@ class OpeningInventoryController extends Controller
      */
     public function createIpc(Request $request, string $chapterId): JsonResponse
     {
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
+        $userId = $request->user()->id;
 
         return DB::transaction(function () use ($chapterId, $userId, $request) {
             $ipc = OpeningCount::create([
@@ -132,7 +133,7 @@ class OpeningInventoryController extends Controller
             ], 409, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'counter-user';
+        $userId = $request->user()->id;
         $linesInput = $request->input('lines', []);
 
         return DB::transaction(function () use ($ipc, $chapterId, $userId, $linesInput) {
@@ -198,7 +199,7 @@ class OpeningInventoryController extends Controller
             ], 422, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
+        $userId = $request->user()->id;
 
         return DB::transaction(function () use ($ipc, $chapterId, $userId) {
             if (! $ipc->ipc_number) {
@@ -245,7 +246,7 @@ class OpeningInventoryController extends Controller
             ], 409, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'authorizer-user';
+        $userId = $request->user()->id;
         $role = strtoupper((string) $request->input('role', $request->input('duty_code', $request->input('slot', ''))));
 
         $headUser = $request->input('authorized_head_by');
@@ -320,7 +321,7 @@ class OpeningInventoryController extends Controller
             return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
+        $userId = $request->user()->id;
 
         return DB::transaction(function () use ($ipc, $request, $chapterId, $userId) {
             $ipc->notes = $request->input('notes', $ipc->notes);
@@ -476,7 +477,7 @@ class OpeningInventoryController extends Controller
             ], 404, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
+        $userId = $request->user()->id;
 
         return DB::transaction(function () use ($chapterId, $ipc, $request, $userId) {
             $rm = OpeningRm::create([
@@ -542,7 +543,7 @@ class OpeningInventoryController extends Controller
             ], 409, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'inspector-user';
+        $userId = $request->user()->id;
         $lines = $request->input('lines', []);
 
         return DB::transaction(function () use ($rm, $chapterId, $userId, $lines, $request) {
@@ -589,7 +590,7 @@ class OpeningInventoryController extends Controller
             ], 409, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'inspector-user';
+        $userId = $request->user()->id;
         $evidenceId = $request->input('evidence_id') ?? $request->input('evidence.evidence_id');
         $bindingId = $request->input('evidence_binding_id') ?? $request->input('acknowledgment_id');
 
@@ -680,7 +681,7 @@ class OpeningInventoryController extends Controller
             ], 409, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'posting-officer';
+        $userId = $request->user()->id;
         $actionKey = $request->header('Idempotency-Key')
             ?? $request->header('X-Action-Key')
             ?? $request->header('X-Idempotency-Key');
@@ -842,7 +843,7 @@ class OpeningInventoryController extends Controller
             return response()->json(['error' => 'NOT_FOUND'], 404, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? 'system-user';
+        $userId = $request->user()->id;
 
         return DB::transaction(function () use ($rm, $request, $chapterId, $userId) {
             $rm->notes = $request->input('notes', $rm->notes);
@@ -956,16 +957,10 @@ class OpeningInventoryController extends Controller
             ], 400, ['Cache-Control' => 'no-store']);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id');
+        $userId = $request->user()->id;
         $query = IdempotencyRecord::where('chapter_id', $chapterId)->where('key', $key);
-        if ($userId) {
-            $query->where(function ($q) use ($userId) {
-                $q->where('user_id', $userId)->orWhereNull('user_id');
-            });
-        }
-
-        $record = $query->first();
-        if (! $record) {
+        $record = $query->where('user_id', $userId)->first();
+        if (! $record || ! $this->canReadAction($request, $record)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => 'Opening action key not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -997,16 +992,10 @@ class OpeningInventoryController extends Controller
      */
     public function readOpeningAction(Request $request, string $chapterId, string $operationId): JsonResponse
     {
-        $userId = $request->header('X-User-Id') ?? session('user_id');
+        $userId = $request->user()->id;
         $query = IdempotencyRecord::where('chapter_id', $chapterId)->where('id', $operationId);
-        if ($userId) {
-            $query->where(function ($q) use ($userId) {
-                $q->where('user_id', $userId)->orWhereNull('user_id');
-            });
-        }
-
-        $record = $query->first();
-        if (! $record) {
+        $record = $query->where('user_id', $userId)->first();
+        if (! $record || ! $this->canReadAction($request, $record)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => 'Opening action not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -1025,6 +1014,20 @@ class OpeningInventoryController extends Controller
                 'result' => $decoded['data'] ?? $decoded ?? $record->response_body,
             ],
         ], 200, ['Cache-Control' => 'no-store']);
+    }
+
+    private function canReadAction(Request $request, IdempotencyRecord $record): bool
+    {
+        $required = match ($record->operation_name) {
+            'createIpc', 'replaceIpc', 'submitIpc' => 'ipc.draft',
+            'saveMyIpcCount' => 'ipc.count',
+            'authorizeIpc' => 'ipc.authorize',
+            'createOpeningRm', 'replaceOpeningRm', 'inspectOpeningRm', 'matchOpeningRmEvidence' => 'opening_rm.prepare',
+            'postOpeningRm' => 'opening_rm.post',
+            default => null,
+        };
+
+        return $required !== null && $request->attributes->get(ChapterAuthority::class)->allows($required);
     }
 
     private function recordOpeningHistory(

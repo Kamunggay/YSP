@@ -14,6 +14,7 @@ use App\Models\InternalRfLine;
 use App\Models\InternalRfVersion;
 use App\Models\InventoryMovement;
 use App\Models\StockReservation;
+use App\Services\Authority\ChapterAuthority;
 use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\BcMath;
 use App\Services\Shared\CanonicalJson;
@@ -164,9 +165,9 @@ class InternalRfService
         });
     }
 
-    public function approve(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null): array
+    public function approve(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null, ?ChapterAuthority $authority = null): array
     {
-        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $actionKey) {
+        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $actionKey, $authority) {
             $rf = $this->lockRfOrFail($chapterId, $rfId);
 
             if ($rf->status !== 'submitted') {
@@ -177,7 +178,7 @@ class InternalRfService
 
             $this->assertExpectedVersions($rf, $input, checkProgress: false);
 
-            $grant = $this->resolveApprovalGrantAndCheckIndependence($chapterId, $rf, $actorId);
+            $grant = $this->resolveApprovalGrantAndCheckIndependence($chapterId, $rf, $actorId, $authority);
 
             // Snapshot identity_at_approval and lock approved quantities
             foreach ($rf->lines as $line) {
@@ -226,14 +227,14 @@ class InternalRfService
         });
     }
 
-    public function returnForRevision(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null): array
+    public function returnForRevision(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null, ?ChapterAuthority $authority = null): array
     {
         $reason = trim((string) ($input['reason'] ?? ''));
         if ($reason === '') {
             throw new ContractException(422, 'invalid_input', 'A non-empty reason is required to return an RF.');
         }
 
-        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $reason, $actionKey) {
+        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $reason, $actionKey, $authority) {
             $rf = $this->lockRfOrFail($chapterId, $rfId);
 
             if ($rf->status !== 'submitted') {
@@ -243,7 +244,7 @@ class InternalRfService
             }
 
             $this->assertExpectedVersions($rf, $input, checkProgress: false);
-            $this->resolveApprovalGrantAndCheckIndependence($chapterId, $rf, $actorId);
+            $this->resolveApprovalGrantAndCheckIndependence($chapterId, $rf, $actorId, $authority);
 
             $rf->status = 'returned';
             $rf->return_reason = $reason;
@@ -585,8 +586,17 @@ class InternalRfService
         }
     }
 
-    private function resolveApprovalGrantAndCheckIndependence(string $chapterId, InternalRf $rf, string $actorId): ?DutyGrant
+    private function resolveApprovalGrantAndCheckIndependence(string $chapterId, InternalRf $rf, string $actorId, ?ChapterAuthority $authority): ?DutyGrant
     {
+        if ($authority) {
+            if ($rf->requester_user_id === $actorId) {
+                throw new ContractException(403, 'independence_required', 'The requester cannot review their own RF.');
+            }
+
+            return $authority->routedRfApprover($rf)
+                ?? throw new ContractException(409, 'approval_authority_revoked', 'Current approval authority is unavailable.');
+        }
+
         $now = now();
         $grants = DutyGrant::where('chapter_id', $chapterId)
             ->where('user_id', $actorId)

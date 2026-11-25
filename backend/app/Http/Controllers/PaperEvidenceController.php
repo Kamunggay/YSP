@@ -140,7 +140,7 @@ class PaperEvidenceController extends Controller
             }
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? (string) Str::uuid();
+        $userId = $request->user()->id;
         $evidenceId = (string) Str::uuid();
         $versionId = (string) Str::uuid();
 
@@ -371,7 +371,7 @@ class PaperEvidenceController extends Controller
                 ->update(['superseded_by_version_id' => $newVersionId]);
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id') ?? (string) Str::uuid();
+        $userId = $request->user()->id;
         $attachmentsData = [];
         $pos = 1;
 
@@ -494,7 +494,7 @@ class PaperEvidenceController extends Controller
 
     public function retrieveAttachment(Request $request, string $chapter_id, string $evidence_id, string $version_id, string $attachment_id): Response|JsonResponse
     {
-        $userId = $request->header('X-User-Id') ?? session('user_id');
+        $userId = $request->user()->id;
         if (! $userId) {
             return response()->json([
                 'error' => 'AUTHENTICATION_REQUIRED',

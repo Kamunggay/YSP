@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\DutyGrant;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class SetDutyCommand extends BaseControlledCommand
@@ -43,31 +45,35 @@ class SetDutyCommand extends BaseControlledCommand
         $newVersion = $expectedVersion + 1;
         $userId = $payload['input']['user_id'] ?? $this->option('user-id') ?? $operatorId;
 
-        DutyGrant::updateOrCreate(
-            ['id' => $targetId],
-            [
-                'chapter_id' => $chapterId,
-                'user_id' => $userId,
-                'duty_code' => $duty,
-                'status' => $status,
-                'is_alternate' => false,
-                'scope' => $scope,
-                'valid_from' => $payload['input']['effective_from'] ?? now(),
-                'valid_until' => $payload['input']['effective_until'] ?? null,
-                'version' => $newVersion,
-            ]
-        );
+        $result = DB::transaction(function () use ($targetId, $chapterId, $userId, $status, $newVersion, $actionKey, $operatorId, $scope, $payload, $duty) {
+            User::whereIn('id', array_filter([(string) $userId]))->orderBy('id')->lockForUpdate()->get();
 
-        $result = $this->commitResult(
-            procedureId: 'setDuty',
-            actionKey: $actionKey,
-            targetId: $targetId,
-            version: $newVersion,
-            sessionEffect: 'recheck_authority',
-            chapterId: $chapterId,
-            operatorId: $operatorId,
-            details: ['duty' => $duty, 'status' => $status]
-        );
+            DutyGrant::updateOrCreate(
+                ['id' => $targetId],
+                [
+                    'chapter_id' => $chapterId,
+                    'user_id' => $userId,
+                    'duty_code' => $duty,
+                    'status' => $status,
+                    'is_alternate' => false,
+                    'scope' => $scope,
+                    'valid_from' => $payload['input']['effective_from'] ?? now(),
+                    'valid_until' => $payload['input']['effective_until'] ?? null,
+                    'version' => $newVersion,
+                ]
+            );
+
+            return $this->commitResult(
+                procedureId: 'setDuty',
+                actionKey: $actionKey,
+                targetId: $targetId,
+                version: $newVersion,
+                sessionEffect: 'recheck_authority',
+                chapterId: $chapterId,
+                operatorId: $operatorId,
+                details: ['duty' => $duty, 'status' => $status]
+            );
+        });
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
 

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\PolicyRecord;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class RecordPolicyCommand extends BaseControlledCommand
@@ -41,28 +42,33 @@ class RecordPolicyCommand extends BaseControlledCommand
         $newVersion = $expectedVersion + 1;
         $rulesJson = is_string($value) ? (json_decode($value, true) ?: ['raw' => $value]) : $value;
 
-        PolicyRecord::updateOrCreate(
-            ['id' => $targetId],
-            [
-                'chapter_id' => $chapterId,
-                'policy_code' => $settingKey,
-                'policy_version' => $newVersion,
-                'rules_json' => $rulesJson,
-                'effective_from' => $payload['input']['effective_from'] ?? now(),
-                'effective_until' => $payload['input']['effective_until'] ?? null,
-            ]
-        );
+        $result = DB::transaction(function () use ($targetId, $chapterId, $settingKey, $newVersion, $rulesJson, $payload, $actionKey, $operatorId) {
+            PolicyRecord::where('chapter_id', $chapterId)->where('policy_code', $settingKey)
+                ->orderBy('id')->lockForUpdate()->get();
 
-        $result = $this->commitResult(
-            procedureId: 'recordPolicy',
-            actionKey: $actionKey,
-            targetId: $targetId,
-            version: $newVersion,
-            sessionEffect: 'recheck_authority',
-            chapterId: $chapterId,
-            operatorId: $operatorId,
-            details: ['setting_key' => $settingKey]
-        );
+            PolicyRecord::updateOrCreate(
+                ['id' => $targetId],
+                [
+                    'chapter_id' => $chapterId,
+                    'policy_code' => $settingKey,
+                    'policy_version' => $newVersion,
+                    'rules_json' => $rulesJson,
+                    'effective_from' => $payload['input']['effective_from'] ?? now(),
+                    'effective_until' => $payload['input']['effective_until'] ?? null,
+                ]
+            );
+
+            return $this->commitResult(
+                procedureId: 'recordPolicy',
+                actionKey: $actionKey,
+                targetId: $targetId,
+                version: $newVersion,
+                sessionEffect: 'recheck_authority',
+                chapterId: $chapterId,
+                operatorId: $operatorId,
+                details: ['setting_key' => $settingKey]
+            );
+        });
 
         $this->line(json_encode($result, JSON_PRETTY_PRINT));
 

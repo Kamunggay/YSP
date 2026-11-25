@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Authority\ChapterAuthority;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -147,7 +148,9 @@ class BrowserSession extends Model
             ->where('status', 'active')
             ->where(fn (Builder $query) => $query->whereNull('valid_from')->orWhere('valid_from', '<=', $now))
             ->where(fn (Builder $query) => $query->whereNull('valid_until')->orWhere('valid_until', '>', $now))
-            ->whereIn('chapter_id', $user->memberships()->where('membership_status', 'active')->select('chapter_id'))
+            ->whereIn('chapter_id', $user->memberships()->where('membership_status', 'active')
+                ->whereHas('chapter', fn (Builder $query) => $query->whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS))
+                ->select('chapter_id'))
             ->exists();
     }
 }

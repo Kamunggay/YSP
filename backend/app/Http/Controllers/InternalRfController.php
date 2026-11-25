@@ -6,6 +6,7 @@ use App\Exceptions\ContractException;
 use App\Models\IdempotencyRecord;
 use App\Models\InternalRf;
 use App\Models\InternalRfVersion;
+use App\Services\Authority\ChapterAuthority;
 use App\Services\Inventory\InternalRfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,7 +45,8 @@ class InternalRfController extends Controller
             $query->where('event_id', $request->query('event_id'));
         }
 
-        $rfs = $query->orderByDesc('created_at')->get();
+        $authority = $request->attributes->get(ChapterAuthority::class);
+        $rfs = $query->orderByDesc('created_at')->get()->filter(fn (InternalRf $rf) => $authority->canReadRf($rf));
         $data = $rfs->map(fn (InternalRf $rf) => $this->rfService->formatRf($rf))->values();
 
         return response()->json([
@@ -119,7 +121,7 @@ class InternalRfController extends Controller
         $actionKey = $this->actionKey($request);
 
         try {
-            $envelope = $this->rfService->approve($chapterId, $rfId, $actorId, $request->all(), $actionKey);
+            $envelope = $this->rfService->approve($chapterId, $rfId, $actorId, $request->all(), $actionKey, $request->attributes->get(ChapterAuthority::class));
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
@@ -133,7 +135,7 @@ class InternalRfController extends Controller
         $actionKey = $this->actionKey($request);
 
         try {
-            $envelope = $this->rfService->returnForRevision($chapterId, $rfId, $actorId, $request->all(), $actionKey);
+            $envelope = $this->rfService->returnForRevision($chapterId, $rfId, $actorId, $request->all(), $actionKey, $request->attributes->get(ChapterAuthority::class));
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
@@ -169,7 +171,7 @@ class InternalRfController extends Controller
         }
     }
 
-    public function listInternalRfHistory(string $chapterId, string $rfId): JsonResponse
+    public function listInternalRfHistory(Request $request, string $chapterId, string $rfId): JsonResponse
     {
         $rf = InternalRf::where('chapter_id', $chapterId)->where('id', $rfId)->first();
         if (! $rf) {
@@ -181,7 +183,8 @@ class InternalRfController extends Controller
         $versions = InternalRfVersion::where('chapter_id', $chapterId)
             ->where('rf_id', $rfId)
             ->orderBy('version')
-            ->get();
+            ->get()
+            ->filter(fn (InternalRfVersion $version) => $this->canReadSnapshot($request, $version));
 
         return response()->json([
             'data' => $versions->map(fn (InternalRfVersion $v) => [
@@ -200,7 +203,7 @@ class InternalRfController extends Controller
         ], 200, ['Cache-Control' => 'no-store']);
     }
 
-    public function readInternalRfVersion(string $chapterId, string $rfId, string $version): JsonResponse
+    public function readInternalRfVersion(Request $request, string $chapterId, string $rfId, string $version): JsonResponse
     {
         $rf = InternalRf::where('chapter_id', $chapterId)->where('id', $rfId)->first();
         if (! $rf) {
@@ -214,7 +217,7 @@ class InternalRfController extends Controller
             ->where('version', (int) $version)
             ->first();
 
-        if (! $verRow) {
+        if (! $verRow || ! $this->canReadSnapshot($request, $verRow)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => "RF version {$version} not found."],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -256,14 +259,14 @@ class InternalRfController extends Controller
             ], 400, ['Cache-Control' => 'no-store']);
         }
 
-        $actorId = $request->header('X-User-Id') ?? session('user_id');
+        $actorId = $request->user()->id;
         $query = IdempotencyRecord::where('chapter_id', $chapterId)->where('key', $key);
         if ($actorId) {
             $query->where('user_id', $actorId);
         }
 
         $record = $query->first();
-        if (! $record) {
+        if (! $record || ! $this->canReadReceipt($request, $record)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => 'Operation result not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -282,14 +285,14 @@ class InternalRfController extends Controller
 
     public function readInternalRfOperationResult(Request $request, string $chapterId, string $operationId): JsonResponse
     {
-        $actorId = $request->header('X-User-Id') ?? session('user_id');
+        $actorId = $request->user()->id;
         $query = IdempotencyRecord::where('chapter_id', $chapterId)->where('id', $operationId);
         if ($actorId) {
             $query->where('user_id', $actorId);
         }
 
         $record = $query->first();
-        if (! $record) {
+        if (! $record || ! $this->canReadReceipt($request, $record)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => 'Operation result not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -300,9 +303,39 @@ class InternalRfController extends Controller
         return response()->json($decoded ?? ['data' => $record->response_body], 200, ['Cache-Control' => 'no-store']);
     }
 
+    private function canReadSnapshot(Request $request, InternalRfVersion $version): bool
+    {
+        $authority = $request->attributes->get(ChapterAuthority::class);
+        $unit = $version->snapshot_json['requesting_unit_id'] ?? null;
+
+        return $authority->allows('rf.read', $unit) && $authority->allows('history.read', $unit);
+    }
+
+    private function canReadReceipt(Request $request, IdempotencyRecord $record): bool
+    {
+        $action = match ($record->operation_name) {
+            'createInternalRf', 'replaceInternalRfDraft', 'reviseInternalRf', 'cancelInternalRf' => 'rf.draft',
+            'submitInternalRf' => 'rf.submit',
+            'approveInternalRf', 'returnInternalRf' => 'rf.approve',
+            default => null,
+        };
+        if ($action === null || ! $record->resource_id) {
+            return false;
+        }
+
+        $authority = $request->attributes->get(ChapterAuthority::class);
+        $rf = InternalRf::where('chapter_id', $record->chapter_id)->whereKey($record->resource_id)->first();
+        $oldUnit = data_get(json_decode($record->response_body, true), 'data.result.requesting_unit_id');
+
+        return $rf && $authority->canReadRf($rf)
+            && ($action !== 'rf.approve' || $authority->routedRfApprover($rf))
+            && $authority->allows($action, $rf->requesting_unit_id)
+            && $authority->allows($action, $oldUnit);
+    }
+
     private function actorId(Request $request): string
     {
-        return (string) ($request->header('X-User-Id') ?? session('user_id') ?? 'system-user');
+        return (string) ($request->user()->id);
     }
 
     private function actionKey(Request $request): ?string

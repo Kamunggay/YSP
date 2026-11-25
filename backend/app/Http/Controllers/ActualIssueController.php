@@ -16,6 +16,7 @@ use App\Models\InventoryPosting;
 use App\Models\IssueReconciliation;
 use App\Models\StockHoldRange;
 use App\Models\StockReservation;
+use App\Services\Authority\ChapterAuthority;
 use App\Services\Delivery\RequisitionIssueService;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Inventory\InternalRfService;
@@ -886,7 +887,7 @@ class ActualIssueController extends Controller
      */
     public function reconciliations(Request $request, string $chapterId, string $issueId): JsonResponse
     {
-        $authActor = $request->header('X-User-Id') ?? session('user_id');
+        $authActor = $request->user()->id;
         $actionKey = $this->actionKey($request);
 
         try {
@@ -943,7 +944,7 @@ class ActualIssueController extends Controller
                     ]);
                 }
 
-                $officerId = $authActor ?? ($validated['officer_user_id'] ?? 'reconciliation-officer');
+                $officerId = $authActor;
                 $notes = $validated['notes'] ?? $validated['reason'] ?? null;
 
                 $reconciliation = IssueReconciliation::create([
@@ -1053,16 +1054,16 @@ class ActualIssueController extends Controller
             ], 400, ['Cache-Control' => 'no-store']);
         }
 
-        $actorId = $request->header('X-User-Id') ?? session('user_id');
+        $actorId = $request->user()->id;
         $query = IdempotencyRecord::where('key', $key)->where('chapter_id', $chapterId);
         if ($actorId) {
             $query->where('user_id', $actorId);
         }
 
         $record = $query->first();
-        if (! $record) {
+        if (! $record || ! $this->canReadReceipt($request, $record)) {
             return response()->json([
-                'error' => ['code' => 'OPERATION_KEY_NOT_FOUND', 'message' => 'Operation key not found for this chapter and actor.'],
+                'error' => ['code' => 'resource_not_found', 'message' => 'Operation not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
         }
 
@@ -1085,14 +1086,14 @@ class ActualIssueController extends Controller
      */
     public function operationsById(Request $request, string $chapterId, string $operationId): JsonResponse
     {
-        $actorId = $request->header('X-User-Id') ?? session('user_id');
+        $actorId = $request->user()->id;
         $query = IdempotencyRecord::where('id', $operationId)->where('chapter_id', $chapterId);
         if ($actorId) {
             $query->where('user_id', $actorId);
         }
 
         $record = $query->first();
-        if (! $record) {
+        if (! $record || ! $this->canReadReceipt($request, $record)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => 'Operation not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -1103,6 +1104,32 @@ class ActualIssueController extends Controller
         return response()->json($decoded ?? $record->response_body, $record->response_code, [
             'Cache-Control' => 'no-store',
         ]);
+    }
+
+    private function canReadReceipt(Request $request, IdempotencyRecord $record): bool
+    {
+        $origin = match ($record->operation_name) {
+            'prepareActualIssue', 'reviseActualIssue' => 'issue.prepare',
+            'matchActualIssueAcknowledgment', 'postActualIssue', 'recordIssueReconciliation' => 'issue.post',
+            default => null,
+        };
+        if ($origin === null || ! $record->resource_id) {
+            return false;
+        }
+
+        $authority = $request->attributes->get(ChapterAuthority::class);
+        $issue = ActualIssue::where('chapter_id', $record->chapter_id)->whereKey($record->resource_id)->first();
+        $rf = $issue?->rf()->where('chapter_id', $record->chapter_id)->first();
+        if (! $rf || ! $authority->canReadRf($rf)) {
+            return false;
+        }
+        foreach ([$origin, 'issue.prepare', 'stock.read', 'evidence.read', 'history.read'] as $action) {
+            if (! $authority->allows($action, $rf->requesting_unit_id)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function validateDisjointLineTargets(array $rawLines): void
@@ -1170,7 +1197,7 @@ class ActualIssueController extends Controller
 
     private function actorId(Request $request): string
     {
-        return (string) ($request->header('X-User-Id') ?? session('user_id') ?? 'system-user');
+        return (string) ($request->user()->id);
     }
 
     private function actionKey(Request $request): ?string

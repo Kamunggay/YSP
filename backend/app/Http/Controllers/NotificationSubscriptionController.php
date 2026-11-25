@@ -2,9 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Chapter;
-use App\Models\ChapterMembership;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -12,25 +9,7 @@ class NotificationSubscriptionController extends Controller
 {
     public function authorizeSession(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id') ?? session('user_id');
-        if (! $userId) {
-            return response()->json([
-                'error' => [
-                    'code' => 'unauthenticated',
-                    'message' => 'Authentication is required.',
-                ],
-            ], 401, ['Cache-Control' => 'no-store']);
-        }
-
-        $user = User::where('id', $userId)->first();
-        if (! $user || $user->status !== 'active') {
-            return response()->json([
-                'error' => [
-                    'code' => 'unauthenticated',
-                    'message' => 'Active user session is required.',
-                ],
-            ], 401, ['Cache-Control' => 'no-store']);
-        }
+        $user = $request->user();
 
         $validationError = $this->validateInput($request);
         if ($validationError) {
@@ -53,53 +32,10 @@ class NotificationSubscriptionController extends Controller
         return $this->signedAuthResponse($socketId, $channelName);
     }
 
-    public function authorizeChapter(Request $request, string $chapter_id): JsonResponse
+    public function authorizeChapter(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id') ?? session('user_id');
-        if (! $userId) {
-            return response()->json([
-                'error' => [
-                    'code' => 'unauthenticated',
-                    'message' => 'Authentication is required.',
-                ],
-            ], 401, ['Cache-Control' => 'no-store']);
-        }
-
-        $user = User::where('id', $userId)->first();
-        if (! $user || $user->status !== 'active') {
-            return response()->json([
-                'error' => [
-                    'code' => 'unauthenticated',
-                    'message' => 'Active user session is required.',
-                ],
-            ], 401, ['Cache-Control' => 'no-store']);
-        }
-
-        $chapter = $request->attributes->get('chapter')
-            ?? Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
-
-        if (! $chapter) {
-            return response()->json([
-                'error' => [
-                    'code' => 'chapter_not_found',
-                    'message' => "Chapter {$chapter_id} was not found.",
-                ],
-            ], 404, ['Cache-Control' => 'no-store']);
-        }
-
-        $membership = ChapterMembership::where('chapter_id', $chapter->id)
-            ->where('user_id', $user->id)
-            ->where('membership_status', 'active')
-            ->first();
-
-        if (! $membership) {
-            return response()->json([
-                'error' => [
-                    'code' => 'notification_subscription_denied',
-                    'message' => 'Private subscription unavailable.',
-                ],
-            ], 403, ['Cache-Control' => 'no-store']);
-        }
+        $user = $request->user();
+        $chapter = $request->attributes->get('chapter');
 
         $validationError = $this->validateInput($request);
         if ($validationError) {
