@@ -38,6 +38,14 @@ return [
             'report' => false,
         ],
 
+        'evidence' => [
+            'driver' => 'local',
+            'root' => storage_path('app/evidence'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
