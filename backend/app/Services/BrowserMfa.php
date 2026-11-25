@@ -10,7 +10,6 @@ use App\Models\UserMfaCredential;
 use Closure;
 use Illuminate\Support\Str;
 use OTPHP\TOTP;
-use ParagonIE\ConstantTime\Base32;
 
 class BrowserMfa
 {
@@ -49,7 +48,7 @@ class BrowserMfa
         return ['recovery_set' => $set];
     }
 
-    public function fullFactor(): UserMfaCredential
+    private function fullFactor(): UserMfaCredential
     {
         if ($this->session->next_step !== null) {
             throw new MfaDenied(403, 'mfa_incomplete', 'Complete multifactor authentication first.');
@@ -62,7 +61,29 @@ class BrowserMfa
         return $this->factor;
     }
 
-    public function perform(string $operation, string $key, array $input, string $token): array
+    public function assertAdmission(string $operation): void
+    {
+        if ($operation === 'rotate') {
+            $this->fullFactor();
+        }
+
+        $step = $this->session->next_step;
+        if (($step === 'challenge_authenticator' && in_array($operation, ['begin', 'confirm'], true))
+            || ($step === 'enroll_authenticator' && in_array($operation, ['authenticator', 'recovery'], true))) {
+            throw new MfaDenied(403, 'continuation_mismatch', 'Use the indicated authentication step.');
+        }
+    }
+
+    public function eraseExpiredSecrets(): void
+    {
+        $this->session->mfaReceipts()->whereNotNull('delivery')
+            ->where('delivery_expires_at', '<=', now())->update(['delivery' => null]);
+        if ($this->factor?->pending_expires_at && ! $this->factor->pending_expires_at->isFuture()) {
+            $this->factor->update(UserMfaCredential::PENDING_FIELDS + ['encrypted_seed' => null]);
+        }
+    }
+
+    public function perform(string $operation, string $key, #[\SensitiveParameter] array $input, string $token): array
     {
         $fingerprint = hash_hmac('sha256', json_encode($input, JSON_THROW_ON_ERROR), app('encrypter')->getKey());
         $receipt = $this->session->mfaReceipts()->where('operation', $operation)->where('action_key', $key)->first();
@@ -81,8 +102,9 @@ class BrowserMfa
             'fingerprint' => $fingerprint,
         ]);
 
-        if ($operation === 'begin' || $operation === 'confirm') {
-            $this->allowEnrollment($factor);
+        if (($operation === 'begin' || ($operation === 'confirm' && $this->session->next_step === null))
+            && $factor?->is_confirmed) {
+            throw new MfaDenied(409, 'factor_exists', 'An authenticator is already enrolled.');
         }
 
         $result = match ($operation) {
@@ -112,7 +134,7 @@ class BrowserMfa
         return [$result, $token, false];
     }
 
-    private function replay(string $operation, BrowserMfaReceipt $receipt, ?UserMfaCredential $factor, array $input): array
+    private function replay(string $operation, BrowserMfaReceipt $receipt, ?UserMfaCredential $factor, #[\SensitiveParameter] array $input): array
     {
         if ($operation === 'begin') {
             $this->requirePending($factor, $receipt->result['enrollment_id']);
@@ -140,17 +162,7 @@ class BrowserMfa
         return $receipt->result;
     }
 
-    private function allowEnrollment(?UserMfaCredential $factor): void
-    {
-        if ($this->session->next_step === 'challenge_authenticator') {
-            throw new MfaDenied(403, 'continuation_mismatch', 'Use the indicated authentication step.');
-        }
-        if ($factor?->is_confirmed) {
-            throw new MfaDenied(409, 'factor_exists', 'An authenticator is already enrolled.');
-        }
-    }
-
-    private function begin(?UserMfaCredential $factor, array $input, BrowserMfaReceipt $receipt): array
+    private function begin(?UserMfaCredential $factor, #[\SensitiveParameter] array $input, BrowserMfaReceipt $receipt): array
     {
         $this->requirePassword($input['password']);
         if ($factor?->pending_expires_at?->isFuture()) {
@@ -182,7 +194,7 @@ class BrowserMfa
         ];
     }
 
-    private function confirm(?UserMfaCredential $factor, array $input, string &$token): array
+    private function confirm(?UserMfaCredential $factor, #[\SensitiveParameter] array $input, string &$token): array
     {
         $this->requirePending($factor, $input['enrollment_id']);
         $this->requirePassword($input['password']);
@@ -201,13 +213,10 @@ class BrowserMfa
         }
     }
 
-    private function challenge(string $operation, ?UserMfaCredential $factor, array $input, string &$token): array
+    private function challenge(string $operation, ?UserMfaCredential $factor, #[\SensitiveParameter] array $input, string &$token): array
     {
         if ($this->session->next_step === null) {
             throw new MfaDenied(409, 'session_state_conflict', 'Review the current session before starting another intent.');
-        }
-        if ($this->session->next_step !== 'challenge_authenticator') {
-            throw new MfaDenied(403, 'continuation_mismatch', 'Use the indicated authentication step.');
         }
         if (! $factor?->is_confirmed) {
             $this->invalidFactor();
@@ -224,7 +233,7 @@ class BrowserMfa
         return $this->session->projection($this->user);
     }
 
-    private function rotate(UserMfaCredential $factor, array $input): array
+    private function rotate(UserMfaCredential $factor, #[\SensitiveParameter] array $input): array
     {
         $this->requirePassword($input['password']);
         $steps = $this->acceptTotp($factor, $input['authenticator_code']);
@@ -244,7 +253,7 @@ class BrowserMfa
         $created = now()->startOfSecond();
         $codes = [];
         while (count($codes) < 10) {
-            $code = implode('-', str_split(Base32::encodeUpperUnpadded(random_bytes(10)), 4));
+            $code = implode('-', str_split(TOTP::generate(secretSize: 10)->getSecret(), 4));
             $codes[$code] = $this->recoveryVerifier($code);
         }
 

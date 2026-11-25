@@ -238,6 +238,8 @@ class BrowserSessionTest extends TestCase
             ->assertJsonPath('data.session.authentication_method', 'authenticator')
             ->assertJsonPath('data.session.mfa_required', true)->assertJsonCount(10, 'data.recovery_set.codes');
         $this->assertCookiePair($full);
+        $this->requestAuth('POST', 'authenticator/enrollments/confirm', $otherBrowser, $proof)
+            ->assertConflict()->assertJsonPath('error.code', 'enrollment_expired');
         $this->requestAuth('GET', 'session', $continuation)->assertUnauthorized();
         $this->requestAuth('POST', 'authenticator/enrollments/confirm', $full, $proof, $key)
             ->assertOk()->assertHeader('X-Action-Replayed', 'true')->assertExactJson($full->json());
@@ -360,6 +362,43 @@ class BrowserSessionTest extends TestCase
         $this->travel(10)->minutes();
         $this->requestAuth('POST', 'authenticator/challenge', $expiring, ['authenticator_code' => $this->authenticatorCode($seed)])
             ->assertUnauthorized()->assertJsonPath('error.code', 'unauthenticated');
+    }
+
+    public function test_mfa_expired_recovery_set_keeps_metadata_and_rejects_its_codes(): void
+    {
+        $officer = $this->officer();
+        [$seed, $full] = $this->enrollAuthenticator($officer);
+        $set = $full->json('data.recovery_set');
+        $this->travel(365)->days();
+
+        $continuation = $this->signIn($this->startBrowser(), $officer)->assertOk();
+        $this->requestAuth('POST', 'recovery/challenge', $continuation, ['recovery_code' => $set['codes'][0]])
+            ->assertForbidden()->assertJsonPath('error.code', 'invalid_factor');
+        $authenticated = $this->requestAuth('POST', 'authenticator/challenge', $continuation, [
+            'authenticator_code' => $this->authenticatorCode($seed),
+        ])->assertOk();
+        $this->requestAuth('GET', 'recovery-codes', $authenticated)
+            ->assertExactJson(['data' => ['recovery_set' => [
+                'id' => $set['id'], 'remaining' => 0, 'created_at' => $set['created_at'], 'expires_at' => $set['expires_at'],
+            ]]]);
+    }
+
+    public function test_mfa_scheduler_erases_expired_pending_secrets_and_deliveries(): void
+    {
+        $officer = $this->officer();
+        $this->enrollAuthenticator($officer);
+        $pending = $this->signIn($this->startBrowser(), $this->officer())->assertOk();
+        $this->requestAuth('POST', 'authenticator/enrollments', $pending, ['password' => self::PASSWORD])
+            ->assertCreated();
+        $this->assertDatabaseCount('browser_mfa_receipts', 3);
+        $this->assertSame(1, DB::table('browser_mfa_receipts')->whereNotNull('delivery')->count());
+
+        $this->travel(5)->minutes();
+        $this->artisan('schedule:run')->assertSuccessful();
+
+        $this->assertSame(0, DB::table('browser_mfa_receipts')->whereNotNull('delivery')->count());
+        $this->assertSame(0, DB::table('user_mfa_credentials')->where('is_confirmed', false)->whereNotNull('encrypted_seed')->count());
+        $this->assertSame(1, DB::table('user_mfa_credentials')->where('is_confirmed', true)->whereNotNull('encrypted_seed')->count());
     }
 
     private function enrollAuthenticator(User $officer): array

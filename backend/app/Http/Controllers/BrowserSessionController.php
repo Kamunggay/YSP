@@ -165,7 +165,7 @@ class BrowserSessionController extends Controller
         return $this->handle($request, function (?BrowserSession $session, ?string $token, ?int $ipDelay) use ($request, $operation) {
             $proof = $operation !== 'status';
             $user = $session?->currentUser(write: $proof && $ipDelay === null);
-            if (! $user || ! $session->expires_at->isFuture() || ! $session->refreshProgress($user)) {
+            if (! $user || ! $session->expires_at->isFuture()) {
                 return $this->failure(401, 'unauthenticated', 'Sign in again.');
             }
 
@@ -173,7 +173,10 @@ class BrowserSessionController extends Controller
                 return $this->throttled(max($ipDelay, $this->attempt('account:'.$user->id, 5, countAttempt: false)));
             }
 
+            $session->refreshProgress($user);
             $mfa = new BrowserMfa($session, $user, $this->validPassword(...));
+            $mfa->eraseExpiredSecrets();
+            $mfa->assertAdmission($operation);
             if ($operation === 'status') {
                 $status = $mfa->recoveryStatus();
                 if ($request->getQueryString() !== null || $request->getContent() !== '') {
@@ -181,9 +184,6 @@ class BrowserSessionController extends Controller
                 }
 
                 return response()->json(['data' => $status]);
-            }
-            if ($operation === 'rotate') {
-                $mfa->fullFactor();
             }
             if ($request->getQueryString() !== null || ! $this->validActionKey($request)) {
                 return $this->malformed();
