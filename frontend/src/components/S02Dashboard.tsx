@@ -339,7 +339,29 @@ export function S02Dashboard({
     [chapterAccess],
   );
 
-  interface PriorityItem {
+function actionToWorkspaceTab(action: string): { tab: WorkspaceTab; label: string } {
+  if (action.startsWith('ipc.') || action.startsWith('opening')) {
+    return { tab: 'opening', label: 'Open Opening' };
+  }
+  if (action.startsWith('rf.')) {
+    return { tab: 'requisitions', label: 'Open Requisitions' };
+  }
+  if (action.startsWith('catalogue.')) {
+    return { tab: 'catalogue', label: 'Open Catalogue' };
+  }
+  if (action.startsWith('evidence.')) {
+    return { tab: 'evidence', label: 'Open Documents' };
+  }
+  if (action.startsWith('hold.') || action.includes('reservation')) {
+    return { tab: 'reservations_holds', label: 'Open Reservations' };
+  }
+  if (action.startsWith('issue.')) {
+    return { tab: 'actual_issues', label: 'Open Handovers' };
+  }
+  return { tab: 'stock', label: 'Open Stock' };
+}
+
+interface PriorityItem {
     id: string;
     pill: string;
     title: string;
@@ -347,6 +369,8 @@ export function S02Dashboard({
     tagTone: 'is-uncertain' | 'is-overdue' | '';
     summary: string;
     meta: string;
+    secondaryActionLabel?: string;
+    onSecondaryAction?: () => void;
     actionLabel: string;
     onAction: () => void;
   }
@@ -367,6 +391,7 @@ export function S02Dashboard({
         ),
       );
       const reason = uniqueMessages.join('; ');
+      const target = actionToWorkspaceTab(blockerAct.action);
       items.push({
         id: `blocker-${blockerAct.action}`,
         pill: 'Setup',
@@ -375,8 +400,10 @@ export function S02Dashboard({
         tagTone: 'is-overdue',
         summary: reason || 'Complete chapter configuration to unlock this workflow.',
         meta: 'Chapter Setup',
-        actionLabel: 'Inspect Setup',
-        onAction: () => setShowSecurityDrawer(true),
+        secondaryActionLabel: 'Inspect Setup',
+        onSecondaryAction: () => setShowSecurityDrawer(true),
+        actionLabel: target.label,
+        onAction: () => onSelectTab(target.tab),
       });
     }
 
@@ -796,24 +823,35 @@ export function S02Dashboard({
                       <div className="s02-queue-card-top">
                         <div className="s02-queue-title-row">
                           <span className="s02-record-pill">{item.pill}</span>
-                          <span className="s02-queue-item-title">{item.title}</span>
+                          <strong className="s02-queue-item-title">{item.title}</strong>
                         </div>
                         <div className="s02-queue-badges">
                           <span className={`s02-status-tag ${item.tagTone}`}>{item.tagLabel}</span>
                         </div>
                       </div>
                       <p className="s02-queue-summary">{item.summary}</p>
-                      <div className="s02-queue-meta-line">
-                        <span>{item.meta}</span>
-                      </div>
-                      <div className="s02-queue-actions">
-                        <button
-                          type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
-                          onClick={item.onAction}
-                        >
-                          {item.actionLabel}
-                        </button>
+                      <div className="s02-queue-footer">
+                        <div className="s02-queue-meta-line">
+                          <span>{item.meta}</span>
+                        </div>
+                        <div className="s02-queue-actions">
+                          {item.secondaryActionLabel && item.onSecondaryAction && (
+                            <button
+                              type="button"
+                              className="btn-batcave-secondary p03-shrink-btn"
+                              onClick={item.onSecondaryAction}
+                            >
+                              {item.secondaryActionLabel}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn-batcave-primary p03-shrink-btn"
+                            onClick={item.onAction}
+                          >
+                            {item.actionLabel}
+                          </button>
+                        </div>
                       </div>
                     </article>
                   ))}
@@ -873,23 +911,25 @@ export function S02Dashboard({
                         <div className="s02-queue-card-top">
                           <div className="s02-queue-title-row">
                             <span className="s02-record-pill">Draft</span>
-                            <span className="s02-queue-item-title">{draft.label}</span>
+                            <strong className="s02-queue-item-title">{draft.label}</strong>
                           </div>
                           <div className="s02-queue-badges">
                             <span className="s02-status-tag">Session Draft</span>
                           </div>
                         </div>
-                        <div className="s02-queue-meta-line">
-                          <span>Saved {formatManilaTime(draft.updatedAtIso)}</span>
-                        </div>
-                        <div className="s02-queue-actions">
-                          <button
-                            type="button"
-                            className="btn-batcave-secondary p03-shrink-btn"
-                            onClick={() => onSelectTab(target.tab)}
-                          >
-                            Resume in {target.workspaceLabel}
-                          </button>
+                        <div className="s02-queue-footer">
+                          <div className="s02-queue-meta-line">
+                            <span>Saved {formatManilaTime(draft.updatedAtIso)}</span>
+                          </div>
+                          <div className="s02-queue-actions">
+                            <button
+                              type="button"
+                              className="btn-batcave-primary p03-shrink-btn"
+                              onClick={() => onSelectTab(target.tab)}
+                            >
+                              Resume in {target.workspaceLabel}
+                            </button>
+                          </div>
                         </div>
                       </article>
                     );

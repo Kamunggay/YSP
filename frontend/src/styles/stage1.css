@@ -88,3 +88,55 @@ button.s02-kpi-card {
 .p03-filter-pill {
   white-space: nowrap;
 }
+
+.p04-back-btn {
+  width: auto !important;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.s02-queue-card.is-overdue {
+  border-color: rgba(245, 158, 11, 0.36);
+  border-left: 3px solid #d97706;
+}
+
+.s02-queue-card.is-uncertain {
+  border-color: rgba(220, 38, 38, 0.36);
+  border-left: 3px solid #dc2626;
+}
+
+.s02-queue-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--glass-divider);
+}
+
+.p04-line-top {
+  align-items: center;
+}
+
+.s02-quick-grid {
+  grid-auto-rows: 1fr;
+}
+
+.s02-quick-tile {
+  height: 100%;
+}
+
+.p02-three-col-grid {
+  align-items: end;
+}
+
+.s02-controls-drawer .p05-cells-table th,
+.s02-controls-drawer .p05-cells-table td {
+  white-space: normal;
+  vertical-align: top;
+}
+
+.s02-controls-drawer .p05-cells-table td:nth-child(2) {
+  white-space: nowrap;
+}

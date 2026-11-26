@@ -491,7 +491,7 @@ export function ActualIssueWorkspace({
               {onBackToDashboard && (
                 <button
                   type="button"
-                  className="btn-batcave-secondary p04-back-btn"
+                  className="btn-batcave-secondary p03-shrink-btn p04-back-btn"
                   onClick={onBackToDashboard}
                 >
                   ← Back to My Work
@@ -718,7 +718,7 @@ export function ActualIssueWorkspace({
                   <>
                     <div className="p02-three-col-grid">
                       <div className="form-group">
-                        <label className="form-label">Recipient Officer Reference</label>
+                        <label className="form-label">Recipient Officer</label>
                         <input
                           className="form-control"
                           required

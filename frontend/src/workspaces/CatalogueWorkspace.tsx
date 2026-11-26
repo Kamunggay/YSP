@@ -423,7 +423,7 @@ export function CatalogueWorkspace({
               {onBackToDashboard && (
                 <button
                   type="button"
-                  className="btn-batcave-secondary p04-back-btn"
+                  className="btn-batcave-secondary p03-shrink-btn p04-back-btn"
                   onClick={onBackToDashboard}
                 >
                   ← Back to My Work
