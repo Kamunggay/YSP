@@ -3,6 +3,7 @@
 import argparse
 import json
 from decimal import Decimal
+from hashlib import sha256
 from importlib.metadata import version
 from pathlib import Path
 
@@ -108,6 +109,51 @@ def check_replenishment_math(item, label):
     )
     if counted_sources != expected_inbound or excluded_sources != qty("excluded_inbound_quantity"):
         raise ValueError(f"{label}: inbound_sources breakdown does not sum to totals")
+
+
+def check_donation_evidence(check_value, case, receipt):
+    name = case["name"]
+    request = case["request"]["body"]
+    result = receipt["result"]
+    material = case["evidence_material"]
+    resolution = receipt["restriction_resolution"]
+    binding = resolution or result["acknowledgment"]
+    expected = {
+        "chapter_id": result["chapter_id"],
+        "da_id": result["da_id"],
+        "material_version": request["expected_material_version"],
+    }
+
+    if resolution:
+        material_schema = "DonationRestrictionResolutionMaterial"
+        proposal_fields = ("da_line_id", "reason", "resolution_kind", "restrictions")
+        expected.update({field: request[field] for field in proposal_fields})
+        if any(resolution[field] != request[field] for field in proposal_fields):
+            raise ValueError(f"{name}: resolution result differs from the signed proposal")
+        expected["previous_restrictions"] = resolution["previous_restrictions"]
+    else:
+        material_schema = "DonationAcknowledgmentMaterial"
+        fields = ("prepared_by", "donor_name", "valuation_policy", "pledged_total_value_php")
+        expected.update({field: result[field] for field in fields})
+        expected["lines"] = [
+            {field: value for field, value in line.items()
+             if field not in {"received_quantity", "outstanding_quantity"}}
+            for line in result["lines"]
+        ]
+
+    check_value("#/components/schemas/" + material_schema, material, name + " signed material")
+    # These closed projections use ASCII field names, integer numbers and string decimals.
+    canonical = json.dumps(material, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    snapshot = binding["snapshot"]
+    if (
+        material != expected
+        or snapshot["target"]["record_id"] != expected["da_id"]
+        or snapshot["material_version"] != expected["material_version"]
+        or snapshot["sha256"] != sha256(canonical.encode("utf-8")).hexdigest()
+        or binding["binding"] != request["evidence"]
+        or binding["signed_at"] != request["signed_at"]
+    ):
+        raise ValueError(f"{name}: evidence does not match signed DA material and manifest")
 
 
 def main():
@@ -246,6 +292,7 @@ def main():
                     header_pointer, _ = dereference(response_pointer + "/headers/" + pointer_part(header))
                     check_inline_examples(header_pointer)
 
+    donation_transitions = document.get("x-stage2-donation-transitions", {})
     covered = set()
     names = set()
     for case in examples["cases"]:
@@ -263,6 +310,11 @@ def main():
         elif "body" in request:
             raise ValueError(f"{name}: operation has no request body")
         request_headers = examples["request_defaults"]["headers"] | request.get("headers", {})
+        if pointer.endswith("/get"):
+            if "X-Action-Key" in request.get("headers", {}):
+                raise ValueError(f"{name}: GET must not send X-Action-Key")
+            for header in ("X-Action-Key", "X-XSRF-TOKEN", "Origin", "Content-Type"):
+                request_headers.pop(header, None)
         request_locations = {
             "header": request_headers,
             "path": request.get("path", {}),
@@ -296,31 +348,31 @@ def main():
             if case["operationId"] == "listReplenishmentNeeds" and status == "200":
                 for idx, item in enumerate(response["body"]["data"]):
                     check_replenishment_math(item, f"{name}[{idx}]")
-            transitions = document.get("x-stage2-donation-transitions", {})
-            if status.startswith("2") and case["operationId"] in transitions:
-                receipt = response["body"]["data"]
-                allowed = transitions[case["operationId"]].get(case["before_status"], [])
-                if receipt["operation_name"] != case["operationId"] or receipt["http_status"] != int(status):
-                    raise ValueError(f"{name}: donation receipt has the wrong operation or status")
-                if receipt["result"]["status"] not in allowed:
-                    raise ValueError(f"{name}: invalid donation state transition")
-                if "evidence_material" in case:
-                    resolution = receipt["restriction_resolution"]
-                    binding = resolution or receipt["result"]["acknowledgment"]
-                    material_schema = "DonationRestrictionResolutionMaterial" if resolution else "DonationAcknowledgmentMaterial"
-                    material = case["evidence_material"]
-                    check_value("#/components/schemas/" + material_schema, material, name + " signed material")
-                    if (
-                        binding["binding"] != request["body"]["evidence"]
-                        or binding["signed_at"] != request["body"]["signed_at"]
-                        or binding["snapshot"]["target"]["record_id"] != material["da_id"]
-                        or binding["snapshot"]["material_version"] != material["material_version"]
-                        or material["material_version"] != request["body"]["expected_material_version"]
-                    ):
-                        raise ValueError(f"{name}: evidence does not match the signed DA version and manifest")
         elif "body" in response:
             raise ValueError(f"{name}: bodyless status contains a body")
-        response_headers = examples["response_defaults"]["headers"] | response.get("headers", {})
+
+        operation_id = case["operationId"]
+        if operation_id in donation_transitions and status.startswith("2"):
+            receipt = response["body"]["data"]
+            allowed = donation_transitions[operation_id].get(case["before_status"], [])
+            if receipt["operation_name"] != operation_id or receipt["http_status"] != int(status):
+                raise ValueError(f"{name}: donation receipt has the wrong operation or status")
+            if receipt["result"]["status"] not in allowed:
+                raise ValueError(f"{name}: invalid donation state transition")
+            if operation_id in {"acknowledgeDonation", "resolveDonationRestriction"}:
+                check_donation_evidence(check_value, case, receipt)
+        if operation_id in donation_transitions and status == "409" and "before_status" in case:
+            if (
+                response["body"]["error"]["code"] != "invalid_transition"
+                or case["before_status"] in donation_transitions[operation_id]
+            ):
+                raise ValueError(f"{name}: fixture does not show a disallowed donation transition")
+
+        response_headers = {
+            name: value
+            for name, value in examples["response_defaults"]["headers"].items()
+            if name in definition.get("headers", {})
+        } | response.get("headers", {})
         for header_name in definition.get("headers", {}):
             header_pointer, header = dereference(response_pointer + "/headers/" + pointer_part(header_name))
             if header_name not in response_headers:

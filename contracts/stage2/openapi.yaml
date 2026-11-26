@@ -219,7 +219,8 @@ paths:
       x-existence: new
       x-required-action: da.history_read
       summary: List immutable DA history
-      description: Newest version first. Cursor binds the current authorized history snapshot.
+      description: Newest version first. Also requires current history.read and applicable evidence.read. Cursor binds
+        the current authorized history snapshot.
       security:
       - browserSession: []
       parameters:
@@ -2424,6 +2425,42 @@ components:
       - closeShortDonation
       - cancelDonation
       - resolveDonationRestriction
+    DonationRestriction:
+      allOf:
+      - {$ref: '#/components/schemas/BoundedRestriction'}
+      - if:
+          properties:
+            state: {const: unrestricted}
+        then:
+          properties:
+            allowed_uses: {const: []}
+            event_ids: {const: []}
+            requesting_unit_ids: {const: []}
+            effective_from: {const: null}
+            effective_until: {const: null}
+            interpretation_id: {const: null}
+            source_condition_reference: {const: null}
+        else:
+          properties:
+            source_condition_reference:
+              type: string
+              minLength: 1
+              maxLength: 200
+              pattern: \S
+    DonationAppliedRestriction:
+      allOf:
+      - {$ref: '#/components/schemas/DonationRestriction'}
+      - properties:
+          state:
+            enum:
+            - bounded
+            - unrestricted
+      - if:
+          properties:
+            state: {const: bounded}
+        then:
+          properties:
+            interpretation_id: {$ref: '#/components/schemas/Uuid'}
     DonationLineInput:
       type: object
       additionalProperties: false
@@ -2459,28 +2496,7 @@ components:
           minLength: 1
           maxLength: 500
           pattern: \S
-        restrictions:
-          allOf:
-          - {$ref: '#/components/schemas/BoundedRestriction'}
-          - if:
-              properties:
-                state: {const: unrestricted}
-            then:
-              properties:
-                allowed_uses: {const: []}
-                event_ids: {const: []}
-                requesting_unit_ids: {const: []}
-                effective_from: {const: null}
-                effective_until: {const: null}
-                interpretation_id: {const: null}
-                source_condition_reference: {const: null}
-            else:
-              properties:
-                source_condition_reference:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                  pattern: \S
+        restrictions: {$ref: '#/components/schemas/DonationRestriction'}
     DonationDraft:
       type: object
       additionalProperties: false
@@ -2585,28 +2601,7 @@ components:
           enum:
           - apply
           - audit_review
-        restrictions:
-          allOf:
-          - {$ref: '#/components/schemas/BoundedRestriction'}
-          - if:
-              properties:
-                state: {const: unrestricted}
-            then:
-              properties:
-                allowed_uses: {const: []}
-                event_ids: {const: []}
-                requesting_unit_ids: {const: []}
-                effective_from: {const: null}
-                effective_until: {const: null}
-                interpretation_id: {const: null}
-                source_condition_reference: {const: null}
-            else:
-              properties:
-                source_condition_reference:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                  pattern: \S
+        restrictions: {$ref: '#/components/schemas/DonationRestriction'}
       if:
         properties:
           resolution_kind: {const: audit_review}
@@ -2617,12 +2612,7 @@ components:
               state: {const: uninterpreted}
       else:
         properties:
-          restrictions:
-            properties:
-              state:
-                enum:
-                - bounded
-                - unrestricted
+          restrictions: {$ref: '#/components/schemas/DonationAppliedRestriction'}
     DonationLine:
       type: object
       additionalProperties: false
@@ -2664,28 +2654,7 @@ components:
           minLength: 1
           maxLength: 500
           pattern: \S
-        restrictions:
-          allOf:
-          - {$ref: '#/components/schemas/BoundedRestriction'}
-          - if:
-              properties:
-                state: {const: unrestricted}
-            then:
-              properties:
-                allowed_uses: {const: []}
-                event_ids: {const: []}
-                requesting_unit_ids: {const: []}
-                effective_from: {const: null}
-                effective_until: {const: null}
-                interpretation_id: {const: null}
-                source_condition_reference: {const: null}
-            else:
-              properties:
-                source_condition_reference:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                  pattern: \S
+        restrictions: {$ref: '#/components/schemas/DonationRestriction'}
         quantity_scale:
           type: integer
           minimum: 0
@@ -2857,28 +2826,7 @@ components:
                 minLength: 1
                 maxLength: 500
                 pattern: \S
-              restrictions:
-                allOf:
-                - {$ref: '#/components/schemas/BoundedRestriction'}
-                - if:
-                    properties:
-                      state: {const: unrestricted}
-                  then:
-                    properties:
-                      allowed_uses: {const: []}
-                      event_ids: {const: []}
-                      requesting_unit_ids: {const: []}
-                      effective_from: {const: null}
-                      effective_until: {const: null}
-                      interpretation_id: {const: null}
-                      source_condition_reference: {const: null}
-                  else:
-                    properties:
-                      source_condition_reference:
-                        type: string
-                        minLength: 1
-                        maxLength: 200
-                        pattern: \S
+              restrictions: {$ref: '#/components/schemas/DonationRestriction'}
               quantity_scale:
                 type: integer
                 minimum: 0
@@ -2913,50 +2861,8 @@ components:
           enum:
           - apply
           - audit_review
-        restrictions:
-          allOf:
-          - {$ref: '#/components/schemas/BoundedRestriction'}
-          - if:
-              properties:
-                state: {const: unrestricted}
-            then:
-              properties:
-                allowed_uses: {const: []}
-                event_ids: {const: []}
-                requesting_unit_ids: {const: []}
-                effective_from: {const: null}
-                effective_until: {const: null}
-                interpretation_id: {const: null}
-                source_condition_reference: {const: null}
-            else:
-              properties:
-                source_condition_reference:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                  pattern: \S
-        previous_restrictions:
-          allOf:
-          - {$ref: '#/components/schemas/BoundedRestriction'}
-          - if:
-              properties:
-                state: {const: unrestricted}
-            then:
-              properties:
-                allowed_uses: {const: []}
-                event_ids: {const: []}
-                requesting_unit_ids: {const: []}
-                effective_from: {const: null}
-                effective_until: {const: null}
-                interpretation_id: {const: null}
-                source_condition_reference: {const: null}
-            else:
-              properties:
-                source_condition_reference:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                  pattern: \S
+        restrictions: {$ref: '#/components/schemas/DonationRestriction'}
+        previous_restrictions: {$ref: '#/components/schemas/DonationRestriction'}
       if:
         properties:
           resolution_kind: {const: audit_review}
@@ -2967,12 +2873,7 @@ components:
               state: {const: uninterpreted}
       else:
         properties:
-          restrictions:
-            properties:
-              state:
-                enum:
-                - bounded
-                - unrestricted
+          restrictions: {$ref: '#/components/schemas/DonationAppliedRestriction'}
     DonationResult:
       type: object
       additionalProperties: false
@@ -3076,50 +2977,8 @@ components:
           enum:
           - apply
           - audit_review
-        restrictions:
-          allOf:
-          - {$ref: '#/components/schemas/BoundedRestriction'}
-          - if:
-              properties:
-                state: {const: unrestricted}
-            then:
-              properties:
-                allowed_uses: {const: []}
-                event_ids: {const: []}
-                requesting_unit_ids: {const: []}
-                effective_from: {const: null}
-                effective_until: {const: null}
-                interpretation_id: {const: null}
-                source_condition_reference: {const: null}
-            else:
-              properties:
-                source_condition_reference:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                  pattern: \S
-        previous_restrictions:
-          allOf:
-          - {$ref: '#/components/schemas/BoundedRestriction'}
-          - if:
-              properties:
-                state: {const: unrestricted}
-            then:
-              properties:
-                allowed_uses: {const: []}
-                event_ids: {const: []}
-                requesting_unit_ids: {const: []}
-                effective_from: {const: null}
-                effective_until: {const: null}
-                interpretation_id: {const: null}
-                source_condition_reference: {const: null}
-            else:
-              properties:
-                source_condition_reference:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                  pattern: \S
+        restrictions: {$ref: '#/components/schemas/DonationRestriction'}
+        previous_restrictions: {$ref: '#/components/schemas/DonationRestriction'}
         actor_id: {$ref: '#/components/schemas/Uuid'}
         signed_at: {$ref: '#/components/schemas/UtcInstant'}
         committed_at: {$ref: '#/components/schemas/UtcInstant'}
@@ -3141,12 +3000,7 @@ components:
               state: {const: uninterpreted}
       else:
         properties:
-          restrictions:
-            properties:
-              state:
-                enum:
-                - bounded
-                - unrestricted
+          restrictions: {$ref: '#/components/schemas/DonationAppliedRestriction'}
     DonationHistoryList:
       type: object
       additionalProperties: false
@@ -3283,50 +3137,8 @@ components:
         da_id: {$ref: '#/components/schemas/Uuid'}
         da_line_id: {$ref: '#/components/schemas/Uuid'}
         resolution_id: {$ref: '#/components/schemas/Uuid'}
-        previous_restrictions:
-          allOf:
-          - {$ref: '#/components/schemas/BoundedRestriction'}
-          - if:
-              properties:
-                state: {const: unrestricted}
-            then:
-              properties:
-                allowed_uses: {const: []}
-                event_ids: {const: []}
-                requesting_unit_ids: {const: []}
-                effective_from: {const: null}
-                effective_until: {const: null}
-                interpretation_id: {const: null}
-                source_condition_reference: {const: null}
-            else:
-              properties:
-                source_condition_reference:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                  pattern: \S
-        restrictions:
-          allOf:
-          - {$ref: '#/components/schemas/BoundedRestriction'}
-          - if:
-              properties:
-                state: {const: unrestricted}
-            then:
-              properties:
-                allowed_uses: {const: []}
-                event_ids: {const: []}
-                requesting_unit_ids: {const: []}
-                effective_from: {const: null}
-                effective_until: {const: null}
-                interpretation_id: {const: null}
-                source_condition_reference: {const: null}
-            else:
-              properties:
-                source_condition_reference:
-                  type: string
-                  minLength: 1
-                  maxLength: 200
-                  pattern: \S
+        previous_restrictions: {$ref: '#/components/schemas/DonationRestriction'}
+        restrictions: {$ref: '#/components/schemas/DonationAppliedRestriction'}
       allOf:
       - properties:
           previous_restrictions:
@@ -3335,12 +3147,6 @@ components:
                 enum:
                 - bounded
                 - uninterpreted
-          restrictions:
-            properties:
-              state:
-                enum:
-                - bounded
-                - unrestricted
     ApplyLotRestrictionResolutionResult:
       oneOf:
       - type: object
@@ -3909,6 +3715,7 @@ x-stage2-donation-transitions:
     - draft
   postReceivingReport:
     acknowledged:
+    - acknowledged
     - partially_received
     - received
     partially_received:
