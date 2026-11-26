@@ -2,14 +2,214 @@
 
 namespace App\Services\Evidence\Participants;
 
+use App\Exceptions\ContractException;
+use App\Http\Requests\AuthInput;
 use App\Models\EvidenceBinding;
 use App\Models\EvidenceBlob;
 use App\Models\EvidenceRecord;
+use App\Services\Evidence\PaperEvidenceStore;
+use App\Services\Shared\CanonicalJson;
 use DomainException;
 use Illuminate\Support\Str;
 
 class CheckEvidenceBindingParticipant
 {
+    public function __construct(private PaperEvidenceStore $store) {}
+
+    /**
+     * The caller holds current authority and the target lock and supplies a domain-validated acknowledgment.
+     */
+    private function checkExact(array $input): array
+    {
+        $required = $input['required_bytes'];
+        $snapshot = $input['snapshot'];
+        $acknowledgment = $input['acknowledgment'];
+        if (! is_array($required) || ! is_string($required['evidence_id'] ?? null)
+            || ! preg_match(AuthInput::UUID, $required['evidence_id'])) {
+            return ['outcome' => 'missing', 'reason' => 'evidence_missing'];
+        }
+        $record = EvidenceRecord::where('chapter_id', $input['chapter_id'])
+            ->whereKey($required['evidence_id'] ?? null)->sharedLock()->first();
+        if (! $record) {
+            return ['outcome' => 'missing', 'reason' => 'evidence_missing'];
+        }
+        if ($acknowledgment === null) {
+            return ['outcome' => 'missing', 'reason' => 'acknowledgment_missing'];
+        }
+
+        $versionId = $required['version_id'] ?? null;
+        if (! is_string($versionId) || ! preg_match(AuthInput::UUID, $versionId)) {
+            return ['outcome' => 'mismatched', 'reason' => 'bytes_changed'];
+        }
+        $blobs = $record->exactVersion($versionId);
+
+        [, $reason] = $this->store->checkVersion($blobs);
+        if ($reason !== null) {
+            return ['outcome' => 'invalid', 'reason' => $reason];
+        }
+        $targetMatches = $record->purpose === ($snapshot['target']['purpose'] ?? null)
+            && $record->record_id === ($snapshot['target']['record_id'] ?? null);
+        if (! $targetMatches) {
+            return ['outcome' => 'mismatched', 'reason' => 'target_mismatch'];
+        }
+
+        $current = $record->currentVersionBlob();
+        if ($blobs->isNotEmpty() && $current && $record->versionId($current) !== $versionId) {
+            return ['outcome' => 'mismatched', 'reason' => 'superseded_version'];
+        }
+
+        $binding = [
+            'evidence_id' => $record->id,
+            'version_id' => $versionId,
+            'attachments' => $blobs->map(fn (EvidenceBlob $blob) => ['attachment_id' => $blob->id, 'sha256' => $blob->sha256_hash])->all(),
+        ];
+        if ($blobs->isEmpty() || CanonicalJson::encode($binding) !== CanonicalJson::encode($required)
+            || CanonicalJson::encode($binding) !== CanonicalJson::encode($acknowledgment['bytes'] ?? null)) {
+            return ['outcome' => 'mismatched', 'reason' => 'bytes_changed'];
+        }
+        if (CanonicalJson::encode($snapshot) !== CanonicalJson::encode($acknowledgment['snapshot'] ?? null)) {
+            return ['outcome' => 'mismatched', 'reason' => 'snapshot_changed'];
+        }
+        if (empty($acknowledgment['acknowledgment_id']) || empty($acknowledgment['matched_by'])
+            || empty($acknowledgment['matched_at']) || empty($acknowledgment['acknowledged_at'])
+            || ($record->purpose === 'actual_issue' && empty($acknowledgment['recipient_id']))) {
+            return ['outcome' => 'mismatched', 'reason' => 'acknowledgment_invalid'];
+        }
+
+        return ['outcome' => 'ready', 'binding' => $binding, 'snapshot' => $snapshot, 'acknowledgment_id' => $acknowledgment['acknowledgment_id']];
+    }
+
+    /**
+     * Verify that a supplied EvidenceByteBinding matches the current, intact version of an EvidenceRecord.
+     *
+     * @param  callable(EvidenceRecord): bool  $targetMatches
+     * @return array<string, mixed>
+     */
+    public function verifyCurrentBytes(string $chapterId, array $binding, string $expectedPurpose, callable $targetMatches): array
+    {
+        $record = EvidenceRecord::where('chapter_id', $chapterId)
+            ->whereKey($binding['evidence_id'] ?? '')
+            ->sharedLock()
+            ->first();
+        if (! $record) {
+            throw new ContractException(409, 'evidence_missing', 'Signed paper evidence was not found.');
+        }
+        if ($record->purpose !== $expectedPurpose || ! $targetMatches($record)) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence does not match the required target.');
+        }
+
+        $versionId = (string) ($binding['version_id'] ?? '');
+        $blobs = $record->exactVersion($versionId);
+        if ($blobs->isEmpty()) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence version was not found.');
+        }
+
+        try {
+            [, $invalidReason] = $this->store->checkVersion($blobs);
+        } catch (ContractException $exception) {
+            if ($exception->statusCode === 503) {
+                throw new ContractException(503, 'unavailable', 'Signed paper verification is temporarily unavailable.');
+            }
+            throw $exception;
+        }
+        if ($invalidReason !== null) {
+            throw new ContractException(409, 'evidence_invalid', 'Signed paper evidence failed integrity or safety verification.');
+        }
+
+        $current = $record->currentVersionBlob();
+        if (! $current || $record->versionId($current) !== $versionId) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence version has been superseded.');
+        }
+
+        $actual = [
+            'evidence_id' => $record->id,
+            'version_id' => $versionId,
+            'attachments' => $blobs->map(fn (EvidenceBlob $b) => [
+                'attachment_id' => $b->id,
+                'sha256' => $b->sha256_hash,
+            ])->values()->all(),
+        ];
+        if (CanonicalJson::encode($actual) !== CanonicalJson::encode($binding)) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence attachments do not match the current version.');
+        }
+
+        return $actual;
+    }
+
+    public function invalidateActiveForTarget(string $chapterId, string $sourceType, string $sourceId): void
+    {
+        EvidenceBinding::where('chapter_id', $chapterId)
+            ->where('source_type', $sourceType)
+            ->where('source_id', $sourceId)
+            ->where('status', 'active')
+            ->update(['status' => 'invalidated']);
+    }
+
+    public function recordMatch(string $chapterId, string $actorId, array $snapshot, array $bytes, ?string $recipientId, string $recipientName, string $acknowledgedAt, ?array $current): EvidenceBinding
+    {
+        $id = $bytes['evidence_id'] ?? null;
+        if (is_string($id) && preg_match(AuthInput::UUID, $id)
+            && ! EvidenceRecord::where('chapter_id', $chapterId)->whereKey($id)
+                ->where('purpose', $snapshot['target']['purpose'])->where('record_id', $snapshot['target']['record_id'])
+                ->sharedLock()->first(['id'])) {
+            throw new ContractException(404, 'resource_not_found', 'Evidence not found.');
+        }
+
+        $acknowledgment = [
+            'acknowledgment_id' => (string) Str::uuid(),
+            'matched_by' => $actorId,
+            'matched_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
+            'recipient_id' => $recipientId,
+            'acknowledged_at' => $acknowledgedAt,
+            'snapshot' => $snapshot,
+            'bytes' => $bytes,
+        ];
+        $this->verifyMatch($chapterId, $actorId, $snapshot, $bytes, $acknowledgment, $current);
+
+        return EvidenceBinding::create([
+            'id' => $acknowledgment['acknowledgment_id'],
+            'chapter_id' => $chapterId,
+            'evidence_id' => $bytes['evidence_id'],
+            'blob_id' => $bytes['attachments'][0]['attachment_id'],
+            'source_type' => $snapshot['target']['purpose'],
+            'source_id' => $snapshot['target']['record_id'],
+            'recipient_name' => $recipientName,
+            'item_fingerprint' => $snapshot['sha256'],
+            'match_projection' => $acknowledgment,
+            'created_at' => now(),
+            'status' => 'active',
+        ]);
+    }
+
+    public function verifyMatch(string $chapterId, string $actorId, array $snapshot, ?array $bytes, ?array $acknowledgment, ?array $current): void
+    {
+        try {
+            $result = $this->check([
+                'chapter_id' => $chapterId, 'actor_id' => $actorId, 'snapshot' => $snapshot,
+                'required_bytes' => $bytes, 'acknowledgment' => $acknowledgment,
+            ]);
+        } catch (ContractException $exception) {
+            if ($exception->statusCode !== 503) {
+                throw $exception;
+            }
+
+            throw new ContractException(503, 'unavailable', 'Signed paper verification is temporarily unavailable.');
+        }
+        if ($result['outcome'] !== 'ready') {
+            $code = match ($result['outcome']) {
+                'invalid' => 'evidence_invalid',
+                'missing' => $result['reason'] === 'evidence_missing' || $snapshot['target']['purpose'] === 'hold_clearance'
+                    ? 'evidence_missing' : 'acknowledgment_missing',
+                default => 'evidence_mismatch',
+            };
+            throw new ContractException(409, $code, 'The exact signed paper must match the current material.',
+                $snapshot['target']['purpose'] === 'opening_receipt' ? [] : [
+                    'failed_intent_committed' => false, 'current' => $current, 'setup_blockers' => [],
+                ],
+            );
+        }
+    }
+
     /**
      * Check evidence binding against source, recipient, and batch lines.
      *
@@ -35,6 +235,10 @@ class CheckEvidenceBindingParticipant
      */
     public function check(array $input, bool $strict = true): array
     {
+        if (array_key_exists('required_bytes', $input)) {
+            return $this->checkExact($input);
+        }
+
         $chapterId = (string) ($input['chapter_id'] ?? '');
         $evidenceId = $input['evidence_id'] ?? null;
         $bindingId = $input['binding_id'] ?? $input['acknowledgment_binding_id'] ?? null;
@@ -83,7 +287,7 @@ class CheckEvidenceBindingParticipant
         }
 
         // Look up binding for evidence record if not already resolved
-        if (! $binding) {
+        if (! $binding && ! $bindingId) {
             $binding = EvidenceBinding::where('chapter_id', $chapterId)
                 ->where('evidence_id', $evidenceId)
                 ->latest('created_at')
@@ -96,6 +300,14 @@ class CheckEvidenceBindingParticipant
             }
 
             return ['outcome' => 'missing', 'reason' => 'acknowledgment_missing'];
+        }
+
+        if ($binding->evidence_id !== $evidenceId || $evidenceRecord->record_id !== null) {
+            if ($strict) {
+                throw new DomainException('An exact current evidence match is required.');
+            }
+
+            return ['outcome' => 'mismatched', 'reason' => 'bytes_changed'];
         }
 
         if (($binding->status ?? 'active') === 'invalidated') {

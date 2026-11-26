@@ -2,8 +2,13 @@
 
 namespace App\Http\Middleware;
 
+use App\Exceptions\ContractException;
+use App\Http\Controllers\ActualIssueController;
 use App\Models\Chapter;
 use App\Models\IdempotencyRecord;
+use App\Models\InternalRf;
+use App\Models\StockReservation;
+use App\Services\Authority\ChapterAuthority;
 use App\Services\Shared\CanonicalJson;
 use Closure;
 use Illuminate\Http\Request;
@@ -32,14 +37,32 @@ class IdempotentOperation
             $chapterId = null;
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id');
+        $userId = $request->user()?->id ?? $request->header('X-User-Id') ?? session('user_id');
         $rawContent = $request->getContent();
         $decodedBody = $rawContent !== '' ? json_decode($rawContent, true) : null;
         $payloadHash = (json_last_error() === JSON_ERROR_NONE && is_array($decodedBody))
             ? CanonicalJson::sha256($decodedBody)
             : hash('sha256', $rawContent);
 
-        $existing = IdempotencyRecord::where('key', $idempotencyKey)->first();
+        $stageOne = $request->attributes->has(ChapterAuthority::class);
+        $operationName = $request->route()?->getActionMethod();
+        if ($request->route()?->getControllerClass() === ActualIssueController::class) {
+            $operationName = match ($operationName) {
+                'prepare' => 'prepareActualIssue',
+                'revise' => 'reviseActualIssue',
+                'matchAcknowledgment' => 'matchActualIssueAcknowledgment',
+                'post' => 'postActualIssue',
+                'reconciliations' => 'recordIssueReconciliation',
+                default => $operationName,
+            };
+        }
+
+        $lookup = IdempotencyRecord::where('key', $idempotencyKey);
+        if ($stageOne) {
+            $lookup->where('chapter_id', $chapterId)->where('user_id', $userId)->where('operation_name', $operationName);
+        }
+        $existing = $lookup->first();
+        $targetId = $stageOne ? collect($request->route()->parameters())->except('chapter_id')->last() : null;
 
         if ($existing) {
             if (
@@ -47,6 +70,10 @@ class IdempotentOperation
                 || $existing->user_id !== $userId
                 || $existing->payload_hash !== $payloadHash
             ) {
+                if ($stageOne) {
+                    throw new ContractException(409, 'action_key_conflict', 'Use a new action key for changed input.');
+                }
+
                 return response()->json([
                     'error' => 'IDEMPOTENCY_CONFLICT',
                     'code' => 'action_key_conflict',
@@ -54,7 +81,15 @@ class IdempotentOperation
                 ], 409, ['Cache-Control' => 'no-store']);
             }
 
+            if ($stageOne && $targetId && ! $this->matchesTarget($request, $existing, $targetId)) {
+                throw new ContractException(409, 'action_key_conflict', 'Use a new action key for a different target.');
+            }
+
             if ($existing->state === 'in_flight') {
+                if ($stageOne) {
+                    throw new ContractException(409, 'operation_in_flight', 'The operation is in flight.');
+                }
+
                 return response()->json([
                     'error' => 'OPERATION_IN_FLIGHT',
                     'code' => 'operation_in_flight',
@@ -88,6 +123,7 @@ class IdempotentOperation
                     'chapter_id' => $chapterId,
                     'user_id' => $userId,
                     'operation_name' => $operationName,
+                    'resource_id' => $targetId,
                     'state' => 'committed',
                     'payload_hash' => $payloadHash,
                     'response_code' => $response->getStatusCode(),
@@ -101,5 +137,30 @@ class IdempotentOperation
         }
 
         return $response;
+    }
+
+    private function matchesTarget(Request $request, IdempotencyRecord $record, string $targetId): bool
+    {
+        $result = json_decode($record->response_body, true);
+        $rfId = $request->route('rf_id');
+        if ($rfId && $rfId !== (data_get($result, 'data.rf_id') ?? data_get($result, 'data.result.rf_id') ?? $record->resource_id)) {
+            return false;
+        }
+        if (in_array($record->operation_name, ['approveInternalRf', 'returnInternalRf'], true)) {
+            $rf = InternalRf::where('chapter_id', $record->chapter_id)->whereKey($rfId)->first();
+            if (! $rf || ! $request->attributes->get(ChapterAuthority::class)->routedRfApprover($rf)) {
+                throw new ContractException(403, 'duty_denied', 'Current duty does not permit this action.');
+            }
+        }
+
+        if ($record->operation_name === 'prepareActualIssue') {
+            return $rfId === $targetId;
+        }
+        if ($record->operation_name === 'commitRfReservation') {
+            return StockReservation::where('chapter_id', $record->chapter_id)
+                ->where('id', $record->resource_id)->where('preparation_id', $targetId)->exists();
+        }
+
+        return $record->resource_id === $targetId;
     }
 }

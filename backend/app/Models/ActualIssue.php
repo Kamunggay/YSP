@@ -50,4 +50,13 @@ class ActualIssue extends Model
     {
         return $this->belongsTo(InternalRf::class, 'requisition_id');
     }
+
+    public function evidenceSnapshot(): array
+    {
+        return [
+            'target' => ['purpose' => 'actual_issue', 'record_id' => $this->id],
+            'material_version' => (int) $this->material_version,
+            'sha256' => $this->material_sha256,
+        ];
+    }
 }

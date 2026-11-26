@@ -13,6 +13,8 @@ class InventoryMovement extends Model
 
     public $timestamps = false;
 
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
     protected $table = 'inventory_movements';
 
     protected $fillable = [
@@ -26,13 +28,29 @@ class InventoryMovement extends Model
         'quantity',
         'balance_after',
         'created_at',
+        'movement_kind',
+        'source_rm_id',
+        'source_ipc_id',
+        'source_ipc_line_id',
+        'lot_id',
+        'rm_reference',
+        'rm_material_version',
+        'ipc_reference',
+        'ipc_material_version',
+        'quantity_scale',
+        'accepted_value',
+        'currency',
+        'posted_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'quantity' => 'decimal:4',
-            'balance_after' => 'decimal:4',
+            'quantity' => 'decimal:6',
+            'balance_after' => 'decimal:6',
+            'quantity_scale' => 'integer',
+            'rm_material_version' => 'integer',
+            'ipc_material_version' => 'integer',
             'created_at' => 'datetime',
         ];
     }

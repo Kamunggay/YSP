@@ -810,35 +810,43 @@ class ReservationService
             }
 
             $evidenceInput = $input['evidence'] ?? [];
-            $evidenceId = $evidenceInput['evidence_id'] ?? null;
-            $bindingLines = $hold->ranges->map(fn (StockHoldRange $r) => [
-                'variant_id' => $r->lot_id,
-                'unit_id' => $r->basis_segment_id,
-                'quantity' => $r->quantity,
-            ])->values()->all();
-
-            try {
-                $check = $this->checkEvidenceBinding->check([
-                    'chapter_id' => $chapterId,
-                    'evidence_id' => $evidenceId,
-                    'binding_id' => $evidenceInput['binding_id'] ?? null,
-                    'source_type' => 'hold_clearance',
-                    'source_id' => $hold->id,
-                    'recipient_name' => $hold->clearance_prepared_by_user_id ?? $actorId,
-                    'lines' => $bindingLines,
-                ], strict: true);
-            } catch (DomainException $e) {
-                throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
-                    'failed_intent_committed' => false,
-                    'current' => ['hold' => $this->formatHold($hold)],
-                ]);
+            if (! is_array($evidenceInput)) {
+                throw new ContractException(422, 'invalid_input', 'Supply an evidence binding object.');
+            }
+            if (array_key_exists('version_id', $evidenceInput)) {
+                $snapshot = [
+                    'target' => ['purpose' => 'hold_clearance', 'record_id' => $hold->id],
+                    'material_version' => $hold->material_version,
+                    'sha256' => $hold->clearance_material_sha256,
+                ];
+                $current = ['hold' => $this->formatHold($hold), 'rf' => null, 'preparation' => null, 'reservation' => null, 'review' => null];
+                if (CanonicalJson::encode($expectedSnapshot) !== CanonicalJson::encode($snapshot)) {
+                    throw new ContractException(409, 'material_version_conflict', 'The clearance snapshot has changed.', [
+                        'failed_intent_committed' => false, 'current' => $current, 'setup_blockers' => [],
+                    ]);
+                }
+                $signedAt = collect($hold->clearance_proposal_json['signatories'] ?? [])->max('signed_at');
+                $signed = is_string($signedAt) && preg_match('/\A[0-9T:.Z-]{27}\z/', $signedAt)
+                    ? \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:s.u\Z', $signedAt, new \DateTimeZone('UTC'))
+                    : false;
+                if (! $signed || $signed->format('Y-m-d\TH:i:s.u\Z') !== $signedAt || $signedAt > now('UTC')->toISOString()) {
+                    throw new ContractException(409, 'evidence_mismatch', 'The clearance signatories are required.', [
+                        'failed_intent_committed' => false, 'current' => $current, 'setup_blockers' => [],
+                    ]);
+                }
+                $binding = $this->checkEvidenceBinding->recordMatch(
+                    $chapterId, $actorId, $snapshot, $evidenceInput, null, $actorId, $signedAt, $current,
+                );
+                $check = ['acknowledgment_id' => $binding->id];
+            } else {
+                $check = $this->checkLegacyClearance($chapterId, $hold, $actorId, $evidenceInput);
             }
 
             $hold->status = 'cleared';
             $hold->cleared_by_user_id = $actorId;
             $hold->cleared_at = now();
             $hold->clearance_evidence_binding_id = $check['acknowledgment_id'] ?? null;
-            $hold->clearance_acknowledgment_json = [
+            $hold->clearance_acknowledgment_json = $binding->match_projection ?? [
                 'acknowledgment_id' => $check['acknowledgment_id'] ?? null,
                 'matched_by_user_id' => $actorId,
                 'matched_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
@@ -851,7 +859,7 @@ class ReservationService
             $this->recordHoldHistory($hold, 'cleared', $actorId, $formattedHold);
 
             $lotIds = $hold->ranges->pluck('lot_id')->unique()->values()->all();
-            $this->recomputeBlockedStateForLots($chapterId, $lotIds, $actorId);
+            $rfChanges = $this->recomputeBlockedStateForLots($chapterId, $lotIds, $actorId);
             $this->outbox->recordIntent('stage1.stock-hold.changed.v1', $chapterId, $hold->id, $hold->version, $hold->material_version);
 
             return $this->operationEnvelope(
@@ -863,15 +871,45 @@ class ReservationService
                 $hold->id,
                 200,
                 $formattedHold,
-                $input
+                $input,
+                rfChanges: isset($binding) ? $rfChanges : null,
             );
         });
     }
 
-    public function recomputeBlockedStateForLots(string $chapterId, array $lotIds, ?string $actorId = null): void
+    private function checkLegacyClearance(string $chapterId, StockHold $hold, string $actorId, array $evidenceInput): array
+    {
+        $evidenceId = $evidenceInput['evidence_id'] ?? null;
+        $bindingLines = $hold->ranges->map(fn (StockHoldRange $r) => [
+            'variant_id' => $r->lot_id,
+            'unit_id' => $r->basis_segment_id,
+            'quantity' => $r->quantity,
+        ])->values()->all();
+
+        try {
+            $check = $this->checkEvidenceBinding->check([
+                'chapter_id' => $chapterId,
+                'evidence_id' => $evidenceId,
+                'binding_id' => $evidenceInput['binding_id'] ?? null,
+                'source_type' => 'hold_clearance',
+                'source_id' => $hold->id,
+                'recipient_name' => $hold->clearance_prepared_by_user_id ?? $actorId,
+                'lines' => $bindingLines,
+            ], strict: true);
+        } catch (DomainException $e) {
+            throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
+                'failed_intent_committed' => false,
+                'current' => ['hold' => $this->formatHold($hold)],
+            ]);
+        }
+
+        return $check;
+    }
+
+    public function recomputeBlockedStateForLots(string $chapterId, array $lotIds, ?string $actorId = null): array
     {
         if (empty($lotIds)) {
-            return;
+            return [];
         }
 
         $affectedResIds = RfReservationAllocation::where('chapter_id', $chapterId)
@@ -883,7 +921,7 @@ class ReservationService
             ->all();
 
         if (empty($affectedResIds)) {
-            return;
+            return [];
         }
 
         $reservations = StockReservation::whereIn('id', $affectedResIds)
@@ -910,6 +948,7 @@ class ReservationService
             }
         }
 
+        $rfChanges = [];
         foreach ($affectedRfLines as $rfId => $lineIds) {
             $rf = InternalRf::where('id', $rfId)->lockForUpdate()->first();
             if (! $rf) {
@@ -932,10 +971,13 @@ class ReservationService
                 $rf->version += 1;
                 $rf->progress_version += 1;
                 $rf->save();
+                $rfChanges[] = ['rf_id' => $rf->id, 'version' => (int) $rf->version, 'progress_version' => (int) $rf->progress_version];
                 $this->recordRfProgressVersion($rf->fresh('lines'), 'hold_state_changed', $actorId ?? 'system', null);
                 $this->outbox->recordIntent('stage1.internal-rf.changed.v1', $chapterId, $rf->id, $rf->version, $rf->material_version);
             }
         }
+
+        return $rfChanges;
     }
 
     public function syncReservationStateAndBlocked(StockReservation $reservation): void
@@ -1157,7 +1199,8 @@ class ReservationService
                     'chapter_id' => $hold->chapter_id,
                 ],
                 'cleared_at' => $hold->cleared_at?->format('Y-m-d\TH:i:s.u\Z'),
-                'acknowledgment_id' => $hold->clearance_evidence_binding_id,
+                'resolution' => $clearanceProposal['resolution'],
+                'condition_treatment_source_id' => $clearanceProposal['condition_treatment_source_id'],
                 'acknowledgment' => $hold->clearance_acknowledgment_json,
             ]
             : null;
@@ -1527,7 +1570,8 @@ class ReservationService
         int $httpStatus,
         array $result,
         array $requestPayload,
-        ?string $overrideOperationId = null
+        ?string $overrideOperationId = null,
+        ?array $rfChanges = null,
     ): array {
         $operationId = $overrideOperationId ?? (string) Str::uuid();
         $effectiveKey = $actionKey ?? (string) Str::uuid();
@@ -1542,7 +1586,7 @@ class ReservationService
                 'resource_kind' => $resourceKind,
                 'resource_id' => $resourceId,
                 'committed_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
-                'http_status' => $httpStatus,
+                ...($rfChanges !== null ? ['rf_changes' => $rfChanges] : ['http_status' => $httpStatus]),
                 'outcome' => 'committed',
                 'result' => $result,
             ],

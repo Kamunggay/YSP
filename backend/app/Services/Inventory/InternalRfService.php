@@ -14,6 +14,7 @@ use App\Models\InternalRfLine;
 use App\Models\InternalRfVersion;
 use App\Models\InventoryMovement;
 use App\Models\StockReservation;
+use App\Services\Authority\ChapterAuthority;
 use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\BcMath;
 use App\Services\Shared\CanonicalJson;
@@ -121,9 +122,15 @@ class InternalRfService
         });
     }
 
-    public function submit(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null): array
+    public function submit(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null, ?ChapterAuthority $authority = null): array
     {
-        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $actionKey) {
+        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $actionKey, $authority) {
+            if ($blocker = $authority?->rfRouteBlocker()) {
+                throw new ContractException(409, 'setup_blocked', 'Current RF approval routing is required.', [
+                    'current' => null, 'setup_blockers' => [$blocker],
+                ]);
+            }
+
             $rf = $this->lockRfOrFail($chapterId, $rfId);
 
             if (! in_array($rf->status, ['draft', 'returned'], true)) {
@@ -164,9 +171,15 @@ class InternalRfService
         });
     }
 
-    public function approve(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null): array
+    public function approve(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null, ?ChapterAuthority $authority = null): array
     {
-        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $actionKey) {
+        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $actionKey, $authority) {
+            if ($blocker = $authority?->rfRouteBlocker()) {
+                throw new ContractException(409, 'setup_blocked', 'Current RF approval routing is required.', [
+                    'current' => null, 'setup_blockers' => [$blocker],
+                ]);
+            }
+
             $rf = $this->lockRfOrFail($chapterId, $rfId);
 
             if ($rf->status !== 'submitted') {
@@ -177,7 +190,7 @@ class InternalRfService
 
             $this->assertExpectedVersions($rf, $input, checkProgress: false);
 
-            $grant = $this->resolveApprovalGrantAndCheckIndependence($chapterId, $rf, $actorId);
+            $grant = $this->resolveApprovalGrantAndCheckIndependence($chapterId, $rf, $actorId, $authority);
 
             // Snapshot identity_at_approval and lock approved quantities
             foreach ($rf->lines as $line) {
@@ -226,14 +239,20 @@ class InternalRfService
         });
     }
 
-    public function returnForRevision(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null): array
+    public function returnForRevision(string $chapterId, string $rfId, string $actorId, array $input, ?string $actionKey = null, ?ChapterAuthority $authority = null): array
     {
         $reason = trim((string) ($input['reason'] ?? ''));
         if ($reason === '') {
             throw new ContractException(422, 'invalid_input', 'A non-empty reason is required to return an RF.');
         }
 
-        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $reason, $actionKey) {
+        return DB::transaction(function () use ($chapterId, $rfId, $actorId, $input, $reason, $actionKey, $authority) {
+            if ($blocker = $authority?->rfRouteBlocker()) {
+                throw new ContractException(409, 'setup_blocked', 'Current RF approval routing is required.', [
+                    'current' => null, 'setup_blockers' => [$blocker],
+                ]);
+            }
+
             $rf = $this->lockRfOrFail($chapterId, $rfId);
 
             if ($rf->status !== 'submitted') {
@@ -243,7 +262,7 @@ class InternalRfService
             }
 
             $this->assertExpectedVersions($rf, $input, checkProgress: false);
-            $this->resolveApprovalGrantAndCheckIndependence($chapterId, $rf, $actorId);
+            $this->resolveApprovalGrantAndCheckIndependence($chapterId, $rf, $actorId, $authority);
 
             $rf->status = 'returned';
             $rf->return_reason = $reason;
@@ -585,8 +604,19 @@ class InternalRfService
         }
     }
 
-    private function resolveApprovalGrantAndCheckIndependence(string $chapterId, InternalRf $rf, string $actorId): ?DutyGrant
+    private function resolveApprovalGrantAndCheckIndependence(string $chapterId, InternalRf $rf, string $actorId, ?ChapterAuthority $authority): ?DutyGrant
     {
+        if ($authority) {
+            if ($rf->requester_user_id === $actorId) {
+                throw new ContractException(403, 'independence_required', 'The requester cannot review their own RF.');
+            }
+
+            return $authority->routedRfApprover($rf)
+                ?? throw new ContractException(409, 'approval_authority_revoked', 'Current approval authority is unavailable.', [
+                    'current' => null, 'setup_blockers' => [],
+                ]);
+        }
+
         $now = now();
         $grants = DutyGrant::where('chapter_id', $chapterId)
             ->where('user_id', $actorId)
@@ -791,25 +821,28 @@ class InternalRfService
         return $envelope;
     }
 
-    public function getRelatedRecords(string $chapterId, string $rfId): array
+    public function getRelatedRecords(string $chapterId, string $rfId, ?ChapterAuthority $authority = null): array
     {
         $rf = InternalRf::where('chapter_id', $chapterId)->where('id', $rfId)->with('lines')->first();
         if (! $rf) {
             throw new ContractException(404, 'resource_not_found', "Internal RF {$rfId} not found.");
         }
 
-        $reservations = StockReservation::where('chapter_id', $chapterId)
+        $stockVisible = ! $authority || $authority->allows('stock.read', $rf->requesting_unit_id);
+        $issueVisible = ! $authority || ($stockVisible && $authority->allows('issue.prepare', $rf->requesting_unit_id)
+            && $authority->allows('evidence.read', $rf->requesting_unit_id));
+        $reservations = ! $stockVisible ? collect() : StockReservation::where('chapter_id', $chapterId)
             ->where('source_type', 'RF')
             ->where('source_id', $rfId)
             ->with('allocations')
             ->get();
 
-        $actualIssues = ActualIssue::where('chapter_id', $chapterId)
+        $actualIssues = ! $issueVisible ? collect() : ActualIssue::where('chapter_id', $chapterId)
             ->where('requisition_id', $rfId)
             ->with('lines')
             ->get();
 
-        $handovers = Handover::where('chapter_id', $chapterId)
+        $handovers = $authority ? collect() : Handover::where('chapter_id', $chapterId)
             ->where('source_type', 'REQUISITION')
             ->where('source_id', $rfId)
             ->with(['lines', 'receipts'])

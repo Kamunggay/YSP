@@ -14,13 +14,14 @@ class ReferenceSequenceService
      * Allocate a strictly monotonic, non-reusable reference number scoped by
      * chapter, document_kind (IPC|RM|RF|IS_AR), and Asia/Manila sequence year.
      *
+     * @param  ?array{prefix: string, width: ?int, policy_id: ?string, policy_version: ?int}  $policyOverride
      * @return array{reference: string, sequence: int, year: int, prefix: string, policy_id: ?string, policy_version: ?int}
      */
-    public function nextReference(string $chapterId, string $documentKind, int $width = 6): array
+    public function nextReference(string $chapterId, string $documentKind, int $width = 6, ?array $policyOverride = null): array
     {
-        $run = function () use ($chapterId, $documentKind, $width): array {
+        $run = function () use ($chapterId, $documentKind, $width, $policyOverride): array {
             $year = now('Asia/Manila')->year;
-            $policy = $this->resolveSeriesPolicy($chapterId, $documentKind);
+            $policy = $policyOverride ?? $this->resolveSeriesPolicy($chapterId, $documentKind);
             $prefix = $policy['prefix'];
             $effectiveWidth = $policy['width'] ?? $width;
 
@@ -50,8 +51,9 @@ class ReferenceSequenceService
             $sequenceRow->last_sequence = $nextSeq;
             $sequenceRow->save();
 
-            $padded = str_pad((string) $nextSeq, (int) $sequenceRow->sequence_width, '0', STR_PAD_LEFT);
-            $effectivePrefix = $sequenceRow->prefix ?: $prefix;
+            $width = $policy['policy_id'] ? $effectiveWidth : (int) $sequenceRow->sequence_width;
+            $padded = str_pad((string) $nextSeq, $width, '0', STR_PAD_LEFT);
+            $effectivePrefix = $policy['policy_id'] ? $prefix : ($sequenceRow->prefix ?: $prefix);
 
             if (str_contains($effectivePrefix, '{YEAR}')) {
                 $reference = str_replace('{YEAR}', (string) $year, $effectivePrefix).$padded;
@@ -83,18 +85,43 @@ class ReferenceSequenceService
      */
     public function resolveSeriesPolicy(string $chapterId, string $documentKind): array
     {
-        $now = now();
-        $policy = PolicyRecord::where('chapter_id', $chapterId)
+        $now = now()->format('Y-m-d H:i:s.u');
+        $policies = PolicyRecord::where('chapter_id', $chapterId)
             ->where('policy_code', 'reference_series')
             ->where(function ($q) use ($now) {
                 $q->whereNull('effective_from')->orWhere('effective_from', '<=', $now);
             })
             ->where(function ($q) use ($now) {
-                $q->whereNull('effective_until')->orWhere('effective_until', '>=', $now);
+                $q->whereNull('effective_until')->orWhere('effective_until', '>', $now);
             })
-            ->orderByDesc('policy_version')
-            ->first();
+            ->orderByDesc('policy_version')->orderBy('id')->sharedLock()->get();
+        $schema = match ($documentKind) {
+            'IPC', 'RM' => 'OpeningReferencePolicyValue',
+            'RF' => 'RfReferenceSeriesPolicyValue',
+            'IS_AR' => 'IssueReferenceSeriesPolicyValue',
+            default => null,
+        };
+        if ($schema && $approved = $policies->first(function (PolicyRecord $row) use ($schema) {
+            $evidence = $row->setupEvidence();
 
+            return ($evidence['value_schema_reference'] ?? null) === '#/components/schemas/'.$schema
+                && ($evidence['subject_id'] ?? null) === null
+                && collect($evidence['approvals'] ?? [])->contains('authority', 'CHAPTER_HEAD');
+        })) {
+            $value = $approved->rules_json;
+
+            return [
+                'prefix' => rtrim($value[match ($documentKind) {
+                    'IPC' => 'ipc_prefix', 'RM' => 'rm_prefix', default => 'prefix',
+                }], '-'),
+                'width' => $value['minimum_digits'] ?? $value['sequence_width'],
+                'policy_id' => $approved->aggregate_id ?? $approved->id,
+                'policy_version' => (int) $approved->policy_version,
+            ];
+        }
+
+        $policy = $policies->first(fn (PolicyRecord $row) => $row->aggregate_id === null
+            && ! isset($row->setupEvidence()['value_schema_reference']));
         $chapter = Chapter::where('id', $chapterId)->orWhere('code', $chapterId)->first();
         $chapterCode = $chapter?->code ?? 'CHAP';
         $shortCode = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', str_replace('SYN-', '', $chapterCode)));

@@ -6,6 +6,7 @@ use App\Exceptions\ContractException;
 use App\Models\ActualIssue;
 use App\Models\ActualIssueHistory;
 use App\Models\ActualIssueLine;
+use App\Models\EvidenceBinding;
 use App\Models\Handover;
 use App\Models\HandoverLine;
 use App\Models\HandoverReceipt;
@@ -242,26 +243,53 @@ class RequisitionIssueService
                 ]);
             }
 
-            $checkLines = $issueLines->map(fn (ActualIssueLine $l) => [
-                'variant_id' => $l->variant_id,
-                'unit_id' => $l->unit_id,
-                'quantity' => $l->issued_quantity,
-            ])->values()->all();
-
-            try {
-                $evidenceResult = $this->checkEvidenceBinding->check([
-                    'chapter_id' => $chapterId,
-                    'binding_id' => $acknowledgmentId,
-                    'source_type' => 'actual_issue',
-                    'source_id' => $lockedIssue->id,
-                    'recipient_name' => $lockedIssue->recipient_name,
-                    'lines' => $checkLines,
-                ], strict: true);
-            } catch (DomainException $e) {
-                throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
-                    'failed_intent_committed' => false,
-                    'current' => $this->formatIssue($lockedIssue),
+            if ($lockedIssue->evidence_binding_id && $lockedIssue->evidence_binding_id !== $acknowledgmentId) {
+                throw new ContractException(409, 'evidence_mismatch', 'Use the acknowledgment recorded for this issue.', [
+                    'failed_intent_committed' => false, 'current' => $this->formatIssue($lockedIssue), 'setup_blockers' => [],
                 ]);
+            }
+
+            $binding = EvidenceBinding::where('chapter_id', $chapterId)->whereKey($acknowledgmentId)->sharedLock()->first();
+            if ($binding?->match_projection) {
+                if ($binding->id !== $lockedIssue->evidence_binding_id || $binding->status !== 'active') {
+                    throw new ContractException(409, 'evidence_mismatch', 'Match the current signed paper before posting.', [
+                        'failed_intent_committed' => false, 'current' => null, 'setup_blockers' => [],
+                    ]);
+                }
+                $acknowledgment = $binding->match_projection;
+                if ($acknowledgment['recipient_id'] !== $lockedIssue->recipient_user_id
+                    || $acknowledgment['acknowledged_at'] !== $lockedIssue->acknowledged_at?->utc()->format('Y-m-d\TH:i:s.u\Z')) {
+                    throw new ContractException(409, 'evidence_mismatch', 'The recipient acknowledgment has changed.', [
+                        'failed_intent_committed' => false, 'current' => null, 'setup_blockers' => [],
+                    ]);
+                }
+                $this->checkEvidenceBinding->verifyMatch(
+                    $chapterId, $actorId, $lockedIssue->evidenceSnapshot(),
+                    $acknowledgment['bytes'], $acknowledgment, null,
+                );
+                $evidenceResult = ['acknowledgment_id' => $binding->id];
+            } else {
+                $checkLines = $issueLines->map(fn (ActualIssueLine $l) => [
+                    'variant_id' => $l->variant_id,
+                    'unit_id' => $l->unit_id,
+                    'quantity' => $l->issued_quantity,
+                ])->values()->all();
+
+                try {
+                    $evidenceResult = $this->checkEvidenceBinding->check([
+                        'chapter_id' => $chapterId,
+                        'binding_id' => $acknowledgmentId,
+                        'source_type' => 'actual_issue',
+                        'source_id' => $lockedIssue->id,
+                        'recipient_name' => $lockedIssue->recipient_name,
+                        'lines' => $checkLines,
+                    ], strict: true);
+                } catch (DomainException $e) {
+                    throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
+                        'failed_intent_committed' => false,
+                        'current' => $this->formatIssue($lockedIssue),
+                    ]);
+                }
             }
 
             if (! in_array($lockedIssue->handover_fence, ['unresolved', 'retry_authorized'], true)) {
@@ -639,14 +667,7 @@ class RequisitionIssueService
             'recipient_accepts_partial' => (bool) $issue->recipient_accepts_partial,
             'handover_fence' => $issue->handover_fence ?? 'none',
             'material' => $issue->material_json,
-            'snapshot' => [
-                'target' => [
-                    'purpose' => 'actual_issue',
-                    'record_id' => $issue->id,
-                ],
-                'material_version' => (int) $issue->material_version,
-                'sha256' => $issue->material_sha256,
-            ],
+            'snapshot' => $issue->evidenceSnapshot(),
             'acknowledgment' => $issue->evidence_binding_id ? [
                 'acknowledgment_id' => $issue->evidence_binding_id,
                 'matched_by_user_id' => $issue->matched_by_user_id,

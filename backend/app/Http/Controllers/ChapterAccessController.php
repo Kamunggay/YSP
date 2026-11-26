@@ -2,152 +2,153 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Chapter;
-use App\Models\ChapterMembership;
-use App\Models\DutyGrant;
+use App\Exceptions\ContractException;
+use App\Services\Authority\ChapterAuthority;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 
 class ChapterAccessController extends Controller
 {
-    private const ACTION_DUTIES = [
-        'rf.read' => ['COMMITTEE_REQUESTER', 'RF_APPROVER', 'INVENTORY', 'DISPATCH'],
-        'catalogue.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'COMMITTEE_REQUESTER', 'RF_APPROVER'],
-        'catalogue.maintain' => ['INVENTORY', 'INVENTORY_CUSTODIAN'],
-        'stock.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'INVENTORY_CUSTODIAN'],
-        'evidence.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'RF_APPROVER', 'INVENTORY_CUSTODIAN'],
-        'evidence.prepare' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'INVENTORY_CUSTODIAN'],
-        'ipc.draft' => ['INVENTORY', 'INVENTORY_CUSTODIAN'],
-        'ipc.authorize' => ['CHAPTER_HEAD', 'FINANCE'],
-        'opening_rm.prepare' => ['RECEIVING', 'INVENTORY_CUSTODIAN'],
-        'opening_rm.post' => ['RECEIVING', 'INVENTORY_CUSTODIAN'],
-        'rf.draft' => ['COMMITTEE_REQUESTER'],
-        'rf.submit' => ['COMMITTEE_REQUESTER'],
-        'rf.approve' => ['RF_APPROVER'],
-        'rf.reserve' => ['INVENTORY', 'INVENTORY_CUSTODIAN'],
-        'rf.reallocate' => ['INVENTORY', 'INVENTORY_CUSTODIAN'],
-        'hold.place' => ['INVENTORY', 'INVENTORY_CUSTODIAN'],
-        'hold.clear' => ['INVENTORY', 'INVENTORY_CUSTODIAN'],
-        'issue.prepare' => ['INVENTORY', 'DISPATCH', 'INVENTORY_CUSTODIAN'],
-        'issue.post' => ['INVENTORY', 'DISPATCH', 'INVENTORY_CUSTODIAN'],
-        'history.read' => ['COMMITTEE_REQUESTER', 'INVENTORY', 'RECEIVING', 'DISPATCH', 'RF_APPROVER', 'INVENTORY_CUSTODIAN'],
-        'ipc.read' => ['INVENTORY', 'INDEPENDENT_REVIEWER', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE', 'INVENTORY_CUSTODIAN'],
-        'ipc.count' => ['INVENTORY', 'INDEPENDENT_REVIEWER', 'INVENTORY_CUSTODIAN'],
-        'opening_rm.read' => ['INVENTORY', 'RECEIVING', 'INVENTORY_CUSTODIAN'],
-        'opening.result.read' => ['INVENTORY', 'INDEPENDENT_REVIEWER', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE', 'INVENTORY_CUSTODIAN'],
-    ];
-
-    public function context(Request $request, string $chapter_id): JsonResponse
+    public function memberships(Request $request): JsonResponse
     {
-        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
-        if (! $chapter) {
-            return response()->json([
-                'error' => [
-                    'code' => 'chapter_not_found',
-                    'message' => "Chapter {$chapter_id} not found.",
-                ],
-            ], 404);
+        $selectors = $this->selectors($request, ['limit', 'cursor']);
+        $limit = filter_var($selectors['limit'] ?? '25', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 100]]);
+        if ($limit === false || (isset($selectors['cursor']) && strlen($selectors['cursor']) > 1024)) {
+            throw new ContractException(400, 'invalid_selector', 'Invalid membership selector.');
         }
 
-        $userId = $request->header('X-User-Id') ?? session('user_id');
-        if (! $userId) {
-            return response()->json(['error' => ['code' => 'unauthenticated', 'message' => 'Sign in first.']], 401);
+        $user = $request->user();
+        $items = $user->memberships()->current()
+            ->join('chapters', 'chapters.id', '=', 'chapter_memberships.chapter_id')
+            ->whereIn('chapters.status', ChapterAuthority::AVAILABLE_CHAPTERS)
+            ->orderBy('chapters.created_at')->orderBy('chapters.id')->select('chapter_memberships.*')->sharedLock()
+            ->with('chapter')->get()
+            ->map(fn ($membership) => $this->membership(ChapterAuthority::fromMembership($membership, $membership->chapter)))
+            ->all();
+
+        $snapshot = hash('sha256', json_encode($items, JSON_THROW_ON_ERROR));
+        $offset = 0;
+        if (isset($selectors['cursor'])) {
+            try {
+                $cursor = json_decode(Crypt::decryptString($selectors['cursor']), true, flags: JSON_THROW_ON_ERROR);
+            } catch (DecryptException|\JsonException) {
+                throw new ContractException(400, 'invalid_selector', 'Invalid membership cursor.');
+            }
+            if (($cursor['user'] ?? null) !== $user->id || ($cursor['limit'] ?? null) !== $limit) {
+                throw new ContractException(400, 'invalid_selector', 'Invalid membership cursor.');
+            }
+            if ($cursor['expires'] <= now()->timestamp || $cursor['snapshot'] !== $snapshot) {
+                throw new ContractException(409, 'snapshot_stale', 'Restart membership discovery.');
+            }
+
+            $offset = $cursor['offset'];
         }
+        $next = $offset + $limit < count($items) ? Crypt::encryptString(json_encode([
+            'user' => $user->id, 'limit' => $limit, 'snapshot' => $snapshot, 'offset' => $offset + $limit,
+            'expires' => $cursor['expires'] ?? now()->addMinutes(5)->timestamp,
+        ], JSON_THROW_ON_ERROR)) : null;
 
-        $membership = ChapterMembership::where('chapter_id', $chapter->id)
-            ->where('user_id', $userId)
-            ->first();
-
-        if (! $membership) {
-            return response()->json([
-                'error' => [
-                    'code' => 'membership_required',
-                    'message' => 'User does not hold membership in this chapter.',
-                ],
-            ], 403);
-        }
-
-        $duties = DutyGrant::where('chapter_id', $chapter->id)
-            ->where('user_id', $userId)
-            ->where('status', 'active')
-            ->get();
-
-        $dutyCodes = $duties->pluck('duty_code')->unique()->values()->all();
-        $dutyGrantsList = $duties->map(fn ($d) => [
-            'id' => $d->id,
-            'duty' => $d->duty_code,
-            'scope' => $d->scope ?? ['unit_id' => null, 'limit_php' => null],
-            'effective_from' => $d->valid_from ? $d->valid_from->toIso8601ZuluString() : $d->created_at->toIso8601ZuluString(),
-            'effective_until' => $d->valid_until ? $d->valid_until->toIso8601ZuluString() : null,
-        ])->all();
-
-        return response()->json([
-            'data' => [
-                'user_id' => $userId,
-                'membership' => [
-                    'id' => $membership->id,
-                    'chapter' => [
-                        'id' => $chapter->id,
-                        'reference' => $chapter->code,
-                        'display_name' => $chapter->name,
-                        'created_at' => $chapter->created_at->toIso8601ZuluString(),
-                    ],
-                    'duties' => $dutyCodes,
-                    'authority_version' => $membership->version ?? 1,
-                    'duty_grants' => $dutyGrantsList,
-                ],
-                'checked_at' => now()->toIso8601ZuluString(),
-            ],
-        ]);
+        return response()->json(['data' => array_slice($items, $offset, $limit), 'page' => ['next_cursor' => $next]]);
     }
 
-    public function access(Request $request, string $chapter_id): JsonResponse
+    public function context(Request $request): JsonResponse
     {
-        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
-        if (! $chapter) {
-            return response()->json([
-                'error' => [
-                    'code' => 'chapter_not_found',
-                    'message' => "Chapter {$chapter_id} not found.",
-                ],
-            ], 404);
-        }
+        $this->selectors($request);
+        $authority = $request->attributes->get(ChapterAuthority::class);
 
-        $userId = $request->header('X-User-Id') ?? session('user_id');
-        if (! $userId) {
-            return response()->json(['error' => ['code' => 'unauthenticated', 'message' => 'Sign in first.']], 401);
-        }
+        return response()->json(['data' => [
+            'user_id' => $request->user()->id,
+            'membership' => $this->membership($authority),
+            'checked_at' => now()->toISOString(),
+        ]]);
+    }
 
-        $userDuties = DutyGrant::where('chapter_id', $chapter->id)
-            ->where('user_id', $userId)
-            ->where('status', 'active')
-            ->pluck('duty_code')
-            ->toArray();
+    public function access(Request $request): JsonResponse
+    {
+        $this->selectors($request);
+        $authority = $request->attributes->get(ChapterAuthority::class);
+        $policies = $authority->chapter->policyRecords()->orderByDesc('policy_version')->orderBy('id')->get();
 
         $actions = [];
-        foreach (self::ACTION_DUTIES as $action => $requiredDuties) {
-            $hasDuty = ! empty(array_intersect($userDuties, $requiredDuties));
-            $actions[] = [
-                'action' => $action,
-                'state' => $hasDuty ? 'allowed' : 'duty_denied',
-                'required_duties' => array_values(array_intersect($requiredDuties, [
-                    'COMMITTEE_REQUESTER', 'RF_APPROVER', 'SALES_OFFICER', 'SALES_REVIEWER',
-                    'FINANCE', 'INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'RECEIVING',
-                    'DISPATCH', 'BOOTH_CUSTODIAN', 'BOOTH_CASHIER', 'INDEPENDENT_REVIEWER', 'CHAPTER_HEAD',
-                ])) ?: ['INVENTORY'],
-                'blockers' => [],
-            ];
+        foreach (ChapterAuthority::ACTION_DUTIES as $action => $requiredDuties) {
+            $blockers = [];
+            $state = 'duty_denied';
+            if (array_intersect($authority->duties(), $requiredDuties)) {
+                $state = $authority->allows($action) && in_array($action, ['catalogue.read', 'catalogue.maintain', 'rf.draft', 'ipc.draft'], true)
+                    ? 'allowed' : 'context_required';
+
+                $settings = match ($action) {
+                    'rf.submit', 'rf.approve' => ['rf_approval_route' => ['CHAPTER_HEAD', 'RfApprovalRoutePolicyValue']],
+                    'opening_rm.post' => [
+                        'reference_series' => ['CHAPTER_HEAD', 'OpeningReferencePolicyValue'],
+                        'valuation_rounding' => ['FINANCE', 'OpeningValuationPolicyValue'],
+                    ],
+                    default => [],
+                };
+                foreach ($settings as $key => [$owner, $schema]) {
+                    if ($blocker = $authority->policyBlocker($policies, $key, $owner, $schema)) {
+                        $blockers[] = $blocker;
+                    }
+                }
+                if ($blockers) {
+                    $state = 'setup_blocked';
+                }
+            }
+            $actions[] = ['action' => $action, 'state' => $state, 'required_duties' => $requiredDuties, 'blockers' => $blockers];
         }
 
-        return response()->json([
-            'data' => [
-                'chapter_id' => $chapter->id,
-                'user_id' => $userId,
-                'authority_version' => 1,
-                'setup_version' => 1,
-                'checked_at' => now()->toIso8601ZuluString(),
-                'actions' => $actions,
+        return response()->json(['data' => [
+            'chapter_id' => $authority->chapter->id,
+            'user_id' => $request->user()->id,
+            'authority_version' => $authority->version,
+            'setup_version' => 1 + (int) $policies->sum('policy_version'),
+            'checked_at' => now()->toISOString(),
+            'actions' => $actions,
+        ]]);
+    }
+
+    private function membership(ChapterAuthority $authority): array
+    {
+        $chapter = $authority->chapter;
+
+        return [
+            'id' => $authority->membership->id,
+            'chapter' => [
+                'id' => $chapter->id,
+                'reference' => $chapter->code,
+                'display_name' => $chapter->name,
+                'created_at' => $chapter->created_at->toISOString(),
             ],
-        ]);
+            'duties' => $authority->duties(),
+            'authority_version' => $authority->version,
+            'duty_grants' => $authority->grants->map(fn ($grant) => [
+                'id' => $grant->id,
+                'duty' => $grant->duty_code,
+                'scope' => ['unit_id' => $grant->scope['unit_id'] ?? null, 'limit_php' => $grant->scope['limit_php'] ?? null],
+                'effective_from' => ($grant->valid_from ?? $grant->created_at)->toISOString(),
+                'effective_until' => $grant->valid_until?->toISOString(),
+            ])->all(),
+        ];
+    }
+
+    private function selectors(Request $request, array $allowed = []): array
+    {
+        $query = $request->server('QUERY_STRING', '');
+        $selectors = [];
+        if ($request->getContent() !== '') {
+            throw new ContractException(400, 'invalid_selector', 'Invalid authority selector.');
+        }
+        foreach ($query === '' ? [] : explode('&', $query) as $part) {
+            [$key, $value] = array_pad(explode('=', $part, 2), 2, '');
+            $key = urldecode($key);
+            if (! in_array($key, $allowed, true) || isset($selectors[$key]) || $value === '') {
+                throw new ContractException(400, 'invalid_selector', 'Invalid authority selector.');
+            }
+            $selectors[$key] = urldecode($value);
+        }
+
+        return $selectors;
     }
 }

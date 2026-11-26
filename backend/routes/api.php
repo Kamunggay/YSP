@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActualIssueController;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BrowserSessionController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\CatalogueController;
 use App\Http\Controllers\ChapterAccessController;
@@ -15,194 +15,187 @@ use App\Http\Controllers\ReservationAndHoldController;
 use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\StockQueryController;
+use App\Http\PaperEvidenceDownload;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
 
 // ================= AUTH & SESSION (13 endpoints) =================
 Route::prefix('v1/auth')->group(function () {
-    Route::get('/csrf', [AuthController::class, 'csrf']);
-    Route::post('/sign-in', [AuthController::class, 'signIn']);
-    Route::get('/session', [AuthController::class, 'session']);
-    Route::post('/sign-out', [AuthController::class, 'signOut']);
-    Route::post('/authenticator/enrollments', [AuthController::class, 'beginEnrollment']);
-    Route::post('/authenticator/enrollments/confirm', [AuthController::class, 'confirmEnrollment']);
-    Route::post('/authenticator/challenge', [AuthController::class, 'completeAuthenticatorChallenge']);
-    Route::post('/recovery/challenge', [AuthController::class, 'completeRecoveryChallenge']);
-    Route::get('/recovery-codes', [AuthController::class, 'recoveryCodes']);
-    Route::post('/recovery-codes/rotate', [AuthController::class, 'rotateRecoveryCodes']);
-    Route::get('/memberships', [AuthController::class, 'memberships']);
-    Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeSession']);
+    Route::get('/csrf', [BrowserSessionController::class, 'csrf']);
+    Route::post('/sign-in', [BrowserSessionController::class, 'signIn']);
+    Route::get('/session', [BrowserSessionController::class, 'session']);
+    Route::post('/sign-out', [BrowserSessionController::class, 'signOut']);
+    Route::post('/authenticator/enrollments', [BrowserSessionController::class, 'beginEnrollment']);
+    Route::post('/authenticator/enrollments/confirm', [BrowserSessionController::class, 'confirmEnrollment']);
+    Route::post('/authenticator/challenge', [BrowserSessionController::class, 'completeAuthenticatorChallenge']);
+    Route::post('/recovery/challenge', [BrowserSessionController::class, 'completeRecoveryChallenge']);
+    Route::get('/recovery-codes', [BrowserSessionController::class, 'recoveryCodes']);
+    Route::post('/recovery-codes/rotate', [BrowserSessionController::class, 'rotateRecoveryCodes']);
+    Route::get('/memberships', [ChapterAccessController::class, 'memberships'])->middleware('browser.authority:reads');
+    Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeSession'])->middleware('browser.authority:notifications');
 });
 
 // ================= SECURED CHAPTER CONTEXT =================
-Route::prefix('v1/chapters/{chapter_id}')->middleware(['chapter.context'])->group(function () {
-    // Context & Access
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads', 'stage-one.chapter')->group(function () {
     Route::get('/context', [ChapterAccessController::class, 'context']);
     Route::get('/access', [ChapterAccessController::class, 'access']);
-    Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeChapter']);
+});
 
-    // Evidence
-    Route::post('/evidence', [PaperEvidenceController::class, 'upload'])->middleware(['idempotent']);
-    Route::get('/evidence/{evidence_id}', [PaperEvidenceController::class, 'show']);
-    Route::get('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'versions']);
-    Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'replace'])->middleware(['idempotent']);
-    Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion']);
-    Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment']);
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidence', 'stage-one.chapter')->group(function () {
+    Route::post('/evidence', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare');
+    Route::get('/evidence/{evidence_id}', [PaperEvidenceController::class, 'show'])->middleware('stage-one.action:evidence.read');
+    Route::get('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'versions'])->middleware('stage-one.action:evidence.read,history.read');
+    Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare')->name('paper-evidence.replace');
+    Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion'])->middleware('stage-one.action:evidence.read,history.read');
+    Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment'])
+        ->middleware('stage-one.action:'.implode(',', PaperEvidenceDownload::ACTIONS));
+});
 
+Route::post('/v1/chapters/{chapter_id}/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeChapter'])
+    ->middleware('browser.authority:notifications');
+
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stage-one.chapter')->group(function () {
     // Catalogue Operations (static paths before dynamic {operation_id})
-    Route::get('/catalogue/operations/by-key', [CatalogueController::class, 'findOperationByKey']);
-    Route::get('/catalogue/operations/{operation_id}', [CatalogueController::class, 'readOperation']);
+    Route::get('/catalogue/operations/by-key', [CatalogueController::class, 'findOperationByKey'])->middleware('stage-one.action:catalogue.maintain');
+    Route::get('/catalogue/operations/{operation_id}', [CatalogueController::class, 'readOperation'])->middleware('stage-one.action:catalogue.maintain');
 
     // Catalogue Read
-    Route::get('/catalogue/items', [CatalogueController::class, 'listItems']);
-    Route::get('/catalogue/items/{resource_id}', [CatalogueController::class, 'readItem']);
-    Route::get('/catalogue/items/{resource_id}/history', [CatalogueController::class, 'listItemHistory']);
-    Route::get('/catalogue/items/{resource_id}/versions/{material_version}', [CatalogueController::class, 'readItemVersion']);
+    Route::get('/catalogue/items', [CatalogueController::class, 'listItems'])->middleware('stage-one.action:catalogue.read');
+    Route::get('/catalogue/items/{resource_id}', [CatalogueController::class, 'readItem'])->middleware('stage-one.action:catalogue.read');
+    Route::get('/catalogue/items/{resource_id}/history', [CatalogueController::class, 'listItemHistory'])->middleware('stage-one.action:history.read,catalogue.read');
+    Route::get('/catalogue/items/{resource_id}/versions/{material_version}', [CatalogueController::class, 'readItemVersion'])->middleware('stage-one.action:history.read,catalogue.read');
 
-    Route::get('/catalogue/variants', [CatalogueController::class, 'listVariants']);
-    Route::get('/catalogue/variants/{resource_id}', [CatalogueController::class, 'readVariant']);
-    Route::get('/catalogue/variants/{resource_id}/history', [CatalogueController::class, 'listVariantHistory']);
-    Route::get('/catalogue/variants/{resource_id}/versions/{material_version}', [CatalogueController::class, 'readVariantVersion']);
+    Route::get('/catalogue/variants', [CatalogueController::class, 'listVariants'])->middleware('stage-one.action:catalogue.read');
+    Route::get('/catalogue/variants/{resource_id}', [CatalogueController::class, 'readVariant'])->middleware('stage-one.action:catalogue.read');
+    Route::get('/catalogue/variants/{resource_id}/history', [CatalogueController::class, 'listVariantHistory'])->middleware('stage-one.action:history.read,catalogue.read');
+    Route::get('/catalogue/variants/{resource_id}/versions/{material_version}', [CatalogueController::class, 'readVariantVersion'])->middleware('stage-one.action:history.read,catalogue.read');
 
-    Route::get('/catalogue/units', [CatalogueController::class, 'listUnits']);
-    Route::get('/catalogue/units/{resource_id}', [CatalogueController::class, 'readUnit']);
-    Route::get('/catalogue/units/{resource_id}/history', [CatalogueController::class, 'listUnitHistory']);
-    Route::get('/catalogue/units/{resource_id}/versions/{material_version}', [CatalogueController::class, 'readUnitVersion']);
+    Route::get('/catalogue/units', [CatalogueController::class, 'listUnits'])->middleware('stage-one.action:catalogue.read');
+    Route::get('/catalogue/units/{resource_id}', [CatalogueController::class, 'readUnit'])->middleware('stage-one.action:catalogue.read');
+    Route::get('/catalogue/units/{resource_id}/history', [CatalogueController::class, 'listUnitHistory'])->middleware('stage-one.action:history.read,catalogue.read');
+    Route::get('/catalogue/units/{resource_id}/versions/{material_version}', [CatalogueController::class, 'readUnitVersion'])->middleware('stage-one.action:history.read,catalogue.read');
 
-    Route::get('/catalogue/locations', [CatalogueController::class, 'listLocations']);
-    Route::get('/catalogue/locations/{resource_id}', [CatalogueController::class, 'readLocation']);
-    Route::get('/catalogue/locations/{resource_id}/history', [CatalogueController::class, 'listLocationHistory']);
-    Route::get('/catalogue/locations/{resource_id}/versions/{material_version}', [CatalogueController::class, 'readLocationVersion']);
+    Route::get('/catalogue/locations', [CatalogueController::class, 'listLocations'])->middleware('stage-one.action:catalogue.read');
+    Route::get('/catalogue/locations/{resource_id}', [CatalogueController::class, 'readLocation'])->middleware('stage-one.action:catalogue.read');
+    Route::get('/catalogue/locations/{resource_id}/history', [CatalogueController::class, 'listLocationHistory'])->middleware('stage-one.action:history.read,catalogue.read');
+    Route::get('/catalogue/locations/{resource_id}/versions/{material_version}', [CatalogueController::class, 'readLocationVersion'])->middleware('stage-one.action:history.read,catalogue.read');
 
-    // Catalogue Write (requires duty authority & idempotent)
-    Route::middleware(['duty.authority:INVENTORY,INVENTORY_CUSTODIAN', 'idempotent'])->group(function () {
-        Route::post('/catalogue/items', [CatalogueController::class, 'createItem']);
-        Route::put('/catalogue/items/{resource_id}', [CatalogueController::class, 'replaceItem']);
+    // Catalogue writes
+    Route::post('/catalogue/items', [CatalogueController::class, 'createItem'])->middleware('stage-one.action:catalogue.maintain', 'idempotent');
+    Route::put('/catalogue/items/{resource_id}', [CatalogueController::class, 'replaceItem'])->middleware('stage-one.action:catalogue.maintain', 'idempotent');
 
-        Route::post('/catalogue/variants', [CatalogueController::class, 'createVariant']);
-        Route::put('/catalogue/variants/{resource_id}', [CatalogueController::class, 'replaceVariant']);
+    Route::post('/catalogue/variants', [CatalogueController::class, 'createVariant'])->middleware('stage-one.action:catalogue.maintain', 'idempotent');
+    Route::put('/catalogue/variants/{resource_id}', [CatalogueController::class, 'replaceVariant'])->middleware('stage-one.action:catalogue.maintain', 'idempotent');
 
-        Route::post('/catalogue/units', [CatalogueController::class, 'createUnit']);
-        Route::put('/catalogue/units/{resource_id}', [CatalogueController::class, 'replaceUnit']);
+    Route::post('/catalogue/units', [CatalogueController::class, 'createUnit'])->middleware('stage-one.action:catalogue.maintain', 'idempotent');
+    Route::put('/catalogue/units/{resource_id}', [CatalogueController::class, 'replaceUnit'])->middleware('stage-one.action:catalogue.maintain', 'idempotent');
 
-        Route::post('/catalogue/locations', [CatalogueController::class, 'createLocation']);
-        Route::put('/catalogue/locations/{resource_id}', [CatalogueController::class, 'replaceLocation']);
-    });
+    Route::post('/catalogue/locations', [CatalogueController::class, 'createLocation'])->middleware('stage-one.action:catalogue.maintain', 'idempotent');
+    Route::put('/catalogue/locations/{resource_id}', [CatalogueController::class, 'replaceLocation'])->middleware('stage-one.action:catalogue.maintain', 'idempotent');
 
     // ================= STOCK QUERIES =================
-    Route::get('/stock', [StockQueryController::class, 'listStockSummaries']);
-    Route::get('/stock/variants/{variant_id}', [StockQueryController::class, 'readVariantStock']);
-    Route::get('/stock/lots', [StockQueryController::class, 'listStockLots']);
-    Route::get('/stock/lots/{stock_lot_id}', [StockQueryController::class, 'readStockLot']);
-    Route::get('/stock/lots/{stock_lot_id}/eligibility', [StockQueryController::class, 'readStockEligibility']);
-    Route::get('/stock/lots/{stock_lot_id}/history', [StockQueryController::class, 'listStockLotHistory']);
+    Route::get('/stock', [StockQueryController::class, 'listStockSummaries'])->middleware('stage-one.action:stock.read');
+    Route::get('/stock/variants/{variant_id}', [StockQueryController::class, 'readVariantStock'])->middleware('stage-one.action:stock.read');
+    Route::get('/stock/lots', [StockQueryController::class, 'listStockLots'])->middleware('stage-one.action:stock.read');
+    Route::get('/stock/lots/{stock_lot_id}', [StockQueryController::class, 'readStockLot'])->middleware('stage-one.action:stock.read');
+    Route::get('/stock/lots/{stock_lot_id}/eligibility', [StockQueryController::class, 'readStockEligibility'])->middleware('stage-one.action:stock.read');
+    Route::get('/stock/lots/{stock_lot_id}/history', [StockQueryController::class, 'listStockLotHistory'])->middleware('stage-one.action:history.read,stock.read');
 
     // ================= OPENING INVENTORY (IPC & OPENING RM) =================
-    Route::get('/opening-actions/by-key', [OpeningInventoryController::class, 'findOpeningActionByKey']);
-    Route::get('/opening-actions/{operation_id}', [OpeningInventoryController::class, 'readOpeningAction']);
-    Route::get('/opening-baseline', [OpeningInventoryController::class, 'readChapterOpeningBaseline']);
+    Route::get('/opening-actions/by-key', [OpeningInventoryController::class, 'findOpeningActionByKey'])->middleware('stage-one.action:opening.result.read');
+    Route::get('/opening-actions/{operation_id}', [OpeningInventoryController::class, 'readOpeningAction'])->middleware('stage-one.action:opening.result.read');
+    Route::get('/opening-baseline', [OpeningInventoryController::class, 'readChapterOpeningBaseline'])->middleware('stage-one.action:stock.read');
 
     // IPC
-    Route::get('/ipcs', [OpeningInventoryController::class, 'listIpcs']);
-    Route::post('/ipcs', [OpeningInventoryController::class, 'createIpc'])->middleware(['idempotent']);
-    Route::get('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'readIpc']);
-    Route::put('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'replaceIpc'])->middleware(['idempotent']);
-    Route::put('/ipcs/{ipc_id}/my-count', [OpeningInventoryController::class, 'saveMyIpcCount'])->middleware(['idempotent']);
-    Route::post('/ipcs/{ipc_id}/submit', [OpeningInventoryController::class, 'submitIpc'])->middleware(['idempotent']);
-    Route::post('/ipcs/{ipc_id}/authorizations', [OpeningInventoryController::class, 'authorizeIpc'])->middleware(['idempotent']);
-    Route::get('/ipcs/{ipc_id}/history', [OpeningInventoryController::class, 'listIpcHistory']);
-    Route::get('/ipcs/{ipc_id}/versions/{revision}', [OpeningInventoryController::class, 'readIpcRevision']);
-    Route::get('/ipcs/{ipc_id}/related', [OpeningInventoryController::class, 'readIpcRelated']);
-    Route::get('/ipcs/{ipc_id}/print', [OpeningInventoryController::class, 'printIpc']);
+    Route::get('/ipcs', [OpeningInventoryController::class, 'listIpcs'])->middleware('stage-one.action:ipc.read');
+    Route::post('/ipcs', [OpeningInventoryController::class, 'createIpc'])->middleware('stage-one.action:ipc.draft');
+    Route::get('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'readIpc'])->middleware('stage-one.action:ipc.read');
+    Route::put('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'replaceIpc'])->middleware('stage-one.action:ipc.draft');
+    Route::put('/ipcs/{ipc_id}/my-count', [OpeningInventoryController::class, 'saveMyIpcCount'])->middleware('stage-one.action:ipc.count');
+    Route::post('/ipcs/{ipc_id}/submit', [OpeningInventoryController::class, 'submitIpc'])->middleware('stage-one.action:ipc.draft');
+    Route::post('/ipcs/{ipc_id}/authorizations', [OpeningInventoryController::class, 'authorizeIpc'])->middleware('stage-one.action:ipc.authorize');
+    Route::get('/ipcs/{ipc_id}/history', [OpeningInventoryController::class, 'listIpcHistory'])->middleware('stage-one.action:ipc.read,history.read');
+    Route::get('/ipcs/{ipc_id}/versions/{revision}', [OpeningInventoryController::class, 'readIpcRevision'])->middleware('stage-one.action:ipc.read,history.read');
+    Route::get('/ipcs/{ipc_id}/related', [OpeningInventoryController::class, 'readIpcRelated'])->middleware('stage-one.action:ipc.read,history.read');
+    Route::get('/ipcs/{ipc_id}/print', [OpeningInventoryController::class, 'printIpc'])->middleware('stage-one.action:ipc.read');
 
     // Opening RM
-    Route::get('/opening-rms', [OpeningInventoryController::class, 'listOpeningRms']);
-    Route::post('/opening-rms', [OpeningInventoryController::class, 'createOpeningRm'])->middleware(['idempotent']);
-    Route::get('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'readOpeningRm']);
-    Route::put('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'replaceOpeningRm'])->middleware(['idempotent']);
-    Route::post('/opening-rms/{rm_id}/inspection', [OpeningInventoryController::class, 'inspectOpeningRm'])->middleware(['idempotent']);
-    Route::post('/opening-rms/{rm_id}/evidence-match', [OpeningInventoryController::class, 'matchOpeningRmEvidence'])->middleware(['idempotent']);
-    Route::post('/opening-rms/{rm_id}/post', [OpeningInventoryController::class, 'postOpeningRm'])->middleware(['idempotent']);
-    Route::get('/opening-rms/{rm_id}/movements', [OpeningInventoryController::class, 'listOpeningRmMovements']);
-    Route::get('/opening-rms/{rm_id}/findings', [OpeningInventoryController::class, 'listOpeningRmFindings']);
-    Route::get('/opening-rms/{rm_id}/history', [OpeningInventoryController::class, 'listOpeningRmHistory']);
-    Route::get('/opening-rms/{rm_id}/versions/{revision}', [OpeningInventoryController::class, 'readOpeningRmRevision']);
-    Route::get('/opening-rms/{rm_id}/related', [OpeningInventoryController::class, 'readOpeningRmRelated']);
-    Route::get('/opening-rms/{rm_id}/print', [OpeningInventoryController::class, 'printOpeningRm']);
+    Route::get('/opening-rms', [OpeningInventoryController::class, 'listOpeningRms'])->middleware('stage-one.action:opening_rm.read');
+    Route::post('/opening-rms', [OpeningInventoryController::class, 'createOpeningRm'])->middleware('stage-one.action:opening_rm.prepare');
+    Route::get('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'readOpeningRm'])->middleware('stage-one.action:opening_rm.read');
+    Route::put('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'replaceOpeningRm'])->middleware('stage-one.action:opening_rm.prepare');
+    Route::post('/opening-rms/{rm_id}/inspection', [OpeningInventoryController::class, 'inspectOpeningRm'])->middleware('stage-one.action:opening_rm.prepare');
+    Route::post('/opening-rms/{rm_id}/evidence-match', [OpeningInventoryController::class, 'matchOpeningRmEvidence'])->middleware('stage-one.action:opening_rm.prepare,evidence.read');
+    Route::post('/opening-rms/{rm_id}/post', [OpeningInventoryController::class, 'postOpeningRm'])->middleware('stage-one.action:opening_rm.post');
+    Route::get('/opening-rms/{rm_id}/movements', [OpeningInventoryController::class, 'listOpeningRmMovements'])->middleware('stage-one.action:stock.read,history.read');
+    Route::get('/opening-rms/{rm_id}/findings', [OpeningInventoryController::class, 'listOpeningRmFindings'])->middleware('stage-one.action:stock.read,history.read');
+    Route::get('/opening-rms/{rm_id}/history', [OpeningInventoryController::class, 'listOpeningRmHistory'])->middleware('stage-one.action:opening_rm.read,history.read');
+    Route::get('/opening-rms/{rm_id}/versions/{revision}', [OpeningInventoryController::class, 'readOpeningRmRevision'])->middleware('stage-one.action:opening_rm.read,history.read');
+    Route::get('/opening-rms/{rm_id}/related', [OpeningInventoryController::class, 'readOpeningRmRelated'])->middleware('stage-one.action:opening_rm.read,history.read');
+    Route::get('/opening-rms/{rm_id}/print', [OpeningInventoryController::class, 'printOpeningRm'])->middleware('stage-one.action:opening_rm.read');
 
     // ================= INTERNAL RFS (TICKET 06 - 14 endpoints) =================
     // Static operation-results routes BEFORE dynamic {rf_id}
-    Route::middleware(['duty.authority:COMMITTEE_REQUESTER,RF_APPROVER,INVENTORY,DISPATCH,INVENTORY_CUSTODIAN'])->group(function () {
-        Route::get('/internal-rfs/operation-results', [InternalRfController::class, 'findInternalRfOperationResult']);
-        Route::get('/internal-rfs/operation-results/{operation_id}', [InternalRfController::class, 'readInternalRfOperationResult']);
-        Route::get('/internal-rfs', [InternalRfController::class, 'listInternalRfs']);
-        Route::get('/internal-rfs/{rf_id}', [InternalRfController::class, 'readInternalRf']);
-        Route::get('/internal-rfs/{rf_id}/history', [InternalRfController::class, 'listInternalRfHistory']);
-        Route::get('/internal-rfs/{rf_id}/versions/{version}', [InternalRfController::class, 'readInternalRfVersion']);
-        Route::get('/internal-rfs/{rf_id}/related-records', [InternalRfController::class, 'listInternalRfRelatedRecords']);
-    });
+    Route::get('/internal-rfs/operation-results', [InternalRfController::class, 'findInternalRfOperationResult'])->middleware('stage-one.action:rf.read');
+    Route::get('/internal-rfs/operation-results/{operation_id}', [InternalRfController::class, 'readInternalRfOperationResult'])->middleware('stage-one.action:rf.read');
+    Route::get('/internal-rfs', [InternalRfController::class, 'listInternalRfs'])->middleware('stage-one.action:rf.read');
+    Route::get('/internal-rfs/{rf_id}', [InternalRfController::class, 'readInternalRf'])->middleware('stage-one.action:rf.read');
+    Route::get('/internal-rfs/{rf_id}/history', [InternalRfController::class, 'listInternalRfHistory'])->middleware('stage-one.action:rf.read,history.read');
+    Route::get('/internal-rfs/{rf_id}/versions/{version}', [InternalRfController::class, 'readInternalRfVersion'])->middleware('stage-one.action:rf.read,history.read');
+    Route::get('/internal-rfs/{rf_id}/related-records', [InternalRfController::class, 'listInternalRfRelatedRecords'])->middleware('stage-one.action:rf.read,history.read');
 
-    Route::middleware(['duty.authority:COMMITTEE_REQUESTER', 'idempotent'])->group(function () {
-        Route::post('/internal-rfs', [InternalRfController::class, 'createInternalRf']);
-        Route::put('/internal-rfs/{rf_id}', [InternalRfController::class, 'replaceInternalRfDraft']);
-        Route::post('/internal-rfs/{rf_id}/submit', [InternalRfController::class, 'submitInternalRf']);
-        Route::post('/internal-rfs/{rf_id}/revise', [InternalRfController::class, 'reviseInternalRf']);
-        Route::post('/internal-rfs/{rf_id}/cancel', [InternalRfController::class, 'cancelInternalRf']);
-    });
+    Route::post('/internal-rfs', [InternalRfController::class, 'createInternalRf'])->middleware('stage-one.action:rf.draft', 'idempotent');
+    Route::put('/internal-rfs/{rf_id}', [InternalRfController::class, 'replaceInternalRfDraft'])->middleware('stage-one.action:rf.draft', 'idempotent');
+    Route::post('/internal-rfs/{rf_id}/submit', [InternalRfController::class, 'submitInternalRf'])->middleware('stage-one.action:rf.submit', 'idempotent');
+    Route::post('/internal-rfs/{rf_id}/revise', [InternalRfController::class, 'reviseInternalRf'])->middleware('stage-one.action:rf.draft', 'idempotent');
+    Route::post('/internal-rfs/{rf_id}/cancel', [InternalRfController::class, 'cancelInternalRf'])->middleware('stage-one.action:rf.draft', 'idempotent');
 
-    Route::middleware(['duty.authority:RF_APPROVER', 'idempotent'])->group(function () {
-        Route::post('/internal-rfs/{rf_id}/approve', [InternalRfController::class, 'approveInternalRf']);
-        Route::post('/internal-rfs/{rf_id}/return', [InternalRfController::class, 'returnInternalRf']);
-    });
+    Route::post('/internal-rfs/{rf_id}/approve', [InternalRfController::class, 'approveInternalRf'])->middleware('stage-one.action:rf.approve', 'idempotent');
+    Route::post('/internal-rfs/{rf_id}/return', [InternalRfController::class, 'returnInternalRf'])->middleware('stage-one.action:rf.approve', 'idempotent');
 
     // ================= RESERVATIONS & STOCK HOLDS (TICKET 07 - 17 endpoints) =================
     // Static reservation-operations/by-key BEFORE {operation_id}
-    Route::middleware(['duty.authority:INVENTORY,INVENTORY_CUSTODIAN,DISPATCH,RF_APPROVER,COMMITTEE_REQUESTER'])->group(function () {
-        Route::get('/reservation-operations/by-key', [ReservationAndHoldController::class, 'findReservationOperation']);
-        Route::get('/reservation-operations/{operation_id}', [ReservationAndHoldController::class, 'readReservationOperation']);
-        Route::get('/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}', [ReservationAndHoldController::class, 'readRfReservationPreparation']);
-        Route::get('/internal-rfs/{rf_id}/reservations', [ReservationAndHoldController::class, 'listRfReservations']);
-        Route::get('/internal-rfs/{rf_id}/reservations/{reservation_id}', [ReservationAndHoldController::class, 'readRfReservation']);
-        Route::get('/internal-rfs/{rf_id}/reservations/{reservation_id}/history', [ReservationAndHoldController::class, 'listRfReservationHistory']);
-        Route::get('/internal-rfs/{rf_id}/allocation-review', [ReservationAndHoldController::class, 'readRfAllocationReview']);
-        Route::get('/stock-holds', [ReservationAndHoldController::class, 'listStockHolds']);
-        Route::get('/stock-holds/{hold_id}', [ReservationAndHoldController::class, 'readStockHold']);
-        Route::get('/stock-holds/{hold_id}/history', [ReservationAndHoldController::class, 'listStockHoldHistory']);
-    });
+    Route::get('/reservation-operations/by-key', [ReservationAndHoldController::class, 'findReservationOperation'])->middleware('stage-one.action:stock.read');
+    Route::get('/reservation-operations/{operation_id}', [ReservationAndHoldController::class, 'readReservationOperation'])->middleware('stage-one.action:stock.read');
+    Route::get('/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}', [ReservationAndHoldController::class, 'readRfReservationPreparation'])->middleware('stage-one.action:rf.reserve,rf.read,stock.read');
+    Route::get('/internal-rfs/{rf_id}/reservations', [ReservationAndHoldController::class, 'listRfReservations'])->middleware('stage-one.action:rf.read,stock.read');
+    Route::get('/internal-rfs/{rf_id}/reservations/{reservation_id}', [ReservationAndHoldController::class, 'readRfReservation'])->middleware('stage-one.action:rf.read,stock.read');
+    Route::get('/internal-rfs/{rf_id}/reservations/{reservation_id}/history', [ReservationAndHoldController::class, 'listRfReservationHistory'])->middleware('stage-one.action:history.read,rf.read,stock.read');
+    Route::get('/internal-rfs/{rf_id}/allocation-review', [ReservationAndHoldController::class, 'readRfAllocationReview'])->middleware('stage-one.action:rf.read,stock.read');
+    Route::get('/stock-holds', [ReservationAndHoldController::class, 'listStockHolds'])->middleware('stage-one.action:stock.read');
+    Route::get('/stock-holds/{hold_id}', [ReservationAndHoldController::class, 'readStockHold'])->middleware('stage-one.action:stock.read');
+    Route::get('/stock-holds/{hold_id}/history', [ReservationAndHoldController::class, 'listStockHoldHistory'])->middleware('stage-one.action:history.read,stock.read');
 
-    Route::middleware(['duty.authority:INVENTORY,INVENTORY_CUSTODIAN', 'idempotent'])->group(function () {
-        Route::post('/internal-rfs/{rf_id}/reservation-preparations', [ReservationAndHoldController::class, 'prepareRfReservation']);
-        Route::post('/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}/commit', [ReservationAndHoldController::class, 'commitRfReservation']);
-        Route::post('/internal-rfs/{rf_id}/reservations/{reservation_id}/release', [ReservationAndHoldController::class, 'releaseRfReservation']);
-        Route::post('/internal-rfs/{rf_id}/reservations/{reservation_id}/reallocate', [ReservationAndHoldController::class, 'reallocateRfReservation']);
-        Route::post('/stock-holds', [ReservationAndHoldController::class, 'placeStockHold']);
-        Route::put('/stock-holds/{hold_id}/clearance-proposal', [ReservationAndHoldController::class, 'proposeStockHoldClearance']);
-        Route::post('/stock-holds/{hold_id}/clear', [ReservationAndHoldController::class, 'clearStockHold']);
-    });
+    Route::post('/internal-rfs/{rf_id}/reservation-preparations', [ReservationAndHoldController::class, 'prepareRfReservation'])->middleware('stage-one.action:rf.reserve,rf.read,stock.read', 'idempotent');
+    Route::post('/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}/commit', [ReservationAndHoldController::class, 'commitRfReservation'])->middleware('stage-one.action:rf.reserve,rf.read,stock.read', 'idempotent');
+    Route::post('/internal-rfs/{rf_id}/reservations/{reservation_id}/release', [ReservationAndHoldController::class, 'releaseRfReservation'])->middleware('stage-one.action:rf.reserve,rf.read,stock.read', 'idempotent');
+    Route::post('/internal-rfs/{rf_id}/reservations/{reservation_id}/reallocate', [ReservationAndHoldController::class, 'reallocateRfReservation'])->middleware('stage-one.action:rf.reallocate,rf.read,stock.read', 'idempotent');
+    Route::post('/stock-holds', [ReservationAndHoldController::class, 'placeStockHold'])->middleware('stage-one.action:hold.place,stock.read', 'idempotent');
+    Route::put('/stock-holds/{hold_id}/clearance-proposal', [ReservationAndHoldController::class, 'proposeStockHoldClearance'])->middleware('stage-one.action:hold.clear,stock.read', 'idempotent');
+    Route::post('/stock-holds/{hold_id}/clear', [ReservationAndHoldController::class, 'clearStockHold'])->middleware('stage-one.action:hold.clear,evidence.read,stock.read', 'idempotent');
 
     // ================= ACTUAL ISSUES (TICKET 08 - 14 endpoints) =================
     // Static actual-issue-operations/by-key BEFORE {operation_id}
-    Route::middleware(['duty.authority:INVENTORY,DISPATCH,INVENTORY_CUSTODIAN,RF_APPROVER,COMMITTEE_REQUESTER'])->group(function () {
-        Route::get('/actual-issue-operations/by-key', [ActualIssueController::class, 'operationsByKey']);
-        Route::get('/actual-issue-operations/{operation_id}', [ActualIssueController::class, 'operationsById']);
-        Route::get('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'index']);
-        Route::get('/actual-issues/{issue_id}', [ActualIssueController::class, 'show']);
-        Route::get('/actual-issues/{issue_id}/print', [ActualIssueController::class, 'print']);
-        Route::get('/actual-issues/{issue_id}/history', [ActualIssueController::class, 'history']);
-        Route::get('/actual-issues/{issue_id}/movements', [ActualIssueController::class, 'movements']);
-        Route::get('/actual-issues/{issue_id}/related', [ActualIssueController::class, 'related']);
-        Route::get('/actual-issues/{issue_id}/reconciliation', [ActualIssueController::class, 'showReconciliation']);
-    });
+    Route::get('/actual-issue-operations/by-key', [ActualIssueController::class, 'operationsByKey'])->middleware('stage-one.action:issue.prepare,rf.read,stock.read,evidence.read');
+    Route::get('/actual-issue-operations/{operation_id}', [ActualIssueController::class, 'operationsById'])->middleware('stage-one.action:issue.prepare,rf.read,stock.read,evidence.read');
+    Route::get('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'index'])->middleware('stage-one.action:issue.prepare,rf.read,stock.read,evidence.read');
+    Route::get('/actual-issues/{issue_id}', [ActualIssueController::class, 'show'])->middleware('stage-one.action:issue.prepare,rf.read,stock.read,evidence.read');
+    Route::get('/actual-issues/{issue_id}/print', [ActualIssueController::class, 'print'])->middleware('stage-one.action:issue.prepare,rf.read,stock.read,evidence.read');
+    Route::get('/actual-issues/{issue_id}/history', [ActualIssueController::class, 'history'])->middleware('stage-one.action:history.read,rf.read,stock.read,issue.prepare,evidence.read');
+    Route::get('/actual-issues/{issue_id}/movements', [ActualIssueController::class, 'movements'])->middleware('stage-one.action:stock.read,rf.read,issue.prepare,evidence.read');
+    Route::get('/actual-issues/{issue_id}/related', [ActualIssueController::class, 'related'])->middleware('stage-one.action:issue.prepare,rf.read,stock.read,evidence.read');
+    Route::get('/actual-issues/{issue_id}/reconciliation', [ActualIssueController::class, 'showReconciliation'])->middleware('stage-one.action:issue.post,rf.read,stock.read,evidence.read');
 
-    Route::middleware(['duty.authority:INVENTORY,DISPATCH,INVENTORY_CUSTODIAN', 'idempotent'])->group(function () {
-        Route::post('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'prepare']);
-        Route::put('/actual-issues/{issue_id}', [ActualIssueController::class, 'revise']);
-        Route::post('/actual-issues/{issue_id}/acknowledgments', [ActualIssueController::class, 'matchAcknowledgment']);
-        Route::post('/actual-issues/{issue_id}/post', [ActualIssueController::class, 'post']);
-        Route::post('/actual-issues/{issue_id}/reconciliations', [ActualIssueController::class, 'reconciliations']);
-    });
+    Route::post('/internal-rfs/{rf_id}/actual-issues', [ActualIssueController::class, 'prepare'])->middleware('stage-one.action:issue.prepare,rf.read,stock.read,evidence.read', 'idempotent');
+    Route::put('/actual-issues/{issue_id}', [ActualIssueController::class, 'revise'])->middleware('stage-one.action:issue.prepare,rf.read,stock.read,evidence.read', 'idempotent');
+    Route::post('/actual-issues/{issue_id}/acknowledgments', [ActualIssueController::class, 'matchAcknowledgment'])->middleware('stage-one.action:issue.prepare,rf.read,stock.read,evidence.read,issue.post', 'idempotent');
+    Route::post('/actual-issues/{issue_id}/post', [ActualIssueController::class, 'post'])->middleware('stage-one.action:issue.post,rf.read,stock.read,evidence.read', 'idempotent');
+    Route::post('/actual-issues/{issue_id}/reconciliations', [ActualIssueController::class, 'reconciliations'])->middleware('stage-one.action:issue.post,rf.read,stock.read,evidence.read', 'idempotent');
 
+});
+
+Route::prefix('v1/chapters/{chapter_id}')->middleware('chapter.context')->group(function () {
     // ================= SALES ORDERS & BUYERS (Stage 1A/1B) =================
     Route::get('/buyers', [BuyerController::class, 'index']);
     Route::post('/buyers', [BuyerController::class, 'store'])->middleware(['duty.authority:SALES_OFFICER,SALES_REVIEWER,INVENTORY_CUSTODIAN', 'idempotent']);

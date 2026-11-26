@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\ContractException;
+use App\Http\Middleware\EnforceBrowserAuthority;
 use App\Models\ActualIssue;
 use App\Models\ActualIssueHistory;
 use App\Models\ActualIssueLine;
@@ -16,6 +17,7 @@ use App\Models\InventoryPosting;
 use App\Models\IssueReconciliation;
 use App\Models\StockHoldRange;
 use App\Models\StockReservation;
+use App\Services\Authority\ChapterAuthority;
 use App\Services\Delivery\RequisitionIssueService;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Inventory\InternalRfService;
@@ -663,30 +665,55 @@ class ActualIssueController extends Controller
                 }
 
                 $evidenceInput = $request->input('evidence', []);
+                if (! is_array($evidenceInput)) {
+                    throw new ContractException(422, 'invalid_input', 'Supply an evidence binding object.');
+                }
                 $bindingId = $request->input('evidence_binding_id') ?? $evidenceInput['binding_id'] ?? null;
                 $evidenceId = $request->input('evidence_id') ?? $evidenceInput['evidence_id'] ?? null;
 
-                $checkLines = $issue->lines->map(fn (ActualIssueLine $l) => [
-                    'variant_id' => $l->variant_id,
-                    'unit_id' => $l->unit_id,
-                    'quantity' => $l->issued_quantity,
-                ])->values()->all();
+                if (array_key_exists('version_id', $evidenceInput)) {
+                    $snapshot = $issue->evidenceSnapshot();
+                    if (CanonicalJson::encode($request->input('expected_snapshot')) !== CanonicalJson::encode($snapshot)) {
+                        throw new ContractException(409, 'material_version_conflict', 'The issue snapshot has changed.', [
+                            'failed_intent_committed' => false, 'current' => null, 'setup_blockers' => [],
+                        ]);
+                    }
+                    $handoverAt = $issue->handed_over_at ?? $issue->actual_handover_at;
+                    if ($request->input('matches_paper') !== true || ! $issue->recipient_user_id || ! $issue->acknowledged_at
+                        || ! $handoverAt || $handoverAt->gt($issue->acknowledged_at)
+                        || $issue->acknowledged_at->isFuture()) {
+                        throw new ContractException(409, 'recipient_invalid', 'A named recipient and valid actual acknowledgment are required.', [
+                            'failed_intent_committed' => false, 'current' => null, 'setup_blockers' => [],
+                        ]);
+                    }
+                    $binding = $this->checkEvidenceBinding->recordMatch(
+                        $chapterId, $userId, $snapshot, $evidenceInput, $issue->recipient_user_id, $issue->recipient_name,
+                        $issue->acknowledged_at->utc()->format('Y-m-d\TH:i:s.u\Z'), null,
+                    );
+                    $result = ['acknowledgment_id' => $binding->id];
+                } else {
+                    $checkLines = $issue->lines->map(fn (ActualIssueLine $l) => [
+                        'variant_id' => $l->variant_id,
+                        'unit_id' => $l->unit_id,
+                        'quantity' => $l->issued_quantity,
+                    ])->values()->all();
 
-                try {
-                    $result = $this->checkEvidenceBinding->check([
-                        'chapter_id' => $chapterId,
-                        'evidence_id' => $evidenceId,
-                        'binding_id' => $bindingId,
-                        'source_type' => 'actual_issue',
-                        'source_id' => $issue->id,
-                        'recipient_name' => $issue->recipient_name,
-                        'lines' => $checkLines,
-                    ], strict: true);
-                } catch (DomainException $e) {
-                    throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
-                        'failed_intent_committed' => false,
-                        'current' => $this->issueService->formatIssue($issue),
-                    ]);
+                    try {
+                        $result = $this->checkEvidenceBinding->check([
+                            'chapter_id' => $chapterId,
+                            'evidence_id' => $evidenceId,
+                            'binding_id' => $bindingId,
+                            'source_type' => 'actual_issue',
+                            'source_id' => $issue->id,
+                            'recipient_name' => $issue->recipient_name,
+                            'lines' => $checkLines,
+                        ], strict: true);
+                    } catch (DomainException $e) {
+                        throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
+                            'failed_intent_committed' => false,
+                            'current' => $this->issueService->formatIssue($issue),
+                        ]);
+                    }
                 }
 
                 $issue->evidence_binding_id = $result['acknowledgment_id'] ?? $bindingId;
@@ -722,6 +749,24 @@ class ActualIssueController extends Controller
                     'result' => $formatted,
                 ];
 
+                if (isset($binding)) {
+                    $response = ['data' => [
+                        'operation_id' => $operationId, 'operation_name' => 'matchActualIssueAcknowledgment',
+                        'action_key' => $actionKey ?? $operationId, 'actor_id' => $userId, 'chapter_id' => $chapterId,
+                        'committed_at' => now('UTC')->toISOString(), 'http_status' => 200,
+                        'result' => [
+                            'id' => $issue->id, 'chapter_id' => $chapterId, 'rf_id' => $issue->requisition_id,
+                            'reference' => $issue->issue_number, 'version' => $issue->version,
+                            'material_version' => $issue->material_version, 'status' => $issue->status,
+                            'material' => $issue->material_json, 'snapshot' => $snapshot, 'acknowledgment' => $binding->match_projection,
+                            'created_by' => ['user_id' => $issue->prepared_by_user_id, 'chapter_id' => $chapterId],
+                            'created_at' => $issue->created_at->toISOString(), 'entered_at' => $issue->entered_at?->toISOString(),
+                            'updated_at' => $issue->updated_at->toISOString(), 'handover_fence' => $issue->handover_fence,
+                            'posting' => null, 'reconciliation' => null, 'setup_blockers' => [],
+                        ],
+                    ]];
+                }
+
                 if ($actionKey !== null) {
                     IdempotencyRecord::create([
                         'id' => $operationId,
@@ -741,7 +786,7 @@ class ActualIssueController extends Controller
                 return response()->json($response, 200, ['Cache-Control' => 'no-store']);
             });
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return EnforceBrowserAuthority::error($e);
         }
     }
 
@@ -767,7 +812,7 @@ class ActualIssueController extends Controller
 
             return response()->json($result, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return EnforceBrowserAuthority::error($e);
         }
     }
 
@@ -886,7 +931,7 @@ class ActualIssueController extends Controller
      */
     public function reconciliations(Request $request, string $chapterId, string $issueId): JsonResponse
     {
-        $authActor = $request->header('X-User-Id') ?? session('user_id');
+        $authActor = $request->user()->id;
         $actionKey = $this->actionKey($request);
 
         try {
@@ -943,7 +988,7 @@ class ActualIssueController extends Controller
                     ]);
                 }
 
-                $officerId = $authActor ?? ($validated['officer_user_id'] ?? 'reconciliation-officer');
+                $officerId = $authActor;
                 $notes = $validated['notes'] ?? $validated['reason'] ?? null;
 
                 $reconciliation = IssueReconciliation::create([
@@ -1053,16 +1098,16 @@ class ActualIssueController extends Controller
             ], 400, ['Cache-Control' => 'no-store']);
         }
 
-        $actorId = $request->header('X-User-Id') ?? session('user_id');
+        $actorId = $request->user()->id;
         $query = IdempotencyRecord::where('key', $key)->where('chapter_id', $chapterId);
         if ($actorId) {
             $query->where('user_id', $actorId);
         }
 
         $record = $query->first();
-        if (! $record) {
+        if (! $record || ! $this->canReadReceipt($request, $record)) {
             return response()->json([
-                'error' => ['code' => 'OPERATION_KEY_NOT_FOUND', 'message' => 'Operation key not found for this chapter and actor.'],
+                'error' => ['code' => 'resource_not_found', 'message' => 'Operation not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
         }
 
@@ -1085,14 +1130,14 @@ class ActualIssueController extends Controller
      */
     public function operationsById(Request $request, string $chapterId, string $operationId): JsonResponse
     {
-        $actorId = $request->header('X-User-Id') ?? session('user_id');
+        $actorId = $request->user()->id;
         $query = IdempotencyRecord::where('id', $operationId)->where('chapter_id', $chapterId);
         if ($actorId) {
             $query->where('user_id', $actorId);
         }
 
         $record = $query->first();
-        if (! $record) {
+        if (! $record || ! $this->canReadReceipt($request, $record)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => 'Operation not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -1103,6 +1148,32 @@ class ActualIssueController extends Controller
         return response()->json($decoded ?? $record->response_body, $record->response_code, [
             'Cache-Control' => 'no-store',
         ]);
+    }
+
+    private function canReadReceipt(Request $request, IdempotencyRecord $record): bool
+    {
+        $origin = match ($record->operation_name) {
+            'prepareActualIssue', 'reviseActualIssue' => 'issue.prepare',
+            'matchActualIssueAcknowledgment', 'postActualIssue', 'recordIssueReconciliation' => 'issue.post',
+            default => null,
+        };
+        if ($origin === null || ! $record->resource_id) {
+            return false;
+        }
+
+        $authority = $request->attributes->get(ChapterAuthority::class);
+        $issue = ActualIssue::where('chapter_id', $record->chapter_id)->whereKey($record->resource_id)->first();
+        $rf = $issue?->rf()->where('chapter_id', $record->chapter_id)->first();
+        if (! $rf || ! $authority->canReadRf($rf)) {
+            return false;
+        }
+        foreach ([$origin, 'issue.prepare', 'stock.read', 'evidence.read', 'history.read'] as $action) {
+            if (! $authority->allows($action, $rf->requesting_unit_id)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function validateDisjointLineTargets(array $rawLines): void
@@ -1170,7 +1241,7 @@ class ActualIssueController extends Controller
 
     private function actorId(Request $request): string
     {
-        return (string) ($request->header('X-User-Id') ?? session('user_id') ?? 'system-user');
+        return (string) ($request->user()->id);
     }
 
     private function actionKey(Request $request): ?string

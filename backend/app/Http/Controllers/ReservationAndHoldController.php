@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\ContractException;
+use App\Http\Middleware\EnforceBrowserAuthority;
 use App\Models\IdempotencyRecord;
 use App\Models\InternalRf;
 use App\Models\InventoryLot;
@@ -11,6 +12,7 @@ use App\Models\RfReservationPreparation;
 use App\Models\StockHold;
 use App\Models\StockHoldHistory;
 use App\Models\StockReservation;
+use App\Services\Authority\ChapterAuthority;
 use App\Services\Inventory\InternalRfService;
 use App\Services\Inventory\ReservationService;
 use App\Services\Inventory\StockViewQueryService;
@@ -345,7 +347,7 @@ class ReservationAndHoldController extends Controller
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return EnforceBrowserAuthority::error($e);
         }
     }
 
@@ -358,14 +360,14 @@ class ReservationAndHoldController extends Controller
             ], 400, ['Cache-Control' => 'no-store']);
         }
 
-        $actorId = $request->header('X-User-Id') ?? session('user_id');
+        $actorId = $request->user()->id;
         $query = IdempotencyRecord::where('chapter_id', $chapterId)->where('key', $key);
         if ($actorId) {
             $query->where('user_id', $actorId);
         }
 
         $record = $query->first();
-        if (! $record) {
+        if (! $record || ! $this->canReadReceipt($request, $record)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => 'Operation result not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -384,14 +386,14 @@ class ReservationAndHoldController extends Controller
 
     public function readReservationOperation(Request $request, string $chapterId, string $operationId): JsonResponse
     {
-        $actorId = $request->header('X-User-Id') ?? session('user_id');
+        $actorId = $request->user()->id;
         $query = IdempotencyRecord::where('chapter_id', $chapterId)->where('id', $operationId);
         if ($actorId) {
             $query->where('user_id', $actorId);
         }
 
         $record = $query->first();
-        if (! $record) {
+        if (! $record || ! $this->canReadReceipt($request, $record)) {
             return response()->json([
                 'error' => ['code' => 'resource_not_found', 'message' => 'Operation result not found.'],
             ], 404, ['Cache-Control' => 'no-store']);
@@ -402,9 +404,36 @@ class ReservationAndHoldController extends Controller
         return response()->json($decoded ?? ['data' => $record->response_body], 200, ['Cache-Control' => 'no-store']);
     }
 
+    private function canReadReceipt(Request $request, IdempotencyRecord $record): bool
+    {
+        $action = match ($record->operation_name) {
+            'prepareRfReservation', 'commitRfReservation', 'releaseRfReservation' => 'rf.reserve',
+            'reallocateRfReservation' => 'rf.reallocate',
+            'placeStockHold' => 'hold.place',
+            'proposeStockHoldClearance', 'clearStockHold' => 'hold.clear',
+            default => null,
+        };
+        if ($action === null) {
+            return false;
+        }
+
+        $authority = $request->attributes->get(ChapterAuthority::class);
+        if (str_starts_with($action, 'hold.')) {
+            return $authority->allows('stock.read') && $authority->allows($action)
+                && ($record->operation_name !== 'clearStockHold' || $authority->allows('evidence.read'));
+        }
+
+        $rfId = data_get(json_decode($record->response_body, true), 'data.result.rf_id');
+        $rf = InternalRf::where('chapter_id', $record->chapter_id)->whereKey($rfId)->first();
+
+        return $rf && $authority->canReadRf($rf)
+            && $authority->allows('stock.read', $rf->requesting_unit_id)
+            && $authority->allows($action, $rf->requesting_unit_id);
+    }
+
     private function actorId(Request $request): string
     {
-        return (string) ($request->header('X-User-Id') ?? session('user_id') ?? 'system-user');
+        return (string) ($request->user()->id);
     }
 
     private function actionKey(Request $request): ?string

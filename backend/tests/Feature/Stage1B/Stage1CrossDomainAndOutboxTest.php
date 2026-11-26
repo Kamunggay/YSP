@@ -346,7 +346,7 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
             ])->assertStatus(403);
     }
 
-    public function test_outbox_dispatches_on_commit_and_writes_zero_rows_on_rollback(): void
+    public function test_outbox_retains_committed_intent_and_writes_zero_rows_on_rollback(): void
     {
         /** @var DomainNotificationOutboxService $outbox */
         $outbox = app(DomainNotificationOutboxService::class);
@@ -364,7 +364,7 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
 
         $this->assertSame(0, DomainNotificationOutbox::where('resource_id', $resId)->count());
 
-        // 2. Commit marks outbox row 'dispatched' with strict 8-field public envelope
+        // 2. A committed intent waits for publication with the locked envelope.
         $committedResId = (string) Str::uuid();
         DB::transaction(function () use ($outbox, $committedResId) {
             $outbox->recordIntent('stage1.internal-rf.changed.v1', $this->chapterId, $committedResId, 2, 1);
@@ -372,9 +372,9 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
 
         $row = DomainNotificationOutbox::where('resource_id', $committedResId)->first();
         $this->assertNotNull($row);
-        $this->assertSame('dispatched', $row->status);
-        $this->assertNotNull($row->dispatched_at);
-        $this->assertSame([
+        $this->assertSame('pending', $row->status);
+        $this->assertNull($row->dispatched_at);
+        $this->assertEqualsCanonicalizing([
             'event_name',
             'event_id',
             'committed_at',
@@ -384,6 +384,10 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
             'resource_version',
             'material_version',
         ], array_keys($row->payload_json));
+
+        $baseline = $outbox->recordIntent('stage1.opening-baseline.changed.v1', $this->chapterId, $this->chapterId, 4, 3);
+        $this->assertNull($baseline->payload_json['resource_version']);
+        $this->assertNull($baseline->payload_json['material_version']);
     }
 
     public function test_unauthenticated_chapter_requests_return_401(): void

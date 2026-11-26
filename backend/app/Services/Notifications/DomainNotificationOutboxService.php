@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Models\DomainNotificationOutbox;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -35,8 +36,7 @@ class DomainNotificationOutboxService
 
     /**
      * Record a committed-only notification intent inside the active database transaction.
-     * Payload strictly carries only public coordinates (no private details), and dispatch
-     * occurs exclusively after transaction commit via DB::afterCommit().
+     * The worker only reads committed intents. Payload carries only resource coordinates.
      */
     public function recordIntent(
         string $eventName,
@@ -52,7 +52,12 @@ class DomainNotificationOutboxService
 
         $meta = self::EVENT_MAP[$eventName];
         $eventId = (string) Str::uuid();
-        $committedAt = now('UTC');
+        $committedAt = DB::connection()->getDriverName() === 'mysql'
+            ? Carbon::parse(DB::scalar('SELECT UTC_TIMESTAMP(6)'), 'UTC')
+            : now('UTC');
+        if (in_array($eventName, ['stage1.authority.changed.v1', 'stage1.opening-baseline.changed.v1'], true)) {
+            $resourceVersion = $materialVersion = null;
+        }
 
         if ($meta['channel'] === 'session') {
             $userScope = $targetUserId ?? $resourceId;
@@ -80,7 +85,7 @@ class DomainNotificationOutboxService
             'material_version' => $materialVersion,
         ];
 
-        $outbox = DomainNotificationOutbox::create([
+        return DomainNotificationOutbox::create([
             'id' => $eventId,
             'chapter_id' => $effectiveChapterId,
             'event_name' => $eventName,
@@ -95,18 +100,6 @@ class DomainNotificationOutboxService
             'dispatched_at' => null,
             'created_at' => $committedAt,
         ]);
-
-        $outboxId = $outbox->id;
-        DB::afterCommit(function () use ($outboxId): void {
-            DomainNotificationOutbox::where('id', $outboxId)
-                ->where('status', 'pending')
-                ->update([
-                    'status' => 'dispatched',
-                    'dispatched_at' => now('UTC'),
-                ]);
-        });
-
-        return $outbox;
     }
 
     /**
