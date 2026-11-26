@@ -856,6 +856,7 @@ class ActualIssueTest extends TestCase
             'chapter_id' => $this->chapterId,
             'user_id' => $this->custodianId,
             'operation_name' => 'postActualIssue',
+            'resource_id' => $batchB['issue']['id'],
             'state' => 'in_flight',
             'payload_hash' => str_repeat('0', 64),
             'response_code' => 200,

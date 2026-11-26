@@ -492,22 +492,10 @@ class OpeningInventoryTest extends TestCase
 
     /**
      * Test 3: Segregation of Duties Gate.
-     * Same officer holding both CHAPTER_HEAD and FINANCE cannot fill both authorization slots.
+     * Chapter Head cannot also fill the Finance authorization slot (403 duty_denied).
      */
     public function test_segregation_of_duties_gate_rejects_same_person(): void
     {
-        DutyGrant::create([
-            'id' => (string) Str::uuid(),
-            'chapter_id' => $this->chapterId,
-            'user_id' => $this->headUserId,
-            'duty_code' => 'FINANCE',
-            'status' => 'active',
-            'is_alternate' => false,
-            'valid_from' => now()->subDay(),
-            'limit_php' => '100000.00',
-            'version' => 1,
-        ]);
-
         $prep = $this->prepareSubmittedIpc();
         $authAt = now('UTC')->subMinutes(2)->format('Y-m-d\TH:i:s.u\Z');
 
