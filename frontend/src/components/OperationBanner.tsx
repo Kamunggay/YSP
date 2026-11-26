@@ -24,7 +24,7 @@ export function OperationBanner({ error, statusMessage, replayed, pendingActionK
           <span className="callout-dot dot-success" aria-hidden="true" />
           <div style={{ flex: 1 }}>{statusMessage}</div>
           {onDismiss && (
-            <button type="button" className="btn-batcave-secondary p03-shrink-btn" onClick={onDismiss}>
+            <button type="button" className="p02-compact-btn" onClick={onDismiss}>
               Dismiss
             </button>
           )}

@@ -213,14 +213,26 @@ export function StockWorkspace({
               />
             </div>
 
-            <button
-              type="button"
-              className="btn-batcave-primary p03-shrink-btn"
-              disabled={busy}
-              onClick={() => void handleManualQuery()}
-            >
-              {busy ? 'Querying...' : 'Query Stock'}
-            </button>
+            <div className="p03-search-meta">
+              <span className="p03-version-pill">{summaries.length} Tracked</span>
+              {variantFilter.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setVariantFilter('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                disabled={busy}
+                onClick={() => void handleManualQuery()}
+              >
+                {busy ? 'Querying...' : 'Query Stock'}
+              </button>
+            </div>
           </div>
 
           <div className="p03-header-nav-row">
@@ -260,31 +272,37 @@ export function StockWorkspace({
               {onBackToDashboard && (
                 <button
                   type="button"
-                  className="btn-batcave-secondary p03-shrink-btn"
+                  className="btn-batcave-secondary p04-back-btn"
                   onClick={onBackToDashboard}
                 >
-                  Back to Chapter Workspace
+                  ← Back to My Work
                 </button>
               )}
             </div>
           </div>
         </header>
 
-        <OperationBanner error={error} />
-
-        {stockReason && (
-          <div className="callout-banner is-warning">
-            <span className="callout-dot dot-warning" aria-hidden="true" />
-            <span>{stockReason}</span>
+        <section className="p03-card surface-card form-stack" aria-label="Stock status summary">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Chapter Stock Balances</h2>
+              <p className="form-card-subtitle">
+                Advisory stock breakdown only. Each category shows a distinct view of stock, so these figures must not be added together.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">{summaries.length} Variants</span>
+              <span className="p03-version-pill">{lots.length} Loaded Batches</span>
+            </div>
           </div>
-        )}
-
-        <div className="callout-banner">
-          <span className="callout-dot dot-info" aria-hidden="true" />
-          <span>
-            Advisory stock breakdown only. Each category shows a distinct view of stock, so these figures must not be added together.
-          </span>
-        </div>
+          <OperationBanner error={error} />
+          {stockReason && (
+            <div className="callout-banner is-warning">
+              <span className="callout-dot dot-warning" aria-hidden="true" />
+              <span>{stockReason}</span>
+            </div>
+          )}
+        </section>
 
         {viewTab === 'balances' && (
           <>
@@ -343,26 +361,23 @@ export function StockWorkspace({
 
             {summaries.length === 0 ? (
               <section className="p03-card surface-card">
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No stock summaries found</div>
-                  <div className="s02-empty-caption">
-                    Record an opening inventory balance or adjust your filter criteria above.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No stock summaries found. Record an opening inventory balance or adjust your filter criteria above.
+                </p>
               </section>
             ) : (
               summaries.map((s) => (
-                <section key={s.variant_id} className="p03-card surface-card">
-                  <div className="p03-card-header-row" style={{ marginBottom: '0.75rem' }}>
+                <section key={s.variant_id} className="p03-card surface-card form-stack">
+                  <div className="p03-card-header-row">
                     <div className="p03-history-title-group">
-                      <span className="p03-id-pill">{s.variant_code ?? s.variant_id}</span>
+                      <span className="p03-version-pill p03-id-pill p03-mono-inline">{s.variant_code ?? s.variant_id}</span>
                       <span className={`s02-status-tag ${s.low_stock === 'above_rop' ? 'is-ready' : 'is-overdue'}`}>
                         {s.low_stock === 'above_rop' ? 'Above Reorder Level' : s.low_stock.replace(/_/g, ' ')}
                       </span>
                       <span className="p03-muted-inline">Updated {formatManilaTime(s.observed_at)}</span>
                     </div>
 
-                    <div className="p02-compact-actions">
+                    <div className="p02-compact-btn-group">
                       <button
                         type="button"
                         className="p02-compact-btn"
@@ -396,7 +411,7 @@ export function StockWorkspace({
                   </div>
 
                   {s.setup_blockers.length > 0 && (
-                    <div className="callout-banner is-warning" style={{ marginTop: '0.75rem' }}>
+                    <div className="callout-banner is-warning">
                       <span className="callout-dot dot-warning" aria-hidden="true" />
                       <span>
                         Setup notes: {s.setup_blockers.map((b) => `${b.setting_key ?? ''} ${b.message ?? ''}`).join('; ')}
@@ -411,17 +426,14 @@ export function StockWorkspace({
 
         {viewTab === 'lots' && (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Stock batches list">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Stock batches list">
+              <h2 className="p03-section-title">
                 Stock Batches ({lots.length})
               </h2>
               {lots.length === 0 ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No batches loaded</div>
-                  <div className="s02-empty-caption">
-                    Choose “View Batches” on any stock variant in Stock Views.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No batches loaded. Choose “View Batches” on any stock variant in Stock Views.
+                </p>
               ) : (
                 <div className="p03-history-list">
                   {lots.map((lot) => (
@@ -431,7 +443,7 @@ export function StockWorkspace({
                     >
                       <div className="p03-history-head">
                         <div className="p03-history-title-group">
-                          <span className="p03-id-pill">{lot.lot_reference ?? lot.id.slice(0, 8)}</span>
+                          <span className="p03-version-pill p03-id-pill p03-mono-inline">{lot.lot_reference ?? lot.id.slice(0, 8)}</span>
                           {lot.condition && <span className="s02-status-tag">{lot.condition}</span>}
                           {lot.stock_version !== undefined && (
                             <span className="p03-version-pill">rev. {lot.stock_version}</span>
@@ -451,11 +463,11 @@ export function StockWorkspace({
               )}
             </section>
 
-            <section className="p03-card surface-card" aria-label="Check stock batch availability">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Check stock batch availability">
+              <h2 className="p03-section-title">
                 Check Stock Batch Availability
               </h2>
-              <form onSubmit={checkEligibility} className="p02-column-stack">
+              <form onSubmit={checkEligibility} className="form-stack">
                 <div className="form-group">
                   <label className="form-label" htmlFor="el-lot">
                     Stock Batch Reference
@@ -505,18 +517,18 @@ export function StockWorkspace({
                     onChange={(e) => setEligRfLineId(e.target.value)}
                   />
                 </div>
-                <div className="p03-action-pair">
-                  <button
-                    className="btn-batcave-primary p03-shrink-btn"
-                    type="submit"
-                    disabled={stockReason !== null}
-                    title={stockReason ?? undefined}
-                  >
-                    Check Availability
-                  </button>
+                <button
+                  className="btn-batcave-primary"
+                  type="submit"
+                  disabled={stockReason !== null}
+                  title={stockReason ?? undefined}
+                >
+                  Check Availability
+                </button>
+                <div className="p03-guard-buttons">
                   <button
                     type="button"
-                    className="btn-batcave-secondary p03-shrink-btn"
+                    className="btn-batcave-secondary"
                     disabled={stockReason !== null}
                     title={stockReason ?? undefined}
                     onClick={() => {
@@ -528,7 +540,7 @@ export function StockWorkspace({
                   </button>
                   <button
                     type="button"
-                    className="btn-batcave-secondary p03-shrink-btn"
+                    className="btn-batcave-secondary"
                     disabled={historyReason !== null}
                     title={historyReason ?? undefined}
                     onClick={() => {
@@ -542,43 +554,38 @@ export function StockWorkspace({
               </form>
 
               {eligibilityResult !== null && (
-                <div style={{ marginTop: '0.85rem' }}>
-                  <pre className="json-box">{JSON.stringify(eligibilityResult, null, 2)}</pre>
-                </div>
+                <pre className="json-box">{JSON.stringify(eligibilityResult, null, 2)}</pre>
               )}
             </section>
           </div>
         )}
 
         {viewTab === 'detail' && (
-          <section className="p03-card surface-card" aria-label="Variant and batch detail view">
-            <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+          <section className="p03-card surface-card form-stack" aria-label="Variant and batch detail view">
+            <h2 className="p03-section-title">
               Variant Detail &amp; Movement History
             </h2>
             {variantDetail === null && lotDetail === null && lotHistory === null ? (
-              <div className="s02-empty-state">
-                <div className="s02-empty-heading">No detail record selected</div>
-                <div className="s02-empty-caption">
-                  Select “Variant Detail” or “Batch Details / Movement History” from the tabs above.
-                </div>
-              </div>
+              <p className="p03-muted-copy">
+                No detail record selected. Choose “Variant Detail” or “Batch Details / Movement History” from the tabs above.
+              </p>
             ) : (
-              <div className="p02-column-stack">
+              <div className="form-stack">
                 {variantDetail !== null && (
-                  <div>
-                    <h3 className="s02-panel-title" style={{ marginBottom: '0.4rem' }}>Variant Breakdown</h3>
+                  <div className="form-stack">
+                    <h3 className="s02-drawer-subhead">Variant Breakdown</h3>
                     <pre className="json-box">{JSON.stringify(variantDetail, null, 2)}</pre>
                   </div>
                 )}
                 {lotDetail !== null && (
-                  <div>
-                    <h3 className="s02-panel-title" style={{ marginBottom: '0.4rem' }}>Batch Details</h3>
+                  <div className="form-stack">
+                    <h3 className="s02-drawer-subhead">Batch Details</h3>
                     <pre className="json-box">{JSON.stringify(lotDetail, null, 2)}</pre>
                   </div>
                 )}
                 {lotHistory !== null && (
-                  <div>
-                    <h3 className="s02-panel-title" style={{ marginBottom: '0.4rem' }}>Movement History</h3>
+                  <div className="form-stack">
+                    <h3 className="s02-drawer-subhead">Movement History</h3>
                     <pre className="json-box">{JSON.stringify(lotHistory, null, 2)}</pre>
                   </div>
                 )}

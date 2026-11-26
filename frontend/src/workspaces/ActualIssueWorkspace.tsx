@@ -430,17 +430,28 @@ export function ActualIssueWorkspace({
               />
             </div>
 
-            <button
-              type="button"
-              className="btn-batcave-primary p03-shrink-btn"
-              onClick={() => {
-                void listRfIssues();
-                setViewTab('inspect');
-              }}
-              disabled={!rfId.trim()}
-            >
-              Load Handovers
-            </button>
+            <div className="p03-search-meta">
+              {rfId.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setRfId('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                onClick={() => {
+                  void listRfIssues();
+                  setViewTab('inspect');
+                }}
+                disabled={!rfId.trim()}
+              >
+                Load Handovers
+              </button>
+            </div>
           </div>
 
           <div className="p03-header-nav-row">
@@ -480,30 +491,48 @@ export function ActualIssueWorkspace({
               {onBackToDashboard && (
                 <button
                   type="button"
-                  className="btn-batcave-secondary p03-shrink-btn"
+                  className="btn-batcave-secondary p04-back-btn"
                   onClick={onBackToDashboard}
                 >
-                  Back to Chapter Workspace
+                  ← Back to My Work
                 </button>
               )}
             </div>
           </div>
         </header>
 
-        <OperationBanner
-          error={error}
-          statusMessage={statusMessage}
-          replayed={replayed}
-          onDismiss={() => setStatusMessage(null)}
-        />
+        <section className="p03-card surface-card form-stack" aria-label="Stock issue handover overview">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Issue Handover Execution</h2>
+              <p className="form-card-subtitle">
+                Prepare batch releases, bind signed paper handovers, and deduct chapter inventory.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              {rfId.trim() && (
+                <span className="p03-version-pill p03-mono-inline">Requisition Loaded</span>
+              )}
+              {issueId.trim() && (
+                <span className="p03-version-pill p03-mono-inline">Handover Selected</span>
+              )}
+            </div>
+          </div>
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
 
         {viewTab === 'workflow' && (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Issue handover context references">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Issue handover context references">
+              <h2 className="p03-section-title">
                 Handover References &amp; Actions
               </h2>
-              <div className="p02-column-stack">
+              <div className="form-stack">
                 <div className="form-group">
                   <label className="form-label" htmlFor="iss-id">
                     Issue Handover Reference
@@ -516,7 +545,7 @@ export function ActualIssueWorkspace({
                   />
                 </div>
 
-                <div className="p02-compact-actions">
+                <div className="p02-compact-btn-group">
                   <button
                     type="button"
                     className="p02-compact-btn"
@@ -587,19 +616,19 @@ export function ActualIssueWorkspace({
               </div>
             </section>
 
-            <section className="p03-card surface-card" aria-label="Record or update issue handover">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Record or update issue handover">
+              <h2 className="p03-section-title">
                 Record or Update Issue Handover
               </h2>
 
               {opBlockReason && (
-                <div className="callout-banner is-warning" style={{ marginBottom: '0.85rem' }}>
+                <div className="callout-banner is-warning">
                   <span className="callout-dot dot-warning" aria-hidden="true" />
                   <span>{opBlockReason}</span>
                 </div>
               )}
 
-              <form onSubmit={executeIssueOp} className="p02-column-stack">
+              <form onSubmit={executeIssueOp} className="form-stack">
                 <div className="form-group">
                   <label className="form-label" htmlFor="iss-op">
                     Workflow Step
@@ -717,7 +746,7 @@ export function ActualIssueWorkspace({
                       </div>
                     </div>
 
-                    <label className="p03-checkbox-row">
+                    <label className={`p03-checkbox-row ${acceptsPartial ? 'is-checked' : ''}`}>
                       <input
                         type="checkbox"
                         className="p03-sr-checkbox"
@@ -742,14 +771,14 @@ export function ActualIssueWorkspace({
                       </div>
                     )}
 
-                    <div>
-                      <div className="p03-card-header-row" style={{ marginBottom: '0.45rem' }}>
-                        <strong className="form-label" style={{ margin: 0 }}>
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
                           Issue Batch Lines &amp; Targets
-                        </strong>
+                        </span>
                         <button
                           type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
+                          className="p02-compact-btn"
                           onClick={() => setIssueLines((p) => [...p, emptyIssueLine()])}
                         >
                           + Batch Line
@@ -865,7 +894,7 @@ export function ActualIssueWorkspace({
                       value={evidenceBinding}
                       onChange={setEvidenceBinding}
                     />
-                    <label className="p03-checkbox-row">
+                    <label className={`p03-checkbox-row ${matchesPaper ? 'is-checked' : ''}`}>
                       <input
                         type="checkbox"
                         className="p03-sr-checkbox"
@@ -893,14 +922,14 @@ export function ActualIssueWorkspace({
                         onChange={(e) => setAcknowledgmentId(e.target.value)}
                       />
                     </div>
-                    <div>
-                      <div className="p03-card-header-row" style={{ marginBottom: '0.45rem' }}>
-                        <strong className="form-label" style={{ margin: 0 }}>
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
                           Batches to Deduct Stock From
-                        </strong>
+                        </span>
                         <button
                           type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
+                          className="p02-compact-btn"
                           onClick={() =>
                             setCurrentSources((p) => [
                               ...p,
@@ -996,7 +1025,7 @@ export function ActualIssueWorkspace({
                         />
                       </div>
                     </div>
-                    <label className="p03-checkbox-row">
+                    <label className={`p03-checkbox-row ${attachReconcileEvidence ? 'is-checked' : ''}`}>
                       <input
                         type="checkbox"
                         className="p03-sr-checkbox"
@@ -1021,9 +1050,9 @@ export function ActualIssueWorkspace({
                   </>
                 )}
 
-                <div className="p03-action-pair">
+                <div className="p03-guard-buttons">
                   <button
-                    className="btn-batcave-primary p03-shrink-btn"
+                    className="btn-batcave-primary"
                     type="submit"
                     disabled={busy || opBlockReason !== null}
                     title={opBlockReason ?? undefined}
@@ -1031,7 +1060,7 @@ export function ActualIssueWorkspace({
                     Submit Issue Action
                   </button>
                   <button
-                    className="btn-batcave-secondary p03-shrink-btn"
+                    className="btn-batcave-secondary"
                     type="button"
                     onClick={parkDraftInMemory}
                   >
@@ -1044,17 +1073,14 @@ export function ActualIssueWorkspace({
         )}
 
         {viewTab === 'inspect' && (
-          <section className="p03-card surface-card" aria-label="Handovers and movement records">
-            <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+          <section className="p03-card surface-card form-stack" aria-label="Handovers and movement records">
+            <h2 className="p03-section-title">
               Handover List, History &amp; Movements
             </h2>
             {issuesJson === null ? (
-              <div className="s02-empty-state">
-                <div className="s02-empty-heading">No handover records loaded</div>
-                <div className="s02-empty-caption">
-                  Enter a requisition reference in the search bar above and click “Load Handovers”.
-                </div>
-              </div>
+              <p className="p03-muted-copy">
+                No handover records loaded. Enter a requisition reference in the search bar above and click “Load Handovers”.
+              </p>
             ) : (
               <pre className="json-box">{JSON.stringify(issuesJson, null, 2)}</pre>
             )}
@@ -1063,11 +1089,11 @@ export function ActualIssueWorkspace({
 
         {viewTab === 'status' && (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Status lookup">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Status lookup">
+              <h2 className="p03-section-title">
                 Check Handover Submission Status
               </h2>
-              <div className="p02-column-stack">
+              <div className="form-stack">
                 <form onSubmit={lookupByKey} className="form-group">
                   <label className="form-label" htmlFor="iss-lkp">
                     Submission Reference
@@ -1106,19 +1132,16 @@ export function ActualIssueWorkspace({
               </div>
             </section>
 
-            <section className="p03-card surface-card" aria-label="Detail and printable form">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Detail and printable form">
+              <h2 className="p03-section-title">
                 Detail &amp; Printable Form
               </h2>
               {detailJson === null && printHtml === null ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No result loaded</div>
-                  <div className="s02-empty-caption">
-                    Inspect a handover detail or check a submission reference on the left.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No result loaded. Inspect a handover detail or check a submission reference on the left.
+                </p>
               ) : (
-                <div className="p02-column-stack">
+                <div className="form-stack">
                   {detailJson !== null && <pre className="json-box">{JSON.stringify(detailJson, null, 2)}</pre>}
                   {printHtml !== null && (
                     <iframe title="Actual Issue Printout" sandbox="" srcDoc={printHtml} className="stage1-print-frame" />

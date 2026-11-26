@@ -258,20 +258,20 @@ export function AuthGate({
   );
 
   const recoveryCodesPanel = recoveryCodesDelivery && (
-    <div className="p03-card surface-card" style={{ marginBottom: '1rem' }}>
-      <h3 className="s02-panel-title" style={{ marginBottom: '0.35rem' }}>
-        Backup Recovery Codes (Save Offline Now)
-      </h3>
-      <p className="form-card-subtitle" style={{ marginBottom: '0.65rem' }}>
-        Batch Reference: <span className="p03-mono-inline">{recoveryCodesDelivery.recovery_set.id}</span> · Expires{' '}
-        {formatManilaTime(recoveryCodesDelivery.recovery_set.expires_at)}
-      </p>
-      <pre className="json-box">{recoveryCodesDelivery.codes.join('\n')}</pre>
-      <div style={{ marginTop: '0.75rem' }}>
-        <button className="btn-batcave-secondary p03-shrink-btn" type="button" onClick={() => setRecoveryCodesDelivery(null)}>
+    <div className="p04-line-card form-stack">
+      <div className="p04-line-top">
+        <div>
+          <h3 className="s02-drawer-subhead">Backup Recovery Codes (Save Offline Now)</h3>
+          <p className="form-card-subtitle">
+            Batch Reference: <span className="p03-mono-inline">{recoveryCodesDelivery.recovery_set.id}</span> · Expires{' '}
+            {formatManilaTime(recoveryCodesDelivery.recovery_set.expires_at)}
+          </p>
+        </div>
+        <button className="p02-compact-btn" type="button" onClick={() => setRecoveryCodesDelivery(null)}>
           I have saved these codes
         </button>
       </div>
+      <pre className="json-box">{recoveryCodesDelivery.codes.join('\n')}</pre>
     </div>
   );
 
@@ -541,10 +541,10 @@ export function AuthGate({
 
   // 3. Authenticated Security & Recovery Controls (rendered inside Account Security drawer)
   return (
-    <div className="p03-card surface-card">
-      <div className="form-card-header" style={{ marginBottom: '1rem', paddingBottom: '0.75rem' }}>
+    <div className="p04-line-card form-stack">
+      <div className="p04-line-top">
         <div>
-          <h2 className="p03-section-title">Account Security &amp; Backup Codes</h2>
+          <h2 className="s02-drawer-subhead">Account Security &amp; Backup Codes</h2>
           <p className="form-card-subtitle">
             Signed in as {session.user.display_name} (
             {session.authentication_method === 'authenticator'
@@ -556,10 +556,10 @@ export function AuthGate({
             {formatManilaTime(session.expires_at)}
           </p>
         </div>
-        <div className="p03-action-pair">
+        <div className="p02-compact-btn-group">
           <button
             type="button"
-            className="btn-batcave-secondary p03-shrink-btn"
+            className="p02-compact-btn"
             onClick={handleCheckRecoveryStatus}
             disabled={busy}
           >
@@ -567,7 +567,7 @@ export function AuthGate({
           </button>
           <button
             type="button"
-            className="btn-batcave-secondary p03-shrink-btn"
+            className="p02-compact-btn"
             onClick={handleSignOut}
             disabled={busy}
           >
@@ -576,59 +576,55 @@ export function AuthGate({
         </div>
       </div>
 
-      <div className="p02-column-stack">
-        {feedbackBanners}
-        {recoveryCodesPanel}
+      {feedbackBanners}
+      {recoveryCodesPanel}
 
-        {recoveryStatus && (
-          <div className="s02-readiness-list">
-            <div className="s02-readiness-row">
-              <span className="s02-readiness-key">Current Backup Code Batch</span>
-              <span className="s02-readiness-val">
-                {recoveryStatus.remaining} remaining · Expires {formatManilaTime(recoveryStatus.expires_at)}
-              </span>
-            </div>
+      {recoveryStatus && (
+        <dl className="s02-readiness-list">
+          <div className="s02-readiness-row">
+            <dt className="s02-readiness-key">Current Backup Code Batch</dt>
+            <dd className="s02-readiness-val">
+              {recoveryStatus.remaining} remaining · Expires {formatManilaTime(recoveryStatus.expires_at)}
+            </dd>
           </div>
-        )}
+        </dl>
+      )}
 
-        <form onSubmit={handleRotateRecoveryCodes}>
-          <div className="p03-two-col">
-            <div className="form-group">
-              <label className="form-label" htmlFor="rot-pw">
-                Password
-              </label>
-              <input
-                id="rot-pw"
-                className="form-control"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="rot-totp">
-                Current Authenticator Code
-              </label>
-              <input
-                id="rot-totp"
-                className="form-control"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                required
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
-              />
-            </div>
+      <form className="form-stack" onSubmit={handleRotateRecoveryCodes}>
+        <div className="p03-two-col">
+          <div className="form-group">
+            <label className="form-label" htmlFor="rot-pw">
+              Password
+            </label>
+            <input
+              id="rot-pw"
+              className="form-control"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
-          <div className="p03-action-pair" style={{ marginTop: '0.75rem' }}>
-            <button className="btn-batcave-primary p03-shrink-btn" type="submit" disabled={busy}>
-              Replace Backup Codes
-            </button>
+          <div className="form-group">
+            <label className="form-label" htmlFor="rot-totp">
+              Current Authenticator Code
+            </label>
+            <input
+              id="rot-totp"
+              className="form-control"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              required
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+            />
           </div>
-        </form>
-      </div>
+        </div>
+        <button className="btn-batcave-primary" type="submit" disabled={busy}>
+          Replace Backup Codes
+        </button>
+      </form>
     </div>
   );
 }

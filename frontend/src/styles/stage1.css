@@ -33,21 +33,9 @@ html.dark .s02-nav-item.is-active {
   border-color: rgba(129, 140, 248, 0.32);
 }
 
-.s02-sidebar-chapter-select {
-  width: 100%;
-  height: 34px;
-  min-height: 34px;
-  padding: 0 2.5rem 0 0.7rem;
-  border-radius: 10px;
-  font-family: var(--font-sans);
-  font-size: 0.78rem;
-  font-weight: 500;
-}
-
 select.form-control,
 .p03-workspace-shell select.form-control,
-.s02-controls-drawer select.form-control,
-select.s02-sidebar-chapter-select {
+.s02-controls-drawer select.form-control {
   -webkit-appearance: none !important;
   appearance: none !important;
   padding-right: 2.5rem !important;
@@ -76,12 +64,25 @@ html.dark .s02-status-tag.is-ready {
   color: #86efac;
 }
 
-.s02-officer-duties {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.28rem;
-  white-space: normal;
-  margin-top: 0.2rem;
+button.s02-kpi-card {
+  width: 100%;
+  text-align: left;
+}
+
+.p03-next-actions-row .btn-batcave-primary,
+.p03-next-actions-row .btn-batcave-secondary {
+  width: auto;
+  height: 38px;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 0.95rem;
+  line-height: 1;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .p03-filter-pill {

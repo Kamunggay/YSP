@@ -53,7 +53,6 @@ interface NavGroupConfig {
   tone: 'inventory' | 'procurement' | 'sales' | 'operations';
   items: Array<{
     tab: WorkspaceTab;
-    code: string;
     label: string;
     subtitle: string;
     requiredActions: string[];
@@ -63,26 +62,23 @@ interface NavGroupConfig {
 const WORKSPACE_GROUPS: NavGroupConfig[] = [
   {
     id: 'catalogue',
-    label: 'Catalogue & Opening',
+    label: 'Catalogue',
     tone: 'inventory',
     items: [
       {
         tab: 'catalogue',
-        code: 'CAT',
         label: 'Catalogue',
         subtitle: 'Items, variants, units & locations',
         requiredActions: ['catalogue.read'],
       },
       {
         tab: 'opening',
-        code: 'OPN',
         label: 'Opening Inventory',
         subtitle: 'Counts & opening receipts',
         requiredActions: ['opening.read', 'ipc.read'],
       },
       {
         tab: 'evidence',
-        code: 'DOC',
         label: 'Signed Documents',
         subtitle: 'Proof files & receipts',
         requiredActions: ['evidence.read'],
@@ -91,19 +87,17 @@ const WORKSPACE_GROUPS: NavGroupConfig[] = [
   },
   {
     id: 'requests',
-    label: 'Requests & Allocation',
+    label: 'Requests',
     tone: 'procurement',
     items: [
       {
         tab: 'requisitions',
-        code: 'REQ',
         label: 'Requisitions',
         subtitle: 'Create & submit requests',
         requiredActions: ['rf.read'],
       },
       {
         tab: 'reservations_holds',
-        code: 'RES',
         label: 'Reservations & Holds',
         subtitle: 'Allocate & freeze stock',
         requiredActions: ['stock.read'],
@@ -112,19 +106,17 @@ const WORKSPACE_GROUPS: NavGroupConfig[] = [
   },
   {
     id: 'custody',
-    label: 'Stock & Handover',
+    label: 'Stock',
     tone: 'operations',
     items: [
       {
         tab: 'stock',
-        code: 'STK',
         label: 'Stock',
         subtitle: 'Balances & batch availability',
         requiredActions: ['stock.read'],
       },
       {
         tab: 'actual_issues',
-        code: 'ISS',
         label: 'Issue Handover',
         subtitle: 'Prepare & post stock releases',
         requiredActions: ['stock.read'],
@@ -458,6 +450,8 @@ export function S02Dashboard({
   }, [activeHoldList, blockedActions, lowStockList, onSelectTab, openIpcList, openRfList, searchQuery]);
 
   const liveStatus = realtimeText(realtimeStatus);
+  const dutySummaryText =
+    assignedDuties.length > 0 ? assignedDuties.map(formatDutyName).join(' · ') : 'Chapter Member';
 
   return (
     <main className="s02-shell" data-testid="s02-dashboard-workspace">
@@ -468,50 +462,10 @@ export function S02Dashboard({
           </div>
           <div className="s02-profile-copy">
             <div className="s02-officer-name">{session.user.display_name}</div>
-            <div className="s02-officer-duties">
-              {assignedDuties.length > 0 ? (
-                assignedDuties.slice(0, 3).map((d) => (
-                  <span key={d} className="s02-duty-chip">
-                    {formatDutyName(d)}
-                  </span>
-                ))
-              ) : (
-                <span className="s02-duty-chip">Chapter Member</span>
-              )}
-              {assignedDuties.length > 3 && (
-                <span className="s02-duty-chip">+{assignedDuties.length - 3} more</span>
-              )}
-            </div>
+            <span className="s02-officer-duties" title={dutySummaryText}>
+              {dutySummaryText}
+            </span>
           </div>
-        </div>
-
-        <div className="form-group" style={{ gap: '0.35rem' }}>
-          <label htmlFor="s02-chapter-select" className="s02-nav-group-title">
-            Active Chapter
-          </label>
-          <select
-            id="s02-chapter-select"
-            className="form-control s02-sidebar-chapter-select"
-            value={selectedChapterId ?? ''}
-            title={chapterDisplay}
-            onChange={(e) => onSelectChapter(e.target.value)}
-          >
-            {memberships.length === 0 && <option value="">No chapters</option>}
-            {memberships.map((m) => {
-              const full = `${m.chapter.reference} · ${m.chapter.display_name}`;
-              const shortLabel = full.length > 24 ? `${full.slice(0, 23)}…` : full;
-              return (
-                <option key={m.chapter.id} value={m.chapter.id} title={full}>
-                  {shortLabel}
-                </option>
-              );
-            })}
-          </select>
-          {membershipCursor && (
-            <button type="button" className="s02-expand-all-btn" onClick={onLoadMoreMemberships}>
-              Load more chapters
-            </button>
-          )}
         </div>
 
         <label className="s02-duty-filter-row" htmlFor="s02-duties-only-switch">
@@ -525,107 +479,114 @@ export function S02Dashboard({
           />
         </label>
 
-        <nav className="s02-sidebar-nav" aria-label="Operational workspaces">
-          <button
-            type="button"
-            className="s02-nav-home-active"
-            onClick={() => onSelectTab('my_work')}
-          >
-            <span className="s02-nav-home-left">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
-                <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5.5v-6.5h-5V21H4a1 1 0 0 1-1-1v-9.5Z" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span>My Work</span>
-            </span>
-            <span className="s02-nav-active-dot" aria-hidden="true" />
+        <button
+          type="button"
+          className="s02-nav-home-active"
+          onClick={() => onSelectTab('my_work')}
+        >
+          <span className="s02-nav-home-left">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+            <span>My Work</span>
+          </span>
+          <span className="s02-nav-active-dot" aria-hidden="true" />
+        </button>
+
+        <div className="s02-nav-section-header">
+          <span>Workspaces</span>
+          <button type="button" className="s02-expand-all-btn" onClick={toggleAllGroups}>
+            {allExpanded ? 'Collapse all' : 'Expand all'}
           </button>
+        </div>
 
-          <div className="s02-nav-section-header">
-            <span className="s02-nav-group-title">Workspaces</span>
-            <button type="button" className="s02-expand-all-btn" onClick={toggleAllGroups}>
-              {allExpanded ? 'Collapse all' : 'Expand all'}
-            </button>
-          </div>
-
-          <div className="s02-nav-tree">
-            {visibleGroups.length === 0 ? (
-              <div className="s02-sidebar-empty">
-                No workspaces match your current duty filter.
-              </div>
-            ) : (
-              visibleGroups.map((group) => {
-                const isOpen = !!expandedGroups[group.id];
-                return (
-                  <div key={group.id} className="s02-nav-group">
-                    <button
-                      type="button"
-                      className="s02-nav-accordion-btn"
-                      aria-expanded={isOpen}
-                      onClick={() =>
-                        setExpandedGroups((prev) => ({
-                          ...prev,
-                          [group.id]: !prev[group.id],
-                        }))
-                      }
-                    >
-                      <span className="s02-nav-accordion-left">
-                        <span className={`s02-domain-badge tone-${group.tone}`} aria-hidden="true">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
-                            {group.id === 'catalogue' && (
-                              <path d="M4 7h16M4 12h16M4 17h10" strokeLinecap="round" />
-                            )}
-                            {group.id === 'requests' && (
-                              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" strokeLinecap="round" />
-                            )}
-                            {group.id === 'custody' && (
-                              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" strokeLinecap="round" strokeLinejoin="round" />
-                            )}
-                          </svg>
-                        </span>
-                        <span className="s02-nav-group-title">{group.label}</span>
-                      </span>
-                      <span className="s02-nav-accordion-right">
-                        <span className="s02-nav-count">{group.items.length}</span>
-                        <svg
-                          className={`s02-accordion-chevron ${isOpen ? 'is-open' : ''}`}
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          aria-hidden="true"
-                        >
-                          <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        <nav className="s02-sidebar-nav" aria-label="Operational workspaces">
+          {visibleGroups.length === 0 ? (
+            <div className="s02-sidebar-empty">
+              No workspaces match your current duty filter.
+            </div>
+          ) : (
+            visibleGroups.map((group) => {
+              const isOpen = !!expandedGroups[group.id];
+              return (
+                <div key={group.id} className="s02-nav-group">
+                  <button
+                    type="button"
+                    className="s02-nav-accordion-btn"
+                    aria-expanded={isOpen}
+                    onClick={() =>
+                      setExpandedGroups((prev) => ({
+                        ...prev,
+                        [group.id]: !prev[group.id],
+                      }))
+                    }
+                  >
+                    <span className="s02-nav-accordion-left">
+                      <span className={`s02-domain-badge tone-${group.tone}`} aria-hidden="true">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                          {group.id === 'catalogue' && (
+                            <path d="M4 7h16M4 12h16M4 17h10" strokeLinecap="round" />
+                          )}
+                          {group.id === 'requests' && (
+                            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" strokeLinecap="round" />
+                          )}
+                          {group.id === 'custody' && (
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" strokeLinecap="round" strokeLinejoin="round" />
+                          )}
                         </svg>
                       </span>
-                    </button>
+                      <span className="s02-nav-group-title">{group.label}</span>
+                    </span>
+                    <span className="s02-nav-accordion-right">
+                      <span className="s02-nav-count">{group.items.length}</span>
+                      <svg
+                        className={`s02-accordion-chevron ${isOpen ? 'is-open' : ''}`}
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </span>
+                  </button>
 
-                    {isOpen && (
-                      <div className="s02-nav-group-items">
-                        {group.items.map((item) => (
-                          <button
-                            key={item.tab}
-                            type="button"
-                            className="s02-nav-item"
-                            onClick={() => onSelectTab(item.tab)}
-                          >
-                            <span className="s02-nav-item-text">{item.label}</span>
-                            <span className="s02-meta-mono">{item.code}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
+                  {isOpen && (
+                    <div className="s02-nav-tree">
+                      {group.items.map((item) => (
+                        <button
+                          key={item.tab}
+                          type="button"
+                          className="s02-nav-item"
+                          onClick={() => onSelectTab(item.tab)}
+                        >
+                          <span className="s02-nav-item-text">{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </nav>
 
         <div className="s02-sidebar-footer">
           <button type="button" className="s02-signout-btn" onClick={onSignOut}>
-            Sign out
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            <span>Sign out &amp; Return to Login</span>
           </button>
         </div>
       </aside>
@@ -666,15 +627,24 @@ export function S02Dashboard({
 
             <button
               type="button"
-              className="btn-batcave-secondary p03-shrink-btn"
+              className="btn-batcave-primary s02-jump-btn"
               onClick={() => {
                 onTriggerRefresh();
                 void fetchOverview();
               }}
               disabled={loadingSnapshot}
             >
-              {loadingSnapshot ? 'Refreshing...' : 'Refresh Overview'}
+              {loadingSnapshot ? 'Refreshing...' : 'Refresh'}
             </button>
+            {searchQuery.trim().length > 0 && (
+              <button
+                type="button"
+                className="btn-batcave-secondary s02-clear-btn"
+                onClick={() => setSearchQuery('')}
+              >
+                Clear
+              </button>
+            )}
           </div>
         </header>
 
@@ -822,7 +792,7 @@ export function S02Dashboard({
               ) : (
                 <div className="s02-queue-list">
                   {priorityItems.map((item) => (
-                    <article key={item.id} className="s02-queue-card">
+                    <article key={item.id} className={`s02-queue-card ${item.tagTone}`.trim()}>
                       <div className="s02-queue-card-top">
                         <div className="s02-queue-title-row">
                           <span className="s02-record-pill">{item.pill}</span>
@@ -835,15 +805,15 @@ export function S02Dashboard({
                       <p className="s02-queue-summary">{item.summary}</p>
                       <div className="s02-queue-meta-line">
                         <span>{item.meta}</span>
-                        <div className="s02-queue-actions">
-                          <button
-                            type="button"
-                            className="btn-batcave-secondary p03-shrink-btn"
-                            onClick={item.onAction}
-                          >
-                            {item.actionLabel}
-                          </button>
-                        </div>
+                      </div>
+                      <div className="s02-queue-actions">
+                        <button
+                          type="button"
+                          className="btn-batcave-secondary p03-shrink-btn"
+                          onClick={item.onAction}
+                        >
+                          {item.actionLabel}
+                        </button>
                       </div>
                     </article>
                   ))}
@@ -905,18 +875,21 @@ export function S02Dashboard({
                             <span className="s02-record-pill">Draft</span>
                             <span className="s02-queue-item-title">{draft.label}</span>
                           </div>
+                          <div className="s02-queue-badges">
+                            <span className="s02-status-tag">Session Draft</span>
+                          </div>
                         </div>
                         <div className="s02-queue-meta-line">
                           <span>Saved {formatManilaTime(draft.updatedAtIso)}</span>
-                          <div className="s02-queue-actions">
-                            <button
-                              type="button"
-                              className="btn-batcave-secondary p03-shrink-btn"
-                              onClick={() => onSelectTab(target.tab)}
-                            >
-                              Resume in {target.workspaceLabel}
-                            </button>
-                          </div>
+                        </div>
+                        <div className="s02-queue-actions">
+                          <button
+                            type="button"
+                            className="btn-batcave-secondary p03-shrink-btn"
+                            onClick={() => onSelectTab(target.tab)}
+                          >
+                            Resume in {target.workspaceLabel}
+                          </button>
                         </div>
                       </article>
                     );
@@ -1008,14 +981,6 @@ export function S02Dashboard({
                   </span>
                 </button>
               </div>
-              <button
-                type="button"
-                className="s02-nav-item"
-                onClick={() => onSelectTab('evidence')}
-              >
-                <span className="s02-nav-item-text">Signed Documents &amp; Proof Vault</span>
-                <span className="s02-meta-mono">DOC</span>
-              </button>
             </section>
 
             <section className="s02-rail-card surface-card">
@@ -1032,10 +997,15 @@ export function S02Dashboard({
                   Check now
                 </button>
               </div>
-              <div className="s02-readiness-list">
+              <dl className="s02-readiness-list">
                 <div className="s02-readiness-row">
-                  <span className="s02-readiness-key">Chapter Data</span>
-                  <span className="s02-readiness-val">
+                  <dt className="s02-readiness-key">Active Chapter</dt>
+                  <dd className="s02-readiness-val">{chapterDisplay}</dd>
+                </div>
+
+                <div className="s02-readiness-row">
+                  <dt className="s02-readiness-key">Chapter Data</dt>
+                  <dd className="s02-readiness-val">
                     <span
                       className={`s02-status-dot ${
                         connection === 'connected'
@@ -1046,39 +1016,67 @@ export function S02Dashboard({
                       }`}
                     />
                     {connection === 'connected' ? 'Online' : connection === 'checking' ? 'Checking' : 'Unavailable'}
-                  </span>
+                  </dd>
                 </div>
 
                 <div className="s02-readiness-row">
-                  <span className="s02-readiness-key">Live Sync</span>
-                  <span className="s02-readiness-val" title={realtimeDetail ?? undefined}>
+                  <dt className="s02-readiness-key">Live Sync</dt>
+                  <dd className="s02-readiness-val" title={realtimeDetail ?? undefined}>
                     <span className={`s02-status-dot ${liveStatus.dotClass}`} />
                     {liveStatus.label}
-                  </span>
+                  </dd>
                 </div>
 
                 <div className="s02-readiness-row">
-                  <span className="s02-readiness-key">Workflow Readiness</span>
-                  <span className="s02-readiness-val">
+                  <dt className="s02-readiness-key">Workflow Readiness</dt>
+                  <dd className="s02-readiness-val">
                     <span className={`s02-status-dot ${blockedActions.length === 0 ? 'is-green' : 'is-amber'}`} />
                     {blockedActions.length === 0
                       ? 'All actions ready'
                       : `${blockedActions.length} restricted or setup needed`}
-                  </span>
+                  </dd>
                 </div>
 
                 <div className="s02-readiness-row">
-                  <span className="s02-readiness-key">Session Verification</span>
-                  <span className="s02-readiness-val">
+                  <dt className="s02-readiness-key">Session Verification</dt>
+                  <dd className="s02-readiness-val">
                     <span className="s02-status-dot is-green" />
                     {session.authentication_method === 'authenticator'
                       ? 'Authenticator verified'
                       : session.authentication_method === 'recovery_code'
                         ? 'Backup code verified'
                         : 'Signed in'}
-                  </span>
+                  </dd>
                 </div>
-              </div>
+              </dl>
+
+              {(memberships.length > 1 || membershipCursor) && (
+                <div className="form-group" style={{ marginTop: '0.65rem' }}>
+                  <label htmlFor="s02-chapter-select" className="form-label">
+                    Switch Active Chapter
+                  </label>
+                  <div className="p03-input-action-row">
+                    <select
+                      id="s02-chapter-select"
+                      className="form-control"
+                      value={selectedChapterId ?? ''}
+                      title={chapterDisplay}
+                      onChange={(e) => onSelectChapter(e.target.value)}
+                    >
+                      {memberships.map((m) => (
+                        <option key={m.chapter.id} value={m.chapter.id}>
+                          {m.chapter.reference} · {m.chapter.display_name}
+                        </option>
+                      ))}
+                    </select>
+                    {membershipCursor && (
+                      <button type="button" className="p02-compact-btn" onClick={onLoadMoreMemberships}>
+                        Load More
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </section>
           </aside>
         </div>
@@ -1086,13 +1084,26 @@ export function S02Dashboard({
         <footer className="s02-canvas-footer">
           <button
             type="button"
-            className="btn-batcave-secondary p03-shrink-btn"
+            className="s02-demo-toggle-btn"
             aria-expanded={showSecurityDrawer}
             onClick={() => setShowSecurityDrawer((prev) => !prev)}
           >
-            {showSecurityDrawer
-              ? 'Hide Account Security & Chapter Permissions'
-              : 'Account Security, Chapter Permissions & Backup Codes'}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="4" y1="21" x2="4" y2="14" />
+              <line x1="4" y1="10" x2="4" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12" y2="3" />
+              <line x1="20" y1="21" x2="20" y2="16" />
+              <line x1="20" y1="12" x2="20" y2="3" />
+              <line x1="1" y1="14" x2="7" y2="14" />
+              <line x1="9" y1="8" x2="15" y2="8" />
+              <line x1="17" y1="16" x2="23" y2="16" />
+            </svg>
+            <span>
+              {showSecurityDrawer
+                ? 'Hide Account Security & Chapter Permissions'
+                : 'Account Security, Chapter Permissions & Backup Codes'}
+            </span>
           </button>
           <span className="s02-panel-caption">
             Session expires {formatManilaTime(session.expires_at)}
@@ -1100,9 +1111,16 @@ export function S02Dashboard({
         </footer>
 
         {showSecurityDrawer && (
-          <section className="s02-controls-drawer" aria-label="Account security and chapter permissions">
+          <section className="surface-card s02-controls-drawer" aria-label="Account security and chapter permissions">
             <div className="s02-drawer-header">
-              <div className="s02-drawer-subhead">Chapter Roles, Permissions &amp; Security Controls</div>
+              <h3 className="s02-drawer-subhead">Chapter Roles, Permissions &amp; Security Controls</h3>
+              <button
+                type="button"
+                className="p02-compact-btn"
+                onClick={() => setShowSecurityDrawer(false)}
+              >
+                Close
+              </button>
             </div>
             <ChapterAuthorityBar
               memberships={memberships}

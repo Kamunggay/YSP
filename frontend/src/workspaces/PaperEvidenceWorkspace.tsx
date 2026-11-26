@@ -271,18 +271,32 @@ export function PaperEvidenceWorkspace({
               />
             </div>
 
-            <button
-              type="button"
-              className="btn-batcave-secondary p03-shrink-btn"
-              disabled={readReason !== null}
-              title={readReason ?? undefined}
-              onClick={() => {
-                void inspectEvidence();
-                setViewTab('history');
-              }}
-            >
-              Inspect Document
-            </button>
+            <div className="p03-search-meta">
+              {readResult?.current_version && (
+                <span className="p03-version-pill">rev. {readResult.current_version.version}</span>
+              )}
+              {evidenceIdInput.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setEvidenceIdInput('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                disabled={readReason !== null}
+                title={readReason ?? undefined}
+                onClick={() => {
+                  void inspectEvidence();
+                  setViewTab('history');
+                }}
+              >
+                Inspect Document
+              </button>
+            </div>
           </div>
 
           <div className="p03-header-nav-row">
@@ -313,41 +327,57 @@ export function PaperEvidenceWorkspace({
               {onBackToDashboard && (
                 <button
                   type="button"
-                  className="btn-batcave-secondary p03-shrink-btn"
+                  className="btn-batcave-secondary p04-back-btn"
                   onClick={onBackToDashboard}
                 >
-                  Back to Chapter Workspace
+                  ← Back to My Work
                 </button>
               )}
             </div>
           </div>
         </header>
 
-        <OperationBanner
-          error={error}
-          statusMessage={statusMessage}
-          replayed={replayed}
-          onDismiss={() => setStatusMessage(null)}
-        />
-
-        {prepareReason && (
-          <div className="callout-banner is-warning">
-            <span className="callout-dot dot-warning" aria-hidden="true" />
-            <span>{prepareReason}</span>
+        <section className="p03-card surface-card form-stack" aria-label="Signed document verification overview">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Signed Paper Verification</h2>
+              <p className="form-card-subtitle">
+                Upload verified scans or PDFs and bind them to chapter receipts, clearances, and issues.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">
+                {readResult?.current_version
+                  ? `${readResult.current_version.attachments.length} attachment${readResult.current_version.attachments.length === 1 ? '' : 's'}`
+                  : 'Ready to Upload'}
+              </span>
+            </div>
           </div>
-        )}
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+          {prepareReason && (
+            <div className="callout-banner is-warning">
+              <span className="callout-dot dot-warning" aria-hidden="true" />
+              <span>{prepareReason}</span>
+            </div>
+          )}
+        </section>
 
         {viewTab === 'manage' ? (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Upload signed document">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.35rem' }}>
-                Upload Signed Document
-              </h2>
-              <p className="form-card-subtitle" style={{ marginBottom: '0.85rem' }}>
-                Attach photos or scans of your signed paper forms (JPEG, PNG, or PDF, up to 10 MiB each).
-              </p>
+            <section className="p03-card surface-card form-stack" aria-label="Upload signed document">
+              <div>
+                <h2 className="p03-section-title">Upload Signed Document</h2>
+                <p className="form-card-subtitle">
+                  Attach photos or scans of your signed paper forms (JPEG, PNG, or PDF, up to 10 MiB each).
+                </p>
+              </div>
 
-              <form onSubmit={handleUpload} className="p02-column-stack">
+              <form onSubmit={handleUpload} className="form-stack">
                 <div className="form-group">
                   <label className="form-label" htmlFor="ev-purpose">
                     Document Type
@@ -383,7 +413,7 @@ export function PaperEvidenceWorkspace({
                   </label>
                   <input
                     id="ev-files"
-                    className="p04-file-input"
+                    className="form-control p04-file-input"
                     type="file"
                     multiple
                     accept="image/jpeg,image/png,application/pdf"
@@ -391,9 +421,9 @@ export function PaperEvidenceWorkspace({
                   />
                 </div>
 
-                <div className="p03-action-pair">
+                <div className="p03-guard-buttons">
                   <button
-                    className="btn-batcave-primary p03-shrink-btn"
+                    className="btn-batcave-primary"
                     type="submit"
                     disabled={busy || prepareReason !== null}
                     title={prepareReason ?? undefined}
@@ -401,7 +431,7 @@ export function PaperEvidenceWorkspace({
                     Upload Document
                   </button>
                   <button
-                    className="btn-batcave-secondary p03-shrink-btn"
+                    className="btn-batcave-secondary"
                     type="button"
                     onClick={parkDraftInMemory}
                   >
@@ -411,11 +441,11 @@ export function PaperEvidenceWorkspace({
               </form>
             </section>
 
-            <section className="p03-card surface-card" aria-label="View or replace uploaded document">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="View or replace uploaded document">
+              <h2 className="p03-section-title">
                 Replace Uploaded Document
               </h2>
-              <form onSubmit={handleReplace} className="p02-column-stack">
+              <form onSubmit={handleReplace} className="form-stack">
                 <div className="form-group">
                   <label className="form-label" htmlFor="ev-id">
                     Document Record Reference
@@ -456,9 +486,9 @@ export function PaperEvidenceWorkspace({
                   </div>
                 </div>
 
-                <div className="p03-action-pair">
+                <div className="p03-guard-buttons">
                   <button
-                    className="btn-batcave-secondary p03-shrink-btn"
+                    className="btn-batcave-secondary"
                     type="button"
                     disabled={readReason !== null}
                     title={readReason ?? undefined}
@@ -467,10 +497,10 @@ export function PaperEvidenceWorkspace({
                       setViewTab('history');
                     }}
                   >
-                    Inspect Current &amp; Revisions
+                    Inspect Revisions
                   </button>
                   <button
-                    className="btn-batcave-primary p03-shrink-btn"
+                    className="btn-batcave-primary"
                     type="submit"
                     disabled={busy || prepareReason !== null}
                     title={prepareReason ?? undefined}
@@ -483,8 +513,8 @@ export function PaperEvidenceWorkspace({
           </div>
         ) : (
           <div className="p02-column-stack">
-            <section className="p03-card surface-card" aria-label="Document attachments">
-              <div className="p03-card-header-row" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Document attachments">
+              <div className="p03-card-header-row">
                 <div>
                   <h2 className="p03-section-title">
                     {readResult?.current_version
@@ -500,25 +530,22 @@ export function PaperEvidenceWorkspace({
               </div>
 
               {!readResult?.current_version ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No document loaded</div>
-                  <div className="s02-empty-caption">
-                    Enter a document record reference in the search bar above and click “Inspect Document”.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No document loaded. Enter a document record reference in the search bar above and click “Inspect Document”.
+                </p>
               ) : (
                 <div className="p03-history-list">
                   {readResult.current_version.attachments.map((att, idx) => (
                     <article key={att.attachment_id} className="p03-history-card">
                       <div className="p03-history-head">
                         <div className="p03-history-title-group">
-                          <span className="p03-id-pill">File {idx + 1}</span>
+                          <span className="p03-version-pill p03-id-pill p03-mono-inline">File {idx + 1}</span>
                           <strong>{att.media_type}</strong>
                           <span className="p03-version-pill">{att.byte_length} bytes</span>
                         </div>
                         <button
                           type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
+                          className="p02-compact-btn"
                           onClick={() => void downloadAttachment(readResult.current_version!.version_id, att.attachment_id)}
                         >
                           Load File
@@ -533,8 +560,8 @@ export function PaperEvidenceWorkspace({
               )}
 
               {previewUrl && (
-                <div className="p03-action-pair" style={{ marginTop: '0.85rem' }}>
-                  <a href={previewUrl} target="_blank" rel="noreferrer" className="btn-batcave-primary p03-shrink-btn">
+                <div className="p03-next-actions-row">
+                  <a href={previewUrl} target="_blank" rel="noreferrer" className="btn-batcave-primary">
                     Open Loaded File
                   </a>
                 </div>
@@ -542,8 +569,8 @@ export function PaperEvidenceWorkspace({
             </section>
 
             {versionsJson !== null && (
-              <section className="p03-card surface-card" aria-label="Document revision history">
-                <h2 className="p03-section-title" style={{ marginBottom: '0.65rem' }}>
+              <section className="p03-card surface-card form-stack" aria-label="Document revision history">
+                <h2 className="p03-section-title">
                   Document Revision History
                 </h2>
                 <pre className="json-box">{JSON.stringify(versionsJson, null, 2)}</pre>

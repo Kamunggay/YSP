@@ -367,22 +367,26 @@ export function CatalogueWorkspace({
               />
             </div>
 
-            <select
-              id="cat-state"
-              className="form-control p03-shrink-btn"
-              style={{ width: 'auto', minHeight: '38px' }}
-              value={stateFilter}
-              onChange={(e) => setStateFilter(e.target.value as 'active' | 'retired' | 'all')}
-              aria-label="Filter record status"
-            >
-              <option value="active">Active</option>
-              <option value="retired">Retired</option>
-              <option value="all">All states</option>
-            </select>
-
-            <button type="button" className="btn-batcave-secondary p03-shrink-btn" onClick={() => void loadList()}>
-              Reload
-            </button>
+            <div className="p03-search-meta">
+              <span className="p03-version-pill">{rows.length} Loaded</span>
+              {queryText.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setQueryText('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                disabled={busy}
+                onClick={() => void loadList()}
+              >
+                {busy ? 'Loading...' : 'Reload'}
+              </button>
+            </div>
           </div>
 
           <div className="p03-header-nav-row">
@@ -419,43 +423,67 @@ export function CatalogueWorkspace({
               {onBackToDashboard && (
                 <button
                   type="button"
-                  className="btn-batcave-secondary p03-shrink-btn"
+                  className="btn-batcave-secondary p04-back-btn"
                   onClick={onBackToDashboard}
                 >
-                  Back to Chapter Workspace
+                  ← Back to My Work
                 </button>
               )}
             </div>
           </div>
         </header>
 
-        <OperationBanner
-          error={error}
-          statusMessage={statusMessage}
-          replayed={replayed}
-          onDismiss={() => setStatusMessage(null)}
-        />
+        <section className="p03-card surface-card form-stack" aria-label="Catalogue workspace summary">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">{entityHeading} Overview</h2>
+              <p className="form-card-subtitle">
+                Manage chapter {entity} definitions, revisions, and lookup history.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">{rows.length} {entity}</span>
+              <span className="p03-version-pill">Filter: {stateFilter}</span>
+              {selected && <span className="p03-version-pill p03-mono-inline">Editing {selected.code}</span>}
+            </div>
+          </div>
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
 
         {viewTab === 'records' ? (
           <div className="p02-members-grid">
             <div className="p02-column-stack">
-              <section className="p03-card surface-card" aria-label="Catalogue records list">
-                <div className="p03-card-header-row" style={{ marginBottom: '0.65rem' }}>
+              <section className="p03-card surface-card form-stack" aria-label="Catalogue records list">
+                <div className="p03-card-header-row">
                   <div>
                     <h2 className="p03-section-title">{entityHeading} Directory</h2>
                     <p className="form-card-subtitle">
                       {rows.length} {entity} record{rows.length === 1 ? '' : 's'} loaded
                     </p>
                   </div>
+                  <div className="p03-filter-pill-bar" role="group" aria-label="Filter record status">
+                    {(['active', 'retired', 'all'] as const).map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        className={`p03-filter-pill ${stateFilter === st ? 'is-active' : ''}`}
+                        onClick={() => setStateFilter(st)}
+                      >
+                        {st === 'active' ? 'Active' : st === 'retired' ? 'Retired' : 'All'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {rows.length === 0 ? (
-                  <div className="s02-empty-state">
-                    <div className="s02-empty-heading">No {entity} records found</div>
-                    <div className="s02-empty-caption">
-                      Add a new {entityHeading.toLowerCase()} using the form, or change the status filter above.
-                    </div>
-                  </div>
+                  <p className="p03-muted-copy">
+                    No {entity} records found. Add a new {entityHeading.toLowerCase()} using the form, or change the status filter above.
+                  </p>
                 ) : (
                   <div className="p03-history-list">
                     {rows.map((r) => (
@@ -467,7 +495,7 @@ export function CatalogueWorkspace({
                       >
                         <div className="p03-history-head">
                           <div className="p03-history-title-group">
-                            <span className="p03-id-pill">{r.code}</span>
+                            <span className="p03-version-pill p03-id-pill p03-mono-inline">{r.code}</span>
                             <strong>{r.description ?? r.label ?? r.name}</strong>
                             <span className={`s02-status-tag ${r.state === 'active' ? 'is-ready' : 'is-uncertain'}`}>
                               {r.state}
@@ -482,8 +510,8 @@ export function CatalogueWorkspace({
                           </div>
                         </div>
 
-                        <div className="p03-history-meta">
-                          <div className="p02-compact-actions">
+                        <div className="p02-compact-actions">
+                          <div className="p02-compact-btn-group">
                             <button
                               type="button"
                               className="p02-compact-btn"
@@ -535,33 +563,31 @@ export function CatalogueWorkspace({
                 )}
 
                 {nextCursor && (
-                  <div className="p03-action-pair" style={{ marginTop: '0.85rem' }}>
-                    <button
-                      type="button"
-                      className="btn-batcave-secondary p03-shrink-btn"
-                      onClick={() => void loadList(nextCursor)}
-                    >
-                      Load Next Page
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary"
+                    onClick={() => void loadList(nextCursor)}
+                  >
+                    Load Next Page
+                  </button>
                 )}
               </section>
             </div>
 
             <div className="p02-column-stack">
-              <section className="p03-card surface-card" aria-label="Catalogue record editor">
-                <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+              <section className="p03-card surface-card form-stack" aria-label="Catalogue record editor">
+                <h2 className="p03-section-title">
                   {selected ? `Edit ${selected.code} (rev. ${selected.material_version})` : `Add New ${entityHeading}`}
                 </h2>
 
                 {maintainReason && (
-                  <div className="callout-banner is-warning" style={{ marginBottom: '0.85rem' }}>
+                  <div className="callout-banner is-warning">
                     <span className="callout-dot dot-warning" aria-hidden="true" />
                     <span>{maintainReason}</span>
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="p02-column-stack">
+                <form onSubmit={handleSubmit} className="form-stack">
                   {!selected && (
                     <div className="form-group">
                       <label className="form-label" htmlFor="cat-code">
@@ -715,43 +741,63 @@ export function CatalogueWorkspace({
                     />
                   </div>
 
-                  <div className="p03-action-pair">
-                    <button
-                      className="btn-batcave-primary p03-shrink-btn"
-                      type="submit"
-                      disabled={busy || maintainReason !== null}
-                      title={maintainReason ?? undefined}
-                    >
-                      {selected ? 'Save Changes' : 'Add Record'}
-                    </button>
-                    <button
-                      className="btn-batcave-secondary p03-shrink-btn"
-                      type="button"
-                      onClick={parkDraftInMemory}
-                    >
-                      Save Temporary Draft
-                    </button>
-                    {selected && (
+                  {selected ? (
+                    <div className="form-stack">
                       <button
-                        className="btn-batcave-secondary p03-shrink-btn"
-                        type="button"
-                        onClick={() => setSelected(null)}
+                        className="btn-batcave-primary"
+                        type="submit"
+                        disabled={busy || maintainReason !== null}
+                        title={maintainReason ?? undefined}
                       >
-                        Cancel Edit
+                        Save Changes
                       </button>
-                    )}
-                  </div>
+                      <div className="p03-guard-buttons">
+                        <button
+                          className="btn-batcave-secondary"
+                          type="button"
+                          onClick={parkDraftInMemory}
+                        >
+                          Save Temporary Draft
+                        </button>
+                        <button
+                          className="btn-batcave-secondary"
+                          type="button"
+                          onClick={() => setSelected(null)}
+                        >
+                          Cancel Edit
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p03-guard-buttons">
+                      <button
+                        className="btn-batcave-primary"
+                        type="submit"
+                        disabled={busy || maintainReason !== null}
+                        title={maintainReason ?? undefined}
+                      >
+                        Add Record
+                      </button>
+                      <button
+                        className="btn-batcave-secondary"
+                        type="button"
+                        onClick={parkDraftInMemory}
+                      >
+                        Save Temporary Draft
+                      </button>
+                    </div>
+                  )}
                 </form>
               </section>
             </div>
           </div>
         ) : (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Change submission lookup">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Change submission lookup">
+              <h2 className="p03-section-title">
                 Check Submitted Change Status
               </h2>
-              <form onSubmit={lookupOperation} className="p02-column-stack">
+              <form onSubmit={lookupOperation} className="form-stack">
                 <div className="form-group">
                   <label className="form-label" htmlFor="op-name">
                     Change Type
@@ -791,7 +837,7 @@ export function CatalogueWorkspace({
                 </div>
               </form>
 
-              <form onSubmit={lookupOperationById} className="p02-column-stack" style={{ marginTop: '0.85rem' }}>
+              <form onSubmit={lookupOperationById} className="form-stack">
                 <div className="form-group">
                   <label className="form-label" htmlFor="op-id">
                     Change Record Reference
@@ -812,7 +858,7 @@ export function CatalogueWorkspace({
               </form>
 
               {selected && (
-                <div className="form-group" style={{ marginTop: '0.85rem' }}>
+                <div className="form-group">
                   <label className="form-label" htmlFor="cat-ver-n">
                     Read Revision for {selected.code}
                   </label>
@@ -839,19 +885,16 @@ export function CatalogueWorkspace({
               )}
             </section>
 
-            <section className="p03-card surface-card" aria-label="Change inspection output">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Change inspection output">
+              <h2 className="p03-section-title">
                 Record History &amp; Lookup Output
               </h2>
               {lookupResult === null && historyJson === null ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No inspection selected</div>
-                  <div className="s02-empty-caption">
-                    Choose Details, History, or Snapshot on any record card, or check a submission reference on the left.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No inspection selected. Choose Details, History, or Snapshot on any record card, or check a submission reference on the left.
+                </p>
               ) : (
-                <div className="p02-column-stack">
+                <div className="form-stack">
                   {lookupResult !== null && <pre className="json-box">{JSON.stringify(lookupResult, null, 2)}</pre>}
                   {historyJson !== null && <pre className="json-box">{JSON.stringify(historyJson, null, 2)}</pre>}
                 </div>

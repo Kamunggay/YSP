@@ -527,17 +527,33 @@ export function ReservationAndHoldWorkspace({
               />
             </div>
 
-            <button
-              type="button"
-              className="btn-batcave-primary p03-shrink-btn"
-              onClick={() => void loadRfAllocations()}
-              disabled={!rfId.trim()}
-            >
-              Load Allocations
-            </button>
-            <button type="button" className="btn-batcave-secondary p03-shrink-btn" onClick={() => void loadHolds()}>
-              Reload Holds
-            </button>
+            <div className="p03-search-meta">
+              <span className="p03-version-pill">{reservations.length + holds.length} Records</span>
+              {rfId.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setRfId('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                onClick={() => void loadRfAllocations()}
+                disabled={!rfId.trim()}
+              >
+                Load Allocations
+              </button>
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                onClick={() => void loadHolds()}
+              >
+                Reload Holds
+              </button>
+            </div>
           </div>
 
           <div className="p03-header-nav-row">
@@ -577,28 +593,42 @@ export function ReservationAndHoldWorkspace({
               {onBackToDashboard && (
                 <button
                   type="button"
-                  className="btn-batcave-secondary p03-shrink-btn"
+                  className="btn-batcave-secondary p04-back-btn"
                   onClick={onBackToDashboard}
                 >
-                  Back to Chapter Workspace
+                  ← Back to My Work
                 </button>
               )}
             </div>
           </div>
         </header>
 
-        <OperationBanner
-          error={error}
-          statusMessage={statusMessage}
-          replayed={replayed}
-          onDismiss={() => setStatusMessage(null)}
-        />
+        <section className="p03-card surface-card form-stack" aria-label="Reservations and holds overview">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Allocations &amp; Custody Holds</h2>
+              <p className="form-card-subtitle">
+                Reserve available stock batches for approved requisitions or manage frozen stock holds.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">{reservations.length} Reservations</span>
+              <span className="p03-version-pill">{holds.length} Holds</span>
+            </div>
+          </div>
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
 
         {viewTab === 'actions' && (
           <div className="p02-members-grid">
             <div className="p02-column-stack">
-              <section className="p03-card surface-card" aria-label="Context references and holds">
-                <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+              <section className="p03-card surface-card form-stack" aria-label="Context references and holds">
+                <h2 className="p03-section-title">
                   Active Context References
                 </h2>
 
@@ -627,7 +657,7 @@ export function ReservationAndHoldWorkspace({
                   </div>
                 </div>
 
-                <div className="form-group" style={{ marginTop: '0.65rem' }}>
+                <div className="form-group">
                   <label className="form-label" htmlFor="hold-id">
                     Stock Hold Reference
                   </label>
@@ -639,10 +669,10 @@ export function ReservationAndHoldWorkspace({
                   />
                 </div>
 
-                <div className="p03-action-pair" style={{ marginTop: '0.85rem' }}>
+                <div className="p03-next-actions-row">
                   <button
                     type="button"
-                    className="btn-batcave-secondary p03-shrink-btn"
+                    className="btn-batcave-secondary"
                     disabled={!rfId.trim() || !prepId.trim()}
                     onClick={() => {
                       void inspectSubresource(`/api/v1/chapters/${chapterId}/internal-rfs/${rfId.trim()}/reservation-preparations/${prepId.trim()}`);
@@ -653,7 +683,7 @@ export function ReservationAndHoldWorkspace({
                   </button>
                   <button
                     type="button"
-                    className="btn-batcave-secondary p03-shrink-btn"
+                    className="btn-batcave-secondary"
                     disabled={!rfId.trim() || !reservationId.trim()}
                     onClick={() => {
                       void inspectSubresource(
@@ -666,7 +696,7 @@ export function ReservationAndHoldWorkspace({
                   </button>
                   <button
                     type="button"
-                    className="btn-batcave-secondary p03-shrink-btn"
+                    className="btn-batcave-secondary"
                     disabled={!holdId.trim()}
                     onClick={() => {
                       void inspectSubresource(`/api/v1/chapters/${chapterId}/stock-holds/${holdId.trim()}/history?limit=25`);
@@ -678,28 +708,32 @@ export function ReservationAndHoldWorkspace({
                 </div>
 
                 {reviewData?.lines && reviewData.lines.length > 0 && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <h3 className="s02-panel-title" style={{ marginBottom: '0.45rem' }}>
+                  <div className="form-stack">
+                    <h3 className="s02-drawer-subhead">
                       Available Stock Batches
                     </h3>
                     <div className="p03-history-list">
                       {reviewData.lines.map((ln) => (
                         <div key={ln.rf_line_id} className="p03-history-card">
                           <div className="p03-history-head">
-                            <span className="p03-id-pill">Line {ln.rf_line_id.slice(0, 8)}</span>
-                            <div className="p02-compact-actions">
-                              {(ln.candidate_lots ?? []).map((lot) => (
-                                <button
-                                  key={lot.stock_lot_id}
-                                  type="button"
-                                  className="p02-compact-btn"
-                                  onClick={() => applyCandidateLot(lot)}
-                                >
-                                  Use Batch {lot.stock_lot_id.slice(0, 8)} (on hand: {lot.quantity_on_hand})
-                                </button>
-                              ))}
-                            </div>
+                            <span className="p03-version-pill p03-id-pill p03-mono-inline">Line {ln.rf_line_id.slice(0, 8)}</span>
                           </div>
+                          {(ln.candidate_lots ?? []).length > 0 && (
+                            <div className="p02-compact-actions">
+                              <div className="p02-compact-btn-group">
+                                {(ln.candidate_lots ?? []).map((lot) => (
+                                  <button
+                                    key={lot.stock_lot_id}
+                                    type="button"
+                                    className="p02-compact-btn"
+                                    onClick={() => applyCandidateLot(lot)}
+                                  >
+                                    Use Batch {lot.stock_lot_id.slice(0, 8)} (on hand: {lot.quantity_on_hand})
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -707,8 +741,8 @@ export function ReservationAndHoldWorkspace({
                 )}
 
                 {holds.length > 0 && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <h3 className="s02-panel-title" style={{ marginBottom: '0.45rem' }}>
+                  <div className="form-stack">
+                    <h3 className="s02-drawer-subhead">
                       Chapter Stock Holds ({holds.length})
                     </h3>
                     <div className="p03-history-list">
@@ -747,19 +781,19 @@ export function ReservationAndHoldWorkspace({
             </div>
 
             <div className="p02-column-stack">
-              <section className="p03-card surface-card" aria-label="Update reservation or stock hold">
-                <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+              <section className="p03-card surface-card form-stack" aria-label="Update reservation or stock hold">
+                <h2 className="p03-section-title">
                   Update Reservation or Stock Hold
                 </h2>
 
                 {opBlockReason && (
-                  <div className="callout-banner is-warning" style={{ marginBottom: '0.85rem' }}>
+                  <div className="callout-banner is-warning">
                     <span className="callout-dot dot-warning" aria-hidden="true" />
                     <span>{opBlockReason}</span>
                   </div>
                 )}
 
-                <form onSubmit={executeAction} className="p02-column-stack">
+                <form onSubmit={executeAction} className="form-stack">
                   <div className="form-group">
                     <label className="form-label" htmlFor="rh-op">
                       Action
@@ -950,14 +984,14 @@ export function ReservationAndHoldWorkspace({
                         </div>
                       </div>
 
-                      <div>
-                        <div className="p03-card-header-row" style={{ marginBottom: '0.45rem' }}>
-                          <strong className="form-label" style={{ margin: 0 }}>
+                      <div className="form-stack">
+                        <div className="p04-line-top">
+                          <span className="form-label">
                             Paper Signatories (1–10)
-                          </strong>
+                          </span>
                           <button
                             type="button"
-                            className="btn-batcave-secondary p03-shrink-btn"
+                            className="p02-compact-btn"
                             onClick={() => setSignatories((prev) => [...prev, emptySignatory()])}
                           >
                             + Add Signatory
@@ -972,7 +1006,7 @@ export function ReservationAndHoldWorkspace({
                                 {signatories.length > 1 && (
                                   <button
                                     type="button"
-                                    className="btn-batcave-secondary p03-shrink-btn"
+                                    className="p02-compact-btn is-subtle-danger"
                                     onClick={() => setSignatories((p) => p.filter((_, i) => i !== idx))}
                                   >
                                     Remove
@@ -1063,7 +1097,7 @@ export function ReservationAndHoldWorkspace({
                         value={evidenceBinding}
                         onChange={setEvidenceBinding}
                       />
-                      <label className="p03-checkbox-row">
+                      <label className={`p03-checkbox-row ${matchesPaper ? 'is-checked' : ''}`}>
                         <input
                           type="checkbox"
                           className="p03-sr-checkbox"
@@ -1080,9 +1114,9 @@ export function ReservationAndHoldWorkspace({
                     </>
                   )}
 
-                  <div className="p03-action-pair">
+                  <div className="p03-guard-buttons">
                     <button
-                      className="btn-batcave-primary p03-shrink-btn"
+                      className="btn-batcave-primary"
                       type="submit"
                       disabled={busy || opBlockReason !== null}
                       title={opBlockReason ?? undefined}
@@ -1090,7 +1124,7 @@ export function ReservationAndHoldWorkspace({
                       Run Action
                     </button>
                     <button
-                      className="btn-batcave-secondary p03-shrink-btn"
+                      className="btn-batcave-secondary"
                       type="button"
                       onClick={parkDraftInMemory}
                     >
@@ -1105,31 +1139,27 @@ export function ReservationAndHoldWorkspace({
 
         {viewTab === 'records' && (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Requisition reservations">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.65rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Requisition reservations">
+              <h2 className="p03-section-title">
                 Requisition Reservations ({reservations.length})
               </h2>
               {reservations.length === 0 && reviewData === null ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No reservations loaded</div>
-                  <div className="s02-empty-caption">
-                    Enter a requisition reference in the top search bar and click “Load Allocations”.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No reservations loaded. Enter a requisition reference in the top search bar and click “Load Allocations”.
+                </p>
               ) : (
                 <pre className="json-box">{JSON.stringify({ review: reviewData, reservations }, null, 2)}</pre>
               )}
             </section>
 
-            <section className="p03-card surface-card" aria-label="Chapter stock holds">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.65rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Chapter stock holds">
+              <h2 className="p03-section-title">
                 Chapter Stock Holds ({holds.length})
               </h2>
               {holds.length === 0 ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No stock holds recorded</div>
-                  <div className="s02-empty-caption">Active and historical stock holds appear here once recorded.</div>
-                </div>
+                <p className="p03-muted-copy">
+                  No stock holds recorded. Active and historical stock holds appear here once recorded.
+                </p>
               ) : (
                 <pre className="json-box">{JSON.stringify(holds, null, 2)}</pre>
               )}
@@ -1139,11 +1169,11 @@ export function ReservationAndHoldWorkspace({
 
         {viewTab === 'status' && (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Check submitted action status">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Check submitted action status">
+              <h2 className="p03-section-title">
                 Check Submitted Action Status
               </h2>
-              <div className="p02-column-stack">
+              <div className="form-stack">
                 <form onSubmit={lookupByKey} className="form-group">
                   <label className="form-label" htmlFor="rh-lkp">
                     Submission Reference
@@ -1182,17 +1212,14 @@ export function ReservationAndHoldWorkspace({
               </div>
             </section>
 
-            <section className="p03-card surface-card" aria-label="History and status output">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="History and status output">
+              <h2 className="p03-section-title">
                 Status &amp; History Output
               </h2>
               {resultJson === null ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No result loaded</div>
-                  <div className="s02-empty-caption">
-                    Inspect a preparation/hold history or search by submission reference on the left.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No result loaded. Inspect a preparation or hold history, or search by submission reference on the left.
+                </p>
               ) : (
                 <pre className="json-box">{JSON.stringify(resultJson, null, 2)}</pre>
               )}

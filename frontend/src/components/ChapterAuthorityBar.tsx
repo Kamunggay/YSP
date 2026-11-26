@@ -47,20 +47,20 @@ export function ChapterAuthorityBar({
   const blockedActions = (access?.actions ?? []).filter((a) => a.state !== 'allowed');
 
   return (
-    <section className="p03-card surface-card" aria-label="Chapter roles and permissions">
-      <div className="p03-card-header-row">
+    <section className="p04-line-card form-stack" aria-label="Chapter roles and permissions">
+      <div className="p04-line-top">
         <div>
-          <h3 className="p03-section-title">Chapter Context &amp; Permissions</h3>
+          <h3 className="s02-drawer-subhead">Chapter Context &amp; Permissions</h3>
           <p className="form-card-subtitle">
             {currentMembership
               ? `${currentMembership.chapter.reference} · ${currentMembership.chapter.display_name}`
               : 'Select an active chapter to verify permissions.'}
           </p>
         </div>
-        <div className="p03-action-pair">
+        <div className="p02-compact-btn-group">
           <button
             type="button"
-            className="btn-batcave-secondary p03-shrink-btn"
+            className="p02-compact-btn"
             onClick={onRefreshAccess}
             disabled={!selectedChapterId}
           >
@@ -68,7 +68,7 @@ export function ChapterAuthorityBar({
           </button>
           <button
             type="button"
-            className="btn-batcave-secondary p03-shrink-btn"
+            className="p02-compact-btn"
             onClick={() => setShowPermissions((prev) => !prev)}
           >
             {showPermissions ? 'Hide Permissions' : `Show Permissions (${access?.actions.length ?? 0})`}
@@ -76,7 +76,7 @@ export function ChapterAuthorityBar({
         </div>
       </div>
 
-      <div className="p03-two-col" style={{ marginTop: '0.85rem' }}>
+      <div className="p03-two-col">
         <div className="form-group">
           <label className="form-label" htmlFor="auth-bar-chapter-select">
             Active Chapter
@@ -109,7 +109,7 @@ export function ChapterAuthorityBar({
 
         <div className="form-group">
           <span className="form-label">Assigned Roles &amp; Session Status</span>
-          <div className="p03-chip-wrap" style={{ marginTop: '0.25rem' }}>
+          <div className="p03-chip-wrap">
             {currentMembership?.duties.length ? (
               currentMembership.duties.map((duty) => (
                 <span key={duty} className="s02-duty-chip">
@@ -132,7 +132,7 @@ export function ChapterAuthorityBar({
       </div>
 
       {blockedActions.length > 0 && (
-        <div className="callout-banner is-warning" style={{ marginTop: '0.85rem' }}>
+        <div className="callout-banner is-warning">
           <span className="callout-dot dot-warning" aria-hidden="true" />
           <div>
             <strong>{blockedActions.length} action{blockedActions.length === 1 ? '' : 's'} currently restricted:</strong>{' '}
@@ -146,7 +146,7 @@ export function ChapterAuthorityBar({
       )}
 
       {showPermissions && access && (
-        <div className="p05-table-wrap" style={{ marginTop: '1rem' }}>
+        <div className="p05-table-wrap">
           <table className="p05-cells-table">
             <thead>
               <tr>

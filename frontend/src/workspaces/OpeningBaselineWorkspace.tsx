@@ -146,6 +146,7 @@ export function OpeningBaselineWorkspace({
   onBackToDashboard,
 }: OpeningBaselineWorkspaceProps) {
   const [viewTab, setViewTab] = useState<'workflow' | 'records' | 'status'>('workflow');
+  const [searchQuery, setSearchQuery] = useState('');
   const formKey = 'opening_baseline_editor';
 
   function readSavedDraft(): {
@@ -619,48 +620,73 @@ export function OpeningBaselineWorkspace({
     }
   }
 
+  const searchNeedle = searchQuery.trim().toLowerCase();
+  const filteredIpcs = searchNeedle
+    ? ipcs.filter(
+        (i) =>
+          (i.reference ?? '').toLowerCase().includes(searchNeedle) ||
+          (i.state ?? i.status ?? '').toLowerCase().includes(searchNeedle) ||
+          i.id.toLowerCase().includes(searchNeedle),
+      )
+    : ipcs;
+  const filteredRms = searchNeedle
+    ? rms.filter(
+        (r) =>
+          (r.reference ?? '').toLowerCase().includes(searchNeedle) ||
+          (r.state ?? r.status ?? '').toLowerCase().includes(searchNeedle) ||
+          r.id.toLowerCase().includes(searchNeedle),
+      )
+    : rms;
+
   return (
     <main className="p03-workspace-shell">
       <div className="p03-workspace-inner">
         <header className="p03-top-header surface-card">
           <div className="p03-header-search-row">
-            <select
-              id="ipc-sel"
-              className="form-control"
-              value={selectedIpcId}
-              onChange={(e) => setSelectedIpcId(e.target.value)}
-              aria-label="Selected Count Form"
-            >
-              <option value="">-- Select Count Form ({ipcs.length}) --</option>
-              {ipcs.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.reference ?? 'Count Form'} ({i.state ?? i.status ?? '?'} · rev. {i.revision ?? '?'}, content v{i.material_version ?? '?'})
-                </option>
-              ))}
-            </select>
+            <div className="p03-search-input-wrap">
+              <svg
+                className="p03-search-icon"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                id="op-search"
+                className="form-control p03-search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter opening counts or receipt memos by reference or state..."
+                aria-label="Filter opening counts or receipt memos"
+              />
+            </div>
 
-            <select
-              id="rm-sel"
-              className="form-control"
-              value={selectedRmId}
-              onChange={(e) => setSelectedRmId(e.target.value)}
-              aria-label="Selected Receipt Memo"
-            >
-              <option value="">-- Select Opening Receipt ({rms.length}) --</option>
-              {rms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.reference ?? 'Opening Receipt'} ({r.state ?? r.status ?? '?'} · rev. {r.revision ?? '?'}, content v{r.material_version ?? '?'})
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              className="btn-batcave-secondary p03-shrink-btn"
-              onClick={() => void loadAll()}
-            >
-              Refresh State
-            </button>
+            <div className="p03-search-meta">
+              <span className="p03-version-pill">{ipcs.length} Counts</span>
+              <span className="p03-version-pill">{rms.length} Receipts</span>
+              {searchQuery.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setSearchQuery('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                onClick={() => void loadAll()}
+              >
+                Refresh
+              </button>
+            </div>
           </div>
 
           <div className="p03-header-nav-row">
@@ -685,7 +711,7 @@ export function OpeningBaselineWorkspace({
                   className={`p03-filter-pill ${viewTab === 'records' ? 'is-active' : ''}`}
                   onClick={() => setViewTab('records')}
                 >
-                  Baseline &amp; Forms ({ipcs.length + rms.length})
+                  Baseline &amp; Forms ({filteredIpcs.length + filteredRms.length})
                 </button>
                 <button
                   type="button"
@@ -700,38 +726,92 @@ export function OpeningBaselineWorkspace({
               {onBackToDashboard && (
                 <button
                   type="button"
-                  className="btn-batcave-secondary p03-shrink-btn"
+                  className="btn-batcave-secondary p04-back-btn"
                   onClick={onBackToDashboard}
                 >
-                  Back to Chapter Workspace
+                  ← Back to My Work
                 </button>
               )}
             </div>
           </div>
         </header>
 
-        <OperationBanner
-          error={error}
-          statusMessage={statusMessage}
-          replayed={replayed}
-          onDismiss={() => setStatusMessage(null)}
-        />
+        <section className="p03-card surface-card form-stack" aria-label="Opening inventory context selectors">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Active Opening Context</h2>
+              <p className="form-card-subtitle">
+                Choose the opening count form and receipt memo to work with across steps.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">{baseline ? 'Baseline Active' : 'Pending Baseline'}</span>
+            </div>
+          </div>
+
+          <div className="p03-two-col">
+            <div className="form-group">
+              <label className="form-label" htmlFor="ipc-sel">
+                Selected Count Form ({ipcs.length})
+              </label>
+              <select
+                id="ipc-sel"
+                className="form-control"
+                value={selectedIpcId}
+                onChange={(e) => setSelectedIpcId(e.target.value)}
+              >
+                <option value="">-- Select Count Form ({ipcs.length}) --</option>
+                {ipcs.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.reference ?? 'Count Form'} ({i.state ?? i.status ?? '?'} · rev. {i.revision ?? '?'}, content v{i.material_version ?? '?'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="rm-sel">
+                Selected Receipt Memo ({rms.length})
+              </label>
+              <select
+                id="rm-sel"
+                className="form-control"
+                value={selectedRmId}
+                onChange={(e) => setSelectedRmId(e.target.value)}
+              >
+                <option value="">-- Select Opening Receipt ({rms.length}) --</option>
+                {rms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.reference ?? 'Opening Receipt'} ({r.state ?? r.status ?? '?'} · rev. {r.revision ?? '?'}, content v{r.material_version ?? '?'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
 
         {viewTab === 'workflow' && (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Record or update opening inventory">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Record or update opening inventory">
+              <h2 className="p03-section-title">
                 Record or Update Opening Inventory
               </h2>
 
               {opBlockReason && (
-                <div className="callout-banner is-warning" style={{ marginBottom: '0.85rem' }}>
+                <div className="callout-banner is-warning">
                   <span className="callout-dot dot-warning" aria-hidden="true" />
                   <span>{opBlockReason}</span>
                 </div>
               )}
 
-              <form onSubmit={runOpeningAction} className="p02-column-stack">
+              <form onSubmit={runOpeningAction} className="form-stack">
                 <div className="p03-two-col">
                   <div className="form-group">
                     <label className="form-label" htmlFor="op-act">
@@ -828,39 +908,37 @@ export function OpeningBaselineWorkspace({
                 )}
 
                 {(actionEndpoint === 'createIpc' || actionEndpoint === 'replaceIpc') && (
-                  <div className="p02-column-stack">
-                    <div className="p03-two-col">
-                      <div className="form-group">
-                        <label className="form-label">Count Cutoff Date &amp; Time (optional)</label>
-                        <input
-                          className="form-control"
-                          value={cutoffAt}
-                          placeholder="2026-11-26T00:00:00.000000Z"
-                          onChange={(e) => setCutoffAt(e.target.value)}
-                        />
-                      </div>
-                      <label className="p03-checkbox-row" style={{ alignSelf: 'end' }}>
-                        <input
-                          type="checkbox"
-                          className="p03-sr-checkbox"
-                          checked={suspended}
-                          onChange={(e) => setSuspended(e.target.checked)}
-                        />
-                        <span className={`p03-check-indicator ${suspended ? 'is-checked' : ''}`} aria-hidden="true">
-                          ✓
-                        </span>
-                        <span className="p03-checkbox-main">Informal movements suspended</span>
-                      </label>
+                  <div className="form-stack">
+                    <div className="form-group">
+                      <label className="form-label">Count Cutoff Date &amp; Time (optional)</label>
+                      <input
+                        className="form-control"
+                        value={cutoffAt}
+                        placeholder="2026-11-26T00:00:00.000000Z"
+                        onChange={(e) => setCutoffAt(e.target.value)}
+                      />
                     </div>
+                    <label className={`p03-checkbox-row ${suspended ? 'is-checked' : ''}`}>
+                      <input
+                        type="checkbox"
+                        className="p03-sr-checkbox"
+                        checked={suspended}
+                        onChange={(e) => setSuspended(e.target.checked)}
+                      />
+                      <span className={`p03-check-indicator ${suspended ? 'is-checked' : ''}`} aria-hidden="true">
+                        ✓
+                      </span>
+                      <span className="p03-checkbox-main">Informal movements suspended</span>
+                    </label>
 
-                    <div>
-                      <div className="p03-card-header-row" style={{ marginBottom: '0.4rem' }}>
-                        <strong className="form-label" style={{ margin: 0 }}>
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
                           Count Team
-                        </strong>
+                        </span>
                         <button
                           type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
+                          className="p02-compact-btn"
                           onClick={() => setTeam((p) => [...p, { user_id: '', regular_custodian: false }])}
                         >
                           + Counter
@@ -878,7 +956,7 @@ export function OpeningBaselineWorkspace({
                                   setTeam((p) => p.map((x, i) => (i === idx ? { ...x, user_id: e.target.value } : x)))
                                 }
                               />
-                              <label className="p03-checkbox-row">
+                              <label className={`p03-checkbox-row ${t.regular_custodian ? 'is-checked' : ''}`}>
                                 <input
                                   type="checkbox"
                                   className="p03-sr-checkbox"
@@ -903,14 +981,14 @@ export function OpeningBaselineWorkspace({
                       </div>
                     </div>
 
-                    <div>
-                      <div className="p03-card-header-row" style={{ marginBottom: '0.4rem' }}>
-                        <strong className="form-label" style={{ margin: 0 }}>
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
                           Pinned Policies (optional in draft)
-                        </strong>
+                        </span>
                         <button
                           type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
+                          className="p02-compact-btn"
                           onClick={() =>
                             setPolicies((p) => [...p, { setting_key: 'ipc_authorization', policy_id: '', version: '1' }])
                           }
@@ -965,14 +1043,14 @@ export function OpeningBaselineWorkspace({
                       )}
                     </div>
 
-                    <div>
-                      <div className="p03-card-header-row" style={{ marginBottom: '0.4rem' }}>
-                        <strong className="form-label" style={{ margin: 0 }}>
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
                           Inventory Count Lines
-                        </strong>
+                        </span>
                         <button
                           type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
+                          className="p02-compact-btn"
                           onClick={() => setIpcLines((p) => [...p, emptyIpcLine()])}
                         >
                           + Add Count Line
@@ -1161,7 +1239,7 @@ export function OpeningBaselineWorkspace({
                 )}
 
                 {actionEndpoint === 'saveCount' && (
-                  <div className="p02-column-stack">
+                  <div className="form-stack">
                     <div className="p03-two-col">
                       <div className="form-group">
                         <label className="form-label">Date &amp; Time Counted</label>
@@ -1181,7 +1259,7 @@ export function OpeningBaselineWorkspace({
                       </div>
                     </div>
 
-                    <label className="p03-checkbox-row">
+                    <label className={`p03-checkbox-row ${countCompleted ? 'is-checked' : ''}`}>
                       <input
                         type="checkbox"
                         className="p03-sr-checkbox"
@@ -1194,13 +1272,13 @@ export function OpeningBaselineWorkspace({
                       <span className="p03-checkbox-main">Physical count completed</span>
                     </label>
 
-                    <div className="p03-card-header-row">
-                      <strong className="form-label" style={{ margin: 0 }}>
+                    <div className="p04-line-top">
+                      <span className="form-label">
                         Count Entries
-                      </strong>
+                      </span>
                       <button
                         type="button"
-                        className="btn-batcave-secondary p03-shrink-btn"
+                        className="p02-compact-btn"
                         onClick={() =>
                           setCountEntries((p) => [...p, { ipc_line_id: '', quantity: '1', condition: 'usable', notes: '' }])
                         }
@@ -1320,14 +1398,14 @@ export function OpeningBaselineWorkspace({
                 )}
 
                 {(actionEndpoint === 'createRm' || actionEndpoint === 'replaceRm') && (
-                  <div>
-                    <div className="p03-card-header-row" style={{ marginBottom: '0.45rem' }}>
-                      <strong className="form-label" style={{ margin: 0 }}>
+                  <div className="form-stack">
+                    <div className="p04-line-top">
+                      <span className="form-label">
                         Inspection Results by Line
-                      </strong>
+                      </span>
                       <button
                         type="button"
-                        className="btn-batcave-secondary p03-shrink-btn"
+                        className="p02-compact-btn"
                         onClick={() =>
                           setRmLines((p) => [
                             ...p,
@@ -1472,9 +1550,9 @@ export function OpeningBaselineWorkspace({
                   </div>
                 )}
 
-                <div className="p03-action-pair">
+                <div className="p03-guard-buttons">
                   <button
-                    className="btn-batcave-primary p03-shrink-btn"
+                    className="btn-batcave-primary"
                     type="submit"
                     disabled={busy || opBlockReason !== null}
                     title={opBlockReason ?? undefined}
@@ -1482,7 +1560,7 @@ export function OpeningBaselineWorkspace({
                     Submit Opening Action
                   </button>
                   <button
-                    className="btn-batcave-secondary p03-shrink-btn"
+                    className="btn-batcave-secondary"
                     type="button"
                     onClick={parkDraftInMemory}
                   >
@@ -1492,14 +1570,14 @@ export function OpeningBaselineWorkspace({
               </form>
             </section>
 
-            <section className="p03-card surface-card" aria-label="Opening inspection actions">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Opening inspection actions">
+              <h2 className="p03-section-title">
                 Quick Read &amp; Print Controls
               </h2>
-              <div className="p02-column-stack">
-                <div>
-                  <strong className="form-label">Inventory Count Form ({ipcs.length})</strong>
-                  <div className="p02-compact-actions" style={{ marginTop: '0.35rem' }}>
+              <div className="form-stack">
+                <div className="form-group">
+                  <span className="form-label">Inventory Count Form ({ipcs.length})</span>
+                  <div className="p02-compact-btn-group">
                     <button
                       type="button"
                       className="p02-compact-btn"
@@ -1558,9 +1636,9 @@ export function OpeningBaselineWorkspace({
                   </div>
                 </div>
 
-                <div>
-                  <strong className="form-label">Opening Receipt Memo ({rms.length})</strong>
-                  <div className="p02-compact-actions" style={{ marginTop: '0.35rem' }}>
+                <div className="form-group">
+                  <span className="form-label">Opening Receipt Memo ({rms.length})</span>
+                  <div className="p02-compact-btn-group">
                     <button
                       type="button"
                       className="p02-compact-btn"
@@ -1625,38 +1703,36 @@ export function OpeningBaselineWorkspace({
 
         {viewTab === 'records' && (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Opening baseline summary">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.65rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Opening baseline summary">
+              <h2 className="p03-section-title">
                 Current Opening Baseline Summary
               </h2>
               {baseline === null ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No opening baseline posted</div>
-                  <div className="s02-empty-caption">
-                    Complete and post an opening count and receipt memo to establish the chapter opening balance.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No opening baseline posted. Complete and post an opening count and receipt memo to establish the chapter opening balance.
+                </p>
               ) : (
                 <pre className="json-box">{JSON.stringify(baseline, null, 2)}</pre>
               )}
             </section>
 
-            <section className="p03-card surface-card" aria-label="Opening counts and receipts">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.65rem' }}>
-                Counts ({ipcs.length}) &amp; Receipts ({rms.length})
+            <section className="p03-card surface-card form-stack" aria-label="Opening counts and receipts">
+              <h2 className="p03-section-title">
+                Counts ({filteredIpcs.length}) &amp; Receipts ({filteredRms.length})
               </h2>
-              {ipcs.length === 0 && rms.length === 0 ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No opening records yet</div>
-                  <div className="s02-empty-caption">Start an opening inventory count from the Workflow tab.</div>
-                </div>
+              {filteredIpcs.length === 0 && filteredRms.length === 0 ? (
+                <p className="p03-muted-copy">
+                  {searchNeedle
+                    ? 'No opening records match your current search filter.'
+                    : 'No opening records yet. Start an opening inventory count from the Workflow tab.'}
+                </p>
               ) : (
                 <div className="p03-history-list">
-                  {ipcs.map((i) => (
+                  {filteredIpcs.map((i) => (
                     <article key={i.id} className={`p03-history-card ${selectedIpcId === i.id ? 'is-search-match' : ''}`}>
                       <div className="p03-history-head">
                         <div className="p03-history-title-group">
-                          <span className="p03-id-pill">{i.reference ?? 'Count'}</span>
+                          <span className="p03-version-pill p03-id-pill p03-mono-inline">{i.reference ?? 'Count'}</span>
                           <span className="s02-status-tag">{i.state ?? i.status ?? 'draft'}</span>
                           <span className="p03-version-pill">rev. {i.revision ?? '?'}</span>
                         </div>
@@ -1666,11 +1742,11 @@ export function OpeningBaselineWorkspace({
                       </div>
                     </article>
                   ))}
-                  {rms.map((r) => (
+                  {filteredRms.map((r) => (
                     <article key={r.id} className={`p03-history-card ${selectedRmId === r.id ? 'is-search-match' : ''}`}>
                       <div className="p03-history-head">
                         <div className="p03-history-title-group">
-                          <span className="p03-id-pill">{r.reference ?? 'Receipt'}</span>
+                          <span className="p03-version-pill p03-id-pill p03-mono-inline">{r.reference ?? 'Receipt'}</span>
                           <span className="s02-status-tag">{r.state ?? r.status ?? 'draft'}</span>
                           <span className="p03-version-pill">rev. {r.revision ?? '?'}</span>
                         </div>
@@ -1688,11 +1764,11 @@ export function OpeningBaselineWorkspace({
 
         {viewTab === 'status' && (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Check status and past revisions">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Check status and past revisions">
+              <h2 className="p03-section-title">
                 Check Status &amp; Revisions
               </h2>
-              <div className="p02-column-stack">
+              <div className="form-stack">
                 <div className="form-group">
                   <label className="form-label" htmlFor="op-rev-n">
                     Revision Number
@@ -1717,7 +1793,7 @@ export function OpeningBaselineWorkspace({
                   </div>
                 </div>
 
-                <form onSubmit={lookupByKey} className="p02-column-stack">
+                <form onSubmit={lookupByKey} className="form-stack">
                   <div className="form-group">
                     <label className="form-label" htmlFor="op-lkp-name">
                       Action Type
@@ -1779,19 +1855,16 @@ export function OpeningBaselineWorkspace({
               </div>
             </section>
 
-            <section className="p03-card surface-card" aria-label="Details and printable preview">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Details and printable preview">
+              <h2 className="p03-section-title">
                 Inspection &amp; Printable Form
               </h2>
               {detailJson === null && printHtml === null ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No opening record inspected</div>
-                  <div className="s02-empty-caption">
-                    Choose Details, History, or Print Preview on a selected count form or opening receipt.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No opening record inspected. Choose Details, History, or Print Preview on a selected count form or opening receipt.
+                </p>
               ) : (
-                <div className="p02-column-stack">
+                <div className="form-stack">
                   {detailJson !== null && <pre className="json-box">{JSON.stringify(detailJson, null, 2)}</pre>}
                   {printHtml !== null && (
                     <iframe title="Opening Print Preview" sandbox="" srcDoc={printHtml} className="stage1-print-frame" />

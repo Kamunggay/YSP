@@ -444,25 +444,21 @@ export function RequisitionWorkspace({
               />
             </div>
 
-            <select
-              id="rf-status-f"
-              className="form-control p03-shrink-btn"
-              style={{ width: 'auto', minHeight: '38px' }}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              aria-label="Filter requisition status"
-            >
-              <option value="">All visible states</option>
-              <option value="draft">Draft</option>
-              <option value="submitted">Submitted</option>
-              <option value="approved">Approved</option>
-              <option value="returned">Returned</option>
-              <option value="canceled">Cancelled</option>
-            </select>
-
-            <button type="button" className="btn-batcave-secondary p03-shrink-btn" onClick={() => void loadRfs()}>
-              Reload List
-            </button>
+            <div className="p03-search-meta">
+              <span className="p03-version-pill">{filteredRfs.length} Matching</span>
+              {searchText.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setSearchText('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button type="button" className="p03-search-action-btn" onClick={() => void loadRfs()}>
+                Reload
+              </button>
+            </div>
           </div>
 
           <div className="p03-header-nav-row">
@@ -493,43 +489,78 @@ export function RequisitionWorkspace({
               {onBackToDashboard && (
                 <button
                   type="button"
-                  className="btn-batcave-secondary p03-shrink-btn"
+                  className="btn-batcave-secondary p04-back-btn"
                   onClick={onBackToDashboard}
                 >
-                  Back to Chapter Workspace
+                  ← Back to My Work
                 </button>
               )}
             </div>
           </div>
         </header>
 
-        <OperationBanner
-          error={error}
-          statusMessage={statusMessage}
-          replayed={replayed}
-          onDismiss={() => setStatusMessage(null)}
-        />
+        <section className="p03-card surface-card form-stack" aria-label="Requisition workspace overview">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Requisition Processing</h2>
+              <p className="form-card-subtitle">
+                Draft, submit, approve, or revise internal chapter stock requests.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">{filteredRfs.length} Visible</span>
+              {selectedRf && (
+                <span className="p03-version-pill p03-mono-inline">
+                  {selectedRf.reference ?? 'Draft'} · rev. {selectedRf.version}
+                </span>
+              )}
+            </div>
+          </div>
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
 
         {viewTab === 'workspace' ? (
           <div className="p02-members-grid">
             <div className="p02-column-stack">
-              <section className="p03-card surface-card" aria-label="Requisitions queue">
-                <div className="p03-card-header-row" style={{ marginBottom: '0.65rem' }}>
+              <section className="p03-card surface-card form-stack" aria-label="Requisitions queue">
+                <div className="p03-card-header-row">
                   <div>
                     <h2 className="p03-section-title">Requisition Queue</h2>
                     <p className="form-card-subtitle">
-                      Select an existing requisition to edit, submit, or review, or draft a new request on the right.
+                      Select a requisition to edit or submit, or start a new request on the right.
                     </p>
                   </div>
                 </div>
 
+                <div className="p03-filter-pill-bar" role="group" aria-label="Filter requisition status">
+                  {[
+                    { value: '', label: 'All' },
+                    { value: 'draft', label: 'Draft' },
+                    { value: 'submitted', label: 'Submitted' },
+                    { value: 'approved', label: 'Approved' },
+                    { value: 'returned', label: 'Returned' },
+                    { value: 'canceled', label: 'Cancelled' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value || 'all'}
+                      type="button"
+                      className={`p03-filter-pill ${statusFilter === opt.value ? 'is-active' : ''}`}
+                      onClick={() => setStatusFilter(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
                 {filteredRfs.length === 0 ? (
-                  <div className="s02-empty-state">
-                    <div className="s02-empty-heading">No requisitions found</div>
-                    <div className="s02-empty-caption">
-                      Create a new requisition draft on the right or adjust your filter criteria above.
-                    </div>
-                  </div>
+                  <p className="p03-muted-copy">
+                    No requisitions found. Create a new requisition draft on the right or adjust your filter criteria above.
+                  </p>
                 ) : (
                   <div className="p03-history-list">
                     {filteredRfs.map((r) => (
@@ -539,7 +570,7 @@ export function RequisitionWorkspace({
                       >
                         <div className="p03-history-head">
                           <div className="p03-history-title-group">
-                            <span className="p03-id-pill">{r.reference ?? 'Draft'}</span>
+                            <span className="p03-version-pill p03-id-pill p03-mono-inline">{r.reference ?? 'Draft'}</span>
                             <span
                               className={`s02-status-tag ${
                                 r.status === 'approved'
@@ -571,29 +602,27 @@ export function RequisitionWorkspace({
                 )}
 
                 {nextCursor && (
-                  <div className="p03-action-pair" style={{ marginTop: '0.85rem' }}>
-                    <button
-                      type="button"
-                      className="btn-batcave-secondary p03-shrink-btn"
-                      onClick={() => void loadRfs(nextCursor)}
-                    >
-                      Load Next Page
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary"
+                    onClick={() => void loadRfs(nextCursor)}
+                  >
+                    Load Next Page
+                  </button>
                 )}
               </section>
             </div>
 
             <div className="p02-column-stack">
-              <section className="p03-card surface-card" aria-label="Requisition editor">
-                <div className="p03-card-header-row" style={{ marginBottom: '0.75rem' }}>
+              <section className="p03-card surface-card form-stack" aria-label="Requisition editor">
+                <div className="p04-line-top">
                   <h2 className="p03-section-title">
                     {selectedRf ? `Requisition: ${selectedRf.reference ?? 'Draft'}` : 'New Requisition'}
                   </h2>
                   {selectedRf && (
                     <button
                       type="button"
-                      className="btn-batcave-secondary p03-shrink-btn"
+                      className="p02-compact-btn"
                       onClick={() => setSelectedRf(null)}
                     >
                       New Draft
@@ -601,7 +630,7 @@ export function RequisitionWorkspace({
                   )}
                 </div>
 
-                <div className="p02-column-stack">
+                <div className="form-stack">
                   <div className="form-group">
                     <label className="form-label" htmlFor="rf-unit">
                       Requesting Unit (optional for draft)
@@ -652,14 +681,12 @@ export function RequisitionWorkspace({
                     />
                   </div>
 
-                  <div>
-                    <div className="p03-card-header-row" style={{ marginBottom: '0.45rem' }}>
-                      <strong className="form-label" style={{ margin: 0 }}>
-                        Requested Items &amp; Quantities
-                      </strong>
+                  <div className="form-stack">
+                    <div className="p04-line-top">
+                      <span className="form-label">Requested Items &amp; Quantities</span>
                       <button
                         type="button"
-                        className="btn-batcave-secondary p03-shrink-btn"
+                        className="p02-compact-btn"
                         onClick={() => setLines((prev) => [...prev, emptyRfLine()])}
                       >
                         + Add Line
@@ -676,7 +703,7 @@ export function RequisitionWorkspace({
                             {lines.length > 1 && (
                               <button
                                 type="button"
-                                className="btn-batcave-secondary p03-shrink-btn"
+                                className="p02-compact-btn is-subtle-danger"
                                 onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
                               >
                                 Remove
@@ -762,46 +789,51 @@ export function RequisitionWorkspace({
                     />
                   </div>
 
-                  <div className="p03-action-pair">
-                    <button
-                      type="button"
-                      className="btn-batcave-primary p03-shrink-btn"
-                      disabled={busy || draftReason !== null}
-                      title={draftReason ?? undefined}
-                      onClick={() => void submitDraftOrReplace('create')}
-                    >
-                      Create Draft
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-batcave-secondary p03-shrink-btn"
-                      disabled={busy || !selectedRf || draftReason !== null}
-                      title={draftReason ?? undefined}
-                      onClick={() => void submitDraftOrReplace('replace')}
-                    >
-                      Save Draft
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-batcave-secondary p03-shrink-btn"
-                      onClick={saveMemoryBuffer}
-                    >
-                      Save Temporary Draft
-                    </button>
-                    {selectedRf && (
-                      <>
+                  {!selectedRf ? (
+                    <div className="p03-guard-buttons">
+                      <button
+                        type="button"
+                        className="btn-batcave-primary"
+                        disabled={busy || draftReason !== null}
+                        title={draftReason ?? undefined}
+                        onClick={() => void submitDraftOrReplace('create')}
+                      >
+                        Create Draft
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-batcave-secondary"
+                        onClick={saveMemoryBuffer}
+                      >
+                        Save Temporary Draft
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="form-stack">
+                      <div className="p03-guard-buttons">
                         <button
                           type="button"
-                          className="btn-batcave-primary p03-shrink-btn"
+                          className="btn-batcave-primary"
+                          disabled={busy || draftReason !== null}
+                          title={draftReason ?? undefined}
+                          onClick={() => void submitDraftOrReplace('replace')}
+                        >
+                          Save Draft
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-batcave-primary"
                           disabled={busy || submitReason !== null}
                           title={submitReason ?? undefined}
                           onClick={() => void runTransition('submit')}
                         >
                           Submit
                         </button>
+                      </div>
+                      <div className="p03-next-actions-row">
                         <button
                           type="button"
-                          className="btn-batcave-primary p03-shrink-btn"
+                          className="btn-batcave-secondary"
                           disabled={busy || approveReason !== null}
                           title={approveReason ?? undefined}
                           onClick={() => void runTransition('approve')}
@@ -810,7 +842,7 @@ export function RequisitionWorkspace({
                         </button>
                         <button
                           type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
+                          className="btn-batcave-secondary"
                           disabled={busy || approveReason !== null}
                           title={approveReason ?? undefined}
                           onClick={() => void runTransition('return')}
@@ -819,7 +851,7 @@ export function RequisitionWorkspace({
                         </button>
                         <button
                           type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
+                          className="btn-batcave-secondary"
                           disabled={busy || draftReason !== null}
                           title={draftReason ?? undefined}
                           onClick={() => void submitDraftOrReplace('revise')}
@@ -828,24 +860,40 @@ export function RequisitionWorkspace({
                         </button>
                         <button
                           type="button"
-                          className="btn-batcave-secondary p03-shrink-btn"
+                          className="btn-batcave-secondary"
                           disabled={busy || draftReason !== null}
                           title={draftReason ?? undefined}
                           onClick={() => void runTransition('cancel')}
                         >
                           Cancel Remainder
                         </button>
-                      </>
-                    )}
-                  </div>
+                        <button
+                          type="button"
+                          className="btn-batcave-secondary"
+                          disabled={busy || draftReason !== null}
+                          title={draftReason ?? undefined}
+                          onClick={() => void submitDraftOrReplace('create')}
+                        >
+                          Create Draft
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-batcave-secondary"
+                          onClick={saveMemoryBuffer}
+                        >
+                          Save Temporary Draft
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
           </div>
         ) : (
           <div className="p02-members-grid">
-            <section className="p03-card surface-card" aria-label="Requisition history and related records">
-              <div className="p03-card-header-row" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Requisition history and related records">
+              <div className="p03-card-header-row">
                 <h2 className="p03-section-title">History &amp; Related Records</h2>
                 <div className="p03-filter-pill-bar">
                   {(['summary', 'history', 'related'] as const).map((t) => (
@@ -862,7 +910,7 @@ export function RequisitionWorkspace({
               </div>
 
               {selectedRf && (
-                <form onSubmit={readExactRfVersion} className="form-group" style={{ marginBottom: '0.75rem' }}>
+                <form onSubmit={readExactRfVersion} className="form-group">
                   <label className="form-label" htmlFor="rf-exact-ver">
                     Read Revision Number
                   </label>
@@ -883,22 +931,19 @@ export function RequisitionWorkspace({
               )}
 
               {subData === null ? (
-                <div className="s02-empty-state">
-                  <div className="s02-empty-heading">No requisition selected</div>
-                  <div className="s02-empty-caption">
-                    Open a requisition from the Queue &amp; Editor tab to inspect its revision history and linked records.
-                  </div>
-                </div>
+                <p className="p03-muted-copy">
+                  No requisition selected. Open a requisition from the Queue &amp; Editor tab to inspect its revision history and linked records.
+                </p>
               ) : (
                 <pre className="json-box">{JSON.stringify(subData, null, 2)}</pre>
               )}
             </section>
 
-            <section className="p03-card surface-card" aria-label="Check submitted requisition change">
-              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+            <section className="p03-card surface-card form-stack" aria-label="Check submitted requisition change">
+              <h2 className="p03-section-title">
                 Check Submission Status
               </h2>
-              <div className="p02-column-stack">
+              <div className="form-stack">
                 <form onSubmit={lookupByKey} className="form-group">
                   <label className="form-label" htmlFor="rf-op-k">
                     Submission Reference
