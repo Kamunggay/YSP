@@ -10,10 +10,13 @@ import type {
   WorkspaceTab,
 } from './api/types.ts';
 import { AuthGate } from './components/AuthGate.tsx';
+import { BatCaveShell } from './components/BatCaveShell.tsx';
+import { useBatCaveToast } from './components/batcaveToast.ts';
 import { ChapterAuthorityBar } from './components/ChapterAuthorityBar.tsx';
 import { OperationBanner } from './components/OperationBanner.tsx';
 import { Stage1ReverbClient, type RealtimeStatus } from './realtime/reverbClient.ts';
 import { memoryDraftStore, type MemoryDraftEntry } from './state/memoryDraftStore.ts';
+import { getInitialSoundsEnabled, playClickPen, playOutageSwitch } from './theme/batcaveAudio.ts';
 import { ActualIssueWorkspace } from './workspaces/ActualIssueWorkspace.tsx';
 import { CatalogueWorkspace } from './workspaces/CatalogueWorkspace.tsx';
 import { OpeningBaselineWorkspace } from './workspaces/OpeningBaselineWorkspace.tsx';
@@ -21,7 +24,6 @@ import { PaperEvidenceWorkspace } from './workspaces/PaperEvidenceWorkspace.tsx'
 import { RequisitionWorkspace } from './workspaces/RequisitionWorkspace.tsx';
 import { ReservationAndHoldWorkspace } from './workspaces/ReservationAndHoldWorkspace.tsx';
 import { StockWorkspace } from './workspaces/StockWorkspace.tsx';
-import './styles/stage1.css';
 
 const NAV_ITEMS: Array<{ id: WorkspaceTab; code: string; label: string; section: string }> = [
   { id: 'my_work', code: 'S-02', label: 'My Work & Notices', section: 'Command Center' },
@@ -37,6 +39,8 @@ const NAV_ITEMS: Array<{ id: WorkspaceTab; code: string; label: string; section:
 export function App() {
   const [connection, setConnection] = useState<ConnectionState>('checking');
   const [healthAttempt, setHealthAttempt] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => getInitialSoundsEnabled());
+  const { toast, isExiting, showToast, dismissToast } = useBatCaveToast();
 
   const [session, setSession] = useState<SessionProjection | null>(null);
   const [sessionBooting, setSessionBooting] = useState(true);
@@ -69,6 +73,7 @@ export function App() {
   }, [healthAttempt]);
 
   function retryHealth() {
+    playClickPen(soundEnabled);
     setConnection('checking');
     setHealthAttempt((a) => a + 1);
   }
@@ -209,6 +214,7 @@ export function App() {
           setRealtimeDetail(detail);
         },
         onNotice: (notice) => {
+          playOutageSwitch(soundEnabled);
           setRecentNotices((prev) => [notice, ...prev].slice(0, 25));
           if (notice.event_name === 'stage1.authority.changed.v1') {
             void loadMemberships().catch((err: unknown) => setGlobalError(err));
@@ -237,7 +243,7 @@ export function App() {
     return () => {
       reverbRef.current?.disconnect();
     };
-  }, [session, selectedChapterId, loadMemberships, loadChapterState, clearProtectedState]);
+  }, [session, selectedChapterId, loadMemberships, loadChapterState, clearProtectedState, soundEnabled]);
 
   function handleSessionUpdated(next: SessionProjection | null) {
     const prevUserId = session?.user.id;
@@ -251,227 +257,275 @@ export function App() {
     }
   }
 
+  function handleNotify(tone: 'success' | 'warning' | 'error' | 'info', text: string) {
+    showToast({ tone, text });
+  }
+
+  const preAuthHeaderMeta = (
+    <span className={`status-pill ${connection === 'connected' ? 'ok' : connection === 'unavailable' ? 'bad' : 'warn'}`}>
+      DB: {connection}
+    </span>
+  );
+
+  const authHeaderMeta =
+    session && session.state === 'authenticated' ? (
+      <>
+        <span className={`status-pill ${connection === 'connected' ? 'ok' : 'bad'}`}>DB: {connection}</span>
+        <span
+          className={`status-pill ${
+            realtimeStatus === 'connected' ? 'ok' : realtimeStatus === 'stale_reconnect' ? 'warn' : 'bad'
+          }`}
+          title={realtimeDetail}
+        >
+          Reverb WS: {realtimeStatus}
+        </span>
+        <span className="status-pill">Auth: {session.authentication_method}</span>
+      </>
+    ) : (
+      preAuthHeaderMeta
+    );
+
   if (sessionBooting) {
     return (
-      <main style={{ maxWidth: '48rem', margin: '10vh auto', padding: '2rem' }}>
-        <h1>YSP Stage 1 Workspace</h1>
-        <p role="status" className={`connection ${connection}`}>
-          {connection === 'checking'
-            ? 'Checking connection...'
-            : connection === 'connected'
-              ? 'Laravel and MySQL are connected.'
-              : 'Connection unavailable. Check that the local services are running, then try again.'}
-        </p>
-      </main>
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+        headerMeta={preAuthHeaderMeta}
+      >
+        <main className="status-shell">
+          <div className="surface-card status-card">
+            <div className="eyebrow">Stage 1 Access Gate</div>
+            <h1>YSP Stage 1 Workspace</h1>
+            <p role="status" className={`message connection ${connection}`}>
+              {connection === 'checking'
+                ? 'Checking connection to Laravel and MySQL...'
+                : connection === 'connected'
+                  ? 'Laravel and MySQL are connected.'
+                  : 'Connection unavailable. Check that the local services are running, then try again.'}
+            </p>
+            <div className="button-group">
+              <button
+                type="button"
+                className="retry-button"
+                disabled={connection === 'checking'}
+                onClick={retryHealth}
+              >
+                Check connection
+              </button>
+            </div>
+          </div>
+        </main>
+      </BatCaveShell>
     );
   }
 
   if (!session || session.state !== 'authenticated') {
     return (
-      <div className="stage1-app">
-        <header className="topbar">
-          <div className="topbar-brand">
-            <h1>YSP Chapter Operations</h1>
-            <span className="topbar-sub">Stage 1 Connected Operations</span>
-          </div>
-          <span className={`status-pill ${connection === 'connected' ? 'ok' : connection === 'unavailable' ? 'bad' : ''}`}>
-            DB: {connection}
-          </span>
-        </header>
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+        headerMeta={preAuthHeaderMeta}
+      >
         <AuthGate
           connection={connection}
           onRetryHealth={retryHealth}
           session={session}
           onSessionUpdated={handleSessionUpdated}
+          soundEnabled={soundEnabled}
+          onNotify={handleNotify}
         />
-      </div>
+      </BatCaveShell>
     );
   }
 
   return (
-    <div className="stage1-app">
-      <header className="topbar">
-        <div className="topbar-brand">
-          <h1>YSP Chapter Operations</h1>
-          <span className="topbar-sub">Stage 1 ({session.user.display_name})</span>
-        </div>
-        <div className="topbar-meta">
-          <span className={`status-pill ${connection === 'connected' ? 'ok' : 'bad'}`}>DB: {connection}</span>
-          <span
-            className={`status-pill ${
-              realtimeStatus === 'connected' ? 'ok' : realtimeStatus === 'stale_reconnect' ? 'warn' : 'bad'
-            }`}
-            title={realtimeDetail}
-          >
-            Reverb WS: {realtimeStatus}
-          </span>
-          <span className="status-pill">Auth: {session.authentication_method}</span>
-        </div>
-      </header>
-
-      <div className="shell-grid">
-        <nav className="sidenav" aria-label="Stage 1 destinations">
-          {(['Command Center', 'Demand & Allocation', 'Inventory & Baseline'] as const).map((sec) => (
-            <div key={sec}>
-              <div className="nav-section-label">{sec}</div>
-              {NAV_ITEMS.filter((item) => item.section === sec).map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`nav-btn ${activeTab === item.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(item.id)}
-                >
-                  <span>{item.label}</span>
-                  <span className="nav-code">{item.code}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        <main className="workspace-main">
-          <OperationBanner error={globalError} />
-
-          <ChapterAuthorityBar
-            memberships={memberships}
-            selectedChapterId={selectedChapterId}
-            context={chapterContext}
-            access={chapterAccess}
-            nextCursor={membershipCursor}
-            drafts={drafts}
-            onSelectChapter={(cid) => {
-              setGlobalError(null);
-              setChapterContext(null);
-              setChapterAccess(null);
-              setSelectedChapterId(cid);
-            }}
-            onLoadMoreMemberships={() => void loadMemberships(membershipCursor)}
-            onRefreshAccess={() => {
-              if (selectedChapterId) {
-                void loadChapterState(selectedChapterId, contextGenRef.current);
-              }
-            }}
-          />
-
-          {activeTab === 'my_work' && (
-            <div className="grid-2">
-              <div className="card">
-                <h2>My Work &amp; Realtime Invalidations (`S-02` / `Ticket 09`)</h2>
-                <p className="muted">
-                  Authorized channel events trigger fresh permitted HTTP reads—events never broadcast protected secrets or authorize mutations.
-                </p>
-                {recentNotices.length === 0 ? (
-                  <p className="muted">No committed change notices received in this session yet.</p>
-                ) : (
-                  <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
-                    {recentNotices.map((n) => (
-                      <li key={n.event_id} style={{ marginBottom: '0.35rem' }}>
-                        <span className="mono">{n.event_name}</span> · {n.resource_kind} <span className="mono">{n.resource_id}</span> @{' '}
-                        {formatManilaTime(n.committed_at)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+    <BatCaveShell
+      soundEnabled={soundEnabled}
+      onToggleSound={setSoundEnabled}
+      toast={toast}
+      toastExiting={isExiting}
+      onDismissToast={dismissToast}
+      headerMeta={authHeaderMeta}
+    >
+      <div className="stage1-app">
+        <div className="shell-grid">
+          <nav className="sidenav" aria-label="Stage 1 destinations">
+            {(['Command Center', 'Demand & Allocation', 'Inventory & Baseline'] as const).map((sec) => (
+              <div key={sec}>
+                <div className="nav-section-label">{sec}</div>
+                {NAV_ITEMS.filter((item) => item.section === sec).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`nav-btn ${activeTab === item.id ? 'active' : ''}`}
+                    onClick={() => {
+                      playClickPen(soundEnabled);
+                      setActiveTab(item.id);
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    <span className="nav-code">{item.code}</span>
+                  </button>
+                ))}
               </div>
+            ))}
+          </nav>
 
-              <div className="card">
-                <h2>Quarantined In-Memory Drafts (No localStorage)</h2>
-                {drafts.length === 0 ? (
-                  <p className="muted">No unsaved form buffers held in RAM.</p>
-                ) : (
-                  <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
-                    {drafts.map((d) => (
-                      <li key={`${d.chapterId}-${d.formKey}`}>
-                        <strong>{d.label}</strong> (Chapter <span className="mono">{d.chapterId}</span>, saved {formatManilaTime(d.updatedAtIso)})
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          )}
+          <main className="workspace-main">
+            <OperationBanner error={globalError} />
 
-          {activeTab === 'my_work' && (
-            <AuthGate
-              connection={connection}
-              onRetryHealth={retryHealth}
-              session={session}
-              onSessionUpdated={handleSessionUpdated}
+            <ChapterAuthorityBar
+              memberships={memberships}
+              selectedChapterId={selectedChapterId}
+              context={chapterContext}
+              access={chapterAccess}
+              nextCursor={membershipCursor}
+              drafts={drafts}
+              onSelectChapter={(cid) => {
+                playClickPen(soundEnabled);
+                setGlobalError(null);
+                setChapterContext(null);
+                setChapterAccess(null);
+                setSelectedChapterId(cid);
+              }}
+              onLoadMoreMemberships={() => void loadMemberships(membershipCursor)}
+              onRefreshAccess={() => {
+                playClickPen(soundEnabled);
+                if (selectedChapterId) {
+                  void loadChapterState(selectedChapterId, contextGenRef.current);
+                }
+              }}
             />
-          )}
 
-          {selectedChapterId ? (
-            <>
-              {activeTab === 'catalogue' && (
-                <CatalogueWorkspace
-                  key={`${session.user.id}::${selectedChapterId}`}
-                  userId={session.user.id}
-                  chapterId={selectedChapterId}
-                  refreshSignal={refreshSignal}
-                  chapterAccess={chapterAccess}
-                />
-              )}
-              {activeTab === 'stock' && (
-                <StockWorkspace
-                  chapterId={selectedChapterId}
-                  refreshSignal={refreshSignal}
-                  chapterAccess={chapterAccess}
-                />
-              )}
-              {activeTab === 'evidence' && (
-                <PaperEvidenceWorkspace
-                  key={`${session.user.id}::${selectedChapterId}`}
-                  userId={session.user.id}
-                  chapterId={selectedChapterId}
-                  refreshSignal={refreshSignal}
-                  chapterAccess={chapterAccess}
-                />
-              )}
-              {activeTab === 'opening' && (
-                <OpeningBaselineWorkspace
-                  key={`${session.user.id}::${selectedChapterId}`}
-                  userId={session.user.id}
-                  chapterId={selectedChapterId}
-                  refreshSignal={refreshSignal}
-                  chapterAccess={chapterAccess}
-                />
-              )}
-              {activeTab === 'requisitions' && (
-                <RequisitionWorkspace
-                  key={`${session.user.id}::${selectedChapterId}`}
-                  userId={session.user.id}
-                  chapterId={selectedChapterId}
-                  refreshSignal={refreshSignal}
-                  chapterAccess={chapterAccess}
-                />
-              )}
-              {activeTab === 'reservations_holds' && (
-                <ReservationAndHoldWorkspace
-                  key={`${session.user.id}::${selectedChapterId}`}
-                  userId={session.user.id}
-                  chapterId={selectedChapterId}
-                  refreshSignal={refreshSignal}
-                  chapterAccess={chapterAccess}
-                />
-              )}
-              {activeTab === 'actual_issues' && (
-                <ActualIssueWorkspace
-                  key={`${session.user.id}::${selectedChapterId}`}
-                  userId={session.user.id}
-                  chapterId={selectedChapterId}
-                  refreshSignal={refreshSignal}
-                  chapterAccess={chapterAccess}
-                />
-              )}
-            </>
-          ) : (
-            activeTab !== 'my_work' && (
-              <div className="alert info">Select an authorized chapter above before loading chapter operations.</div>
-            )
-          )}
-        </main>
+            {activeTab === 'my_work' && (
+              <div className="grid-2">
+                <div className="card">
+                  <h2>My Work &amp; Realtime Invalidations (S-02 / Ticket 09)</h2>
+                  <p className="muted" style={{ marginBottom: '0.65rem' }}>
+                    Authorized channel events trigger fresh permitted HTTP reads—events never broadcast protected secrets or authorize mutations.
+                  </p>
+                  {recentNotices.length === 0 ? (
+                    <p className="muted">No committed change notices received in this session yet.</p>
+                  ) : (
+                    <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
+                      {recentNotices.map((n) => (
+                        <li key={n.event_id} style={{ marginBottom: '0.35rem' }}>
+                          <span className="mono">{n.event_name}</span> · {n.resource_kind}{' '}
+                          <span className="mono">{n.resource_id}</span> @ {formatManilaTime(n.committed_at)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="card">
+                  <h2>Quarantined In-Memory Drafts (RAM Only)</h2>
+                  {drafts.length === 0 ? (
+                    <p className="muted">No unsaved form buffers held in RAM.</p>
+                  ) : (
+                    <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
+                      {drafts.map((d) => (
+                        <li key={`${d.chapterId}-${d.formKey}`}>
+                          <strong>{d.label}</strong> (Chapter <span className="mono">{d.chapterId}</span>, saved{' '}
+                          {formatManilaTime(d.updatedAtIso)})
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'my_work' && (
+              <AuthGate
+                connection={connection}
+                onRetryHealth={retryHealth}
+                session={session}
+                onSessionUpdated={handleSessionUpdated}
+                soundEnabled={soundEnabled}
+                onNotify={handleNotify}
+              />
+            )}
+
+            {selectedChapterId ? (
+              <>
+                {activeTab === 'catalogue' && (
+                  <CatalogueWorkspace
+                    key={`${session.user.id}::${selectedChapterId}`}
+                    userId={session.user.id}
+                    chapterId={selectedChapterId}
+                    refreshSignal={refreshSignal}
+                    chapterAccess={chapterAccess}
+                  />
+                )}
+                {activeTab === 'stock' && (
+                  <StockWorkspace
+                    chapterId={selectedChapterId}
+                    refreshSignal={refreshSignal}
+                    chapterAccess={chapterAccess}
+                  />
+                )}
+                {activeTab === 'evidence' && (
+                  <PaperEvidenceWorkspace
+                    key={`${session.user.id}::${selectedChapterId}`}
+                    userId={session.user.id}
+                    chapterId={selectedChapterId}
+                    refreshSignal={refreshSignal}
+                    chapterAccess={chapterAccess}
+                  />
+                )}
+                {activeTab === 'opening' && (
+                  <OpeningBaselineWorkspace
+                    key={`${session.user.id}::${selectedChapterId}`}
+                    userId={session.user.id}
+                    chapterId={selectedChapterId}
+                    refreshSignal={refreshSignal}
+                    chapterAccess={chapterAccess}
+                  />
+                )}
+                {activeTab === 'requisitions' && (
+                  <RequisitionWorkspace
+                    key={`${session.user.id}::${selectedChapterId}`}
+                    userId={session.user.id}
+                    chapterId={selectedChapterId}
+                    refreshSignal={refreshSignal}
+                    chapterAccess={chapterAccess}
+                  />
+                )}
+                {activeTab === 'reservations_holds' && (
+                  <ReservationAndHoldWorkspace
+                    key={`${session.user.id}::${selectedChapterId}`}
+                    userId={session.user.id}
+                    chapterId={selectedChapterId}
+                    refreshSignal={refreshSignal}
+                    chapterAccess={chapterAccess}
+                  />
+                )}
+                {activeTab === 'actual_issues' && (
+                  <ActualIssueWorkspace
+                    key={`${session.user.id}::${selectedChapterId}`}
+                    userId={session.user.id}
+                    chapterId={selectedChapterId}
+                    refreshSignal={refreshSignal}
+                    chapterAccess={chapterAccess}
+                  />
+                )}
+              </>
+            ) : (
+              activeTab !== 'my_work' && (
+                <div className="alert info">Select an authorized chapter above before loading chapter operations.</div>
+              )
+            )}
+          </main>
+        </div>
       </div>
-    </div>
+    </BatCaveShell>
   );
 }
 
