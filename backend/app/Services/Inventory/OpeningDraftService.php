@@ -22,8 +22,11 @@ use App\Models\OpeningRm;
 use App\Models\PolicyRecord;
 use App\Models\User;
 use App\Services\Authority\ChapterAuthority;
+use App\Services\Evidence\PaperEvidenceStore;
+use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\CanonicalJson;
+use App\Services\Shared\ReferenceSequenceService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -48,9 +51,22 @@ final class OpeningDraftService
 
     private const PRINT_CSP = "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
+    private readonly CheckEvidenceBindingParticipant $checkEvidenceBinding;
+
+    private readonly PaperEvidenceStore $paperStore;
+
+    private readonly ReferenceSequenceService $referenceSequences;
+
     public function __construct(
         private readonly DomainNotificationOutboxService $outbox,
-    ) {}
+        ?CheckEvidenceBindingParticipant $checkEvidenceBinding = null,
+        ?PaperEvidenceStore $paperStore = null,
+        ?ReferenceSequenceService $referenceSequences = null,
+    ) {
+        $this->checkEvidenceBinding = $checkEvidenceBinding ?? app(CheckEvidenceBindingParticipant::class);
+        $this->paperStore = $paperStore ?? app(PaperEvidenceStore::class);
+        $this->referenceSequences = $referenceSequences ?? app(ReferenceSequenceService::class);
+    }
 
     public function listIpcs(Request $request, string $chapterId): JsonResponse
     {
@@ -323,6 +339,187 @@ final class OpeningDraftService
         );
     }
 
+    public function submitIpc(Request $request, string $chapterId, string $ipcId): JsonResponse
+    {
+        OpeningDraftInput::requireUuid($ipcId, 'ipc_id');
+        [$key, $payload] = OpeningDraftInput::parseWrite($request, [OpeningDraftInput::class, 'validateSubmitIpc']);
+        $actor = $request->user()->id;
+        $authority = $this->authority($request);
+
+        return $this->runIdempotentWrite(
+            $chapterId,
+            $actor,
+            'submitIpc',
+            $key,
+            $ipcId,
+            $payload,
+            200,
+            function (string $operationId) use ($chapterId, $ipcId, $actor, $authority, $key, $payload): array {
+                $ipc = $this->findIpc($chapterId, $ipcId, lock: true);
+                $state = self::ipcState($ipc);
+                if ($state === 'posted') {
+                    throw new ContractException(409, 'target_locked', 'Posted IPC cannot be submitted.');
+                }
+                if ($state !== 'draft') {
+                    throw new ContractException(409, 'invalid_transition', 'Only draft IPCs can be submitted.');
+                }
+                $this->assertBaselineNotPosted($chapterId);
+                if ((int) $ipc->revision !== $payload['expected_revision']) {
+                    throw new ContractException(409, 'version_conflict', 'IPC revision is stale.');
+                }
+                if ((int) $ipc->material_version !== $payload['material_version']) {
+                    throw new ContractException(409, 'snapshot_stale', 'IPC material version is stale.');
+                }
+
+                $material = $this->normalizedIpcMaterial($ipc);
+                $policies = $this->requireEffectiveOpeningPolicies($authority, $chapterId, $ipc->id, $material);
+                $custodians = $this->assertCompleteIpcMaterial($chapterId, $material);
+                $now = now('UTC');
+                $this->assertIndependentAgreedCounts($chapterId, $ipc, $material, $custodians, $now);
+                $signedIpc = $this->verifyOpeningEvidenceBytes($chapterId, $payload['signed_ipc'], $ipc->id);
+
+                if ($ipc->ipc_number === null) {
+                    $refRules = $policies['reference_series']->rules_json ?? [];
+                    $seq = $this->referenceSequences->nextReference($chapterId, 'IPC', policyOverride: [
+                        'prefix' => rtrim((string) ($refRules['ipc_prefix'] ?? 'IPC'), '-'),
+                        'width' => (int) ($refRules['minimum_digits'] ?? 6),
+                        'policy_id' => $policies['reference_series']->aggregate_id ?? $policies['reference_series']->id,
+                        'policy_version' => (int) $policies['reference_series']->policy_version,
+                    ]);
+                    $ipc->ipc_number = $seq['reference'];
+                }
+
+                $ipc->status = 'awaiting_authorization';
+                $ipc->signed_ipc_json = $signedIpc;
+                $ipc->authorizations_json = [];
+                $ipc->authorized_head_by = null;
+                $ipc->authorized_finance_by = null;
+                $ipc->authorized_at = null;
+                $ipc->authorized_head_signature = null;
+                $ipc->authorized_finance_signature = null;
+                $ipc->submitted_at = $now;
+                $ipc->revision = (int) $ipc->revision + 1;
+                $ipc->updated_at = $now;
+                $ipc->save();
+
+                $record = $this->formatIpc($ipc);
+                $operation = $this->operationReceipt($operationId, 'submitIpc', $key, $actor, $chapterId, 'ipc', $ipc->id, (int) $ipc->revision, (int) $ipc->material_version, 200, $now);
+                $this->recordHistoryAndOutbox('IPC', $ipc->id, $chapterId, (int) $ipc->revision, (int) $ipc->material_version, 'submitted', $actor, $record, $operation, null, 'stage1.ipc.changed.v1');
+
+                return ['data' => ['operation' => $operation, 'record' => $record, 'posting' => null]];
+            },
+            verifyReplayTarget: fn () => $this->findIpc($chapterId, $ipcId, lock: false),
+        );
+    }
+
+    public function authorizeIpc(Request $request, string $chapterId, string $ipcId): JsonResponse
+    {
+        OpeningDraftInput::requireUuid($ipcId, 'ipc_id');
+        [$key, $payload] = OpeningDraftInput::parseWrite($request, [OpeningDraftInput::class, 'validateAuthorizeIpc']);
+        $actor = $request->user()->id;
+        $authority = $this->authority($request);
+
+        if (! $authority->allowsDuty($payload['duty'], decisionScope: 'ipc_authorization:'.$ipcId)) {
+            throw new ContractException(403, 'duty_denied', 'Current duty does not permit this authorization.');
+        }
+
+        return $this->runIdempotentWrite(
+            $chapterId,
+            $actor,
+            'authorizeIpc',
+            $key,
+            $ipcId,
+            $payload,
+            200,
+            function (string $operationId) use ($chapterId, $ipcId, $actor, $authority, $key, $payload): array {
+                $ipc = $this->findIpc($chapterId, $ipcId, lock: true);
+                $state = self::ipcState($ipc);
+                if ($state === 'posted') {
+                    throw new ContractException(409, 'target_locked', 'Posted IPC cannot be authorized.');
+                }
+                if ($state !== 'awaiting_authorization') {
+                    throw new ContractException(409, 'invalid_transition', 'The IPC cannot be authorized in its current state.');
+                }
+                $this->assertBaselineNotPosted($chapterId);
+                if ((int) $ipc->revision !== $payload['expected_revision']) {
+                    throw new ContractException(409, 'version_conflict', 'IPC revision is stale.');
+                }
+                if ((int) $ipc->material_version !== $payload['material_version']) {
+                    throw new ContractException(409, 'snapshot_stale', 'IPC material version is stale.');
+                }
+
+                $authorizations = array_values((array) ($ipc->authorizations_json ?? []));
+                foreach ($authorizations as $existing) {
+                    if (($existing['duty'] ?? null) === $payload['duty']
+                        && (int) ($existing['material_version'] ?? 0) === (int) $ipc->material_version) {
+                        throw new ContractException(409, 'invalid_transition', 'This authorization slot is already filled.');
+                    }
+                }
+
+                $material = $this->normalizedIpcMaterial($ipc);
+                $this->requireEffectiveOpeningPolicies($authority, $chapterId, $ipc->id, $material);
+                $custodians = $this->assertCompleteIpcMaterial($chapterId, $material);
+                $now = now('UTC');
+                $completedCounts = $this->assertIndependentAgreedCounts($chapterId, $ipc, $material, $custodians, $now);
+
+                if (! is_array($ipc->signed_ipc_json)) {
+                    throw new ContractException(409, 'evidence_missing', 'Submitted IPC is missing its signed paper binding.');
+                }
+                $signedIpc = $this->verifyOpeningEvidenceBytes($chapterId, $ipc->signed_ipc_json, $ipc->id);
+
+                $signedAt = CarbonImmutable::parse($payload['signed_at'], 'UTC');
+                if ($signedAt->gt($now)) {
+                    throw new ContractException(409, 'invalid_source', 'Authorization signature timestamp cannot be in the future.');
+                }
+                if ($material['cutoff_at'] !== null && $signedAt->lt(CarbonImmutable::parse($material['cutoff_at'], 'UTC'))) {
+                    throw new ContractException(409, 'invalid_source', 'Authorization signature timestamp cannot precede cutoff.');
+                }
+                foreach ($completedCounts as $count) {
+                    if ($signedAt->lt(CarbonImmutable::parse($count['signed_at'], 'UTC'))) {
+                        throw new ContractException(409, 'invalid_source', 'Authorization signature timestamp cannot precede completed count signatures.');
+                    }
+                }
+
+                $authorizations[] = [
+                    'id' => (string) Str::uuid(),
+                    'actor_id' => $actor,
+                    'duty' => $payload['duty'],
+                    'material_version' => (int) $ipc->material_version,
+                    'authorized_at' => $now->format('Y-m-d\TH:i:s.u\Z'),
+                    'signed_at' => $payload['signed_at'],
+                    'signed_ipc' => $signedIpc,
+                ];
+                usort($authorizations, fn (array $a, array $b) => ($a['duty'] === 'CHAPTER_HEAD' ? 0 : 1) <=> ($b['duty'] === 'CHAPTER_HEAD' ? 0 : 1));
+
+                if ($payload['duty'] === 'CHAPTER_HEAD') {
+                    $ipc->authorized_head_by = $actor;
+                    $ipc->authorized_head_signature = $payload['signed_at'];
+                } else {
+                    $ipc->authorized_finance_by = $actor;
+                    $ipc->authorized_finance_signature = $payload['signed_at'];
+                }
+
+                $duties = array_column($authorizations, 'duty');
+                if (in_array('CHAPTER_HEAD', $duties, true) && in_array('FINANCE', $duties, true)) {
+                    $ipc->status = 'authorized';
+                    $ipc->authorized_at = $now;
+                }
+
+                $ipc->authorizations_json = $authorizations;
+                $ipc->revision = (int) $ipc->revision + 1;
+                $ipc->updated_at = $now;
+                $ipc->save();
+
+                $record = $this->formatIpc($ipc);
+                $operation = $this->operationReceipt($operationId, 'authorizeIpc', $key, $actor, $chapterId, 'ipc', $ipc->id, (int) $ipc->revision, (int) $ipc->material_version, 200, $now);
+                $this->recordHistoryAndOutbox('IPC', $ipc->id, $chapterId, (int) $ipc->revision, (int) $ipc->material_version, 'authorized', $actor, $record, $operation, null, 'stage1.ipc.changed.v1');
+
+                return ['data' => ['operation' => $operation, 'record' => $record, 'posting' => null]];
+            },
+            verifyReplayTarget: fn () => $this->findIpc($chapterId, $ipcId, lock: false),
+        );
+    }
+
     public function listIpcHistory(Request $request, string $chapterId, string $ipcId): JsonResponse
     {
         OpeningDraftInput::requireUuid($ipcId, 'ipc_id');
@@ -570,10 +767,248 @@ final class OpeningDraftService
                 $rm->acknowledgment_json = null;
                 $rm->updated_at = $now;
                 $rm->save();
+                EvidenceBinding::where('chapter_id', $chapterId)
+                    ->where('source_type', 'opening_receipt')
+                    ->where('source_id', $rm->id)
+                    ->where('status', 'active')
+                    ->update(['status' => 'invalidated']);
 
                 $record = $this->formatRm($rm);
                 $operation = $this->operationReceipt($operationId, 'replaceOpeningRm', $key, $actor, $chapterId, 'opening_rm', $rm->id, (int) $rm->revision, (int) $rm->material_version, 200, $now);
                 $this->recordHistoryAndOutbox('OPENING_RM', $rm->id, $chapterId, (int) $rm->revision, (int) $rm->material_version, 'replaced', $actor, $record, $operation, $payload['reason'], 'stage1.opening-rm.changed.v1');
+
+                return ['data' => ['operation' => $operation, 'record' => $record, 'posting' => null]];
+            },
+            verifyReplayTarget: fn () => $this->findRm($chapterId, $rmId, lock: false),
+        );
+    }
+
+    public function inspectOpeningRm(Request $request, string $chapterId, string $rmId): JsonResponse
+    {
+        OpeningDraftInput::requireUuid($rmId, 'rm_id');
+        [$key, $payload] = OpeningDraftInput::parseWrite($request, [OpeningDraftInput::class, 'validateInspectOpeningRm']);
+        $actor = $request->user()->id;
+        $authority = $this->authority($request);
+
+        return $this->runIdempotentWrite(
+            $chapterId,
+            $actor,
+            'inspectOpeningRm',
+            $key,
+            $rmId,
+            $payload,
+            200,
+            function (string $operationId) use ($chapterId, $rmId, $actor, $authority, $key, $payload): array {
+                $rm = $this->findRm($chapterId, $rmId, lock: true);
+                $state = self::rmState($rm);
+                if ($state === 'posted') {
+                    throw new ContractException(409, 'target_locked', 'Posted Opening RM cannot be inspected.');
+                }
+                if ($state !== 'draft') {
+                    throw new ContractException(409, 'invalid_transition', 'Only draft Opening RMs can be inspected.');
+                }
+                $this->assertBaselineNotPosted($chapterId);
+                if ((int) $rm->revision !== $payload['expected_revision']) {
+                    throw new ContractException(409, 'version_conflict', 'Opening RM revision is stale.');
+                }
+
+                $ipc = $this->findIpc($chapterId, $rm->ipc_id, lock: false);
+                $ipcState = self::ipcState($ipc);
+                if ($ipcState === 'posted') {
+                    throw new ContractException(409, 'target_locked', 'Source IPC is already posted.');
+                }
+                if ($ipcState !== 'authorized') {
+                    throw new ContractException(409, 'source_not_authorized', 'Source IPC must be authorized before inspection.');
+                }
+
+                $rmMaterial = is_array($rm->material_json) ? $rm->material_json : ['ipc_material_version' => 0, 'lines' => [], 'notes' => $rm->notes];
+                if ((int) $ipc->material_version !== $payload['ipc_material_version']
+                    || ($rmMaterial['ipc_material_version'] ?? null) !== (int) $ipc->material_version) {
+                    throw new ContractException(409, 'snapshot_stale', 'Opening RM must match the current authorized IPC material version.');
+                }
+
+                $ipcMaterial = $this->normalizedIpcMaterial($ipc);
+                $policies = $this->requireEffectiveOpeningPolicies($authority, $chapterId, $ipc->id, $ipcMaterial);
+                $custodians = $this->assertCompleteIpcMaterial($chapterId, $ipcMaterial);
+                $now = now('UTC');
+                $completedCounts = $this->assertIndependentAgreedCounts($chapterId, $ipc, $ipcMaterial, $custodians, $now);
+
+                if (! is_array($ipc->signed_ipc_json)) {
+                    throw new ContractException(409, 'evidence_missing', 'Source IPC is missing its signed paper binding.');
+                }
+                $signedIpc = $this->verifyOpeningEvidenceBytes($chapterId, $ipc->signed_ipc_json, $ipc->id, $rm->id);
+                $authorizations = $this->assertAuthorizationsCurrent($ipc, $signedIpc);
+
+                $inspectedAt = CarbonImmutable::parse($payload['inspected_at'], 'UTC');
+                if ($inspectedAt->gt($now)) {
+                    throw new ContractException(409, 'invalid_source', 'Inspection timestamp cannot be in the future.');
+                }
+                if ($inspectedAt->lt(CarbonImmutable::parse($ipcMaterial['cutoff_at'], 'UTC'))) {
+                    throw new ContractException(409, 'invalid_source', 'Inspection timestamp cannot precede cutoff.');
+                }
+                foreach ($authorizations as $auth) {
+                    if ($inspectedAt->lt(CarbonImmutable::parse($auth['authorized_at'], 'UTC'))) {
+                        throw new ContractException(409, 'invalid_source', 'Inspection timestamp cannot precede IPC authorization.');
+                    }
+                }
+                if ($payload['technical_representative_id'] !== null && ! $this->isChapterMember($chapterId, $payload['technical_representative_id'])) {
+                    throw new ContractException(409, 'invalid_source', 'Technical representative must be an active chapter member.');
+                }
+
+                $roundingMode = (string) ($policies['valuation_rounding']->rules_json['rounding_mode'] ?? '');
+                $this->validateInspectedRmLines($ipcMaterial['lines'], $rmMaterial, $roundingMode);
+
+                $inspection = [
+                    'inspector_id' => $actor,
+                    'inspected_at' => $payload['inspected_at'],
+                    'material_version' => (int) $rm->material_version,
+                    'technical_representative_id' => $payload['technical_representative_id'],
+                    'inspection_notes' => $payload['inspection_notes'],
+                ];
+                $snapshot = [
+                    'chapter_id' => $chapterId,
+                    'rm_id' => $rm->id,
+                    'rm_material_version' => (int) $rm->material_version,
+                    'ipc_id' => $ipc->id,
+                    'ipc_material_version' => (int) $ipc->material_version,
+                    'ipc_reference' => (string) $ipc->ipc_number,
+                    'material' => $ipcMaterial,
+                    'counts' => $completedCounts,
+                    'signed_ipc' => $signedIpc,
+                    'authorizations' => $authorizations,
+                    'rm_material' => $rmMaterial,
+                    'inspection' => $inspection,
+                ];
+                $snapshotSha = CanonicalJson::sha256($snapshot);
+
+                $rm->status = 'inspected';
+                $rm->inspector_user_id = $actor;
+                $rm->inspection_data = $inspection;
+                $rm->snapshot_data = $snapshot;
+                $rm->snapshot_sha256 = $snapshotSha;
+                $rm->acknowledgment_json = null;
+                $rm->evidence_binding_id = null;
+                $rm->revision = (int) $rm->revision + 1;
+                $rm->updated_at = $now;
+                $rm->save();
+
+                $record = $this->formatRm($rm);
+                $operation = $this->operationReceipt($operationId, 'inspectOpeningRm', $key, $actor, $chapterId, 'opening_rm', $rm->id, (int) $rm->revision, (int) $rm->material_version, 200, $now);
+                $this->recordHistoryAndOutbox('OPENING_RM', $rm->id, $chapterId, (int) $rm->revision, (int) $rm->material_version, 'inspected', $actor, $record, $operation, null, 'stage1.opening-rm.changed.v1');
+
+                return ['data' => ['operation' => $operation, 'record' => $record, 'posting' => null]];
+            },
+            verifyReplayTarget: fn () => $this->findRm($chapterId, $rmId, lock: false),
+        );
+    }
+
+    public function matchOpeningRmEvidence(Request $request, string $chapterId, string $rmId): JsonResponse
+    {
+        OpeningDraftInput::requireUuid($rmId, 'rm_id');
+        [$key, $payload] = OpeningDraftInput::parseWrite($request, [OpeningDraftInput::class, 'validateMatchOpeningRmEvidence']);
+        $actor = $request->user()->id;
+        $authority = $this->authority($request);
+
+        return $this->runIdempotentWrite(
+            $chapterId,
+            $actor,
+            'matchOpeningRmEvidence',
+            $key,
+            $rmId,
+            $payload,
+            200,
+            function (string $operationId) use ($chapterId, $rmId, $actor, $authority, $key, $payload): array {
+                $rm = $this->findRm($chapterId, $rmId, lock: true);
+                $state = self::rmState($rm);
+                if ($state === 'posted') {
+                    throw new ContractException(409, 'target_locked', 'Posted Opening RM cannot be matched.');
+                }
+                if (! in_array($state, ['inspected', 'matched'], true)) {
+                    throw new ContractException(409, 'invalid_transition', 'Inspect the Opening RM before matching.');
+                }
+                $this->assertBaselineNotPosted($chapterId);
+
+                $snapshotData = $rm->snapshot_data;
+                $ipc = OpeningCount::where('chapter_id', $chapterId)->whereKey($rm->ipc_id)->sharedLock()->first();
+                $preparer = $rm->prepared_by ?? OpeningRecordHistory::where('chapter_id', $chapterId)
+                    ->where('record_type', 'OPENING_RM')
+                    ->where('record_id', $rm->id)
+                    ->where('event_type', 'created')
+                    ->sharedLock()
+                    ->value('actor_user_id');
+
+                if (! $ipc || self::ipcState($ipc) !== 'authorized') {
+                    throw new ContractException(409, 'source_not_authorized', 'The authorized source IPC is required before matching.');
+                }
+                if (! is_array($snapshotData) || ($snapshotData['ipc_id'] ?? null) !== $ipc->id
+                    || ($snapshotData['ipc_material_version'] ?? null) !== (int) $ipc->material_version) {
+                    throw new ContractException(409, 'snapshot_stale', 'The inspected Opening RM snapshot no longer matches the authorized IPC.');
+                }
+                if (! $preparer || ($snapshotData['rm_material_version'] ?? null) !== (int) $rm->material_version
+                    || ! isset($snapshotData['rm_material'], $snapshotData['inspection']['inspected_at'])) {
+                    throw new ContractException(409, 'invalid_source', 'The approved inspection snapshot is required.');
+                }
+
+                if (is_array($ipc->material_json) && ($ipc->material_json['policies'] ?? []) !== []) {
+                    $this->requireEffectiveOpeningPolicies($authority, $chapterId, $ipc->id, $this->normalizedIpcMaterial($ipc));
+                }
+                if (is_array($ipc->signed_ipc_json) || isset($snapshotData['signed_ipc'])) {
+                    if (! is_array($ipc->signed_ipc_json) || ! isset($snapshotData['signed_ipc'])
+                        || CanonicalJson::encode($ipc->signed_ipc_json) !== CanonicalJson::encode($snapshotData['signed_ipc'])) {
+                        throw new ContractException(409, 'evidence_mismatch', 'The signed IPC paper no longer matches the inspected snapshot.');
+                    }
+                    $this->verifyOpeningEvidenceBytes($chapterId, $ipc->signed_ipc_json, $ipc->id, $rm->id);
+                    $this->assertAuthorizationsCurrent($ipc, $ipc->signed_ipc_json);
+                }
+
+                $evidenceSnapshot = $rm->evidenceSnapshot();
+                if ($payload['expected_revision'] !== (int) $rm->revision
+                    || $payload['material_version'] !== (int) $rm->material_version
+                    || ! hash_equals($evidenceSnapshot['sha256'], $payload['snapshot_sha256'])) {
+                    throw new ContractException(409, 'version_conflict', 'The inspected Opening RM snapshot has changed.');
+                }
+
+                $now = now('UTC');
+                $ackAt = CarbonImmutable::parse($payload['acknowledged_at'], 'UTC');
+                $inspectedAt = CarbonImmutable::parse($snapshotData['inspection']['inspected_at'], 'UTC');
+                if ($ackAt->lt($inspectedAt) || $ackAt->gt($now)) {
+                    throw new ContractException(409, 'invalid_source', 'Acknowledgment timestamp must be between inspection and current time.');
+                }
+
+                $evidenceRecord = EvidenceRecord::where('chapter_id', $chapterId)
+                    ->whereKey($payload['bytes']['evidence_id'])
+                    ->sharedLock()
+                    ->first();
+                if (! $evidenceRecord) {
+                    throw new ContractException(409, 'evidence_missing', 'The signed receipt paper evidence was not found.');
+                }
+                if ($evidenceRecord->purpose !== 'opening_receipt' || $evidenceRecord->record_id !== $rm->id) {
+                    throw new ContractException(409, 'evidence_mismatch', 'The signed paper evidence must belong to this Opening RM.');
+                }
+
+                $binding = $this->checkEvidenceBinding->recordMatch(
+                    $chapterId,
+                    $actor,
+                    $evidenceSnapshot,
+                    $payload['bytes'],
+                    null,
+                    '',
+                    $payload['acknowledged_at'],
+                    [],
+                );
+
+                $rm->status = 'EVIDENCE_MATCHED';
+                $rm->prepared_by ??= $preparer;
+                $rm->snapshot_sha256 = $evidenceSnapshot['sha256'];
+                $rm->evidence_binding_id = $binding->id;
+                $rm->acknowledgment_json = $binding->match_projection;
+                $rm->revision = (int) $rm->revision + 1;
+                $rm->updated_at = $now;
+                $rm->save();
+
+                $record = $this->formatRm($rm);
+                $operation = $this->operationReceipt($operationId, 'matchOpeningRmEvidence', $key, $actor, $chapterId, 'opening_rm', $rm->id, (int) $rm->revision, (int) $rm->material_version, 200, $now);
+                $this->recordHistoryAndOutbox('OPENING_RM', $rm->id, $chapterId, (int) $rm->revision, (int) $rm->material_version, 'evidence_matched', $actor, $record, $operation, null, 'stage1.opening-rm.changed.v1');
 
                 return ['data' => ['operation' => $operation, 'record' => $record, 'posting' => null]];
             },
@@ -953,6 +1388,11 @@ final class OpeningDraftService
             $rm->revision = (int) $rm->revision + 1;
             $rm->updated_at = $now;
             $rm->save();
+            EvidenceBinding::where('chapter_id', $chapterId)
+                ->where('source_type', 'opening_receipt')
+                ->where('source_id', $rm->id)
+                ->where('status', 'active')
+                ->update(['status' => 'invalidated']);
 
             $snapshot = $this->formatRm($rm);
             $op = $this->operationReceipt((string) Str::uuid(), 'replaceIpc', $key, $actor, $chapterId, 'opening_rm', $rm->id, (int) $rm->revision, (int) $rm->material_version, 200, $now);
@@ -1028,14 +1468,14 @@ final class OpeningDraftService
         $canReadStock = $authority->allows('stock.read');
         $rmIds = $canReadRm ? $rms->pluck('id')->all() : [];
         $evidence = [];
-        if ($authority->allows('evidence.read')) {
+        if ($authority->allows('evidence.read') && $canReadRm) {
             $seen = [];
             if (is_array($ipc->signed_ipc_json)) {
                 $k = ($ipc->signed_ipc_json['evidence_id'] ?? '').':'.($ipc->signed_ipc_json['version_id'] ?? '');
                 $seen[$k] = true;
                 $evidence[] = $ipc->signed_ipc_json;
             }
-            $targetRmIds = $canReadRm ? ($rm ? [$rm->id] : $rms->pluck('id')->all()) : [];
+            $targetRmIds = $rm ? [$rm->id] : $rms->pluck('id')->all();
             if ($targetRmIds !== []) {
                 $records = EvidenceRecord::where('chapter_id', $chapterId)
                     ->where('purpose', 'opening_receipt')
@@ -1381,6 +1821,422 @@ final class OpeningDraftService
             ->current()
             ->sharedLock()
             ->exists();
+    }
+
+    /** @return array<string, PolicyRecord> */
+    private function requireEffectiveOpeningPolicies(ChapterAuthority $authority, string $chapterId, string $ipcId, array $material): array
+    {
+        $byKey = [];
+        foreach ($material['policies'] ?? [] as $binding) {
+            $k = $binding['setting_key'] ?? '';
+            if (isset($byKey[$k])) {
+                throw new ContractException(409, 'invalid_source', "Duplicate policy binding for {$k}.");
+            }
+            $byKey[$k] = $binding;
+        }
+
+        $resolved = [];
+        $blockers = [];
+        foreach (self::POLICY_RULES as $key => [$owner, $schema]) {
+            if (! isset($byKey[$key])) {
+                $blockers[] = ChapterAuthority::setupBlocker($key, $owner, 'missing');
+
+                continue;
+            }
+            $binding = $byKey[$key];
+            $policy = PolicyRecord::where('chapter_id', $chapterId)
+                ->where('policy_code', $key)
+                ->where('policy_version', $binding['version'])
+                ->where(fn ($q) => $q->where('aggregate_id', $binding['policy_id'])->orWhere('id', $binding['policy_id']))
+                ->sharedLock()
+                ->first();
+            if (! $policy) {
+                $blockers[] = ChapterAuthority::setupBlocker($key, $owner, 'missing');
+
+                continue;
+            }
+            $state = $authority->policyState($policy, $owner, $schema, $key === 'ipc_authorization' ? $ipcId : null);
+            if ($state !== 'effective') {
+                $blockers[] = ChapterAuthority::setupBlocker($key, $owner, $state ?? 'unapproved');
+
+                continue;
+            }
+            $resolved[$key] = $policy;
+        }
+
+        if ($blockers !== []) {
+            throw new ContractException(428, 'setup_blocked', 'Required chapter setup is not currently effective.', [
+                'error' => [
+                    'code' => 'setup_blocked',
+                    'message' => 'Required chapter setup is not currently effective.',
+                    'blockers' => $blockers,
+                ],
+            ]);
+        }
+
+        $authRules = $resolved['ipc_authorization']->rules_json ?? [];
+        if (($material['cutoff_at'] ?? null) !== ($authRules['cutoff_at'] ?? null)) {
+            throw new ContractException(409, 'invalid_source', 'Cutoff timestamp does not match the pinned IPC authorization policy.');
+        }
+        $allowedTeam = $authRules['count_team_ids'] ?? [];
+        foreach ($material['count_team'] ?? [] as $member) {
+            if (! in_array($member['user_id'] ?? '', $allowedTeam, true)) {
+                throw new ContractException(409, 'invalid_source', 'Count team member is not authorized by the pinned IPC authorization policy.');
+            }
+        }
+
+        return $resolved;
+    }
+
+    /** @return list<string> Recorded custodian user IDs across all IPC lines. */
+    private function assertCompleteIpcMaterial(string $chapterId, array $material): array
+    {
+        if (($material['cutoff_at'] ?? null) === null
+            || ($material['informal_movements_suspended'] ?? false) !== true
+            || count($material['count_team'] ?? []) < 2
+            || count($material['lines'] ?? []) < 1) {
+            throw new ContractException(409, 'source_incomplete', 'IPC material is incomplete.');
+        }
+
+        $lineIds = [];
+        $custodians = [];
+        foreach ($material['lines'] as $line) {
+            if (($line['counted_quantity'] ?? null) === null
+                || ($line['unit_value'] ?? null) === null
+                || ($line['valuation_basis'] ?? null) === null) {
+                throw new ContractException(409, 'source_incomplete', 'Every IPC line requires quantity, unit value, and valuation basis.');
+            }
+            if (isset($lineIds[$line['line_id']])) {
+                throw new ContractException(409, 'invalid_source', 'Duplicate IPC line_id.');
+            }
+            $lineIds[$line['line_id']] = true;
+
+            $item = CatalogueItem::where('chapter_id', $chapterId)->whereKey($line['item_id'])->sharedLock()->first();
+            $variant = CatalogueVariant::where('chapter_id', $chapterId)->whereKey($line['variant_id'])->sharedLock()->first();
+            $unit = CatalogueUnit::where('chapter_id', $chapterId)->whereKey($line['unit_id'])->sharedLock()->first();
+            $location = CatalogueLocation::where('chapter_id', $chapterId)->whereKey($line['location_id'])->sharedLock()->first();
+            if (! $item || ! $variant || ! $unit || ! $location
+                || $item->state !== 'active'
+                || $variant->state !== 'active'
+                || $unit->state !== 'active'
+                || $location->state !== 'active'
+                || $variant->item_id !== $item->id
+                || (($variant->unit_id ?? $item->unit_id) !== null && ($variant->unit_id ?? $item->unit_id) !== $unit->id)
+                || (int) $variant->material_version !== (int) $line['variant_material_version']
+                || (int) $unit->material_version !== (int) $line['unit_material_version']
+                || (int) $location->material_version !== (int) $line['location_material_version']
+                || (int) $unit->quantity_scale !== (int) $line['quantity_scale']
+                || ($variant->quantity_scale !== null && (int) $variant->quantity_scale !== (int) $line['quantity_scale'])
+                || ! $this->fitsScale((string) $line['counted_quantity'], (int) $line['quantity_scale'])) {
+                throw new ContractException(409, 'invalid_source', 'IPC line catalogue identity, unit scale, or material version is no longer valid.');
+            }
+            if ($location->custodian_id !== null && ! in_array($location->custodian_id, $line['regular_custodian_ids'], true)) {
+                throw new ContractException(409, 'invalid_source', 'IPC line regular_custodian_ids must include the location custodian.');
+            }
+            foreach ($line['regular_custodian_ids'] as $cid) {
+                $custodians[$cid] = true;
+            }
+            if ($location->custodian_id !== null) {
+                $custodians[$location->custodian_id] = true;
+            }
+        }
+
+        return array_keys($custodians);
+    }
+
+    /**
+     * @param  list<string>  $recordedCustodians
+     * @return list<array<string, mixed>>
+     */
+    private function assertIndependentAgreedCounts(string $chapterId, OpeningCount $ipc, array $material, array $recordedCustodians, CarbonInterface $now): array
+    {
+        $teamIds = array_column($material['count_team'], 'user_id');
+        $linesById = [];
+        foreach ($material['lines'] as $line) {
+            $linesById[$line['line_id']] = $line;
+        }
+        $cutoffAt = CarbonImmutable::parse($material['cutoff_at'], 'UTC');
+
+        $completed = [];
+        $seenActors = [];
+        foreach ((array) ($ipc->counts_json ?? []) as $count) {
+            if (($count['completed'] ?? false) !== true
+                || (int) ($count['material_version'] ?? 0) !== (int) $ipc->material_version) {
+                continue;
+            }
+            $actorId = (string) ($count['actor_id'] ?? '');
+            if ($actorId === '' || isset($seenActors[$actorId]) || ! in_array($actorId, $teamIds, true)) {
+                continue;
+            }
+            $seenActors[$actorId] = true;
+            $completed[] = $count;
+        }
+
+        if (count($completed) < 2) {
+            throw new ContractException(409, 'source_incomplete', 'At least two completed independent counts are required.');
+        }
+
+        $hasIndependent = false;
+        foreach ($completed as $count) {
+            if (! in_array($count['actor_id'], $recordedCustodians, true)) {
+                $hasIndependent = true;
+            }
+            if (($count['counted_at'] ?? null) === null || ($count['signed_at'] ?? null) === null) {
+                throw new ContractException(409, 'source_incomplete', 'Completed counts require count and signature timestamps.');
+            }
+            $countedAt = CarbonImmutable::parse($count['counted_at'], 'UTC');
+            $signedAt = CarbonImmutable::parse($count['signed_at'], 'UTC');
+            if ($countedAt->lt($cutoffAt) || $signedAt->lt($countedAt) || $signedAt->gt($now)) {
+                throw new ContractException(409, 'invalid_source', 'Completed count timestamps are invalid.');
+            }
+
+            $entries = (array) ($count['entries'] ?? []);
+            if (count($entries) !== count($linesById)) {
+                throw new ContractException(409, 'source_incomplete', 'Completed count must cover every IPC line once.');
+            }
+            $seenLines = [];
+            foreach ($entries as $entry) {
+                $lid = (string) ($entry['ipc_line_id'] ?? '');
+                if (isset($seenLines[$lid]) || ! isset($linesById[$lid])) {
+                    throw new ContractException(409, 'invalid_source', 'Completed count references invalid or duplicate IPC lines.');
+                }
+                $seenLines[$lid] = true;
+                if (($entry['quantity'] ?? null) === null || ($entry['condition'] ?? null) === null) {
+                    throw new ContractException(409, 'source_incomplete', 'Completed count entries require quantity and condition.');
+                }
+                $sourceLine = $linesById[$lid];
+                if ($this->toMicros((string) $entry['quantity']) !== $this->toMicros((string) $sourceLine['counted_quantity'])
+                    || $entry['condition'] !== $sourceLine['condition']) {
+                    throw new ContractException(409, 'count_mismatch', 'Independent counts do not agree with the IPC material.');
+                }
+            }
+        }
+
+        if (! $hasIndependent) {
+            throw new ContractException(403, 'independence_required', 'At least one completed counter must be independent of the recorded custodians.');
+        }
+
+        usort($completed, fn (array $a, array $b) => strcmp($a['actor_id'], $b['actor_id']));
+
+        return $completed;
+    }
+
+    /** @return array<string, mixed> */
+    private function verifyOpeningEvidenceBytes(string $chapterId, array $binding, string $expectedIpcId, ?string $expectedRmId = null): array
+    {
+        $record = EvidenceRecord::where('chapter_id', $chapterId)
+            ->whereKey($binding['evidence_id'] ?? '')
+            ->sharedLock()
+            ->first();
+        if (! $record) {
+            throw new ContractException(409, 'evidence_missing', 'Signed paper evidence was not found.');
+        }
+        if ($record->purpose !== 'opening_receipt') {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence must have opening_receipt purpose.');
+        }
+        $targetRm = OpeningRm::where('chapter_id', $chapterId)
+            ->whereKey($record->record_id)
+            ->sharedLock()
+            ->first();
+        if (! $targetRm || $targetRm->ipc_id !== $expectedIpcId
+            || ($expectedRmId !== null && $targetRm->id !== $expectedRmId)) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence targets a different Opening RM or IPC.');
+        }
+
+        $versionId = (string) ($binding['version_id'] ?? '');
+        $blobs = $record->exactVersion($versionId);
+        if ($blobs->isEmpty()) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence version was not found.');
+        }
+
+        try {
+            [, $invalidReason] = $this->paperStore->checkVersion($blobs);
+        } catch (ContractException $exception) {
+            if ($exception->statusCode === 503) {
+                throw new ContractException(503, 'unavailable', 'Signed paper verification is temporarily unavailable.');
+            }
+            throw $exception;
+        }
+        if ($invalidReason !== null) {
+            throw new ContractException(409, 'evidence_invalid', 'Signed paper evidence failed integrity or safety verification.');
+        }
+
+        $current = $record->currentVersionBlob();
+        if (! $current || $record->versionId($current) !== $versionId) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence version has been superseded.');
+        }
+
+        $actual = [
+            'evidence_id' => $record->id,
+            'version_id' => $versionId,
+            'attachments' => $blobs->map(fn (EvidenceBlob $b) => [
+                'attachment_id' => $b->id,
+                'sha256' => $b->sha256_hash,
+            ])->values()->all(),
+        ];
+        if (CanonicalJson::encode($actual) !== CanonicalJson::encode($binding)) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence attachments do not match the current version.');
+        }
+
+        return $actual;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function assertAuthorizationsCurrent(OpeningCount $ipc, array $signedIpc): array
+    {
+        $byDuty = [];
+        $expectedJson = CanonicalJson::encode($signedIpc);
+        foreach ((array) ($ipc->authorizations_json ?? []) as $auth) {
+            $duty = $auth['duty'] ?? '';
+            if (! in_array($duty, ['CHAPTER_HEAD', 'FINANCE'], true)) {
+                continue;
+            }
+            if ((int) ($auth['material_version'] ?? 0) !== (int) $ipc->material_version) {
+                throw new ContractException(409, 'snapshot_stale', 'IPC authorization does not match the current material version.');
+            }
+            if (CanonicalJson::encode($auth['signed_ipc'] ?? null) !== $expectedJson) {
+                throw new ContractException(409, 'evidence_mismatch', 'IPC authorization does not match the current signed IPC paper.');
+            }
+            $byDuty[$duty] = $auth;
+        }
+        if (! isset($byDuty['CHAPTER_HEAD'], $byDuty['FINANCE'])) {
+            throw new ContractException(409, 'source_not_authorized', 'Both Chapter Head and Finance authorizations are required.');
+        }
+
+        return [$byDuty['CHAPTER_HEAD'], $byDuty['FINANCE']];
+    }
+
+    private function validateInspectedRmLines(array $ipcLines, array $rmMaterial, string $roundingMode): void
+    {
+        if (! in_array($roundingMode, ['half_up', 'half_even', 'down'], true)) {
+            throw new ContractException(409, 'invalid_source', 'Unsupported valuation rounding mode.');
+        }
+
+        $ipcById = [];
+        foreach ($ipcLines as $line) {
+            $ipcById[$line['line_id']] = $line;
+        }
+
+        $seen = [];
+        $totalCents = '0';
+        foreach ($rmMaterial['lines'] ?? [] as $rmLine) {
+            $lid = (string) ($rmLine['ipc_line_id'] ?? '');
+            if (isset($seen[$lid]) || ! isset($ipcById[$lid])) {
+                throw new ContractException(409, 'invalid_source', 'Opening RM inspection lines must reference each authorized IPC line once.');
+            }
+            $seen[$lid] = true;
+
+            if (($rmLine['accepted_quantity'] ?? null) === null
+                || ($rmLine['damaged_quantity'] ?? null) === null
+                || ($rmLine['rejected_quantity'] ?? null) === null
+                || ($rmLine['accepted_value'] ?? null) === null) {
+                throw new ContractException(409, 'source_incomplete', 'Every Opening RM line requires accepted, damaged, rejected quantities and accepted value.');
+            }
+
+            $src = $ipcById[$lid];
+            $scale = (int) $src['quantity_scale'];
+            foreach (['accepted_quantity', 'damaged_quantity', 'rejected_quantity'] as $field) {
+                if (! $this->fitsScale((string) $rmLine[$field], $scale)) {
+                    throw new ContractException(409, 'invalid_source', 'Opening RM quantity exceeds the approved unit scale.');
+                }
+            }
+
+            $accMicros = $this->toMicros((string) $rmLine['accepted_quantity']);
+            $dmgMicros = $this->toMicros((string) $rmLine['damaged_quantity']);
+            $rejMicros = $this->toMicros((string) $rmLine['rejected_quantity']);
+            $srcMicros = $this->toMicros((string) $src['counted_quantity']);
+            if ($accMicros + $dmgMicros + $rejMicros !== $srcMicros) {
+                throw new ContractException(409, 'invalid_source', 'Accepted, damaged, and rejected quantities must equal the authorized IPC count.');
+            }
+            if ($src['condition'] !== 'usable' && $accMicros > 0) {
+                throw new ContractException(409, 'invalid_source', 'Damaged or rejected source lines cannot be accepted without renewed source treatment.');
+            }
+
+            [$expectedValue, $lineCents] = $this->computeAcceptedValue((string) $rmLine['accepted_quantity'], (string) $src['unit_value'], $roundingMode);
+            if ($rmLine['accepted_value'] !== $expectedValue) {
+                throw new ContractException(409, 'invalid_source', 'Accepted value does not match approved valuation rounding.');
+            }
+            $totalCents = $this->addUint($totalCents, $lineCents);
+            if (strlen($totalCents) > 14) {
+                throw new ContractException(409, 'invalid_source', 'Total accepted valuation exceeds supported PHP bounds.');
+            }
+        }
+
+        if (count($seen) !== count($ipcById)) {
+            throw new ContractException(409, 'source_incomplete', 'Opening RM inspection must include every authorized IPC line.');
+        }
+    }
+
+    private function toMicros(string $quantity): int
+    {
+        [$whole, $frac] = array_pad(explode('.', $quantity, 2), 2, '');
+
+        return (int) $whole * 1_000_000 + (int) str_pad($frac, 6, '0');
+    }
+
+    /** @return array{string, string} [formatted PHP string, integer cents string] */
+    private function computeAcceptedValue(string $acceptedQty, string $unitValue, string $mode): array
+    {
+        [$qWhole, $qFrac] = array_pad(explode('.', $acceptedQty, 2), 2, '');
+        $qMicros = ltrim($qWhole.str_pad($qFrac, 6, '0'), '0') ?: '0';
+        [$uWhole, $uFrac] = array_pad(explode('.', $unitValue, 2), 2, '');
+        $uCents = ltrim($uWhole.str_pad($uFrac, 2, '0'), '0') ?: '0';
+
+        $prod = str_pad($this->mulUint($qMicros, $uCents), 7, '0', STR_PAD_LEFT);
+        $cents = ltrim(substr($prod, 0, -6), '0') ?: '0';
+        $rem = substr($prod, -6);
+
+        $roundUp = match ($mode) {
+            'half_up' => $rem >= '500000',
+            'half_even' => $rem > '500000' || ($rem === '500000' && ((int) substr($cents, -1)) % 2 === 1),
+            default => false,
+        };
+        if ($roundUp) {
+            $cents = $this->addUint($cents, '1');
+        }
+        if (strlen($cents) > 14) {
+            throw new ContractException(409, 'invalid_source', 'Accepted line valuation exceeds supported PHP bounds.');
+        }
+
+        $padded = str_pad($cents, 3, '0', STR_PAD_LEFT);
+        $wholePart = ltrim(substr($padded, 0, -2), '0') ?: '0';
+
+        return [$wholePart.'.'.substr($padded, -2), $cents];
+    }
+
+    private function mulUint(string $a, string $b): string
+    {
+        if ($a === '0' || $b === '0') {
+            return '0';
+        }
+        $la = strlen($a);
+        $lb = strlen($b);
+        $res = array_fill(0, $la + $lb, 0);
+        for ($i = $la - 1; $i >= 0; $i--) {
+            $da = (int) $a[$i];
+            for ($j = $lb - 1; $j >= 0; $j--) {
+                $sum = $res[$i + $j + 1] + $da * (int) $b[$j];
+                $res[$i + $j + 1] = $sum % 10;
+                $res[$i + $j] += intdiv($sum, 10);
+            }
+        }
+
+        return ltrim(implode('', $res), '0') ?: '0';
+    }
+
+    private function addUint(string $a, string $b): string
+    {
+        $i = strlen($a) - 1;
+        $j = strlen($b) - 1;
+        $carry = 0;
+        $out = '';
+        while ($i >= 0 || $j >= 0 || $carry > 0) {
+            $sum = $carry + ($i >= 0 ? (int) $a[$i--] : 0) + ($j >= 0 ? (int) $b[$j--] : 0);
+            $out = ($sum % 10).$out;
+            $carry = intdiv($sum, 10);
+        }
+
+        return ltrim($out, '0') ?: '0';
     }
 
     private function fitsScale(string $quantity, int $scale): bool

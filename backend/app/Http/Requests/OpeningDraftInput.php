@@ -16,7 +16,11 @@ final class OpeningDraftInput
 
     public const UTC_INSTANT = '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z\z/';
 
+    public const SHA256 = '/\A[a-f0-9]{64}\z/';
+
     public const CONDITIONS = ['usable', 'damaged', 'rejected'];
+
+    public const AUTHORIZATION_DUTIES = ['CHAPTER_HEAD', 'FINANCE'];
 
     public const POLICY_KEYS = ['ipc_authorization', 'valuation_rounding', 'reference_series'];
 
@@ -177,6 +181,100 @@ final class OpeningDraftInput
             'material' => array_key_exists('material', $vals)
                 ? self::validateOpeningRmMaterial($vals['material'], '/material', $errors)
                 : [],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function validateSubmitIpc(stdClass $body, array &$errors): array
+    {
+        $vals = self::checkObjectKeys($body, ['expected_revision', 'material_version', 'signed_ipc'], '', $errors);
+
+        return [
+            'expected_revision' => self::checkInt($vals['expected_revision'] ?? null, array_key_exists('expected_revision', $vals), '/expected_revision', 1, 2147483647, $errors),
+            'material_version' => self::checkInt($vals['material_version'] ?? null, array_key_exists('material_version', $vals), '/material_version', 1, 2147483647, $errors),
+            'signed_ipc' => array_key_exists('signed_ipc', $vals)
+                ? self::validateEvidenceByteBinding($vals['signed_ipc'], '/signed_ipc', $errors)
+                : [],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function validateAuthorizeIpc(stdClass $body, array &$errors): array
+    {
+        $vals = self::checkObjectKeys($body, ['expected_revision', 'material_version', 'duty', 'signed_at'], '', $errors);
+
+        return [
+            'expected_revision' => self::checkInt($vals['expected_revision'] ?? null, array_key_exists('expected_revision', $vals), '/expected_revision', 1, 2147483647, $errors),
+            'material_version' => self::checkInt($vals['material_version'] ?? null, array_key_exists('material_version', $vals), '/material_version', 1, 2147483647, $errors),
+            'duty' => self::checkEnum($vals['duty'] ?? null, array_key_exists('duty', $vals), '/duty', self::AUTHORIZATION_DUTIES, false, $errors),
+            'signed_at' => self::checkInstant($vals['signed_at'] ?? null, array_key_exists('signed_at', $vals), '/signed_at', false, $errors),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function validateInspectOpeningRm(stdClass $body, array &$errors): array
+    {
+        $vals = self::checkObjectKeys($body, ['expected_revision', 'ipc_material_version', 'inspected_at', 'technical_representative_id', 'inspection_notes'], '', $errors);
+
+        return [
+            'expected_revision' => self::checkInt($vals['expected_revision'] ?? null, array_key_exists('expected_revision', $vals), '/expected_revision', 1, 2147483647, $errors),
+            'ipc_material_version' => self::checkInt($vals['ipc_material_version'] ?? null, array_key_exists('ipc_material_version', $vals), '/ipc_material_version', 1, 2147483647, $errors),
+            'inspected_at' => self::checkInstant($vals['inspected_at'] ?? null, array_key_exists('inspected_at', $vals), '/inspected_at', false, $errors),
+            'technical_representative_id' => self::checkUuid($vals['technical_representative_id'] ?? null, array_key_exists('technical_representative_id', $vals), '/technical_representative_id', true, $errors),
+            'inspection_notes' => self::checkString($vals['inspection_notes'] ?? null, array_key_exists('inspection_notes', $vals), '/inspection_notes', 500, false, true, $errors),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function validateMatchOpeningRmEvidence(stdClass $body, array &$errors): array
+    {
+        $vals = self::checkObjectKeys($body, ['expected_revision', 'material_version', 'snapshot_sha256', 'bytes', 'acknowledged_at'], '', $errors);
+
+        return [
+            'expected_revision' => self::checkInt($vals['expected_revision'] ?? null, array_key_exists('expected_revision', $vals), '/expected_revision', 1, 2147483647, $errors),
+            'material_version' => self::checkInt($vals['material_version'] ?? null, array_key_exists('material_version', $vals), '/material_version', 1, 2147483647, $errors),
+            'snapshot_sha256' => self::checkPattern($vals['snapshot_sha256'] ?? null, array_key_exists('snapshot_sha256', $vals), '/snapshot_sha256', self::SHA256, false, $errors),
+            'bytes' => array_key_exists('bytes', $vals)
+                ? self::validateEvidenceByteBinding($vals['bytes'], '/bytes', $errors)
+                : [],
+            'acknowledged_at' => self::checkInstant($vals['acknowledged_at'] ?? null, array_key_exists('acknowledged_at', $vals), '/acknowledged_at', false, $errors),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function validateEvidenceByteBinding(mixed $raw, string $ptr, array &$errors): array
+    {
+        if (! $raw instanceof stdClass) {
+            $errors[] = self::field($ptr, 'invalid_type', 'Object required.');
+
+            return [];
+        }
+        $vals = self::checkObjectKeys($raw, ['evidence_id', 'version_id', 'attachments'], $ptr, $errors);
+        $attachments = [];
+        if (array_key_exists('attachments', $vals)) {
+            $list = self::checkList($vals['attachments'], $ptr.'/attachments', $errors);
+            if ($list === [] && is_array($vals['attachments'])) {
+                $errors[] = self::field($ptr.'/attachments', 'invalid_format', 'At least one attachment is required.');
+            }
+            foreach ($list as $i => $item) {
+                $itemPtr = "{$ptr}/attachments/{$i}";
+                if (! $item instanceof stdClass) {
+                    $errors[] = self::field($itemPtr, 'invalid_type', 'Object required.');
+
+                    continue;
+                }
+                $itemVals = self::checkObjectKeys($item, ['attachment_id', 'sha256'], $itemPtr, $errors);
+                $attachments[] = [
+                    'attachment_id' => self::checkUuid($itemVals['attachment_id'] ?? null, array_key_exists('attachment_id', $itemVals), $itemPtr.'/attachment_id', false, $errors),
+                    'sha256' => self::checkPattern($itemVals['sha256'] ?? null, array_key_exists('sha256', $itemVals), $itemPtr.'/sha256', self::SHA256, false, $errors),
+                ];
+            }
+        }
+
+        return [
+            'evidence_id' => self::checkUuid($vals['evidence_id'] ?? null, array_key_exists('evidence_id', $vals), $ptr.'/evidence_id', false, $errors),
+            'version_id' => self::checkUuid($vals['version_id'] ?? null, array_key_exists('version_id', $vals), $ptr.'/version_id', false, $errors),
+            'attachments' => $attachments,
         ];
     }
 

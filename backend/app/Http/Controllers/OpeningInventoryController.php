@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\ContractException;
-use App\Http\Requests\AuthInput;
 use App\Models\EvidenceBinding;
 use App\Models\EvidenceRecord;
 use App\Models\IdempotencyRecord;
@@ -20,7 +19,6 @@ use App\Services\Inventory\StockViewQueryService;
 use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\CanonicalJson;
 use App\Services\Shared\ReferenceSequenceService;
-use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -84,108 +82,15 @@ class OpeningInventoryController extends Controller
      */
     public function submitIpc(Request $request, string $chapterId, string $ipcId): JsonResponse
     {
-        $ipc = OpeningCount::where('chapter_id', $chapterId)
-            ->where('id', $ipcId)
-            ->with('lines')
-            ->first();
-
-        if (! $ipc) {
-            return response()->json([
-                'error' => 'IPC_NOT_FOUND',
-                'message' => "IPC {$ipcId} was not found in chapter {$chapterId}.",
-            ], 404, ['Cache-Control' => 'no-store']);
-        }
-
-        if ($ipc->status !== 'DRAFT') {
-            return response()->json([
-                'error' => 'INVALID_STATE',
-                'message' => "Cannot submit IPC in status {$ipc->status}.",
-            ], 409, ['Cache-Control' => 'no-store']);
-        }
-
-        if ($ipc->lines->isEmpty()) {
-            return response()->json([
-                'error' => 'EMPTY_COUNT',
-                'message' => 'Cannot submit IPC with zero counted lines.',
-            ], 422, ['Cache-Control' => 'no-store']);
-        }
-
-        $userId = $request->user()->id;
-
-        return DB::transaction(function () use ($ipc, $chapterId, $userId) {
-            if (! $ipc->ipc_number) {
-                $seq = $this->referenceSequences->nextReference($chapterId, 'IPC');
-                $ipc->ipc_number = $seq['reference'];
-            }
-
-            $ipc->status = 'AWAITING_AUTHORIZATION';
-            $ipc->submitted_at = now();
-            $ipc->revision += 1;
-            $ipc->save();
-
-            $fresh = $ipc->fresh(['lines']);
-            $this->recordOpeningHistory('IPC', $ipc->id, $chapterId, $ipc->revision, $ipc->material_version, 'submitted', $userId, $fresh->toArray());
-            $this->outbox->recordIntent('stage1.ipc.changed.v1', $chapterId, $ipc->id, $ipc->revision, $ipc->material_version);
-
-            return response()->json([
-                'data' => $fresh,
-            ], 200, ['Cache-Control' => 'no-store']);
-        });
+        return $this->drafts->submitIpc($request, $chapterId, $ipcId);
     }
 
     /**
      * POST /api/v1/chapters/{chapter_id}/ipcs/{ipc_id}/authorizations
-     * Enforces dual authorization & Segregation of Duties (GOV-05, GOV-06).
      */
     public function authorizeIpc(Request $request, string $chapterId, string $ipcId): JsonResponse
     {
-        $duty = $request->input('duty');
-        if (! in_array($duty, ['CHAPTER_HEAD', 'FINANCE'], true)) {
-            throw new ContractException(422, 'invalid_input', 'Select a valid authorization duty.');
-        }
-
-        $authority = $request->attributes->get(ChapterAuthority::class);
-        if (! $authority->allowsDuty($duty, decisionScope: 'ipc_authorization:'.$ipcId)) {
-            throw new ContractException(403, 'duty_denied', 'Current duty does not permit this authorization.');
-        }
-
-        $ipc = OpeningCount::where('chapter_id', $chapterId)->whereKey($ipcId)->lockForUpdate()->first();
-        if (! $ipc) {
-            throw new ContractException(404, 'resource_not_found', 'Resource not found.');
-        }
-        if (! in_array($ipc->status, ['AWAITING_AUTHORIZATION', 'DRAFT'], true)) {
-            throw new ContractException(409, 'state_conflict', 'The IPC cannot be authorized in its current state.');
-        }
-
-        $userId = $request->user()->id;
-        $otherOfficer = $duty === 'CHAPTER_HEAD' ? $ipc->authorized_finance_by : $ipc->authorized_head_by;
-        if ($otherOfficer === $userId) {
-            throw new ContractException(403, 'independence_required', 'This IPC requires an independent decision.');
-        }
-        if ($duty === 'CHAPTER_HEAD') {
-            $ipc->authorized_head_by = $userId;
-            $ipc->authorized_head_signature = $request->input('signed_at');
-        } else {
-            $ipc->authorized_finance_by = $userId;
-            $ipc->authorized_finance_signature = $request->input('signed_at');
-        }
-
-        return DB::transaction(function () use ($ipc, $chapterId, $userId) {
-            if ($ipc->authorized_head_by && $ipc->authorized_finance_by) {
-                $ipc->status = 'AUTHORIZED';
-                $ipc->authorized_at = now();
-            }
-
-            $ipc->revision += 1;
-            $ipc->save();
-
-            $this->recordOpeningHistory('IPC', $ipc->id, $chapterId, $ipc->revision, $ipc->material_version, 'authorized', $userId, $ipc->toArray());
-            $this->outbox->recordIntent('stage1.ipc.changed.v1', $chapterId, $ipc->id, $ipc->revision, $ipc->material_version);
-
-            return response()->json([
-                'data' => $ipc,
-            ], 200, ['Cache-Control' => 'no-store']);
-        });
+        return $this->drafts->authorizeIpc($request, $chapterId, $ipcId);
     }
 
     /**
@@ -261,46 +166,7 @@ class OpeningInventoryController extends Controller
      */
     public function inspectOpeningRm(Request $request, string $chapterId, string $rmId): JsonResponse
     {
-        $rm = OpeningRm::where('chapter_id', $chapterId)
-            ->where('id', $rmId)
-            ->first();
-
-        if (! $rm) {
-            return response()->json([
-                'error' => 'OPENING_RM_NOT_FOUND',
-                'message' => "Opening RM {$rmId} was not found.",
-            ], 404, ['Cache-Control' => 'no-store']);
-        }
-
-        if ($rm->status !== 'DRAFT') {
-            return response()->json([
-                'error' => 'INVALID_STATE',
-                'message' => "Cannot inspect RM in status {$rm->status}.",
-            ], 409, ['Cache-Control' => 'no-store']);
-        }
-
-        $userId = $request->user()->id;
-        $lines = $request->input('lines', []);
-
-        return DB::transaction(function () use ($rm, $chapterId, $userId, $lines, $request) {
-            $rm->status = 'INSPECTED';
-            $rm->inspector_user_id = $userId;
-            $rm->lines_data = $lines;
-            $rm->inspection_data = [
-                'inspector_id' => $userId,
-                'inspected_at' => now()->toIso8601String(),
-                'notes' => $request->input('inspection_notes', 'All counted lines inspected.'),
-            ];
-            $rm->revision += 1;
-            $rm->save();
-
-            $this->recordOpeningHistory('OPENING_RM', $rm->id, $chapterId, $rm->revision, $rm->material_version, 'inspected', $userId, $rm->toArray());
-            $this->outbox->recordIntent('stage1.opening-rm.changed.v1', $chapterId, $rm->id, $rm->revision, $rm->material_version);
-
-            return response()->json([
-                'data' => $rm,
-            ], 200, ['Cache-Control' => 'no-store']);
-        });
+        return $this->drafts->inspectOpeningRm($request, $chapterId, $rmId);
     }
 
     /**
@@ -308,158 +174,7 @@ class OpeningInventoryController extends Controller
      */
     public function matchOpeningRmEvidence(Request $request, string $chapterId, string $rmId): JsonResponse
     {
-        if ($request->has('bytes')) {
-            return $this->matchApprovedOpeningPaper($request, $chapterId, $rmId);
-        }
-
-        $rm = OpeningRm::where('chapter_id', $chapterId)
-            ->where('id', $rmId)
-            ->first();
-
-        if (! $rm) {
-            return response()->json([
-                'error' => 'OPENING_RM_NOT_FOUND',
-                'message' => "Opening RM {$rmId} was not found.",
-            ], 404, ['Cache-Control' => 'no-store']);
-        }
-
-        if ($rm->status !== 'INSPECTED') {
-            return response()->json([
-                'error' => 'INVALID_STATE',
-                'message' => "RM must be INSPECTED before evidence matching (current: {$rm->status}).",
-            ], 409, ['Cache-Control' => 'no-store']);
-        }
-
-        $userId = $request->user()->id;
-        $evidenceId = $request->input('evidence_id') ?? $request->input('evidence.evidence_id');
-        $bindingId = $request->input('evidence_binding_id') ?? $request->input('acknowledgment_id');
-
-        $existingBinding = $bindingId
-            ? EvidenceBinding::where('id', $bindingId)->where('chapter_id', $chapterId)->first()
-            : null;
-
-        if ($evidenceId || $existingBinding) {
-            try {
-                $checkLines = [];
-                foreach ((array) ($rm->lines_data ?? []) as $line) {
-                    $checkLines[] = [
-                        'variant_id' => $line['variant_id'] ?? '',
-                        'unit_id' => $line['unit_id'] ?? '',
-                        'quantity' => $line['accepted_quantity'] ?? $line['quantity'] ?? 0,
-                    ];
-                }
-
-                $check = $this->checkEvidenceBinding->check([
-                    'chapter_id' => $chapterId,
-                    'evidence_id' => $evidenceId,
-                    'binding_id' => $bindingId,
-                    'source_type' => $existingBinding?->source_type ?? 'opening_receipt',
-                    'source_id' => $existingBinding?->source_id ?? $rm->id,
-                    'recipient_name' => $request->input('recipient_name', $existingBinding?->recipient_name ?? $rm->inspector_user_id ?? $userId),
-                    'lines' => $checkLines,
-                ], strict: true);
-
-                $bindingId = $check['acknowledgment_id'] ?? $bindingId;
-            } catch (DomainException $e) {
-                return response()->json([
-                    'error' => 'EVIDENCE_MISMATCH',
-                    'code' => 'evidence_mismatch',
-                    'message' => $e->getMessage(),
-                ], 409, ['Cache-Control' => 'no-store']);
-            }
-        } elseif (! $bindingId) {
-            $bindingId = (string) Str::uuid();
-        }
-
-        return DB::transaction(function () use ($rm, $chapterId, $bindingId, $userId) {
-            $rm = OpeningRm::where('chapter_id', $chapterId)->whereKey($rm->id)->lockForUpdate()->firstOrFail();
-            if ($rm->status !== 'INSPECTED') {
-                throw new ContractException(409, 'invalid_transition', 'The Opening RM must be inspected before matching.');
-            }
-            if ($this->hasPublishedOpeningPaper($rm)) {
-                throw new ContractException(409, 'invalid_source', 'Match the signed paper against the approved Opening RM snapshot.');
-            }
-            $rm->status = 'EVIDENCE_MATCHED';
-            $rm->evidence_binding_id = $bindingId;
-            $rm->revision += 1;
-            $rm->save();
-
-            $this->recordOpeningHistory('OPENING_RM', $rm->id, $chapterId, $rm->revision, $rm->material_version, 'evidence_matched', $userId, $rm->toArray());
-            $this->outbox->recordIntent('stage1.opening-rm.changed.v1', $chapterId, $rm->id, $rm->revision, $rm->material_version);
-
-            return response()->json([
-                'data' => $rm,
-            ], 200, ['Cache-Control' => 'no-store']);
-        });
-    }
-
-    private function matchApprovedOpeningPaper(Request $request, string $chapterId, string $rmId): JsonResponse
-    {
-        $key = $request->header('X-Action-Key', '');
-        if (! preg_match(AuthInput::UUID, $key)) {
-            throw new ContractException(400, 'malformed_request', 'Supply a valid action key.');
-        }
-        $rm = OpeningRm::where('chapter_id', $chapterId)->whereKey($rmId)->lockForUpdate()->first();
-        if (! $rm) {
-            throw new ContractException(404, 'resource_not_found', 'Opening RM not found.');
-        }
-        if (! in_array(OpeningDraftService::rmState($rm), ['inspected', 'matched'], true)) {
-            throw new ContractException(409, 'invalid_transition', 'Inspect the Opening RM before matching.');
-        }
-        $material = $rm->snapshot_data;
-        $ipc = OpeningCount::where('chapter_id', $chapterId)->whereKey($rm->ipc_id)->sharedLock()->first();
-        $preparer = $rm->prepared_by ?? OpeningRecordHistory::where('chapter_id', $chapterId)->where('record_type', 'OPENING_RM')
-            ->where('record_id', $rm->id)->where('event_type', 'created')->sharedLock()->value('actor_user_id');
-        if (! $preparer || ! $ipc || OpeningDraftService::ipcState($ipc) !== 'authorized'
-            || ($material['ipc_id'] ?? null) !== $ipc->id || ($material['ipc_material_version'] ?? null) !== $ipc->material_version
-            || ($material['rm_material_version'] ?? null) !== $rm->material_version
-            || ! isset($material['rm_material'], $material['inspection']['inspected_at'])) {
-            throw new ContractException(409, 'invalid_source', 'The approved inspection snapshot is required.');
-        }
-
-        $snapshot = $rm->evidenceSnapshot();
-        if ($request->input('expected_revision') !== $rm->revision || $request->input('material_version') !== $rm->material_version
-            || $request->input('snapshot_sha256') !== $snapshot['sha256']) {
-            throw new ContractException(409, 'version_conflict', 'The inspected Opening RM snapshot has changed.');
-        }
-        $bytes = $request->input('bytes');
-        $time = $request->input('acknowledged_at');
-        if (! is_array($bytes) || ! is_string($time) || ! preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z\z/', $time)
-            || $time < $material['inspection']['inspected_at'] || $time > now('UTC')->toISOString()) {
-            throw new ContractException(422, 'invalid_input', 'Supply the exact paper and its signed acknowledgment time.');
-        }
-
-        $actor = $request->user()->id;
-        $binding = $this->checkEvidenceBinding->recordMatch($chapterId, $actor, $snapshot, $bytes, null, '', $time, []);
-        $rm->status = 'EVIDENCE_MATCHED';
-        $rm->prepared_by ??= $preparer;
-        $rm->snapshot_sha256 = $snapshot['sha256'];
-        $rm->evidence_binding_id = $binding->id;
-        $rm->revision += 1;
-        $rm->save();
-        $record = $this->drafts->formatRm($rm);
-        $this->recordOpeningHistory('OPENING_RM', $rm->id, $chapterId, $rm->revision, $rm->material_version, 'evidence_matched', $actor, $record);
-        $this->outbox->recordIntent('stage1.opening-rm.changed.v1', $chapterId, $rm->id, $rm->revision, $rm->material_version);
-
-        $operationId = (string) Str::uuid();
-        $response = ['data' => [
-            'operation' => [
-                'id' => $operationId, 'operation' => 'matchOpeningRmEvidence', 'action_key' => $key,
-                'actor_id' => $actor, 'chapter_id' => $chapterId, 'record_kind' => 'opening_rm',
-                'record_id' => $rm->id, 'record_revision' => $rm->revision, 'material_version' => $rm->material_version,
-                'http_status' => 200, 'committed_at' => now('UTC')->toISOString(),
-            ],
-            'record' => $record,
-            'posting' => null,
-        ]];
-        IdempotencyRecord::create([
-            'id' => $operationId, 'key' => $key, 'chapter_id' => $chapterId, 'user_id' => $actor,
-            'operation_name' => 'matchOpeningRmEvidence', 'resource_id' => $rm->id, 'state' => 'committed',
-            'payload_hash' => CanonicalJson::sha256($request->all()), 'response_code' => 200,
-            'response_body' => json_encode($response, JSON_THROW_ON_ERROR), 'expires_at' => now()->addDays(7),
-        ]);
-
-        return response()->json($response);
+        return $this->drafts->matchOpeningRmEvidence($request, $chapterId, $rmId);
     }
 
     private function hasPublishedOpeningPaper(OpeningRm $rm): bool

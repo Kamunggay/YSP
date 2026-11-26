@@ -14,13 +14,14 @@ class ReferenceSequenceService
      * Allocate a strictly monotonic, non-reusable reference number scoped by
      * chapter, document_kind (IPC|RM|RF|IS_AR), and Asia/Manila sequence year.
      *
+     * @param  ?array{prefix: string, width: ?int, policy_id: ?string, policy_version: ?int}  $policyOverride
      * @return array{reference: string, sequence: int, year: int, prefix: string, policy_id: ?string, policy_version: ?int}
      */
-    public function nextReference(string $chapterId, string $documentKind, int $width = 6): array
+    public function nextReference(string $chapterId, string $documentKind, int $width = 6, ?array $policyOverride = null): array
     {
-        $run = function () use ($chapterId, $documentKind, $width): array {
+        $run = function () use ($chapterId, $documentKind, $width, $policyOverride): array {
             $year = now('Asia/Manila')->year;
-            $policy = $this->resolveSeriesPolicy($chapterId, $documentKind);
+            $policy = $policyOverride ?? $this->resolveSeriesPolicy($chapterId, $documentKind);
             $prefix = $policy['prefix'];
             $effectiveWidth = $policy['width'] ?? $width;
 
