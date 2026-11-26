@@ -14,8 +14,10 @@ use App\Models\DomainNotificationOutbox;
 use App\Models\DutyGrant;
 use App\Models\PolicyRecord;
 use App\Models\User;
+use App\Services\Notifications\NotificationSubjectRead;
 use App\Services\Shared\CanonicalJson;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -90,6 +92,9 @@ class CombinedBackendMergeVerificationTest extends TestCase
     {
         $specPath = realpath(base_path('../contracts/stage1/openapi.yaml'));
         if ($specPath === false || ! is_file($specPath)) {
+            if (getenv('OPENAPI_REQUIRE_SPEC') === '1') {
+                $this->fail('Locked Stage 1 OpenAPI file is required when OPENAPI_REQUIRE_SPEC=1.');
+            }
             $this->markTestSkipped('Locked Stage 1 OpenAPI file is not mounted in this container.');
         }
 
@@ -527,22 +532,87 @@ class CombinedBackendMergeVerificationTest extends TestCase
         $this->assertSame('4', $rfFinal->json('data.lines.0.progress.remaining_quantity'));
         $this->assertSame('0', $rfFinal->json('data.lines.0.progress.unreserved_quantity'));
 
-        $outboxEvents = DomainNotificationOutbox::where('chapter_id', $this->chapterId)
-            ->pluck('event_name')
-            ->unique()
-            ->values()
-            ->all();
+        $outboxByEvent = DomainNotificationOutbox::where('chapter_id', $this->chapterId)
+            ->orderByDesc('created_at')
+            ->get()
+            ->keyBy('event_name');
         foreach ([
             'stage1.ipc.changed.v1',
             'stage1.opening-rm.changed.v1',
             'stage1.opening-baseline.changed.v1',
             'stage1.internal-rf.changed.v1',
+            'stage1.reservation-preparation.changed.v1',
             'stage1.rf-reservation.changed.v1',
             'stage1.actual-issue.changed.v1',
             'stage1.stock-lot.changed.v1',
         ] as $expectedEvent) {
-            $this->assertContains($expectedEvent, $outboxEvents);
+            $this->assertTrue($outboxByEvent->has($expectedEvent), "Missing outbox event {$expectedEvent}");
         }
+
+        // Verify cross-owner notification subject-read dispatch admission (including RF reservations and unsigned IPC readers)
+        $subjectRead = app(NotificationSubjectRead::class);
+        $custodianUser = User::findOrFail($this->custodianId);
+        $requesterUser = User::findOrFail($this->requesterId);
+        $approverUser = User::findOrFail($this->approverId);
+        $financeUser = User::findOrFail($this->financeId);
+
+        $unassignedReviewer = User::create([
+            'id' => (string) Str::uuid(),
+            'public_id' => 'unassigned-reviewer@example.invalid',
+            'name' => 'Unassigned Reviewer',
+            'email' => 'unassigned-reviewer@example.invalid',
+            'password_hash' => hash('sha256', 'Password123!'),
+            'status' => 'active',
+            'version' => 1,
+        ]);
+        ChapterMembership::create([
+            'id' => (string) Str::uuid(), 'chapter_id' => $this->chapterId,
+            'user_id' => $unassignedReviewer->id, 'membership_status' => 'active', 'version' => 1,
+        ]);
+        DutyGrant::create([
+            'id' => (string) Str::uuid(), 'chapter_id' => $this->chapterId, 'user_id' => $unassignedReviewer->id,
+            'duty_code' => 'INDEPENDENT_REVIEWER', 'status' => 'active', 'is_alternate' => false,
+            'valid_from' => now()->subDay(), 'version' => 1,
+        ]);
+
+        $unsignedHead = User::create([
+            'id' => (string) Str::uuid(),
+            'public_id' => 'unsigned-head@example.invalid',
+            'name' => 'Unsigned Head',
+            'email' => 'unsigned-head@example.invalid',
+            'password_hash' => hash('sha256', 'Password123!'),
+            'status' => 'active',
+            'version' => 1,
+        ]);
+        ChapterMembership::create([
+            'id' => (string) Str::uuid(), 'chapter_id' => $this->chapterId,
+            'user_id' => $unsignedHead->id, 'membership_status' => 'active', 'version' => 1,
+        ]);
+        DutyGrant::create([
+            'id' => (string) Str::uuid(), 'chapter_id' => $this->chapterId, 'user_id' => $unsignedHead->id,
+            'duty_code' => 'CHAPTER_HEAD', 'status' => 'active', 'is_alternate' => false,
+            'valid_from' => now()->subDay(), 'version' => 1,
+        ]);
+
+        DB::transaction(function () use ($subjectRead, $outboxByEvent, $custodianUser, $requesterUser, $approverUser, $financeUser, $unassignedReviewer, $unsignedHead) {
+            $this->assertTrue($subjectRead->allows($unsignedHead, $outboxByEvent->get('stage1.ipc.changed.v1')));
+            $this->assertFalse($subjectRead->allows($unassignedReviewer, $outboxByEvent->get('stage1.ipc.changed.v1')));
+            $this->assertTrue($subjectRead->allows($custodianUser, $outboxByEvent->get('stage1.opening-rm.changed.v1')));
+            $this->assertFalse($subjectRead->allows($requesterUser, $outboxByEvent->get('stage1.opening-rm.changed.v1')));
+            $this->assertTrue($subjectRead->allows($custodianUser, $outboxByEvent->get('stage1.opening-baseline.changed.v1')));
+            $this->assertFalse($subjectRead->allows($requesterUser, $outboxByEvent->get('stage1.opening-baseline.changed.v1')));
+            $this->assertTrue($subjectRead->allows($requesterUser, $outboxByEvent->get('stage1.internal-rf.changed.v1')));
+            $this->assertTrue($subjectRead->allows($approverUser, $outboxByEvent->get('stage1.internal-rf.changed.v1')));
+            $this->assertTrue($subjectRead->allows($custodianUser, $outboxByEvent->get('stage1.internal-rf.changed.v1')));
+            $this->assertFalse($subjectRead->allows($financeUser, $outboxByEvent->get('stage1.internal-rf.changed.v1')));
+            $this->assertTrue($subjectRead->allows($custodianUser, $outboxByEvent->get('stage1.reservation-preparation.changed.v1')));
+            $this->assertTrue($subjectRead->allows($custodianUser, $outboxByEvent->get('stage1.rf-reservation.changed.v1')));
+            $this->assertFalse($subjectRead->allows($financeUser, $outboxByEvent->get('stage1.rf-reservation.changed.v1')));
+            $this->assertTrue($subjectRead->allows($custodianUser, $outboxByEvent->get('stage1.actual-issue.changed.v1')));
+            $this->assertFalse($subjectRead->allows($financeUser, $outboxByEvent->get('stage1.actual-issue.changed.v1')));
+            $this->assertTrue($subjectRead->allows($custodianUser, $outboxByEvent->get('stage1.stock-lot.changed.v1')));
+            $this->assertFalse($subjectRead->allows($financeUser, $outboxByEvent->get('stage1.stock-lot.changed.v1')));
+        });
 
         // 8. Access and replay denial after loss of authority across both domains
         DutyGrant::where('chapter_id', $this->chapterId)
@@ -568,6 +638,11 @@ class CombinedBackendMergeVerificationTest extends TestCase
             ->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issueId}/post", $postIssuePayload)
             ->assertStatus(404)
             ->assertJsonPath('error.code', 'chapter_not_found');
+
+        DB::transaction(function () use ($subjectRead, $outboxByEvent, $custodianUser) {
+            $this->assertFalse($subjectRead->allows($custodianUser->fresh(), $outboxByEvent->get('stage1.rf-reservation.changed.v1')));
+            $this->assertFalse($subjectRead->allows($custodianUser->fresh(), $outboxByEvent->get('stage1.actual-issue.changed.v1')));
+        });
     }
 
     private function seedConnectedChapterFixture(): void

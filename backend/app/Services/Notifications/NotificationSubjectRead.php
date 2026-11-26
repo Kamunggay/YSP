@@ -2,12 +2,14 @@
 
 namespace App\Services\Notifications;
 
+use App\Exceptions\ContractException;
 use App\Http\Requests\AuthInput;
 use App\Models\DomainNotificationOutbox;
 use App\Models\OpeningCount;
 use App\Models\RfReservationPreparation;
 use App\Models\StockReservation;
 use App\Models\User;
+use App\Services\Authority\ChapterAuthority;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Facade;
@@ -66,6 +68,15 @@ final class NotificationSubjectRead
             return null;
         }
 
+        try {
+            $duties = ChapterAuthority::forChapter($user, $event->chapter_id)->duties();
+        } catch (ContractException) {
+            return null;
+        }
+        if (array_intersect($duties, ['INVENTORY', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE']) !== []) {
+            return "ipcs/{$ipc->id}";
+        }
+
         $participants = [
             $ipc->created_by, $ipc->authorized_head_by, $ipc->authorized_finance_by,
             ...array_column($ipc->material_json['count_team'] ?? [], 'user_id'),
@@ -81,8 +92,9 @@ final class NotificationSubjectRead
     private function reservationPath(DomainNotificationOutbox $event): ?string
     {
         $isPreparation = $event->event_name === 'stage1.reservation-preparation.changed.v1';
-        $model = $isPreparation ? RfReservationPreparation::class : StockReservation::class;
-        $rf = $model::where('chapter_id', $event->chapter_id)->whereKey($event->resource_id)->sharedLock()->value('rf_id');
+        $rf = $isPreparation
+            ? RfReservationPreparation::where('chapter_id', $event->chapter_id)->whereKey($event->resource_id)->sharedLock()->value('rf_id')
+            : StockReservation::where('chapter_id', $event->chapter_id)->where('source_type', 'RF')->whereKey($event->resource_id)->sharedLock()->value('source_id');
 
         return is_string($rf) && preg_match(AuthInput::UUID, $rf) ? 'internal-rfs/'.$rf.'/'
             .($isPreparation ? 'reservation-preparations' : 'reservations').'/'.$event->resource_id : null;
