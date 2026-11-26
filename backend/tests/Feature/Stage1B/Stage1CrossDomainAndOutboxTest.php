@@ -374,7 +374,7 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame('pending', $row->status);
         $this->assertNull($row->dispatched_at);
-        $this->assertSame([
+        $this->assertEqualsCanonicalizing([
             'event_name',
             'event_id',
             'committed_at',
@@ -384,6 +384,10 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
             'resource_version',
             'material_version',
         ], array_keys($row->payload_json));
+
+        $baseline = $outbox->recordIntent('stage1.opening-baseline.changed.v1', $this->chapterId, $this->chapterId, 4, 3);
+        $this->assertNull($baseline->payload_json['resource_version']);
+        $this->assertNull($baseline->payload_json['material_version']);
     }
 
     public function test_unauthenticated_chapter_requests_return_401(): void

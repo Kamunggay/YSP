@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Reverb\Contracts\ApplicationProvider;
 use Laravel\Reverb\Protocols\Pusher\ConnectionRegistry;
-use Laravel\Reverb\Protocols\Pusher\EventHandler;
 use Laravel\Reverb\Protocols\Pusher\Server;
 use Laravel\Reverb\Servers\Reverb\Http\Response;
 use Psr\Http\Message\RequestInterface;
+use RuntimeException;
 use Throwable;
 
 final class NotificationBroker
@@ -21,7 +21,7 @@ final class NotificationBroker
         private readonly ApplicationProvider $applications,
         private readonly ConnectionRegistry $connections,
         private readonly Server $server,
-        private readonly EventHandler $subscriptions,
+        private readonly NotificationSubscriptions $subscriptions,
         private readonly NotificationSubjectRead $reads,
     ) {}
 
@@ -55,14 +55,16 @@ final class NotificationBroker
         }
 
         return DB::transaction(function () use ($socket, $data) {
-            $user = $socket->currentUser();
+            $user = $this->recheck($socket);
             $chapter = $data['chapter_id'];
             $channel = $data['channel_name'];
+            $fingerprint = $user && $chapter !== null ? NotificationSubscriptions::fingerprint($user, $chapter) : null;
             if (! $user || $channel !== NotificationSubscriptions::channel($user->id, $chapter)
-                || ($chapter !== null && ! NotificationSubscriptions::fingerprint($user, $chapter))) {
+                || ($chapter !== null && $fingerprint === null)) {
                 return new Response([], 403);
             }
 
+            $socket->grants[$channel] = ['chapter' => $chapter, 'authority' => $fingerprint];
             $signature = hash_hmac('sha256', $socket->id().':'.$channel, $socket->app()->secret());
 
             return new Response(['auth' => $socket->app()->key().':'.$signature]);
@@ -82,32 +84,37 @@ final class NotificationBroker
             return new Response([]);
         }
 
+        $target = $event->chapter_id === null ? $event->resource_id : $event->target_user_id;
+        $failed = false;
         foreach ($this->sockets() as $socket) {
-            if (! $socket instanceof NotificationConnection) {
+            if (! $socket instanceof NotificationConnection || ($target !== null && $target !== $socket->userId())) {
                 continue;
             }
-            $target = $event->target_user_id ?? ($event->chapter_id === null ? $event->resource_id : null);
-            if ($target !== null && $target !== $socket->userId()) {
+            $channel = NotificationSubscriptions::channel($socket->userId(), $event->chapter_id);
+            if ($event->chapter_id !== null && ! $this->subscriptions->subscribed($socket, $channel)) {
                 continue;
             }
 
-            DB::transaction(function () use ($socket, $event) {
-                $user = $this->recheck($socket);
-                if (! $user) {
-                    return;
-                }
-                $channel = NotificationSubscriptions::channel($user->id, $event->chapter_id);
-                if (! isset($socket->subscriptions[$channel])
-                    || ($event->chapter_id !== null && ! $this->reads->allows($user, $event))) {
-                    return;
-                }
+            try {
+                DB::transaction(function () use ($socket, $event, $channel) {
+                    $user = $this->recheck($socket);
+                    if (! $user || ! $this->subscriptions->subscribed($socket, $channel)
+                        || ($event->chapter_id !== null && ! $this->reads->allows($user, $event))) {
+                        return;
+                    }
 
-                $socket->send(json_encode([
-                    'event' => $event->event_name,
-                    'channel' => $channel,
-                    'data' => json_encode($event->payload_json, JSON_THROW_ON_ERROR),
-                ], JSON_THROW_ON_ERROR));
-            });
+                    $socket->send(json_encode([
+                        'event' => $event->event_name,
+                        'channel' => $channel,
+                        'data' => json_encode($event->payload_json, JSON_THROW_ON_ERROR),
+                    ], JSON_THROW_ON_ERROR));
+                });
+            } catch (Throwable) {
+                $failed = true;
+            }
+        }
+        if ($failed) {
+            throw new RuntimeException('Notification delivery incomplete.');
         }
 
         $event->update(['status' => 'dispatched', 'dispatched_at' => now()]);
@@ -133,7 +140,7 @@ final class NotificationBroker
             return null;
         }
 
-        foreach ($socket->subscriptions as $channel => $scope) {
+        foreach ($socket->grants as $channel => $scope) {
             if ($scope['chapter'] !== null && $scope['authority'] !== NotificationSubscriptions::fingerprint($user, $scope['chapter'])) {
                 $this->subscriptions->unsubscribe($socket, $channel);
             }

@@ -3,6 +3,8 @@
 namespace App\Services\Notifications;
 
 use App\Models\DomainNotificationOutbox;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -50,7 +52,12 @@ class DomainNotificationOutboxService
 
         $meta = self::EVENT_MAP[$eventName];
         $eventId = (string) Str::uuid();
-        $committedAt = now('UTC');
+        $committedAt = DB::connection()->getDriverName() === 'mysql'
+            ? Carbon::parse(DB::scalar('SELECT UTC_TIMESTAMP(6)'), 'UTC')
+            : now('UTC');
+        if (in_array($eventName, ['stage1.authority.changed.v1', 'stage1.opening-baseline.changed.v1'], true)) {
+            $resourceVersion = $materialVersion = null;
+        }
 
         if ($meta['channel'] === 'session') {
             $userScope = $targetUserId ?? $resourceId;

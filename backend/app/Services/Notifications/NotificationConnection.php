@@ -11,7 +11,7 @@ use Laravel\Reverb\Servers\Reverb\Connection as Socket;
 final class NotificationConnection extends Connection
 {
     /** @var array<string, array{chapter: ?string, authority: ?string}> */
-    public array $subscriptions = [];
+    public array $grants = [];
 
     public function __construct(Socket $socket, Application $application, string $origin, private readonly BrowserSession $session)
     {

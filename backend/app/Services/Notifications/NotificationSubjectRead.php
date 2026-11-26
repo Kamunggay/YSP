@@ -4,11 +4,14 @@ namespace App\Services\Notifications;
 
 use App\Http\Requests\AuthInput;
 use App\Models\DomainNotificationOutbox;
+use App\Models\OpeningCount;
+use App\Models\PolicyRecord;
 use App\Models\RfReservationPreparation;
 use App\Models\StockReservation;
 use App\Models\User;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Facade;
 use RuntimeException;
 
 final class NotificationSubjectRead
@@ -27,7 +30,7 @@ final class NotificationSubjectRead
             'stage1.catalogue-unit.changed.v1' => "catalogue/units/{$id}",
             'stage1.catalogue-location.changed.v1' => "catalogue/locations/{$id}",
             'stage1.paper-evidence.changed.v1' => "evidence/{$id}",
-            'stage1.ipc.changed.v1' => "ipcs/{$id}",
+            'stage1.ipc.changed.v1' => $this->ipcPath($user, $event),
             'stage1.opening-rm.changed.v1' => "opening-rms/{$id}",
             'stage1.internal-rf.changed.v1' => "internal-rfs/{$id}",
             'stage1.reservation-preparation.changed.v1', 'stage1.rf-reservation.changed.v1' => $this->reservationPath($event),
@@ -43,12 +46,46 @@ final class NotificationSubjectRead
 
         $request = Request::create(rtrim(config('app.url'), '/')."/api/v1/chapters/{$event->chapter_id}/{$path}");
         $request->attributes->set(self::class, $user);
-        $response = app(Kernel::class)->handle($request);
+        $previous = app('request');
+        try {
+            $response = app(Kernel::class)->handle($request);
+        } finally {
+            app()->instance('request', $previous);
+            Facade::clearResolvedInstance('request');
+        }
         if ($response->getStatusCode() >= 500) {
             throw new RuntimeException('Notification subject read unavailable.');
         }
 
         return $response->isSuccessful();
+    }
+
+    private function ipcPath(User $user, DomainNotificationOutbox $event): ?string
+    {
+        $ipc = OpeningCount::where('chapter_id', $event->chapter_id)->whereKey($event->resource_id)->sharedLock()->first();
+        if (! $ipc) {
+            return null;
+        }
+
+        if (in_array($user->id, [$ipc->created_by, $ipc->authorized_head_by, $ipc->authorized_finance_by], true)
+            || $ipc->lines()->where('counter_user_id', $user->id)->sharedLock()->first(['id'])) {
+            return "ipcs/{$ipc->id}";
+        }
+
+        $policies = PolicyRecord::where('chapter_id', $event->chapter_id)->where('policy_code', 'ipc_authorization')
+            ->orderBy('id')->sharedLock()->get();
+        foreach ($policies as $policy) {
+            $approval = $policy->setupEvidence();
+            if ($policy->effective_from && ! $policy->effective_from->isFuture() && ! $policy->effective_until?->isPast()
+                && ($approval['subject_id'] ?? null) === $ipc->id
+                && ($approval['value_schema_reference'] ?? null) === '#/components/schemas/IpcAuthorizationPolicyValue'
+                && collect($approval['approvals'] ?? [])->contains('authority', 'CHAPTER_HEAD')
+                && in_array($user->id, $policy->rules_json['count_team_ids'] ?? [], true)) {
+                return "ipcs/{$ipc->id}";
+            }
+        }
+
+        return null;
     }
 
     private function reservationPath(DomainNotificationOutbox $event): ?string

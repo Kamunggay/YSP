@@ -42,25 +42,32 @@ final class NotificationSubscriptions extends EventHandler
         DB::transaction(function () use ($connection, $chapter, $channel, $auth, $data) {
             $user = $connection instanceof NotificationConnection ? $connection->currentUser() : null;
             $fingerprint = $user && $chapter !== null ? self::fingerprint($user, $chapter) : null;
-            if (! $user || $data !== null || $channel !== self::channel($user->id, $chapter)
-                || ($chapter !== null && $fingerprint === null)) {
+            $grant = $connection instanceof NotificationConnection ? ($connection->grants[$channel] ?? null) : null;
+            if ($grant !== null && ($grant['authority'] !== $fingerprint || ! $user)) {
+                $this->unsubscribe($connection, $channel);
+                $grant = null;
+            }
+            if (! $user || $grant === null || $data !== null || $channel !== self::channel($user->id, $chapter)
+                || ($chapter !== null && $fingerprint === null) || ! str_starts_with($auth ?? '', $connection->app()->key().':')) {
                 $this->sendSubscriptionError($connection, $channel, 'AuthError', 'Private subscription unavailable.');
 
                 return;
             }
 
             parent::subscribe($connection, $channel, $auth);
-            if ($this->channels->for($connection->app())->find($channel)?->subscribed($connection)) {
-                $connection->subscriptions[$channel] = ['chapter' => $chapter, 'authority' => $fingerprint];
-            }
         });
+    }
+
+    public function subscribed(NotificationConnection $connection, string $channel): bool
+    {
+        return $this->channels->for($connection->app())->find($channel)?->subscribed($connection) ?? false;
     }
 
     public function unsubscribe(Connection $connection, string $channel): void
     {
         parent::unsubscribe($connection, $channel);
         if ($connection instanceof NotificationConnection) {
-            unset($connection->subscriptions[$channel]);
+            unset($connection->grants[$channel]);
         }
     }
 }

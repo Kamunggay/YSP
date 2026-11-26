@@ -9,6 +9,7 @@ use App\Services\Notifications\NotificationTransport;
 use Illuminate\Support\Facades\Log;
 use Laravel\Reverb\Protocols\Pusher\EventHandler;
 use Laravel\Reverb\Servers\Reverb\Console\Commands\StartServer;
+use Pdo\Mysql;
 use React\EventLoop\Loop;
 use Throwable;
 
@@ -27,7 +28,14 @@ final class ServeNotifications extends StartServer
             return;
         }
 
-        $this->laravel->singleton(EventHandler::class, NotificationSubscriptions::class);
+        if (config('database.default') === 'mysql') {
+            config(['database.connections.mysql.options' => [
+                Mysql::ATTR_INIT_COMMAND => 'SET SESSION innodb_lock_wait_timeout = 1',
+            ] + config('database.connections.mysql.options', [])]);
+        }
+
+        $this->laravel->singleton(NotificationSubscriptions::class);
+        $this->laravel->alias(NotificationSubscriptions::class, EventHandler::class);
         $loop = Loop::get();
         $host = $this->option('host');
         $port = $this->option('port');

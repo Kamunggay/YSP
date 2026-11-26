@@ -21,7 +21,7 @@ class EnforceBrowserAuthority
 {
     public function handle(Request $request, Closure $next, ?string $budget = null): Response
     {
-        if ($request->isMethod('GET') && ($user = $request->attributes->get(NotificationSubjectRead::class)) instanceof User) {
+        if ($request->isMethod('GET') && DB::transactionLevel() > 0 && ($user = $request->attributes->get(NotificationSubjectRead::class)) instanceof User) {
             $request->setUserResolver(fn () => $user);
 
             return $next($request);

@@ -49,7 +49,7 @@ class NotificationDeliveryTest extends TestCase
         $foreign = Chapter::create(['code' => 'SYN-OTHER', 'name' => 'Foreign chapter']);
         $writer = $this->officer($chapter, 'RECEIVING');
         $reader = $this->officer($chapter, 'RECEIVING');
-        $member = $this->officer($chapter);
+        $member = $this->officer($chapter, 'INDEPENDENT_REVIEWER');
         $members = $this->signIn($member);
         $readerCookies = $this->signIn($reader);
         $otherBrowser = $this->signIn($reader);
@@ -76,7 +76,10 @@ class NotificationDeliveryTest extends TestCase
 
         $auth = $this->subscribe($readerSocket, $path, $body, $readerCookies);
         $this->assertSame($auth, $this->authorize($path, $body, $readerCookies)->json());
-        [$otherSocket] = $this->connect($otherBrowser);
+        [$otherSocket, $otherId] = $this->connect($otherBrowser);
+        $this->send($otherSocket, 'pusher:subscribe', ['channel' => $chapterChannel, ...$auth]);
+        $this->assertSame('pusher:subscription_error', $this->receive($otherSocket)['event']);
+        $this->subscribe($otherSocket, $path, ['socket_id' => $otherId, 'channel_name' => $chapterChannel], $otherBrowser);
         $this->send($otherSocket, 'pusher:subscribe', ['channel' => $chapterChannel, ...$auth]);
         $this->assertSame('pusher:error', $this->receive($otherSocket)['event']);
         fclose($otherSocket);
@@ -124,6 +127,22 @@ class NotificationDeliveryTest extends TestCase
         $rollback = app(DomainNotificationOutboxService::class)->recordIntent('stage1.paper-evidence.changed.v1', $chapter->id, $id, 1);
         DB::rollBack();
         $this->assertDatabaseMissing('domain_notification_outbox', ['id' => $rollback->id]);
+
+        [$writerSocket, $writerId] = $this->connect($writerCookies);
+        $this->subscribe($writerSocket, $path, [
+            'socket_id' => $writerId, 'channel_name' => "private-stage1.chapter.{$chapter->id}.user.{$writer->id}",
+        ], $writerCookies);
+        DB::transaction(fn () => app(DomainNotificationOutboxService::class)
+            ->recordIntent('stage1.ipc.changed.v1', $chapter->id, $ipc->id, 1, 1));
+        $this->assertSame(0, Artisan::call('notifications:dispatch', ['--once' => true]));
+        $this->assertSame('stage1.ipc.changed.v1', $this->receive($writerSocket)['event']);
+        $this->assertQuiet($memberSocket);
+        fclose($writerSocket);
+
+        $reader->dutyGrants()->update(['status' => 'revoked', 'version' => 2]);
+        $this->send($readerSocket, 'pusher:subscribe', ['channel' => $chapterChannel, ...$auth]);
+        $this->assertSame('pusher:subscription_error', $this->receive($readerSocket)['event']);
+        $this->subscribe($readerSocket, $path, $body, $readerCookies);
 
         $this->revokeMembership($chapter, $reader);
         $new = $this->upload($chapter, $rm, $writerCookies, (string) Str::uuid());
