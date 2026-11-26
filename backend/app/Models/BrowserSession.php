@@ -57,6 +57,15 @@ class BrowserSession extends Model
         return $token;
     }
 
+    public static function forToken(#[\SensitiveParameter] mixed $token, bool $includeExpired = false): ?self
+    {
+        return is_string($token) && preg_match('/\A[a-f0-9]{64}\z/', $token)
+            ? self::where('token_hash', hash('sha256', $token))
+                ->when(! $includeExpired, fn ($query) => $query->where('expires_at', '>', now()))
+                ->lockForUpdate()->first()
+            : null;
+    }
+
     public function currentUser(bool $write = false): ?User
     {
         if (! $this->user_id) {
@@ -135,7 +144,7 @@ class BrowserSession extends Model
 
     private function requiresMfa(User $user): bool
     {
-        $now = now();
+        $now = now()->format('Y-m-d H:i:s.u');
 
         return DB::table('provider_role_grants')
             ->where('user_id', $user->id)
@@ -148,7 +157,7 @@ class BrowserSession extends Model
             ->where('status', 'active')
             ->where(fn (Builder $query) => $query->whereNull('valid_from')->orWhere('valid_from', '<=', $now))
             ->where(fn (Builder $query) => $query->whereNull('valid_until')->orWhere('valid_until', '>', $now))
-            ->whereIn('chapter_id', $user->memberships()->where('membership_status', 'active')
+            ->whereIn('chapter_id', $user->memberships()->current()
                 ->whereHas('chapter', fn (Builder $query) => $query->whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS))
                 ->select('chapter_id'))
             ->sharedLock()->first(['id']) !== null;

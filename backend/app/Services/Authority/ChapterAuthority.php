@@ -60,7 +60,7 @@ final class ChapterAuthority
     public static function forChapter(User $user, string $chapterId): self
     {
         $membership = $user->memberships()->where('chapter_id', $chapterId)
-            ->where('membership_status', 'active')->sharedLock()->first();
+            ->current()->sharedLock()->first();
         $chapter = Chapter::whereKey($chapterId)->whereIn('status', self::AVAILABLE_CHAPTERS)->sharedLock()->first();
         if (! $membership || ! $chapter) {
             throw new ContractException(404, 'chapter_not_found', 'Chapter not found.');
@@ -91,7 +91,7 @@ final class ChapterAuthority
 
             if (! self::current($grant, $now) || ! $grant->valid_from || ! $grant->valid_until || ! $grant->scope
                 || ! $primary || ! in_array($primary->status, ['active', 'enabled'], true)
-                || $membership?->membership_status !== 'active'
+                || ! $membership?->isCurrent()
                 || ! $sources->contains(fn (DutyGrant $source) => self::current($source, $now)
                     && self::covers($source, $grant->scope['unit_id'] ?? null, $grant->scope['limit_php'] ?? null))) {
                 return false;
@@ -157,7 +157,7 @@ final class ChapterAuthority
             return null;
         }
 
-        $decision = "rf_approval_route:{$policy->id}:{$rf->requesting_unit_id}";
+        $decision = 'rf_approval_route:'.($policy->aggregate_id ?? $policy->id).':'.$rf->requesting_unit_id;
 
         return $this->grants->first(fn (DutyGrant $grant) => $grant->duty_code === 'RF_APPROVER'
             && self::covers($grant, $rf->requesting_unit_id)
