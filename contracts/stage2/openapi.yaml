@@ -20,6 +20,8 @@ security: []
 tags:
   - name: Replenishment
     description: Live chapter-scoped net-shortage and Reorder Point (ROP) replenishment visibility owned by Glenn.
+  - name: Donations
+    description: In-kind Donation / Sponsorship Acknowledgment and donor-restriction controls owned by Leader.
 
 paths:
   /api/v1/chapters/{chapter_id}/replenishment/needs:
@@ -81,6 +83,605 @@ paths:
           $ref: '#/components/responses/Throttled'
         '503':
           $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/donations:
+    get:
+      operationId: listDonations
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.read
+      summary: List chapter DAs
+      description: List visible records by updated_at descending, then da_id ascending. Reject unknown or repeated
+        selectors.
+      security:
+      - browserSession: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/PageLimit'}
+      - {$ref: '#/components/parameters/SnapshotCursor'}
+      - {$ref: '#/components/parameters/DonationStatusFilter'}
+      responses:
+        '200':
+          description: Current DA page.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DonationList'}
+        '400': {$ref: '#/components/responses/InvalidSelector'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/ChapterAccessDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationSnapshotStale'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: createDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.draft
+      summary: Create an in-kind donation draft
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DonationDraft'}
+      responses:
+        '201': {$ref: '#/components/responses/DonationMutationCreated'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}:
+    get:
+      operationId: readDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.read
+      summary: Read the current DA
+      security:
+      - browserSession: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      responses:
+        '200':
+          description: Authorized DA read.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DonationResult'}
+        '400': {$ref: '#/components/responses/InvalidSelector'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/ChapterAccessDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+    put:
+      operationId: replaceDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.draft
+      summary: Replace the full draft and its lines
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReplaceDonation'}
+      responses:
+        '200': {$ref: '#/components/responses/DonationMutationOk'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/history:
+    get:
+      operationId: listDonationHistory
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.history_read
+      summary: List immutable DA history
+      description: Newest version first. Cursor binds the current authorized history snapshot.
+      security:
+      - browserSession: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/PageLimit'}
+      - {$ref: '#/components/parameters/SnapshotCursor'}
+      responses:
+        '200':
+          description: Authorized DA read.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DonationHistoryList'}
+        '400': {$ref: '#/components/responses/InvalidSelector'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/ChapterAccessDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationSnapshotStale'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/versions/{version}:
+    get:
+      operationId: readDonationVersion
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.history_read
+      summary: Read an immutable DA version
+      description: Historical DA and evidence disclosure requires current history.read and applicable evidence.read.
+      security:
+      - browserSession: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/DonationVersionPath'}
+      responses:
+        '200':
+          description: Authorized DA read.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DonationResult'}
+        '400': {$ref: '#/components/responses/InvalidSelector'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/ChapterAccessDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/related:
+    get:
+      operationId: listDonationRelated
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.read
+      summary: List authorized related DA-RMs, receiving discrepancies and stock lots
+      description: Stable order by resource_kind, resource_id and da_line_id after filtering by linked scope.
+      security:
+      - browserSession: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/PageLimit'}
+      - {$ref: '#/components/parameters/SnapshotCursor'}
+      responses:
+        '200':
+          description: Authorized DA read.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DonationRelatedList'}
+        '400': {$ref: '#/components/responses/InvalidSelector'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/ChapterAccessDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationSnapshotStale'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/print:
+    get:
+      operationId: printDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.read
+      summary: Print the current DA as HTML
+      description: Identify the exact DA status, version, material version and valuation. Omit private evidence URLs,
+        bytes and signatures.
+      security:
+      - browserSession: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      responses:
+        '200': {$ref: '#/components/responses/DonationPrint'}
+        '400': {$ref: '#/components/responses/InvalidSelector'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/ChapterAccessDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/submit:
+    post:
+      operationId: submitDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.submit
+      summary: Submit a draft for acknowledgment
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DonationVersionCheck'}
+      responses:
+        '200': {$ref: '#/components/responses/DonationMutationOk'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/acknowledge:
+    post:
+      operationId: acknowledgeDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.acknowledge
+      summary: Acknowledge the pending DA against signed paper and allocate its DA reference
+      description: Require effective da_authorization. Verify exact da_acknowledgment paper through checkEvidenceBinding.
+        Atomically allocate the DA reference from reference_series. This action creates no cash, Official Receipt
+        or buyer credit.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AcknowledgeDonation'}
+      responses:
+        '200': {$ref: '#/components/responses/DonationMutationOk'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/return:
+    post:
+      operationId: returnDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.acknowledge
+      summary: Return a pending DA for revision with a reason
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DonationReasonedAction'}
+      responses:
+        '200': {$ref: '#/components/responses/DonationMutationOk'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/decline:
+    post:
+      operationId: declineDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.acknowledge
+      summary: Decline a pending DA with a reason
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DonationReasonedAction'}
+      responses:
+        '200': {$ref: '#/components/responses/DonationMutationOk'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/revise:
+    post:
+      operationId: reviseDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.draft
+      summary: Reopen a returned DA as a draft
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DonationVersionCheck'}
+      responses:
+        '200': {$ref: '#/components/responses/DonationMutationOk'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/close-short:
+    post:
+      operationId: closeShortDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.acknowledge
+      summary: Close an acknowledged or partially received DA with an outstanding pledge and a reason
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DonationReasonedAction'}
+      responses:
+        '200': {$ref: '#/components/responses/DonationMutationOk'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/cancel:
+    post:
+      operationId: cancelDonation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.cancel
+      summary: Cancel an eligible DA with a reason before a DA-RM has posted
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DonationReasonedAction'}
+      responses:
+        '200': {$ref: '#/components/responses/DonationMutationOk'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donations/{da_id}/restriction-resolutions:
+    post:
+      operationId: resolveDonationRestriction
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.restriction_resolve
+      summary: Record a signed donor-restriction resolution or inexpressible audit review
+      description: Require effective da_authorization and exact donor_restriction_resolution paper. Apply uninterpreted
+        to bounded or unrestricted, or refine bounded to bounded. An audit_review records an inexpressible condition
+        and retains the unchanged uninterpreted restriction. Apply changes through Efren's internal applyLotRestrictionResolution
+        without altering quantities or clearing stock holds.
+      security:
+      - browserSession: []
+        csrfProof: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationId'}
+      - {$ref: '#/components/parameters/Origin'}
+      - {$ref: '#/components/parameters/ActionKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ResolveDonationRestriction'}
+      responses:
+        '201': {$ref: '#/components/responses/DonationMutationCreated'}
+        '400': {$ref: '#/components/responses/DonationMalformedRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationMutationDenied'}
+        '404': {$ref: '#/components/responses/ResourceNotFound'}
+        '409': {$ref: '#/components/responses/DonationMutationConflict'}
+        '415': {$ref: '#/components/responses/DonationUnsupportedMedia'}
+        '419': {$ref: '#/components/responses/DonationCsrfMismatch'}
+        '422': {$ref: '#/components/responses/DonationValidationFailed'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donation-operations/by-key:
+    get:
+      operationId: findDonationOperation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.read
+      summary: Recover an immutable committed DA action receipt
+      description: Original actor only. Recheck the current originating action, applicable policy and all linked scopes.
+        Unknown, uncommitted and foreign receipts have the same 404.
+      security:
+      - browserSession: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationOperationName'}
+      - {$ref: '#/components/parameters/DonationActionKeyLookup'}
+      responses:
+        '200':
+          description: Original authorized receipt, including the original HTTP status.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DonationMutationResult'}
+        '400': {$ref: '#/components/responses/InvalidSelector'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationRecoveryDenied'}
+        '404': {$ref: '#/components/responses/DonationOperationNotFound'}
+        '409':
+          description: Effective DA authorization is unavailable for the originating action.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SetupBlocked'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/chapters/{chapter_id}/donation-operations/{operation_id}:
+    get:
+      operationId: readDonationOperation
+      tags:
+      - Donations
+      x-owner: Leader
+      x-existence: new
+      x-required-action: da.read
+      summary: Recover an immutable committed DA action receipt
+      description: Original actor only. Recheck the current originating action, applicable policy and all linked scopes.
+        Unknown, uncommitted and foreign receipts have the same 404.
+      security:
+      - browserSession: []
+      parameters:
+      - {$ref: '#/components/parameters/ChapterId'}
+      - {$ref: '#/components/parameters/DonationOperationId'}
+      responses:
+        '200':
+          description: Original authorized receipt, including the original HTTP status.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DonationMutationResult'}
+        '400': {$ref: '#/components/responses/InvalidSelector'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/DonationRecoveryDenied'}
+        '404': {$ref: '#/components/responses/DonationOperationNotFound'}
+        '409':
+          description: Effective DA authorization is unavailable for the originating action.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SetupBlocked'}
+        '429': {$ref: '#/components/responses/Throttled'}
+        '503': {$ref: '#/components/responses/Unavailable'}
 
 components:
   securitySchemes:
@@ -218,6 +819,38 @@ components:
         type: string
         minLength: 1
         maxLength: 80
+
+    DonationId:
+      name: da_id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Uuid'}
+    DonationVersionPath:
+      name: version
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/DonationVersion'}
+    DonationStatusFilter:
+      name: status
+      in: query
+      required: false
+      schema: {$ref: '#/components/schemas/DonationStatus'}
+    DonationOperationId:
+      name: operation_id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Uuid'}
+    DonationOperationName:
+      name: operation_name
+      in: query
+      required: true
+      schema: {$ref: '#/components/schemas/DonationMutationName'}
+    DonationActionKeyLookup:
+      name: action_key
+      in: query
+      required: true
+      schema: {$ref: '#/components/schemas/Uuid'}
+      description: Sensitive original-actor selector. Exclude it from logs.
 
   schemas:
     # --- Shared Stage 1 Scalar & Envelope Primitives (verbatim reuse) ---
@@ -1762,6 +2395,974 @@ components:
               minLength: 1
               maxLength: 500
 
+    DonationVersion:
+      type: integer
+      minimum: 1
+      maximum: 2147483647
+    DonationStatus:
+      type: string
+      enum:
+      - draft
+      - pending_acknowledgment
+      - returned_for_revision
+      - declined
+      - acknowledged
+      - partially_received
+      - received
+      - closed_short
+      - canceled
+    DonationMutationName:
+      type: string
+      enum:
+      - createDonation
+      - replaceDonation
+      - submitDonation
+      - acknowledgeDonation
+      - returnDonation
+      - declineDonation
+      - reviseDonation
+      - closeShortDonation
+      - cancelDonation
+      - resolveDonationRestriction
+    DonationLineInput:
+      type: object
+      additionalProperties: false
+      required:
+      - variant_id
+      - unit_id
+      - pledged_quantity
+      - condition_notes
+      - valuation_kind
+      - unit_value_php
+      - valuation_basis
+      - restrictions
+      properties:
+        variant_id: {$ref: '#/components/schemas/Uuid'}
+        unit_id: {$ref: '#/components/schemas/Uuid'}
+        pledged_quantity:
+          allOf:
+          - {$ref: '#/components/schemas/StockQuantity'}
+          - not:
+              pattern: ^0(?:\.0+)?$
+        condition_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        valuation_kind:
+          enum:
+          - declared
+          - estimated
+        unit_value_php: {$ref: '#/components/schemas/PhpAmount'}
+        valuation_basis:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        restrictions:
+          allOf:
+          - {$ref: '#/components/schemas/BoundedRestriction'}
+          - if:
+              properties:
+                state: {const: unrestricted}
+            then:
+              properties:
+                allowed_uses: {const: []}
+                event_ids: {const: []}
+                requesting_unit_ids: {const: []}
+                effective_from: {const: null}
+                effective_until: {const: null}
+                interpretation_id: {const: null}
+                source_condition_reference: {const: null}
+            else:
+              properties:
+                source_condition_reference:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  pattern: \S
+    DonationDraft:
+      type: object
+      additionalProperties: false
+      required:
+      - donor_name
+      - lines
+      properties:
+        donor_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: \S
+        lines:
+          type: array
+          items: {$ref: '#/components/schemas/DonationLineInput'}
+          minItems: 1
+    ReplaceDonation:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - donor_name
+      - lines
+      properties:
+        expected_version: {$ref: '#/components/schemas/DonationVersion'}
+        expected_material_version: {$ref: '#/components/schemas/DonationVersion'}
+        donor_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: \S
+        lines:
+          type: array
+          items: {$ref: '#/components/schemas/DonationLineInput'}
+          minItems: 1
+    DonationVersionCheck:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      properties:
+        expected_version: {$ref: '#/components/schemas/DonationVersion'}
+        expected_material_version: {$ref: '#/components/schemas/DonationVersion'}
+    DonationReasonedAction:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - reason
+      properties:
+        expected_version: {$ref: '#/components/schemas/DonationVersion'}
+        expected_material_version: {$ref: '#/components/schemas/DonationVersion'}
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+    AcknowledgeDonation:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - evidence
+      - signed_at
+      - confirm_paper_matches
+      properties:
+        expected_version: {$ref: '#/components/schemas/DonationVersion'}
+        expected_material_version: {$ref: '#/components/schemas/DonationVersion'}
+        evidence: {$ref: '#/components/schemas/EvidenceByteBinding'}
+        signed_at: {$ref: '#/components/schemas/UtcInstant'}
+        confirm_paper_matches: {const: true}
+    ResolveDonationRestriction:
+      type: object
+      additionalProperties: false
+      required:
+      - expected_version
+      - expected_material_version
+      - evidence
+      - signed_at
+      - confirm_paper_matches
+      - da_line_id
+      - reason
+      - resolution_kind
+      - restrictions
+      properties:
+        expected_version: {$ref: '#/components/schemas/DonationVersion'}
+        expected_material_version: {$ref: '#/components/schemas/DonationVersion'}
+        evidence: {$ref: '#/components/schemas/EvidenceByteBinding'}
+        signed_at: {$ref: '#/components/schemas/UtcInstant'}
+        confirm_paper_matches: {const: true}
+        da_line_id: {$ref: '#/components/schemas/Uuid'}
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        resolution_kind:
+          enum:
+          - apply
+          - audit_review
+        restrictions:
+          allOf:
+          - {$ref: '#/components/schemas/BoundedRestriction'}
+          - if:
+              properties:
+                state: {const: unrestricted}
+            then:
+              properties:
+                allowed_uses: {const: []}
+                event_ids: {const: []}
+                requesting_unit_ids: {const: []}
+                effective_from: {const: null}
+                effective_until: {const: null}
+                interpretation_id: {const: null}
+                source_condition_reference: {const: null}
+            else:
+              properties:
+                source_condition_reference:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  pattern: \S
+      if:
+        properties:
+          resolution_kind: {const: audit_review}
+      then:
+        properties:
+          restrictions:
+            properties:
+              state: {const: uninterpreted}
+      else:
+        properties:
+          restrictions:
+            properties:
+              state:
+                enum:
+                - bounded
+                - unrestricted
+    DonationLine:
+      type: object
+      additionalProperties: false
+      required:
+      - line_id
+      - variant_id
+      - unit_id
+      - pledged_quantity
+      - condition_notes
+      - valuation_kind
+      - unit_value_php
+      - valuation_basis
+      - restrictions
+      - quantity_scale
+      - received_quantity
+      - outstanding_quantity
+      - pledged_value_php
+      properties:
+        line_id: {$ref: '#/components/schemas/Uuid'}
+        variant_id: {$ref: '#/components/schemas/Uuid'}
+        unit_id: {$ref: '#/components/schemas/Uuid'}
+        pledged_quantity:
+          allOf:
+          - {$ref: '#/components/schemas/StockQuantity'}
+          - not:
+              pattern: ^0(?:\.0+)?$
+        condition_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        valuation_kind:
+          enum:
+          - declared
+          - estimated
+        unit_value_php: {$ref: '#/components/schemas/PhpAmount'}
+        valuation_basis:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        restrictions:
+          allOf:
+          - {$ref: '#/components/schemas/BoundedRestriction'}
+          - if:
+              properties:
+                state: {const: unrestricted}
+            then:
+              properties:
+                allowed_uses: {const: []}
+                event_ids: {const: []}
+                requesting_unit_ids: {const: []}
+                effective_from: {const: null}
+                effective_until: {const: null}
+                interpretation_id: {const: null}
+                source_condition_reference: {const: null}
+            else:
+              properties:
+                source_condition_reference:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  pattern: \S
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        received_quantity: {$ref: '#/components/schemas/StockQuantity'}
+        outstanding_quantity: {$ref: '#/components/schemas/StockQuantity'}
+        pledged_value_php: {$ref: '#/components/schemas/PhpAmount'}
+    DonationAcknowledgment:
+      type: object
+      additionalProperties: false
+      required:
+      - actor_id
+      - signed_at
+      - committed_at
+      - binding
+      - snapshot
+      properties:
+        actor_id: {$ref: '#/components/schemas/Uuid'}
+        signed_at: {$ref: '#/components/schemas/UtcInstant'}
+        committed_at: {$ref: '#/components/schemas/UtcInstant'}
+        binding: {$ref: '#/components/schemas/EvidenceByteBinding'}
+        snapshot:
+          allOf:
+          - {$ref: '#/components/schemas/EvidenceSnapshot'}
+          - properties:
+              target:
+                properties:
+                  purpose: {const: da_acknowledgment}
+    Donation:
+      type: object
+      additionalProperties: false
+      required:
+      - da_id
+      - chapter_id
+      - version
+      - material_version
+      - status
+      - reference
+      - prepared_by
+      - donor_name
+      - lines
+      - valuation_policy
+      - pledged_total_value_php
+      - acknowledgment
+      - updated_at
+      properties:
+        da_id: {$ref: '#/components/schemas/Uuid'}
+        chapter_id: {$ref: '#/components/schemas/Uuid'}
+        version: {$ref: '#/components/schemas/DonationVersion'}
+        material_version: {$ref: '#/components/schemas/DonationVersion'}
+        status: {$ref: '#/components/schemas/DonationStatus'}
+        reference:
+          anyOf:
+          - type: string
+            pattern: ^[A-Z0-9]{1,12}-[0-9]{4}-[0-9]{6,12}$
+          - type: 'null'
+        prepared_by: {$ref: '#/components/schemas/Uuid'}
+        donor_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: \S
+        lines:
+          type: array
+          items: {$ref: '#/components/schemas/DonationLine'}
+          minItems: 1
+        valuation_policy: {$ref: '#/components/schemas/PolicyBindingRef'}
+        pledged_total_value_php: {$ref: '#/components/schemas/PhpAmount'}
+        acknowledgment:
+          anyOf:
+          - {$ref: '#/components/schemas/DonationAcknowledgment'}
+          - type: 'null'
+        updated_at: {$ref: '#/components/schemas/UtcInstant'}
+      allOf:
+      - if:
+          properties:
+            status:
+              enum:
+              - draft
+              - pending_acknowledgment
+              - returned_for_revision
+              - declined
+        then:
+          properties:
+            reference: {const: null}
+            acknowledgment: {const: null}
+      - if:
+          properties:
+            status:
+              enum:
+              - acknowledged
+              - partially_received
+              - received
+              - closed_short
+        then:
+          properties:
+            reference:
+              type: string
+            acknowledgment: {$ref: '#/components/schemas/DonationAcknowledgment'}
+      - if:
+          properties:
+            reference: {const: null}
+        then:
+          properties:
+            acknowledgment: {const: null}
+        else:
+          properties:
+            acknowledgment: {$ref: '#/components/schemas/DonationAcknowledgment'}
+    DonationAcknowledgmentMaterial:
+      type: object
+      additionalProperties: false
+      required:
+      - chapter_id
+      - da_id
+      - material_version
+      - prepared_by
+      - donor_name
+      - lines
+      - valuation_policy
+      - pledged_total_value_php
+      properties:
+        chapter_id: {$ref: '#/components/schemas/Uuid'}
+        da_id: {$ref: '#/components/schemas/Uuid'}
+        material_version: {$ref: '#/components/schemas/DonationVersion'}
+        prepared_by: {$ref: '#/components/schemas/Uuid'}
+        donor_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: \S
+        lines:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - line_id
+            - variant_id
+            - unit_id
+            - pledged_quantity
+            - condition_notes
+            - valuation_kind
+            - unit_value_php
+            - valuation_basis
+            - restrictions
+            - quantity_scale
+            - pledged_value_php
+            properties:
+              line_id: {$ref: '#/components/schemas/Uuid'}
+              variant_id: {$ref: '#/components/schemas/Uuid'}
+              unit_id: {$ref: '#/components/schemas/Uuid'}
+              pledged_quantity:
+                allOf:
+                - {$ref: '#/components/schemas/StockQuantity'}
+                - not:
+                    pattern: ^0(?:\.0+)?$
+              condition_notes:
+                type: string
+                minLength: 1
+                maxLength: 500
+                pattern: \S
+              valuation_kind:
+                enum:
+                - declared
+                - estimated
+              unit_value_php: {$ref: '#/components/schemas/PhpAmount'}
+              valuation_basis:
+                type: string
+                minLength: 1
+                maxLength: 500
+                pattern: \S
+              restrictions:
+                allOf:
+                - {$ref: '#/components/schemas/BoundedRestriction'}
+                - if:
+                    properties:
+                      state: {const: unrestricted}
+                  then:
+                    properties:
+                      allowed_uses: {const: []}
+                      event_ids: {const: []}
+                      requesting_unit_ids: {const: []}
+                      effective_from: {const: null}
+                      effective_until: {const: null}
+                      interpretation_id: {const: null}
+                      source_condition_reference: {const: null}
+                  else:
+                    properties:
+                      source_condition_reference:
+                        type: string
+                        minLength: 1
+                        maxLength: 200
+                        pattern: \S
+              quantity_scale:
+                type: integer
+                minimum: 0
+                maximum: 6
+              pledged_value_php: {$ref: '#/components/schemas/PhpAmount'}
+          minItems: 1
+        valuation_policy: {$ref: '#/components/schemas/PolicyBindingRef'}
+        pledged_total_value_php: {$ref: '#/components/schemas/PhpAmount'}
+    DonationRestrictionResolutionMaterial:
+      type: object
+      additionalProperties: false
+      required:
+      - chapter_id
+      - da_id
+      - material_version
+      - da_line_id
+      - reason
+      - resolution_kind
+      - restrictions
+      - previous_restrictions
+      properties:
+        chapter_id: {$ref: '#/components/schemas/Uuid'}
+        da_id: {$ref: '#/components/schemas/Uuid'}
+        material_version: {$ref: '#/components/schemas/DonationVersion'}
+        da_line_id: {$ref: '#/components/schemas/Uuid'}
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        resolution_kind:
+          enum:
+          - apply
+          - audit_review
+        restrictions:
+          allOf:
+          - {$ref: '#/components/schemas/BoundedRestriction'}
+          - if:
+              properties:
+                state: {const: unrestricted}
+            then:
+              properties:
+                allowed_uses: {const: []}
+                event_ids: {const: []}
+                requesting_unit_ids: {const: []}
+                effective_from: {const: null}
+                effective_until: {const: null}
+                interpretation_id: {const: null}
+                source_condition_reference: {const: null}
+            else:
+              properties:
+                source_condition_reference:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  pattern: \S
+        previous_restrictions:
+          allOf:
+          - {$ref: '#/components/schemas/BoundedRestriction'}
+          - if:
+              properties:
+                state: {const: unrestricted}
+            then:
+              properties:
+                allowed_uses: {const: []}
+                event_ids: {const: []}
+                requesting_unit_ids: {const: []}
+                effective_from: {const: null}
+                effective_until: {const: null}
+                interpretation_id: {const: null}
+                source_condition_reference: {const: null}
+            else:
+              properties:
+                source_condition_reference:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  pattern: \S
+      if:
+        properties:
+          resolution_kind: {const: audit_review}
+      then:
+        properties:
+          restrictions:
+            properties:
+              state: {const: uninterpreted}
+      else:
+        properties:
+          restrictions:
+            properties:
+              state:
+                enum:
+                - bounded
+                - unrestricted
+    DonationResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data: {$ref: '#/components/schemas/Donation'}
+    DonationList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/Donation'}
+        page: {$ref: '#/components/schemas/Page'}
+    DonationOperationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - operation_id
+      - operation_name
+      - action_key
+      - actor_id
+      - chapter_id
+      - committed_at
+      - http_status
+      - result
+      - restriction_resolution
+      properties:
+        operation_id: {$ref: '#/components/schemas/Uuid'}
+        operation_name: {$ref: '#/components/schemas/DonationMutationName'}
+        action_key: {$ref: '#/components/schemas/Uuid'}
+        actor_id: {$ref: '#/components/schemas/Uuid'}
+        chapter_id: {$ref: '#/components/schemas/Uuid'}
+        committed_at: {$ref: '#/components/schemas/UtcInstant'}
+        http_status:
+          enum:
+          - 200
+          - 201
+        result: {$ref: '#/components/schemas/Donation'}
+        restriction_resolution:
+          anyOf:
+          - {$ref: '#/components/schemas/DonationRestrictionResolution'}
+          - type: 'null'
+      allOf:
+      - if:
+          properties:
+            operation_name:
+              enum:
+              - createDonation
+              - resolveDonationRestriction
+        then:
+          properties:
+            http_status: {const: 201}
+        else:
+          properties:
+            http_status: {const: 200}
+      - if:
+          properties:
+            operation_name: {const: resolveDonationRestriction}
+        then:
+          properties:
+            restriction_resolution: {$ref: '#/components/schemas/DonationRestrictionResolution'}
+        else:
+          properties:
+            restriction_resolution: {const: null}
+    DonationMutationResult:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      properties:
+        data: {$ref: '#/components/schemas/DonationOperationReceipt'}
+    DonationRestrictionResolution:
+      type: object
+      additionalProperties: false
+      required:
+      - resolution_id
+      - da_line_id
+      - reason
+      - resolution_kind
+      - restrictions
+      - previous_restrictions
+      - actor_id
+      - signed_at
+      - committed_at
+      - binding
+      - snapshot
+      properties:
+        resolution_id: {$ref: '#/components/schemas/Uuid'}
+        da_line_id: {$ref: '#/components/schemas/Uuid'}
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: \S
+        resolution_kind:
+          enum:
+          - apply
+          - audit_review
+        restrictions:
+          allOf:
+          - {$ref: '#/components/schemas/BoundedRestriction'}
+          - if:
+              properties:
+                state: {const: unrestricted}
+            then:
+              properties:
+                allowed_uses: {const: []}
+                event_ids: {const: []}
+                requesting_unit_ids: {const: []}
+                effective_from: {const: null}
+                effective_until: {const: null}
+                interpretation_id: {const: null}
+                source_condition_reference: {const: null}
+            else:
+              properties:
+                source_condition_reference:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  pattern: \S
+        previous_restrictions:
+          allOf:
+          - {$ref: '#/components/schemas/BoundedRestriction'}
+          - if:
+              properties:
+                state: {const: unrestricted}
+            then:
+              properties:
+                allowed_uses: {const: []}
+                event_ids: {const: []}
+                requesting_unit_ids: {const: []}
+                effective_from: {const: null}
+                effective_until: {const: null}
+                interpretation_id: {const: null}
+                source_condition_reference: {const: null}
+            else:
+              properties:
+                source_condition_reference:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  pattern: \S
+        actor_id: {$ref: '#/components/schemas/Uuid'}
+        signed_at: {$ref: '#/components/schemas/UtcInstant'}
+        committed_at: {$ref: '#/components/schemas/UtcInstant'}
+        binding: {$ref: '#/components/schemas/EvidenceByteBinding'}
+        snapshot:
+          allOf:
+          - {$ref: '#/components/schemas/EvidenceSnapshot'}
+          - properties:
+              target:
+                properties:
+                  purpose: {const: donor_restriction_resolution}
+      if:
+        properties:
+          resolution_kind: {const: audit_review}
+      then:
+        properties:
+          restrictions:
+            properties:
+              state: {const: uninterpreted}
+      else:
+        properties:
+          restrictions:
+            properties:
+              state:
+                enum:
+                - bounded
+                - unrestricted
+    DonationHistoryList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - version
+            - material_version
+            - status
+            - action
+            - actor_id
+            - committed_at
+            - reason
+            - restriction_resolution
+            properties:
+              version: {$ref: '#/components/schemas/DonationVersion'}
+              material_version: {$ref: '#/components/schemas/DonationVersion'}
+              status: {$ref: '#/components/schemas/DonationStatus'}
+              action:
+                enum:
+                - createDonation
+                - replaceDonation
+                - submitDonation
+                - acknowledgeDonation
+                - returnDonation
+                - declineDonation
+                - reviseDonation
+                - closeShortDonation
+                - cancelDonation
+                - resolveDonationRestriction
+                - postReceivingReport
+              actor_id: {$ref: '#/components/schemas/Uuid'}
+              committed_at: {$ref: '#/components/schemas/UtcInstant'}
+              reason:
+                anyOf:
+                - type: string
+                  minLength: 1
+                  maxLength: 500
+                  pattern: \S
+                - type: 'null'
+              restriction_resolution:
+                anyOf:
+                - {$ref: '#/components/schemas/DonationRestrictionResolution'}
+                - type: 'null'
+        page: {$ref: '#/components/schemas/Page'}
+    DonationRelatedList:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - page
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - resource_kind
+            - resource_id
+            - da_line_id
+            properties:
+              resource_kind:
+                enum:
+                - receiving_report
+                - receiving_discrepancy
+                - stock_lot
+              resource_id: {$ref: '#/components/schemas/Uuid'}
+              da_line_id:
+                anyOf:
+                - {$ref: '#/components/schemas/Uuid'}
+                - type: 'null'
+        page: {$ref: '#/components/schemas/Page'}
+    DonationConflict:
+      type: object
+      additionalProperties: false
+      required:
+      - request_id
+      - error
+      - failed_intent_committed
+      - current
+      - setup_blockers
+      properties:
+        request_id: {$ref: '#/components/schemas/Uuid'}
+        error:
+          type: object
+          additionalProperties: false
+          required:
+          - code
+          - message
+          properties:
+            code:
+              enum:
+              - version_conflict
+              - action_key_conflict
+              - invalid_transition
+              - evidence_missing
+              - evidence_invalid
+              - evidence_mismatch
+              - acknowledgment_missing
+              - target_locked
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: \S
+        failed_intent_committed: {const: false}
+        current:
+          anyOf:
+          - {$ref: '#/components/schemas/Donation'}
+          - type: 'null'
+        setup_blockers:
+          type: array
+          maxItems: 0
+    ApplyLotRestrictionResolutionInput:
+      type: object
+      additionalProperties: false
+      required:
+      - chapter_id
+      - da_id
+      - da_line_id
+      - resolution_id
+      - previous_restrictions
+      - restrictions
+      properties:
+        chapter_id: {$ref: '#/components/schemas/Uuid'}
+        da_id: {$ref: '#/components/schemas/Uuid'}
+        da_line_id: {$ref: '#/components/schemas/Uuid'}
+        resolution_id: {$ref: '#/components/schemas/Uuid'}
+        previous_restrictions:
+          allOf:
+          - {$ref: '#/components/schemas/BoundedRestriction'}
+          - if:
+              properties:
+                state: {const: unrestricted}
+            then:
+              properties:
+                allowed_uses: {const: []}
+                event_ids: {const: []}
+                requesting_unit_ids: {const: []}
+                effective_from: {const: null}
+                effective_until: {const: null}
+                interpretation_id: {const: null}
+                source_condition_reference: {const: null}
+            else:
+              properties:
+                source_condition_reference:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  pattern: \S
+        restrictions:
+          allOf:
+          - {$ref: '#/components/schemas/BoundedRestriction'}
+          - if:
+              properties:
+                state: {const: unrestricted}
+            then:
+              properties:
+                allowed_uses: {const: []}
+                event_ids: {const: []}
+                requesting_unit_ids: {const: []}
+                effective_from: {const: null}
+                effective_until: {const: null}
+                interpretation_id: {const: null}
+                source_condition_reference: {const: null}
+            else:
+              properties:
+                source_condition_reference:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  pattern: \S
+      allOf:
+      - properties:
+          previous_restrictions:
+            properties:
+              state:
+                enum:
+                - bounded
+                - uninterpreted
+          restrictions:
+            properties:
+              state:
+                enum:
+                - bounded
+                - unrestricted
+    ApplyLotRestrictionResolutionResult:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - updated_lot_ids
+        properties:
+          outcome: {const: ready}
+          updated_lot_ids:
+            type: array
+            items: {$ref: '#/components/schemas/Uuid'}
+            uniqueItems: true
+      - type: object
+        additionalProperties: false
+        required:
+        - outcome
+        - reason
+        properties:
+          outcome: {const: rejected}
+          reason: {const: target_locked}
+
   responses:
     InvalidSelector:
       description: Unknown, repeated, or malformed query selector, malformed chapter UUID after admission, or foreign/malformed cursor.
@@ -1880,6 +3481,168 @@ components:
                       code:
                         const: unavailable
 
+    DonationMutationOk:
+      description: Committed DA action receipt or its authorized replay.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        X-Action-Replayed: {$ref: '#/components/headers/ActionReplayed'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/DonationMutationResult'}
+    DonationMutationCreated:
+      description: Newly committed DA draft or resolution receipt, or its authorized replay.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        X-Action-Replayed: {$ref: '#/components/headers/ActionReplayed'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/DonationMutationResult'}
+    DonationMalformedRequest:
+      description: Malformed JSON, missing or malformed action key, duplicate key/header or invalid selector.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+            - {$ref: '#/components/schemas/Error'}
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - malformed_request
+                      - invalid_selector
+    DonationUnsupportedMedia:
+      description: Send an application/json request body.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+            - {$ref: '#/components/schemas/Error'}
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - unsupported_media_type
+    DonationCsrfMismatch:
+      description: Missing, stale or mismatched CSRF proof.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+            - {$ref: '#/components/schemas/Error'}
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - csrf_mismatch
+    DonationOperationNotFound:
+      description: Unknown or inaccessible chapter or action receipt.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+            - {$ref: '#/components/schemas/Error'}
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - chapter_not_found
+                      - operation_not_found
+    DonationMutationDenied:
+      description: Current session, action, paper-evidence scope, exact origin or independence requirement failed.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+            - {$ref: '#/components/schemas/Error'}
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - mfa_incomplete
+                      - duty_denied
+                      - origin_denied
+                      - independence_required
+    DonationRecoveryDenied:
+      description: Current session, originating action, linked scope or configured independence requirement failed.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+            - {$ref: '#/components/schemas/Error'}
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - mfa_incomplete
+                      - duty_denied
+                      - independence_required
+    DonationValidationFailed:
+      description: Rejected closed request body with request-relative field pointers.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ValidationError'}
+    DonationMutationConflict:
+      description: Uncommitted intent or missing effective setup. Current DA included only when authorized.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            oneOf:
+            - {$ref: '#/components/schemas/DonationConflict'}
+            - {$ref: '#/components/schemas/SetupBlocked'}
+    DonationSnapshotStale:
+      description: Expired pagination cursor or changed authorized snapshot.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+      content:
+        application/json:
+          schema:
+            allOf:
+            - {$ref: '#/components/schemas/Error'}
+            - properties:
+                error:
+                  properties:
+                    code:
+                      enum:
+                      - snapshot_stale
+    DonationPrint:
+      description: Escaped, non-executable printable DA snapshot.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Content-Security-Policy:
+          required: true
+          schema: {const: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action
+              'none'}
+        X-Content-Type-Options:
+          required: true
+          schema: {const: nosniff}
+      content:
+        text/html:
+          schema:
+            type: string
+            minLength: 1
+
 x-controlled-procedures:
   recordPolicy:
     input:
@@ -1894,6 +3657,35 @@ x-stage2-action-duties:
     - PURCHASING
     - BUDGET_APPROVER
     - CHAPTER_HEAD
+  da.read:
+  - INVENTORY
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
+  da.history_read:
+  - INVENTORY
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
+  da.draft:
+  - INVENTORY
+  - RECEIVING
+  da.submit:
+  - INVENTORY
+  - RECEIVING
+  da.acknowledge:
+  - INVENTORY
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
+  da.cancel:
+  - INVENTORY
+  - RECEIVING
+  da.restriction_resolve:
+  - INVENTORY
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
 
 x-stage2-policy-values:
   purchasing_quotation_policy:
@@ -2081,3 +3873,74 @@ x-stage2-shortage-participants:
       under the caller's transaction/snapshot isolation. Leader RepF writes pass
       exclude_repf_id when re-evaluating an existing RepF and abort on setup_blocked or
       rejected outcomes.
+
+x-stage2-donation-participants:
+  applyLotRestrictionResolution:
+    owner: Efren
+    consumers:
+    - Leader resolveDonationRestriction
+    input: {$ref: '#/components/schemas/ApplyLotRestrictionResolutionInput'}
+    output: {$ref: '#/components/schemas/ApplyLotRestrictionResolutionResult'}
+    description: Internal synchronous participant with zero public HTTP routes. Inside Leader's commit, lock remaining
+      stockroom lot segments by chapter, DA and DA line provenance. Update BoundedRestriction on matching segments
+      only, without changing physical quantities, movements or separate StockHolds. Reject a source or lock conflict
+      before committing any segment.
+x-stage2-donation-transitions:
+  createDonation:
+    absent:
+    - draft
+  replaceDonation:
+    draft:
+    - draft
+  submitDonation:
+    draft:
+    - pending_acknowledgment
+  acknowledgeDonation:
+    pending_acknowledgment:
+    - acknowledged
+  returnDonation:
+    pending_acknowledgment:
+    - returned_for_revision
+  declineDonation:
+    pending_acknowledgment:
+    - declined
+  reviseDonation:
+    returned_for_revision:
+    - draft
+  postReceivingReport:
+    acknowledged:
+    - partially_received
+    - received
+    partially_received:
+    - partially_received
+    - received
+  closeShortDonation:
+    acknowledged:
+    - closed_short
+    partially_received:
+    - closed_short
+  cancelDonation:
+    draft:
+    - canceled
+    returned_for_revision:
+    - canceled
+    acknowledged:
+    - canceled
+  resolveDonationRestriction:
+    acknowledged:
+    - acknowledged
+    partially_received:
+    - partially_received
+    received:
+    - received
+    closed_short:
+    - closed_short
+x-stage2-donation-policy-actions:
+  da.acknowledge:
+    policy: da_authorization
+    duties_field: acknowledge_duties
+    independence_field: require_preparer_independence
+  da.restriction_resolve:
+    policy: da_authorization
+    duties_field: restriction_resolve_duties
+    independence_field: require_preparer_independence

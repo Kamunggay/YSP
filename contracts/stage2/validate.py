@@ -296,6 +296,28 @@ def main():
             if case["operationId"] == "listReplenishmentNeeds" and status == "200":
                 for idx, item in enumerate(response["body"]["data"]):
                     check_replenishment_math(item, f"{name}[{idx}]")
+            transitions = document.get("x-stage2-donation-transitions", {})
+            if status.startswith("2") and case["operationId"] in transitions:
+                receipt = response["body"]["data"]
+                allowed = transitions[case["operationId"]].get(case["before_status"], [])
+                if receipt["operation_name"] != case["operationId"] or receipt["http_status"] != int(status):
+                    raise ValueError(f"{name}: donation receipt has the wrong operation or status")
+                if receipt["result"]["status"] not in allowed:
+                    raise ValueError(f"{name}: invalid donation state transition")
+                if "evidence_material" in case:
+                    resolution = receipt["restriction_resolution"]
+                    binding = resolution or receipt["result"]["acknowledgment"]
+                    material_schema = "DonationRestrictionResolutionMaterial" if resolution else "DonationAcknowledgmentMaterial"
+                    material = case["evidence_material"]
+                    check_value("#/components/schemas/" + material_schema, material, name + " signed material")
+                    if (
+                        binding["binding"] != request["body"]["evidence"]
+                        or binding["signed_at"] != request["body"]["signed_at"]
+                        or binding["snapshot"]["target"]["record_id"] != material["da_id"]
+                        or binding["snapshot"]["material_version"] != material["material_version"]
+                        or material["material_version"] != request["body"]["expected_material_version"]
+                    ):
+                        raise ValueError(f"{name}: evidence does not match the signed DA version and manifest")
         elif "body" in response:
             raise ValueError(f"{name}: bodyless status contains a body")
         response_headers = examples["response_defaults"]["headers"] | response.get("headers", {})
@@ -373,6 +395,7 @@ def main():
     participant_groups = [
         document.get("x-stage2-evidence-participants", {}),
         document.get("x-stage2-shortage-participants", {}),
+        document.get("x-stage2-donation-participants", {}),
     ]
     participants = {}
     for group in participant_groups:

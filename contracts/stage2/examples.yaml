@@ -331,6 +331,1645 @@ cases:
           code: chapter_not_found
           message: Chapter is unavailable.
 
+  - name: stage2-04-list-das
+    operationId: listDonations
+    request:
+      path: &da_path
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+        - &da_acknowledged_da
+          da_id: 80000000-0000-4000-8000-000000000004
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          version: 4
+          material_version: 2
+          status: acknowledged
+          reference: CEBDA-2026-000001
+          prepared_by: 10000000-0000-4000-8000-000000000002
+          donor_name: Example Community Foundation
+          lines:
+          - variant_id: 90000000-0000-4000-8000-000000000033
+            unit_id: 90000000-0000-4000-8000-000000000034
+            pledged_quantity: '10'
+            condition_notes: New, individually packed
+            valuation_kind: declared
+            unit_value_php: '12.50'
+            valuation_basis: 2026 chapter-approved comparative unit valuation
+            restrictions: &da_unrestricted
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+            line_id: 80000000-0000-4000-8000-00000000000a
+            quantity_scale: 0
+            pledged_value_php: '125.00'
+            received_quantity: '0'
+            outstanding_quantity: '10'
+          - variant_id: 90000000-0000-4000-8000-000000000033
+            unit_id: 90000000-0000-4000-8000-000000000034
+            pledged_quantity: '5'
+            condition_notes: New, individually packed
+            valuation_kind: estimated
+            unit_value_php: '12.50'
+            valuation_basis: 2026 chapter-approved comparative unit valuation
+            restrictions: &da_distribution_only
+              state: bounded
+              allowed_uses:
+              - internal_use
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: 80000000-0000-4000-8000-00000000000f
+              source_condition_reference: 'Paper DA line 2: distribution only'
+            line_id: 80000000-0000-4000-8000-00000000000b
+            quantity_scale: 0
+            pledged_value_php: '62.50'
+            received_quantity: '0'
+            outstanding_quantity: '5'
+          - variant_id: 90000000-0000-4000-8000-000000000033
+            unit_id: 90000000-0000-4000-8000-000000000034
+            pledged_quantity: '3'
+            condition_notes: New, individually packed
+            valuation_kind: estimated
+            unit_value_php: '12.50'
+            valuation_basis: 2026 chapter-approved comparative unit valuation
+            restrictions: &da_uninterpreted
+              state: uninterpreted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+            line_id: 80000000-0000-4000-8000-00000000000c
+            quantity_scale: 0
+            pledged_value_php: '37.50'
+            received_quantity: '0'
+            outstanding_quantity: '3'
+          valuation_policy: &da_valuation_policy
+            policy_id: 70000000-0000-4000-8000-000000000003
+            version: 1
+          pledged_total_value_php: '225.00'
+          acknowledgment: &da_signed_acknowledgment
+            actor_id: 10000000-0000-4000-8000-000000000003
+            signed_at: '2026-11-26T01:45:00.000000Z'
+            committed_at: '2026-11-26T02:00:00.000000Z'
+            binding:
+              evidence_id: 20000000-0000-4000-8000-00000000000a
+              version_id: 30000000-0000-4000-8000-00000000000a
+              attachments:
+              - attachment_id: 40000000-0000-4000-8000-00000000000a
+                sha256: 53da44eff5e0b7d830b26551ba69ac0a7770773ab279c8e2fa92ba01510f512e
+            snapshot:
+              target:
+                purpose: da_acknowledgment
+                record_id: 80000000-0000-4000-8000-000000000004
+              material_version: 2
+              sha256: b04c0b548e2e6f1935a340e5a2f1c6e94765d70fe95d0579250678c447c16a21
+          updated_at: '2026-11-26T02:00:00.000000Z'
+        page: &da_page
+          next_cursor: null
+          snapshot_version: 5
+  - name: stage2-04-draft-unrestricted-distribution-and-uninterpreted
+    operationId: createDonation
+    request:
+      path: *da_path
+      body:
+        donor_name: Example Community Foundation
+        lines: &da_draft_lines
+        - variant_id: 90000000-0000-4000-8000-000000000033
+          unit_id: 90000000-0000-4000-8000-000000000034
+          pledged_quantity: '10'
+          condition_notes: New, individually packed
+          valuation_kind: declared
+          unit_value_php: '12.50'
+          valuation_basis: 2026 chapter-approved comparative unit valuation
+          restrictions: *da_unrestricted
+        - variant_id: 90000000-0000-4000-8000-000000000033
+          unit_id: 90000000-0000-4000-8000-000000000034
+          pledged_quantity: '5'
+          condition_notes: New, individually packed
+          valuation_kind: estimated
+          unit_value_php: '12.50'
+          valuation_basis: 2026 chapter-approved comparative unit valuation
+          restrictions: *da_distribution_only
+        - variant_id: 90000000-0000-4000-8000-000000000033
+          unit_id: 90000000-0000-4000-8000-000000000034
+          pledged_quantity: '3'
+          condition_notes: New, individually packed
+          valuation_kind: estimated
+          unit_value_php: '12.50'
+          valuation_basis: 2026 chapter-approved comparative unit valuation
+          restrictions: *da_uninterpreted
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-000000000001
+          operation_name: createDonation
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 201
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 1
+            material_version: 1
+            status: draft
+            reference: null
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_uninterpreted
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '0'
+              outstanding_quantity: '3'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: null
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution: null
+    before_status: absent
+  - name: stage2-04-read-acknowledged-da
+    operationId: readDonation
+    request:
+      path: &da_record_path
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        da_id: 80000000-0000-4000-8000-000000000004
+    response:
+      status: '200'
+      body:
+        data: *da_acknowledged_da
+  - name: stage2-04-replace-draft
+    operationId: replaceDonation
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        donor_name: Example Community Foundation
+        lines: *da_draft_lines
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-000000000002
+          operation_name: replaceDonation
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 200
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 2
+            material_version: 2
+            status: draft
+            reference: null
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_uninterpreted
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '0'
+              outstanding_quantity: '3'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: null
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution: null
+    before_status: draft
+  - name: stage2-04-submit-da
+    operationId: submitDonation
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 2
+        expected_material_version: 2
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-000000000003
+          operation_name: submitDonation
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 200
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 3
+            material_version: 2
+            status: pending_acknowledgment
+            reference: null
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_uninterpreted
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '0'
+              outstanding_quantity: '3'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: null
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution: null
+    before_status: draft
+  - name: stage2-04-acknowledge-signed-paper
+    operationId: acknowledgeDonation
+    request:
+      path: *da_record_path
+      body: &da_acknowledge_body
+        expected_version: 3
+        expected_material_version: 2
+        evidence:
+          evidence_id: 20000000-0000-4000-8000-00000000000a
+          version_id: 30000000-0000-4000-8000-00000000000a
+          attachments:
+          - attachment_id: 40000000-0000-4000-8000-00000000000a
+            sha256: 53da44eff5e0b7d830b26551ba69ac0a7770773ab279c8e2fa92ba01510f512e
+        signed_at: '2026-11-26T01:45:00.000000Z'
+        confirm_paper_matches: true
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-00000000000a
+          operation_name: acknowledgeDonation
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 200
+          result: *da_acknowledged_da
+          restriction_resolution: null
+    before: Effective DA and valuation policies; the signed DA covers all three lines. No inventory, cash, Official
+      Receipt or buyer credit is posted.
+    before_status: pending_acknowledgment
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      da_id: 80000000-0000-4000-8000-000000000004
+      material_version: 2
+      prepared_by: 10000000-0000-4000-8000-000000000002
+      donor_name: Example Community Foundation
+      lines:
+      - variant_id: 90000000-0000-4000-8000-000000000033
+        unit_id: 90000000-0000-4000-8000-000000000034
+        pledged_quantity: '10'
+        condition_notes: New, individually packed
+        valuation_kind: declared
+        unit_value_php: '12.50'
+        valuation_basis: 2026 chapter-approved comparative unit valuation
+        restrictions: *da_unrestricted
+        line_id: 80000000-0000-4000-8000-00000000000a
+        quantity_scale: 0
+        pledged_value_php: '125.00'
+      - variant_id: 90000000-0000-4000-8000-000000000033
+        unit_id: 90000000-0000-4000-8000-000000000034
+        pledged_quantity: '5'
+        condition_notes: New, individually packed
+        valuation_kind: estimated
+        unit_value_php: '12.50'
+        valuation_basis: 2026 chapter-approved comparative unit valuation
+        restrictions: *da_distribution_only
+        line_id: 80000000-0000-4000-8000-00000000000b
+        quantity_scale: 0
+        pledged_value_php: '62.50'
+      - variant_id: 90000000-0000-4000-8000-000000000033
+        unit_id: 90000000-0000-4000-8000-000000000034
+        pledged_quantity: '3'
+        condition_notes: New, individually packed
+        valuation_kind: estimated
+        unit_value_php: '12.50'
+        valuation_basis: 2026 chapter-approved comparative unit valuation
+        restrictions: *da_uninterpreted
+        line_id: 80000000-0000-4000-8000-00000000000c
+        quantity_scale: 0
+        pledged_value_php: '37.50'
+      pledged_total_value_php: '225.00'
+      valuation_policy: *da_valuation_policy
+  - name: stage2-04-return-da
+    operationId: returnDonation
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        reason: Confirm the documented source condition.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-000000000004
+          operation_name: returnDonation
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 200
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 4
+            material_version: 2
+            status: returned_for_revision
+            reference: null
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_uninterpreted
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '0'
+              outstanding_quantity: '3'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: null
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution: null
+    before_status: pending_acknowledgment
+  - name: stage2-04-decline-da
+    operationId: declineDonation
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        reason: Donor declined the chapter's handling terms.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-000000000005
+          operation_name: declineDonation
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 200
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 4
+            material_version: 2
+            status: declined
+            reference: null
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_uninterpreted
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '0'
+              outstanding_quantity: '3'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: null
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution: null
+    before_status: pending_acknowledgment
+  - name: stage2-04-revise-returned-da
+    operationId: reviseDonation
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 4
+        expected_material_version: 2
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-000000000006
+          operation_name: reviseDonation
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 200
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 5
+            material_version: 2
+            status: draft
+            reference: null
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_uninterpreted
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '0'
+              outstanding_quantity: '3'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: null
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution: null
+    before_status: returned_for_revision
+  - name: stage2-04-close-short-after-partial-receipt
+    operationId: closeShortDonation
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        reason: Donor confirmed the outstanding pledge will not arrive.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-000000000007
+          operation_name: closeShortDonation
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 200
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 6
+            material_version: 2
+            status: closed_short
+            reference: CEBDA-2026-000001
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_uninterpreted
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '2'
+              outstanding_quantity: '1'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: *da_signed_acknowledgment
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution: null
+    before_status: partially_received
+  - name: stage2-04-cancel-before-posted-da-rm
+    operationId: cancelDonation
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 4
+        expected_material_version: 2
+        reason: Donor withdrew the pledge before receipt.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-000000000008
+          operation_name: cancelDonation
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 200
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 5
+            material_version: 2
+            status: canceled
+            reference: CEBDA-2026-000001
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_uninterpreted
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '0'
+              outstanding_quantity: '3'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: *da_signed_acknowledgment
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution: null
+    before_status: acknowledged
+  - name: stage2-04-resolve-uninterpreted-to-bounded
+    operationId: resolveDonationRestriction
+    request:
+      path: *da_record_path
+      body: &da_apply_body
+        expected_version: 5
+        expected_material_version: 2
+        evidence:
+          evidence_id: 20000000-0000-4000-8000-00000000000b
+          version_id: 30000000-0000-4000-8000-00000000000b
+          attachments:
+          - attachment_id: 40000000-0000-4000-8000-00000000000b
+            sha256: 0a489476b51606334c84911681dbbe0a6b7876edcdf04e558d7c5ac4283ddb2f
+        signed_at: '2026-11-26T01:45:00.000000Z'
+        confirm_paper_matches: true
+        da_line_id: 80000000-0000-4000-8000-00000000000c
+        reason: Signed donor review of the documented condition.
+        resolution_kind: apply
+        restrictions: &da_resolved_bounded
+          state: bounded
+          allowed_uses:
+          - internal_use
+          event_ids: []
+          requesting_unit_ids:
+          - 70000000-0000-4000-8000-000000000010
+          effective_from: null
+          effective_until: null
+          interpretation_id: 80000000-0000-4000-8000-000000000011
+          source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+    response:
+      status: '201'
+      body: &da_committed_resolution_receipt
+        data:
+          operation_id: 50000000-0000-4000-8000-00000000000b
+          operation_name: resolveDonationRestriction
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 201
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 6
+            material_version: 3
+            status: partially_received
+            reference: CEBDA-2026-000001
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_resolved_bounded
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '2'
+              outstanding_quantity: '1'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: *da_signed_acknowledgment
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution: &da_applied_resolution
+            resolution_id: 80000000-0000-4000-8000-00000000000b
+            previous_restrictions: *da_uninterpreted
+            actor_id: 10000000-0000-4000-8000-000000000003
+            signed_at: '2026-11-26T01:45:00.000000Z'
+            committed_at: '2026-11-26T02:00:00.000000Z'
+            binding:
+              evidence_id: 20000000-0000-4000-8000-00000000000b
+              version_id: 30000000-0000-4000-8000-00000000000b
+              attachments:
+              - attachment_id: 40000000-0000-4000-8000-00000000000b
+                sha256: 0a489476b51606334c84911681dbbe0a6b7876edcdf04e558d7c5ac4283ddb2f
+            snapshot:
+              target:
+                purpose: donor_restriction_resolution
+                record_id: 80000000-0000-4000-8000-000000000004
+              material_version: 2
+              sha256: ff92544905701eada1651e3b4c2b0900543e447d36eb9c9cc4063b640edd15b3
+            da_line_id: 80000000-0000-4000-8000-00000000000c
+            reason: Signed donor review of the documented condition.
+            resolution_kind: apply
+            restrictions: *da_resolved_bounded
+    before: DA-RM posted 2 units into uninterpreted stockroom lots. An unrelated StockHold remains active after signed
+      resolution.
+    before_status: partially_received
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      da_id: 80000000-0000-4000-8000-000000000004
+      material_version: 2
+      previous_restrictions: *da_uninterpreted
+      da_line_id: 80000000-0000-4000-8000-00000000000c
+      reason: Signed donor review of the documented condition.
+      resolution_kind: apply
+      restrictions: *da_resolved_bounded
+  - name: stage2-04-audit-inexpressible-condition
+    operationId: resolveDonationRestriction
+    request:
+      path: *da_record_path
+      body: &da_audit_body
+        expected_version: 5
+        expected_material_version: 2
+        evidence:
+          evidence_id: 20000000-0000-4000-8000-00000000000c
+          version_id: 30000000-0000-4000-8000-00000000000c
+          attachments:
+          - attachment_id: 40000000-0000-4000-8000-00000000000c
+            sha256: c5e7b42f91b586967e3ea97367b42456781c4a40e49e1fe5148ca6ff5ee86b20
+        signed_at: '2026-11-26T01:45:00.000000Z'
+        confirm_paper_matches: true
+        da_line_id: 80000000-0000-4000-8000-00000000000c
+        reason: Signed donor review of the documented condition.
+        resolution_kind: audit_review
+        restrictions: *da_uninterpreted
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-00000000000c
+          operation_name: resolveDonationRestriction
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 201
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 6
+            material_version: 2
+            status: partially_received
+            reference: CEBDA-2026-000001
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_unrestricted
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_distribution_only
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions: *da_uninterpreted
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '2'
+              outstanding_quantity: '1'
+            valuation_policy: *da_valuation_policy
+            pledged_total_value_php: '225.00'
+            acknowledgment: *da_signed_acknowledgment
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution:
+            resolution_id: 80000000-0000-4000-8000-00000000000c
+            previous_restrictions: *da_uninterpreted
+            actor_id: 10000000-0000-4000-8000-000000000003
+            signed_at: '2026-11-26T01:45:00.000000Z'
+            committed_at: '2026-11-26T02:00:00.000000Z'
+            binding:
+              evidence_id: 20000000-0000-4000-8000-00000000000c
+              version_id: 30000000-0000-4000-8000-00000000000c
+              attachments:
+              - attachment_id: 40000000-0000-4000-8000-00000000000c
+                sha256: c5e7b42f91b586967e3ea97367b42456781c4a40e49e1fe5148ca6ff5ee86b20
+            snapshot:
+              target:
+                purpose: donor_restriction_resolution
+                record_id: 80000000-0000-4000-8000-000000000004
+              material_version: 2
+              sha256: 5f54cc9bd7dc98c8571380aec792a2f3ac6daea3a80f4a03cadf07549b4719ca
+            da_line_id: 80000000-0000-4000-8000-00000000000c
+            reason: Signed donor review of the documented condition.
+            resolution_kind: audit_review
+            restrictions: *da_uninterpreted
+    before: Review remains inexpressible. Neither the DA line nor its received lot changes restriction or eligibility.
+    before_status: partially_received
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      da_id: 80000000-0000-4000-8000-000000000004
+      material_version: 2
+      previous_restrictions: *da_uninterpreted
+      da_line_id: 80000000-0000-4000-8000-00000000000c
+      reason: Signed donor review of the documented condition.
+      resolution_kind: audit_review
+      restrictions: *da_uninterpreted
+  - name: stage2-04-resolve-replay
+    operationId: resolveDonationRestriction
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        da_id: 80000000-0000-4000-8000-000000000004
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        evidence:
+          evidence_id: 20000000-0000-4000-8000-00000000000b
+          version_id: 30000000-0000-4000-8000-00000000000b
+          attachments:
+          - attachment_id: 40000000-0000-4000-8000-00000000000b
+            sha256: 0a489476b51606334c84911681dbbe0a6b7876edcdf04e558d7c5ac4283ddb2f
+        signed_at: '2026-11-26T01:45:00.000000Z'
+        confirm_paper_matches: true
+        da_line_id: 80000000-0000-4000-8000-00000000000c
+        reason: Signed donor review of the documented condition.
+        resolution_kind: apply
+        restrictions:
+          state: bounded
+          allowed_uses:
+          - internal_use
+          event_ids: []
+          requesting_unit_ids:
+          - 70000000-0000-4000-8000-000000000010
+          effective_from: null
+          effective_until: null
+          interpretation_id: 80000000-0000-4000-8000-000000000011
+          source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 50000000-0000-4000-8000-00000000000b
+          operation_name: resolveDonationRestriction
+          action_key: 40000000-0000-4000-8000-0000000000c9
+          actor_id: 10000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          http_status: 201
+          result:
+            da_id: 80000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            version: 6
+            material_version: 3
+            status: partially_received
+            reference: CEBDA-2026-000001
+            prepared_by: 10000000-0000-4000-8000-000000000002
+            donor_name: Example Community Foundation
+            lines:
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '10'
+              condition_notes: New, individually packed
+              valuation_kind: declared
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions:
+                state: unrestricted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: null
+              line_id: 80000000-0000-4000-8000-00000000000a
+              quantity_scale: 0
+              pledged_value_php: '125.00'
+              received_quantity: '0'
+              outstanding_quantity: '10'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '5'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions:
+                state: bounded
+                allowed_uses:
+                - internal_use
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: 80000000-0000-4000-8000-00000000000f
+                source_condition_reference: 'Paper DA line 2: distribution only'
+              line_id: 80000000-0000-4000-8000-00000000000b
+              quantity_scale: 0
+              pledged_value_php: '62.50'
+              received_quantity: '0'
+              outstanding_quantity: '5'
+            - variant_id: 90000000-0000-4000-8000-000000000033
+              unit_id: 90000000-0000-4000-8000-000000000034
+              pledged_quantity: '3'
+              condition_notes: New, individually packed
+              valuation_kind: estimated
+              unit_value_php: '12.50'
+              valuation_basis: 2026 chapter-approved comparative unit valuation
+              restrictions:
+                state: bounded
+                allowed_uses:
+                - internal_use
+                event_ids: []
+                requesting_unit_ids:
+                - 70000000-0000-4000-8000-000000000010
+                effective_from: null
+                effective_until: null
+                interpretation_id: 80000000-0000-4000-8000-000000000011
+                source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+              line_id: 80000000-0000-4000-8000-00000000000c
+              quantity_scale: 0
+              pledged_value_php: '37.50'
+              received_quantity: '2'
+              outstanding_quantity: '1'
+            valuation_policy:
+              policy_id: 70000000-0000-4000-8000-000000000003
+              version: 1
+            pledged_total_value_php: '225.00'
+            acknowledgment:
+              actor_id: 10000000-0000-4000-8000-000000000003
+              signed_at: '2026-11-26T01:45:00.000000Z'
+              committed_at: '2026-11-26T02:00:00.000000Z'
+              binding:
+                evidence_id: 20000000-0000-4000-8000-00000000000a
+                version_id: 30000000-0000-4000-8000-00000000000a
+                attachments:
+                - attachment_id: 40000000-0000-4000-8000-00000000000a
+                  sha256: 53da44eff5e0b7d830b26551ba69ac0a7770773ab279c8e2fa92ba01510f512e
+              snapshot:
+                target:
+                  purpose: da_acknowledgment
+                  record_id: 80000000-0000-4000-8000-000000000004
+                material_version: 2
+                sha256: b04c0b548e2e6f1935a340e5a2f1c6e94765d70fe95d0579250678c447c16a21
+            updated_at: '2026-11-26T02:00:00.000000Z'
+          restriction_resolution:
+            resolution_id: 80000000-0000-4000-8000-00000000000b
+            previous_restrictions:
+              state: uninterpreted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+            actor_id: 10000000-0000-4000-8000-000000000003
+            signed_at: '2026-11-26T01:45:00.000000Z'
+            committed_at: '2026-11-26T02:00:00.000000Z'
+            binding:
+              evidence_id: 20000000-0000-4000-8000-00000000000b
+              version_id: 30000000-0000-4000-8000-00000000000b
+              attachments:
+              - attachment_id: 40000000-0000-4000-8000-00000000000b
+                sha256: 0a489476b51606334c84911681dbbe0a6b7876edcdf04e558d7c5ac4283ddb2f
+            snapshot:
+              target:
+                purpose: donor_restriction_resolution
+                record_id: 80000000-0000-4000-8000-000000000004
+              material_version: 2
+              sha256: ff92544905701eada1651e3b4c2b0900543e447d36eb9c9cc4063b640edd15b3
+            da_line_id: 80000000-0000-4000-8000-00000000000c
+            reason: Signed donor review of the documented condition.
+            resolution_kind: apply
+            restrictions:
+              state: bounded
+              allowed_uses:
+              - internal_use
+              event_ids: []
+              requesting_unit_ids:
+              - 70000000-0000-4000-8000-000000000010
+              effective_from: null
+              effective_until: null
+              interpretation_id: 80000000-0000-4000-8000-000000000011
+              source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+      headers:
+        X-Action-Replayed: 'true'
+    before: Same actor and key retry after the committed resolution; versions are stale for a new intent.
+    before_status: partially_received
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      da_id: 80000000-0000-4000-8000-000000000004
+      material_version: 2
+      previous_restrictions:
+        state: uninterpreted
+        allowed_uses: []
+        event_ids: []
+        requesting_unit_ids: []
+        effective_from: null
+        effective_until: null
+        interpretation_id: null
+        source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+      da_line_id: 80000000-0000-4000-8000-00000000000c
+      reason: Signed donor review of the documented condition.
+      resolution_kind: apply
+      restrictions:
+        state: bounded
+        allowed_uses:
+        - internal_use
+        event_ids: []
+        requesting_unit_ids:
+        - 70000000-0000-4000-8000-000000000010
+        effective_from: null
+        effective_until: null
+        interpretation_id: 80000000-0000-4000-8000-000000000011
+        source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+  - name: stage2-04-donation-history
+    operationId: listDonationHistory
+    request:
+      path: *da_record_path
+    response:
+      status: '200'
+      body:
+        data:
+        - version: 6
+          material_version: 3
+          status: partially_received
+          action: resolveDonationRestriction
+          actor_id: 10000000-0000-4000-8000-000000000003
+          committed_at: '2026-11-26T02:00:00.000000Z'
+          reason: Signed donor review of the documented condition.
+          restriction_resolution: *da_applied_resolution
+        page: *da_page
+  - name: stage2-04-read-historical-da-version
+    operationId: readDonationVersion
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        da_id: 80000000-0000-4000-8000-000000000004
+        version: 5
+    response:
+      status: '200'
+      body:
+        data:
+          da_id: 80000000-0000-4000-8000-000000000004
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          version: 5
+          material_version: 2
+          status: partially_received
+          reference: CEBDA-2026-000001
+          prepared_by: 10000000-0000-4000-8000-000000000002
+          donor_name: Example Community Foundation
+          lines:
+          - variant_id: 90000000-0000-4000-8000-000000000033
+            unit_id: 90000000-0000-4000-8000-000000000034
+            pledged_quantity: '10'
+            condition_notes: New, individually packed
+            valuation_kind: declared
+            unit_value_php: '12.50'
+            valuation_basis: 2026 chapter-approved comparative unit valuation
+            restrictions: *da_unrestricted
+            line_id: 80000000-0000-4000-8000-00000000000a
+            quantity_scale: 0
+            pledged_value_php: '125.00'
+            received_quantity: '0'
+            outstanding_quantity: '10'
+          - variant_id: 90000000-0000-4000-8000-000000000033
+            unit_id: 90000000-0000-4000-8000-000000000034
+            pledged_quantity: '5'
+            condition_notes: New, individually packed
+            valuation_kind: estimated
+            unit_value_php: '12.50'
+            valuation_basis: 2026 chapter-approved comparative unit valuation
+            restrictions: *da_distribution_only
+            line_id: 80000000-0000-4000-8000-00000000000b
+            quantity_scale: 0
+            pledged_value_php: '62.50'
+            received_quantity: '0'
+            outstanding_quantity: '5'
+          - variant_id: 90000000-0000-4000-8000-000000000033
+            unit_id: 90000000-0000-4000-8000-000000000034
+            pledged_quantity: '3'
+            condition_notes: New, individually packed
+            valuation_kind: estimated
+            unit_value_php: '12.50'
+            valuation_basis: 2026 chapter-approved comparative unit valuation
+            restrictions: *da_uninterpreted
+            line_id: 80000000-0000-4000-8000-00000000000c
+            quantity_scale: 0
+            pledged_value_php: '37.50'
+            received_quantity: '2'
+            outstanding_quantity: '1'
+          valuation_policy: *da_valuation_policy
+          pledged_total_value_php: '225.00'
+          acknowledgment: *da_signed_acknowledgment
+          updated_at: '2026-11-26T02:00:00.000000Z'
+  - name: stage2-04-read-related-da-rm-and-lot
+    operationId: listDonationRelated
+    request:
+      path: *da_record_path
+    response:
+      status: '200'
+      body:
+        data:
+        - resource_kind: receiving_report
+          resource_id: 80000000-0000-4000-8000-000000000014
+          da_line_id: null
+        - resource_kind: stock_lot
+          resource_id: 90000000-0000-4000-8000-00000000002d
+          da_line_id: 80000000-0000-4000-8000-00000000000c
+        page: *da_page
+  - name: stage2-04-print-da
+    operationId: printDonation
+    request:
+      path: *da_record_path
+      headers:
+        Accept: text/html
+    response:
+      status: '200'
+      body: <!doctype html><title>CEBDA-2026-000001</title><h1>CEBDA-2026-000001</h1><p>Acknowledged, version 4, material
+        version 2, pledged value PHP 225.00.</p>
+      media_type: text/html
+      headers:
+        Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none';
+          form-action 'none'
+        X-Content-Type-Options: nosniff
+  - name: stage2-04-find-committed-resolution
+    operationId: findDonationOperation
+    request:
+      path: *da_path
+      query:
+        operation_name: resolveDonationRestriction
+        action_key: 40000000-0000-4000-8000-0000000000c9
+    response:
+      status: '200'
+      body: *da_committed_resolution_receipt
+  - name: stage2-04-read-committed-resolution
+    operationId: readDonationOperation
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        operation_id: 50000000-0000-4000-8000-00000000000b
+    response:
+      status: '200'
+      body: *da_committed_resolution_receipt
+  - name: stage2-04-find-uncommitted-resolution
+    operationId: findDonationOperation
+    request:
+      path: *da_path
+      query:
+        operation_name: resolveDonationRestriction
+        action_key: 40000000-0000-4000-8000-0000000000ca
+    response:
+      status: '404'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000063
+        error:
+          code: operation_not_found
+          message: No visible commitment for this intent.
+  - name: stage2-04-acknowledgment-no-current-policy
+    operationId: acknowledgeDonation
+    request:
+      path: *da_record_path
+      body: *da_acknowledge_body
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: setup_blocked
+          message: Setup blocked.
+          blockers:
+          - setting_key: da_authorization
+            subject_id: null
+            state: expired
+            approval_owner: CHAPTER_HEAD
+            message: Renew the DA authorization policy.
+    before: The chapter DA authorization policy expired.
+  - name: stage2-04-resolution-no-current-policy
+    operationId: resolveDonationRestriction
+    request:
+      path: *da_record_path
+      body: *da_apply_body
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: setup_blocked
+          message: Setup blocked.
+          blockers:
+          - setting_key: da_authorization
+            subject_id: null
+            state: expired
+            approval_owner: CHAPTER_HEAD
+            message: Renew the DA authorization policy.
+    before: The chapter DA authorization policy expired.
+  - name: stage2-04-acknowledgment-self-approval-denied
+    operationId: acknowledgeDonation
+    request:
+      path: *da_record_path
+      body: *da_acknowledge_body
+    response:
+      status: '403'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: independence_required
+          message: Independence required.
+    before: The preparer is the current actor, and da_authorization requires independence.
+  - name: stage2-04-resolution-duty-denied
+    operationId: resolveDonationRestriction
+    request:
+      path: *da_record_path
+      body: *da_apply_body
+    response:
+      status: '403'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: duty_denied
+          message: Duty denied.
+    before: The current chapter duty is absent from the effective restriction_resolve_duties.
+  - name: stage2-04-acknowledgment-paper-missing
+    operationId: acknowledgeDonation
+    request:
+      path: *da_record_path
+      body: *da_acknowledge_body
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: evidence_missing
+          message: Evidence missing.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+  - name: stage2-04-resolution-paper-mismatch
+    operationId: resolveDonationRestriction
+    request:
+      path: *da_record_path
+      body: *da_apply_body
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: evidence_mismatch
+          message: Evidence mismatch.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+    before: The submitted attachment manifest belongs to the DA acknowledgment instead of the signed resolution.
+  - name: stage2-04-restriction-resolution-stale-version
+    operationId: resolveDonationRestriction
+    request:
+      path: *da_record_path
+      body: *da_apply_body
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: version_conflict
+          message: Version conflict.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+  - name: stage2-04-restriction-resolution-key-conflict
+    operationId: resolveDonationRestriction
+    request:
+      path: *da_record_path
+      body: *da_audit_body
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: action_key_conflict
+          message: Action key conflict.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+    before: This actor already committed a different resolution under this action key.
+  - name: stage2-04-cancel-after-posted-da-rm
+    operationId: cancelDonation
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        reason: Donor withdrew the remainder.
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: invalid_transition
+          message: Invalid transition.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+    before: At least one DA-RM has posted.
+    before_status: partially_received
+  - name: stage2-04-reject-unsigned-resolution
+    operationId: resolveDonationRestriction
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        signed_at: '2026-11-26T01:45:00.000000Z'
+        confirm_paper_matches: true
+        da_line_id: 80000000-0000-4000-8000-00000000000c
+        reason: Signed donor review of the documented condition.
+        resolution_kind: apply
+        restrictions: *da_resolved_bounded
+    response:
+      status: '422'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: invalid_input
+          message: Invalid input.
+          fields:
+          - pointer: /evidence
+            code: required
+            message: Signed donor resolution evidence is required.
+    request_valid: false
+  - name: stage2-04-reject-audit-that-unblocks-stock
+    operationId: resolveDonationRestriction
+    request:
+      path: *da_record_path
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        evidence:
+          evidence_id: 20000000-0000-4000-8000-00000000000c
+          version_id: 30000000-0000-4000-8000-00000000000c
+          attachments:
+          - attachment_id: 40000000-0000-4000-8000-00000000000c
+            sha256: c5e7b42f91b586967e3ea97367b42456781c4a40e49e1fe5148ca6ff5ee86b20
+        signed_at: '2026-11-26T01:45:00.000000Z'
+        confirm_paper_matches: true
+        da_line_id: 80000000-0000-4000-8000-00000000000c
+        reason: Signed donor review of the documented condition.
+        resolution_kind: audit_review
+        restrictions: *da_unrestricted
+    response:
+      status: '422'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: invalid_input
+          message: Invalid input.
+          fields:
+          - pointer: /restrictions/state
+            code: invalid_format
+            message: An audit review keeps the restriction uninterpreted.
+    request_valid: false
+  - name: stage2-04-reject-unsupported-donor-use
+    operationId: createDonation
+    request:
+      path: *da_path
+      body:
+        donor_name: Example Community Foundation
+        lines:
+        - variant_id: 90000000-0000-4000-8000-000000000033
+          unit_id: 90000000-0000-4000-8000-000000000034
+          pledged_quantity: '5'
+          condition_notes: New, individually packed
+          valuation_kind: estimated
+          unit_value_php: '12.50'
+          valuation_basis: 2026 chapter-approved comparative unit valuation
+          restrictions:
+            state: bounded
+            allowed_uses:
+            - give_away
+            event_ids: []
+            requesting_unit_ids: []
+            effective_from: null
+            effective_until: null
+            interpretation_id: 80000000-0000-4000-8000-00000000000f
+            source_condition_reference: 'Paper DA line 2: distribution only'
+    response:
+      status: '422'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000062
+        error:
+          code: invalid_input
+          message: Invalid input.
+          fields:
+          - pointer: /lines/0/restrictions/allowed_uses/0
+            code: invalid_format
+            message: Choose a supported restriction use.
+    request_valid: false
+
 procedure_cases:
   - name: stage2-01-policy-purchasing-quotation-committed
     procedureId: recordPolicy
@@ -722,3 +2361,65 @@ participant_cases:
     output:
       outcome: missing
       reason: evidence_missing
+
+  - name: stage2-04-participant-restrict-linked-segments
+    participantId: applyLotRestrictionResolution
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      da_id: 80000000-0000-4000-8000-000000000004
+      da_line_id: 80000000-0000-4000-8000-00000000000c
+      resolution_id: 80000000-0000-4000-8000-00000000000b
+      previous_restrictions:
+        state: uninterpreted
+        allowed_uses: []
+        event_ids: []
+        requesting_unit_ids: []
+        effective_from: null
+        effective_until: null
+        interpretation_id: null
+        source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+      restrictions:
+        state: bounded
+        allowed_uses:
+        - internal_use
+        event_ids: []
+        requesting_unit_ids:
+        - 70000000-0000-4000-8000-000000000010
+        effective_from: null
+        effective_until: null
+        interpretation_id: 80000000-0000-4000-8000-000000000011
+        source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+    output:
+      outcome: ready
+      updated_lot_ids:
+      - 90000000-0000-4000-8000-00000000002d
+      - 90000000-0000-4000-8000-00000000002e
+  - name: stage2-04-participant-refuses-uninterpreted-update
+    participantId: applyLotRestrictionResolution
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      da_id: 80000000-0000-4000-8000-000000000004
+      da_line_id: 80000000-0000-4000-8000-00000000000c
+      resolution_id: 80000000-0000-4000-8000-00000000000b
+      previous_restrictions:
+        state: uninterpreted
+        allowed_uses: []
+        event_ids: []
+        requesting_unit_ids: []
+        effective_from: null
+        effective_until: null
+        interpretation_id: null
+        source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+      restrictions:
+        state: uninterpreted
+        allowed_uses: []
+        event_ids: []
+        requesting_unit_ids: []
+        effective_from: null
+        effective_until: null
+        interpretation_id: null
+        source_condition_reference: 'Paper DA line 3: preferential access during a named program'
+    input_valid: false
+    output:
+      outcome: rejected
+      reason: target_locked
