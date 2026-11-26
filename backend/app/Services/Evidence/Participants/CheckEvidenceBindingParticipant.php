@@ -37,12 +37,6 @@ class CheckEvidenceBindingParticipant
             return ['outcome' => 'missing', 'reason' => 'acknowledgment_missing'];
         }
 
-        $targetMatches = $record->purpose === ($snapshot['target']['purpose'] ?? null)
-            && $record->record_id === ($snapshot['target']['record_id'] ?? null);
-        if (! $targetMatches) {
-            return ['outcome' => 'mismatched', 'reason' => 'target_mismatch'];
-        }
-
         $versionId = $required['version_id'] ?? null;
         if (! is_string($versionId) || ! preg_match(AuthInput::UUID, $versionId)) {
             return ['outcome' => 'mismatched', 'reason' => 'bytes_changed'];
@@ -53,8 +47,14 @@ class CheckEvidenceBindingParticipant
         if ($reason !== null) {
             return ['outcome' => 'invalid', 'reason' => $reason];
         }
-        $first = $blobs->first();
-        if ($first && $first->version < $record->currentVersion()) {
+        $targetMatches = $record->purpose === ($snapshot['target']['purpose'] ?? null)
+            && $record->record_id === ($snapshot['target']['record_id'] ?? null);
+        if (! $targetMatches) {
+            return ['outcome' => 'mismatched', 'reason' => 'target_mismatch'];
+        }
+
+        $current = $record->currentVersionBlob();
+        if ($blobs->isNotEmpty() && $current && $record->versionId($current) !== $versionId) {
             return ['outcome' => 'mismatched', 'reason' => 'superseded_version'];
         }
 
@@ -81,6 +81,14 @@ class CheckEvidenceBindingParticipant
 
     public function recordMatch(string $chapterId, string $actorId, array $snapshot, array $bytes, ?string $recipientId, string $recipientName, string $acknowledgedAt, array $current): EvidenceBinding
     {
+        $id = $bytes['evidence_id'] ?? null;
+        if (is_string($id) && preg_match(AuthInput::UUID, $id)
+            && ! EvidenceRecord::where('chapter_id', $chapterId)->whereKey($id)
+                ->where('purpose', $snapshot['target']['purpose'])->where('record_id', $snapshot['target']['record_id'])
+                ->sharedLock()->first(['id'])) {
+            $this->verifyMatch($chapterId, $actorId, $snapshot, null, null, $current);
+        }
+
         $acknowledgment = [
             'acknowledgment_id' => (string) Str::uuid(),
             'matched_by' => $actorId,
@@ -128,9 +136,11 @@ class CheckEvidenceBindingParticipant
                     ? 'evidence_missing' : 'acknowledgment_missing',
                 default => 'evidence_mismatch',
             };
-            throw new ContractException(409, $code, 'The exact signed paper must match the current material.', [
-                ...($snapshot['target']['purpose'] === 'opening_receipt' ? [] : ['failed_intent_committed' => false, 'current' => $current]),
-            ]);
+            throw new ContractException(409, $code, 'The exact signed paper must match the current material.',
+                $snapshot['target']['purpose'] === 'opening_receipt' ? [] : [
+                    'failed_intent_committed' => false, 'current' => $current, 'setup_blockers' => [],
+                ],
+            );
         }
     }
 

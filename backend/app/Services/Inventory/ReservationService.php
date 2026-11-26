@@ -810,7 +810,10 @@ class ReservationService
             }
 
             $evidenceInput = $input['evidence'] ?? [];
-            if (is_array($evidenceInput) && array_key_exists('version_id', $evidenceInput)) {
+            if (! is_array($evidenceInput)) {
+                throw new ContractException(422, 'invalid_input', 'Supply an evidence binding object.');
+            }
+            if (array_key_exists('version_id', $evidenceInput)) {
                 $snapshot = [
                     'target' => ['purpose' => 'hold_clearance', 'record_id' => $hold->id],
                     'material_version' => $hold->material_version,
@@ -822,9 +825,14 @@ class ReservationService
                         'failed_intent_committed' => false, 'current' => $current,
                     ]);
                 }
+                $signedAt = collect($hold->clearance_proposal_json['signatories'] ?? [])->max('signed_at');
+                if (! $signedAt) {
+                    throw new ContractException(409, 'evidence_mismatch', 'The clearance signatories are required.', [
+                        'failed_intent_committed' => false, 'current' => $current, 'setup_blockers' => [],
+                    ]);
+                }
                 $binding = $this->checkEvidenceBinding->recordMatch(
-                    $chapterId, $actorId, $snapshot, $evidenceInput, null, $actorId,
-                    now('UTC')->format('Y-m-d\TH:i:s.u\Z'), $current,
+                    $chapterId, $actorId, $snapshot, $evidenceInput, null, $actorId, $signedAt, $current,
                 );
                 $check = ['acknowledgment_id' => $binding->id];
             } else {
@@ -848,7 +856,7 @@ class ReservationService
             $this->recordHoldHistory($hold, 'cleared', $actorId, $formattedHold);
 
             $lotIds = $hold->ranges->pluck('lot_id')->unique()->values()->all();
-            $this->recomputeBlockedStateForLots($chapterId, $lotIds, $actorId);
+            $rfChanges = $this->recomputeBlockedStateForLots($chapterId, $lotIds, $actorId);
             $this->outbox->recordIntent('stage1.stock-hold.changed.v1', $chapterId, $hold->id, $hold->version, $hold->material_version);
 
             return $this->operationEnvelope(
@@ -860,7 +868,8 @@ class ReservationService
                 $hold->id,
                 200,
                 $formattedHold,
-                $input
+                $input,
+                rfChanges: isset($binding) ? $rfChanges : null,
             );
         });
     }
@@ -894,10 +903,10 @@ class ReservationService
         return $check;
     }
 
-    public function recomputeBlockedStateForLots(string $chapterId, array $lotIds, ?string $actorId = null): void
+    public function recomputeBlockedStateForLots(string $chapterId, array $lotIds, ?string $actorId = null): array
     {
         if (empty($lotIds)) {
-            return;
+            return [];
         }
 
         $affectedResIds = RfReservationAllocation::where('chapter_id', $chapterId)
@@ -909,7 +918,7 @@ class ReservationService
             ->all();
 
         if (empty($affectedResIds)) {
-            return;
+            return [];
         }
 
         $reservations = StockReservation::whereIn('id', $affectedResIds)
@@ -936,6 +945,7 @@ class ReservationService
             }
         }
 
+        $rfChanges = [];
         foreach ($affectedRfLines as $rfId => $lineIds) {
             $rf = InternalRf::where('id', $rfId)->lockForUpdate()->first();
             if (! $rf) {
@@ -958,10 +968,13 @@ class ReservationService
                 $rf->version += 1;
                 $rf->progress_version += 1;
                 $rf->save();
+                $rfChanges[] = ['rf_id' => $rf->id, 'version' => (int) $rf->version, 'progress_version' => (int) $rf->progress_version];
                 $this->recordRfProgressVersion($rf->fresh('lines'), 'hold_state_changed', $actorId ?? 'system', null);
                 $this->outbox->recordIntent('stage1.internal-rf.changed.v1', $chapterId, $rf->id, $rf->version, $rf->material_version);
             }
         }
+
+        return $rfChanges;
     }
 
     public function syncReservationStateAndBlocked(StockReservation $reservation): void
@@ -1554,7 +1567,8 @@ class ReservationService
         int $httpStatus,
         array $result,
         array $requestPayload,
-        ?string $overrideOperationId = null
+        ?string $overrideOperationId = null,
+        ?array $rfChanges = null,
     ): array {
         $operationId = $overrideOperationId ?? (string) Str::uuid();
         $effectiveKey = $actionKey ?? (string) Str::uuid();
@@ -1569,7 +1583,7 @@ class ReservationService
                 'resource_kind' => $resourceKind,
                 'resource_id' => $resourceId,
                 'committed_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
-                'http_status' => $httpStatus,
+                ...($rfChanges !== null ? ['rf_changes' => $rfChanges] : ['http_status' => $httpStatus]),
                 'outcome' => 'committed',
                 'result' => $result,
             ],

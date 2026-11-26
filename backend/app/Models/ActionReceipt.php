@@ -15,7 +15,7 @@ class ActionReceipt extends Model
 
     protected $casts = ['result' => 'array', 'status' => 'integer'];
 
-    /** @param array{chapter_id: string, user_id: string, operation: string, key: string} $scope */
+    /** @param array{chapter_id: string, user_id: string, operation: string, key: string, evidence_scope?: string} $scope */
     public static function record(array $scope, string $fingerprint, int $status, array $result): self
     {
         try {

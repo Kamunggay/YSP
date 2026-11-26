@@ -24,9 +24,10 @@ class EvidenceRecord extends Model
     {
         return $this->hasOne(EvidenceBlob::class, 'evidence_id')->latestOfMany('version');
     }
-    public function currentVersion(): ?int
+    public function currentVersionBlob(): ?EvidenceBlob
     {
-        return $this->blobs()->orderByDesc('version')->sharedLock()->value('version');
+        return $this->blobs()->orderByDesc('version')->orderByRaw('position IS NULL')->orderBy('position')->orderBy('id')
+            ->sharedLock()->first(['id', 'version_id', 'version', 'payload_path']);
     }
 
     /** @return Collection<int, EvidenceBlob> */

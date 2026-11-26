@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\ContractException;
+use App\Http\Middleware\EnforceBrowserAuthority;
 use App\Models\IdempotencyRecord;
 use App\Models\InternalRf;
 use App\Models\InventoryLot;
@@ -346,7 +347,7 @@ class ReservationAndHoldController extends Controller
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return EnforceBrowserAuthority::error($e);
         }
     }
 

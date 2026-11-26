@@ -125,7 +125,7 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stag
     Route::get('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'readOpeningRm'])->middleware('stage-one.action:opening_rm.read');
     Route::put('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'replaceOpeningRm'])->middleware('stage-one.action:opening_rm.prepare', 'idempotent');
     Route::post('/opening-rms/{rm_id}/inspection', [OpeningInventoryController::class, 'inspectOpeningRm'])->middleware('stage-one.action:opening_rm.prepare', 'idempotent');
-    Route::post('/opening-rms/{rm_id}/evidence-match', [OpeningInventoryController::class, 'matchOpeningRmEvidence'])->middleware('stage-one.action:opening_rm.prepare', 'idempotent');
+    Route::post('/opening-rms/{rm_id}/evidence-match', [OpeningInventoryController::class, 'matchOpeningRmEvidence'])->middleware('stage-one.action:opening_rm.prepare,evidence.read', 'idempotent');
     Route::post('/opening-rms/{rm_id}/post', [OpeningInventoryController::class, 'postOpeningRm'])->middleware('stage-one.action:opening_rm.post', 'idempotent');
     Route::get('/opening-rms/{rm_id}/movements', [OpeningInventoryController::class, 'listOpeningRmMovements'])->middleware('stage-one.action:stock.read');
     Route::get('/opening-rms/{rm_id}/findings', [OpeningInventoryController::class, 'listOpeningRmFindings'])->middleware('stage-one.action:stock.read');

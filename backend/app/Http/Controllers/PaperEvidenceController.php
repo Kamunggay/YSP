@@ -43,6 +43,7 @@ class PaperEvidenceController extends Controller
         $upload = $request->attributes->get(PaperEvidenceUpload::class);
         $actor = $request->user()->id;
         $previous = null;
+        $predecessor = null;
         $replacing = $upload->expectedVersion !== null;
         $operation = $replacing ? 'replacePaperEvidence' : 'uploadPaperEvidence';
         $projectionTime = now('UTC')->startOfSecond();
@@ -57,7 +58,8 @@ class PaperEvidenceController extends Controller
             'created_at' => $projectionTime,
         ]);
         if ($replacing) {
-            $previous = $this->currentBlobs($record)->first() ?? throw $this->notFound();
+            $previous = $record->currentVersionBlob() ?? throw $this->notFound();
+            $predecessor = $record->versionId($previous);
         }
         $version = ($previous?->version ?? 0) + 1;
         $versionId = (string) Str::uuid();
@@ -70,7 +72,7 @@ class PaperEvidenceController extends Controller
                 'id' => (string) Str::uuid(),
                 'version_id' => $versionId,
                 'version' => $version,
-                'supersedes_version_id' => $previous ? $record->versionId($previous) : null,
+                'supersedes_version_id' => $predecessor,
                 'replacement_reason' => $upload->reason,
                 'position' => $index + 1,
                 'mime_type' => $metadata['media_type'],
@@ -84,6 +86,7 @@ class PaperEvidenceController extends Controller
         $scope = ['chapter_id' => $chapter_id, 'user_id' => $actor, 'operation' => $operation, 'key' => $upload->key];
         $intent = ['target' => $this->target($record), 'attachments' => $attachmentIdentity];
         if ($replacing) {
+            $scope['evidence_scope'] = $record->id;
             $intent += ['evidence_id' => $record->id, 'expected_version' => $upload->expectedVersion, 'reason' => $upload->reason];
         }
         $fingerprint = CanonicalJson::sha256($intent);
@@ -111,7 +114,7 @@ class PaperEvidenceController extends Controller
                 $blob->payload_path = $store->store($actor, $blob->id, $upload->files[$index]['bytes'], $blob->sha256_hash);
             }
             if ($previous) {
-                $record->blobs()->where('version', $previous->version)->update(['superseded_by_version_id' => $versionId]);
+                $record->blobs()->whereKey($record->exactVersion($predecessor, self::MANIFEST_COLUMNS)->modelKeys())->update(['superseded_by_version_id' => $versionId]);
                 EvidenceBinding::where('evidence_id', $record->id)->where('status', 'active')->update(['status' => 'invalidated']);
             } else {
                 $record->save();
@@ -172,7 +175,7 @@ class PaperEvidenceController extends Controller
         }
 
         $scope = [$request->user()->id, $record->chapter_id, $record->id, $limit];
-        $generation = [$authority->membership->id, $authority->version, $record->currentVersion()];
+        $generation = [$authority->membership->id, $authority->version, $record->currentVersionBlob()?->id];
         $after = [1, null];
         if (isset($selectors['cursor'])) {
             try {
@@ -270,10 +273,9 @@ class PaperEvidenceController extends Controller
     /** @return Collection<int, EvidenceBlob> */
     private function currentBlobs(EvidenceRecord $record): Collection
     {
-        $blobs = $record->versionBlobs($record->currentVersion(), self::MANIFEST_COLUMNS);
-        $first = $blobs->first();
+        $first = $record->currentVersionBlob();
 
-        return $first ? $blobs->filter(fn (EvidenceBlob $blob) => $record->versionId($blob) === $record->versionId($first)) : $blobs;
+        return $first ? $record->exactVersion($record->versionId($first), self::MANIFEST_COLUMNS) : new Collection;
     }
 
     /** @param Collection<int, EvidenceBlob> $blobs */

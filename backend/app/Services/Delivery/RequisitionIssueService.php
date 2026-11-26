@@ -243,6 +243,12 @@ class RequisitionIssueService
                 ]);
             }
 
+            if ($lockedIssue->evidence_binding_id && $lockedIssue->evidence_binding_id !== $acknowledgmentId) {
+                throw new ContractException(409, 'evidence_mismatch', 'Use the acknowledgment recorded for this issue.', [
+                    'failed_intent_committed' => false, 'current' => $this->formatIssue($lockedIssue), 'setup_blockers' => [],
+                ]);
+            }
+
             $binding = EvidenceBinding::where('chapter_id', $chapterId)->whereKey($acknowledgmentId)->sharedLock()->first();
             if ($binding?->match_projection) {
                 if ($binding->id !== $lockedIssue->evidence_binding_id || $binding->status !== 'active') {
@@ -662,14 +668,7 @@ class RequisitionIssueService
             'recipient_accepts_partial' => (bool) $issue->recipient_accepts_partial,
             'handover_fence' => $issue->handover_fence ?? 'none',
             'material' => $issue->material_json,
-            'snapshot' => [
-                'target' => [
-                    'purpose' => 'actual_issue',
-                    'record_id' => $issue->id,
-                ],
-                'material_version' => (int) $issue->material_version,
-                'sha256' => $issue->material_sha256,
-            ],
+            'snapshot' => $issue->evidenceSnapshot(),
             'acknowledgment' => $issue->evidence_binding_id ? [
                 'acknowledgment_id' => $issue->evidence_binding_id,
                 'matched_by_user_id' => $issue->matched_by_user_id,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\ContractException;
+use App\Http\Requests\AuthInput;
 use App\Models\EvidenceBinding;
 use App\Models\EvidenceRecord;
 use App\Models\IdempotencyRecord;
@@ -540,6 +541,10 @@ class OpeningInventoryController extends Controller
      */
     public function matchOpeningRmEvidence(Request $request, string $chapterId, string $rmId): JsonResponse
     {
+        if ($request->has('bytes')) {
+            return $this->matchApprovedOpeningPaper($request, $chapterId, $rmId);
+        }
+
         $rm = OpeningRm::where('chapter_id', $chapterId)
             ->where('id', $rmId)
             ->first();
@@ -599,12 +604,12 @@ class OpeningInventoryController extends Controller
             $bindingId = (string) Str::uuid();
         }
 
-        return DB::transaction(function () use ($rm, $chapterId, $bindingId, $userId, $request) {
+        return DB::transaction(function () use ($rm, $chapterId, $bindingId, $userId) {
             $rm = OpeningRm::where('chapter_id', $chapterId)->whereKey($rm->id)->lockForUpdate()->firstOrFail();
             if ($rm->status !== 'INSPECTED') {
                 throw new ContractException(409, 'invalid_transition', 'The Opening RM must be inspected before matching.');
             }
-            if ($request->has('bytes') || $this->hasPublishedOpeningPaper($rm)) {
+            if ($this->hasPublishedOpeningPaper($rm)) {
                 throw new ContractException(409, 'invalid_source', 'Match the signed paper against the approved Opening RM snapshot.');
             }
             $rm->status = 'EVIDENCE_MATCHED';
@@ -619,6 +624,79 @@ class OpeningInventoryController extends Controller
                 'data' => $rm,
             ], 200, ['Cache-Control' => 'no-store']);
         });
+    }
+
+    private function matchApprovedOpeningPaper(Request $request, string $chapterId, string $rmId): JsonResponse
+    {
+        $key = $request->header('X-Action-Key', '');
+        if (! preg_match(AuthInput::UUID, $key)) {
+            throw new ContractException(400, 'malformed_request', 'Supply a valid action key.');
+        }
+        $rm = OpeningRm::where('chapter_id', $chapterId)->whereKey($rmId)->lockForUpdate()->first();
+        if (! $rm) {
+            throw new ContractException(404, 'resource_not_found', 'Opening RM not found.');
+        }
+        if (! in_array($rm->status, ['INSPECTED', 'EVIDENCE_MATCHED'], true)) {
+            throw new ContractException(409, 'invalid_transition', 'Inspect the Opening RM before matching.');
+        }
+        $material = $rm->snapshot_data;
+        $ipc = OpeningCount::where('chapter_id', $chapterId)->whereKey($rm->ipc_id)->sharedLock()->first();
+        $preparer = OpeningRecordHistory::where('chapter_id', $chapterId)->where('record_type', 'OPENING_RM')
+            ->where('record_id', $rm->id)->where('event_type', 'created')->sharedLock()->value('actor_user_id');
+        if (! $preparer || ! $ipc || $ipc->status !== 'AUTHORIZED'
+            || ($material['ipc_id'] ?? null) !== $ipc->id || ($material['ipc_material_version'] ?? null) !== $ipc->material_version
+            || ($material['rm_material_version'] ?? null) !== $rm->material_version
+            || ! isset($material['rm_material'], $material['inspection']['inspected_at'])) {
+            throw new ContractException(409, 'invalid_source', 'The approved inspection snapshot is required.');
+        }
+
+        $snapshot = $rm->evidenceSnapshot();
+        if ($request->input('expected_revision') !== $rm->revision || $request->input('material_version') !== $rm->material_version
+            || $request->input('snapshot_sha256') !== $snapshot['sha256']) {
+            throw new ContractException(409, 'version_conflict', 'The inspected Opening RM snapshot has changed.');
+        }
+        $bytes = $request->input('bytes');
+        $time = $request->input('acknowledged_at');
+        if (! is_array($bytes) || ! is_string($time) || ! preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z\z/', $time)
+            || $time < $material['inspection']['inspected_at'] || $time > now('UTC')->toISOString()) {
+            throw new ContractException(422, 'invalid_input', 'Supply the exact paper and its signed acknowledgment time.');
+        }
+
+        $actor = $request->user()->id;
+        $binding = $this->checkEvidenceBinding->recordMatch($chapterId, $actor, $snapshot, $bytes, null, '', $time, []);
+        $rm->status = 'EVIDENCE_MATCHED';
+        $rm->evidence_binding_id = $binding->id;
+        $rm->revision += 1;
+        $rm->save();
+        $this->recordOpeningHistory('OPENING_RM', $rm->id, $chapterId, $rm->revision, $rm->material_version, 'evidence_matched', $actor, $rm->toArray());
+        $this->outbox->recordIntent('stage1.opening-rm.changed.v1', $chapterId, $rm->id, $rm->revision, $rm->material_version);
+
+        $operationId = (string) Str::uuid();
+        $response = ['data' => [
+            'operation' => [
+                'id' => $operationId, 'operation' => 'matchOpeningRmEvidence', 'action_key' => $key,
+                'actor_id' => $actor, 'chapter_id' => $chapterId, 'record_kind' => 'opening_rm',
+                'record_id' => $rm->id, 'record_revision' => $rm->revision, 'material_version' => $rm->material_version,
+                'http_status' => 200, 'committed_at' => now('UTC')->toISOString(),
+            ],
+            'record' => [
+                'id' => $rm->id, 'chapter_id' => $chapterId, 'ipc_id' => $rm->ipc_id, 'reference' => $rm->rm_number,
+                'revision' => $rm->revision, 'material_version' => $rm->material_version, 'state' => 'matched',
+                'prepared_by' => $preparer, 'created_at' => $rm->created_at->toISOString(), 'updated_at' => $rm->updated_at->toISOString(),
+                'material' => $material['rm_material'], 'inspection' => $material['inspection'], 'snapshot' => $material,
+                'snapshot_sha256' => $snapshot['sha256'], 'acknowledgment' => $binding->match_projection,
+                'posted_at' => null, 'outcome_id' => null,
+            ],
+            'posting' => null,
+        ]];
+        IdempotencyRecord::create([
+            'id' => $operationId, 'key' => $key, 'chapter_id' => $chapterId, 'user_id' => $actor,
+            'operation_name' => 'matchOpeningRmEvidence', 'resource_id' => $rm->id, 'state' => 'committed',
+            'payload_hash' => CanonicalJson::sha256($request->all()), 'response_code' => 200,
+            'response_body' => json_encode($response, JSON_THROW_ON_ERROR), 'expires_at' => now()->addDays(7),
+        ]);
+
+        return response()->json($response);
     }
 
     private function hasPublishedOpeningPaper(OpeningRm $rm): bool
@@ -685,6 +763,12 @@ class OpeningInventoryController extends Controller
                 ? EvidenceBinding::where('chapter_id', $chapterId)->whereKey($rm->evidence_binding_id)->sharedLock()->first()
                 : null;
             if ($binding?->match_projection) {
+                $ipc = OpeningCount::where('chapter_id', $chapterId)->whereKey($rm->ipc_id)->sharedLock()->first();
+                if ($request->input('expected_revision') !== $rm->revision || $request->input('material_version') !== $rm->material_version
+                    || ! $ipc || $ipc->status !== 'AUTHORIZED' || $request->input('ipc_material_version') !== $ipc->material_version
+                    || ($rm->snapshot_data['ipc_material_version'] ?? null) !== $ipc->material_version) {
+                    throw new ContractException(409, 'version_conflict', 'The approved opening snapshot has changed.');
+                }
                 if ($request->input('acknowledgment_id') !== $binding->id || $binding->status !== 'active') {
                     throw new ContractException(409, 'evidence_mismatch', 'Match the current signed paper before posting.');
                 }

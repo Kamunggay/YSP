@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Stage1A;
 
+use App\Models\ActualIssue;
 use App\Models\BrowserSession;
 use App\Models\CatalogueUnit;
 use App\Models\Chapter;
@@ -9,11 +10,14 @@ use App\Models\ChapterMembership;
 use App\Models\DutyGrant;
 use App\Models\EvidenceBinding;
 use App\Models\EvidenceBlob;
+use App\Models\InternalRf;
 use App\Models\OpeningCount;
+use App\Models\OpeningRecordHistory;
 use App\Models\OpeningRm;
 use App\Models\StockHold;
 use App\Models\User;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
+use App\Services\Shared\CanonicalJson;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -355,6 +359,11 @@ class InventoryStage1ATest extends TestCase
         $this->get("{$history}/{$second['version_id']}/attachments/{$first['attachments'][0]['attachment_id']}/content")
             ->assertNotFound()->assertJsonPath('error.code', 'evidence_not_found');
 
+        $another = $this->uploadPaper($rm, (string) Str::uuid(), $files)->assertCreated()->json('data');
+        $this->paperMultipart("/api/v1/chapters/{$this->chapterId}/evidence/{$another['evidence_id']}/versions",
+            $key, ['expected_version' => '1', 'reason' => 'Different lineage'], $files)
+            ->assertCreated()->assertJsonPath('data.evidence_id', $another['evidence_id']);
+
         $replace((string) Str::uuid(), 2, 'Third scan', $files)->assertCreated();
         $this->get($next)->assertConflict()->assertJsonPath('error.code', 'snapshot_stale');
         $rm->update(['status' => 'POSTED']);
@@ -405,7 +414,10 @@ class InventoryStage1ATest extends TestCase
         $hold = StockHold::create([
             'chapter_id' => $this->chapterId, 'status' => 'active', 'version' => 1, 'material_version' => 1,
             'reason_code' => 'quality_check', 'reason' => 'Check condition', 'placed_by_user_id' => $this->userId, 'placed_at' => now(),
-            'clearance_proposal_json' => ['finding' => 'Inspected and cleared'],
+            'clearance_proposal_json' => [
+                'resolution' => 'Inspected and cleared',
+                'signatories' => [['user_id' => $this->userId, 'signed_at' => now('UTC')->subMinute()->toISOString()]],
+            ],
             'clearance_material_sha256' => hash('sha256', 'approved clearance'), 'clearance_prepared_by_user_id' => $this->userId,
         ]);
         $files = [['application/pdf', $this->paperPdf()]];
@@ -432,6 +444,96 @@ class InventoryStage1ATest extends TestCase
         $this->assertEquals($this->byteBinding($second), $binding->match_projection['bytes']);
     }
 
+    public function test_opening_evidence_match_and_post_use_the_approved_snapshot_and_current_paper(): void
+    {
+        $rm = $this->evidenceDraft();
+        $rm->ipc->update(['status' => 'AUTHORIZED']);
+        $material = [
+            'ipc_id' => $rm->ipc_id, 'ipc_material_version' => 1,
+            'rm_material_version' => 1, 'rm_material' => ['ipc_id' => $rm->ipc_id],
+            'inspection' => ['inspected_at' => now('UTC')->subMinute()->toISOString()],
+        ];
+        $rm->update(['status' => 'INSPECTED', 'snapshot_data' => $material]);
+        OpeningRecordHistory::create([
+            'chapter_id' => $this->chapterId, 'record_type' => 'OPENING_RM', 'record_id' => $rm->id,
+            'revision' => 1, 'material_version' => 1, 'event_type' => 'created', 'actor_user_id' => $this->userId,
+            'snapshot_json' => $rm->toArray(), 'created_at' => now(),
+        ]);
+
+        $files = [['application/pdf', $this->paperPdf()]];
+        $paper = $this->asOfficer($this->userId)->uploadPaper($rm, (string) Str::uuid(), $files)->assertCreated()->json('data');
+        $path = "/api/v1/chapters/{$this->chapterId}/opening-rms/{$rm->id}";
+        $request = [
+            'expected_revision' => 1, 'material_version' => 1, 'snapshot_sha256' => CanonicalJson::sha256($material),
+            'bytes' => $this->byteBinding($paper), 'acknowledged_at' => now('UTC')->toISOString(),
+        ];
+        $key = (string) Str::uuid();
+        $this->postJson("{$path}/evidence-match", ['snapshot_sha256' => hash('sha256', 'wrong paper')] + $request, ['X-Action-Key' => $key])
+            ->assertConflict()->assertJsonPath('error.code', 'version_conflict');
+        $match = $this->postJson("{$path}/evidence-match", $request, ['X-Action-Key' => $key])
+            ->assertOk()->assertHeader('X-Action-Replayed', 'false')->json('data.record.acknowledgment');
+        $this->postJson("{$path}/evidence-match", $request, ['X-Action-Key' => $key])
+            ->assertOk()->assertHeader('X-Action-Replayed', 'true')->assertJsonPath('data.record.acknowledgment.acknowledgment_id', $match['acknowledgment_id']);
+
+        $post = fn () => $this->postJson("{$path}/post", [
+            'expected_revision' => 2, 'material_version' => 1, 'ipc_material_version' => 1,
+            'acknowledgment_id' => $match['acknowledgment_id'],
+        ], ['X-Action-Key' => (string) Str::uuid()]);
+        $blob = EvidenceBlob::findOrFail($paper['attachments'][0]['attachment_id']);
+        $disk = Storage::disk('evidence');
+        $disk->delete($blob->payload_path);
+        $post()->assertConflict()->assertJsonPath('error.code', 'evidence_invalid');
+        $disk->put($blob->payload_path, $files[0][1]);
+
+        $this->paperMultipart("/api/v1/chapters/{$this->chapterId}/evidence/{$paper['evidence_id']}/versions",
+            (string) Str::uuid(), ['expected_version' => '1', 'reason' => 'Corrected opening paper'], $files)->assertCreated();
+        $post()->assertConflict()->assertJsonPath('error.code', 'evidence_mismatch');
+        $this->assertSame('EVIDENCE_MATCHED', $rm->fresh()->status);
+        $this->assertDatabaseCount('inventory_movements', 0);
+    }
+
+    public function test_actual_issue_rechecks_its_exact_acknowledgment_before_posting(): void
+    {
+        Storage::fake('evidence');
+        $recipient = User::create([
+            'public_id' => 'recipient@example.invalid', 'name' => 'Recipient', 'email' => 'recipient@example.invalid',
+            'password_hash' => hash('sha256', 'test credential'), 'status' => 'active',
+        ]);
+        $rf = InternalRf::create([
+            'chapter_id' => $this->chapterId, 'requester_user_id' => $recipient->id, 'status' => 'approved',
+        ]);
+        $issue = ActualIssue::create([
+            'chapter_id' => $this->chapterId, 'requisition_id' => $rf->id, 'issue_number' => 'IS-1',
+            'recipient_user_id' => $recipient->id, 'recipient_name' => $recipient->name, 'prepared_by_user_id' => $this->userId,
+            'handed_over_at' => now()->subMinutes(2), 'acknowledged_at' => now()->subMinute(), 'entered_at' => now(),
+            'material_json' => ['rf_id' => $rf->id], 'material_sha256' => CanonicalJson::sha256(['rf_id' => $rf->id]),
+        ])->refresh();
+        $files = [['application/pdf', $this->paperPdf()]];
+        $paper = $this->asOfficer($this->userId)->uploadPaper($issue, (string) Str::uuid(), $files)->assertCreated()->json('data');
+        $path = "/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue->id}";
+        $matchRequest = [
+            'expected_version' => 1, 'expected_material_version' => 1, 'expected_snapshot' => $issue->evidenceSnapshot(),
+            'evidence' => $this->byteBinding($paper), 'matches_paper' => true,
+        ];
+        $match = $this->postJson("{$path}/acknowledgments", $matchRequest, ['X-Action-Key' => (string) Str::uuid()])
+            ->assertOk()->assertJsonPath('data.result.acknowledgment.recipient_id', $recipient->id)->json('data.result.acknowledgment');
+        $this->assertEquals($this->byteBinding($paper), $match['bytes']);
+
+        $post = fn () => $this->postJson("{$path}/post", [
+            'expected_version' => 2, 'expected_material_version' => 1, 'acknowledgment_id' => $match['acknowledgment_id'],
+        ], ['X-Action-Key' => (string) Str::uuid()]);
+        $blob = EvidenceBlob::findOrFail($paper['attachments'][0]['attachment_id']);
+        $disk = Storage::disk('evidence');
+        $disk->delete($blob->payload_path);
+        $post()->assertConflict()->assertJsonPath('error.code', 'evidence_invalid');
+        $disk->put($blob->payload_path, $files[0][1]);
+        $this->paperMultipart("/api/v1/chapters/{$this->chapterId}/evidence/{$paper['evidence_id']}/versions",
+            (string) Str::uuid(), ['expected_version' => '1', 'reason' => 'Corrected issue paper'], $files)->assertCreated();
+        $post()->assertConflict()->assertJsonPath('error.code', 'evidence_mismatch');
+        $this->assertSame('unresolved', $issue->fresh()->handover_fence);
+        $this->assertDatabaseCount('inventory_movements', 0);
+    }
+
     private function byteBinding(array $version): array
     {
         return [
@@ -450,10 +552,14 @@ class InventoryStage1ATest extends TestCase
         return OpeningRm::create(['chapter_id' => $this->chapterId, 'ipc_id' => $ipc->id]);
     }
 
-    private function uploadPaper(OpeningRm|StockHold $target, string $key, array $files, ?string $extra = null, bool $finished = true): TestResponse
+    private function uploadPaper(OpeningRm|StockHold|ActualIssue $target, string $key, array $files, ?string $extra = null, bool $finished = true): TestResponse
     {
         return $this->paperMultipart("/api/v1/chapters/{$this->chapterId}/evidence", $key, [
-            'purpose' => $target instanceof OpeningRm ? 'opening_receipt' : 'hold_clearance',
+            'purpose' => match ($target::class) {
+                OpeningRm::class => 'opening_receipt',
+                StockHold::class => 'hold_clearance',
+                ActualIssue::class => 'actual_issue',
+            },
             'record_id' => $target->id,
         ], $files, $extra, $finished);
     }
