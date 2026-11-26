@@ -533,7 +533,7 @@ class CombinedBackendMergeVerificationTest extends TestCase
         $this->assertSame('0', $rfFinal->json('data.lines.0.progress.unreserved_quantity'));
 
         $outboxByEvent = DomainNotificationOutbox::where('chapter_id', $this->chapterId)
-            ->orderByDesc('created_at')
+            ->orderBy('created_at')
             ->get()
             ->keyBy('event_name');
         foreach ([

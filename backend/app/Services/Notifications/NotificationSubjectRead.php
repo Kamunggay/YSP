@@ -63,17 +63,23 @@ final class NotificationSubjectRead
 
     private function ipcPath(User $user, DomainNotificationOutbox $event): ?string
     {
-        $ipc = OpeningCount::where('chapter_id', $event->chapter_id)->whereKey($event->resource_id)->sharedLock()->first();
-        if (! $ipc) {
-            return null;
-        }
-
         try {
             $duties = ChapterAuthority::forChapter($user, $event->chapter_id)->duties();
         } catch (ContractException) {
             return null;
         }
-        if (array_intersect($duties, ['INVENTORY', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE']) !== []) {
+
+        $ipc = OpeningCount::where('chapter_id', $event->chapter_id)->whereKey($event->resource_id)->sharedLock()->first();
+        if (! $ipc) {
+            return null;
+        }
+
+        $state = strtolower((string) $ipc->status);
+        $signatoryRead = in_array($state, ['awaiting_authorization', 'authorized', 'posted'], true)
+            && array_intersect($duties, ['CHAPTER_HEAD', 'FINANCE']) !== [];
+        $consumerRead = in_array($state, ['authorized', 'posted'], true)
+            && array_intersect($duties, ['RECEIVING', 'INVENTORY']) !== [];
+        if ($signatoryRead || $consumerRead) {
             return "ipcs/{$ipc->id}";
         }
 
