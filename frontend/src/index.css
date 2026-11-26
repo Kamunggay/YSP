@@ -1,12 +1,30 @@
 :root {
-  font-family: 'Segoe UI', sans-serif;
-  color: #173249;
-  background: #edf4f8;
+  color-scheme: light;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #102a43;
+  background: #f0f4f8;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 280px; }
-button { font: inherit; }
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 280px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid #0b4f78;
+  outline-offset: 2px;
+}
