@@ -151,7 +151,18 @@ def main():
             for value in node:
                 check_references(value)
 
+    def check_closed_objects(node, location="#/components/schemas"):
+        if isinstance(node, dict):
+            if node.get("type") == "object" and node.get("additionalProperties") is not False:
+                raise ValueError(f"Open object schema missing additionalProperties: false at {location}")
+            for key, value in node.items():
+                check_closed_objects(value, f"{location}/{pointer_part(key)}")
+        elif isinstance(node, list):
+            for idx, value in enumerate(node):
+                check_closed_objects(value, f"{location}/{idx}")
+
     check_references(document)
+    check_closed_objects(document["components"]["schemas"])
     validate(document, base_uri=uri, cls=OpenAPIV31SpecValidator)
     registry = Registry().with_resource(
         uri, Resource.from_contents(document, default_specification=DRAFT202012)
