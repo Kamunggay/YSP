@@ -2,18 +2,20 @@ openapi: 3.1.1
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: YSP Stage 2 canonical HTTP agreement
-  version: 0.3.0
+  version: 0.4.0
   description: >-
-    Specification #27 canonical Stage 2 contract package (tickets 01-04). Reuses
+    Specification #27 canonical Stage 2 contract package (tickets 01-05). Reuses
     Stage 1 transport, cookie/CSRF security, X-Action-Key idempotency, snapshot-bound
     cursor pagination, scalar formats, error/blocker envelopes, and BoundedRestriction
     verbatim. Defines controlled CLI-only Stage 2 policies, additive EvidencePurpose
     values, Leader checkEvidenceBinding reuse, Glenn live net-shortage/ROP query and
     computeNetShortageSnapshot participant, RepF intake/budget review, nested
     quotations, policy-gated supplier selection, Purchase Order lifecycle/amendments,
-    Donation Acknowledgments and donor-restriction resolutions, and action-receipt
-    recovery. agreement.md defines normative authorization, locking, calculation,
-    ownership, and coordination rules. No runtime code, migrations, UI, or CI changes.
+    Donation Acknowledgments and donor-restriction resolutions, unified PO/DA
+    Receiving Reports with Efren prepareReceivingInventory, receiving discrepancy
+    loops, missing-source delivery holds, and action-receipt recovery. agreement.md
+    defines normative authorization, locking, calculation, ownership, and
+    coordination rules. No runtime code, migrations, UI, or CI changes.
 servers:
   - url: /
     description: Same origin as the browser; HTTPS required except isolated loopback development.
@@ -31,6 +33,14 @@ tags:
     description: Purchase Order preparation, independent approval/issuance, optional supplier acknowledgment, controlled amendments, short-closure, cancellation, history, and print owned by Leader.
   - name: Procurement Operations
     description: Action-receipt recovery lookups for uncertain Stage 2 procurement mutations (RepF, quotations, supplier selections, and Purchase Orders) owned by Leader.
+  - name: Receiving Reports
+    description: Unified Stage 2 purchased (PO-RM) and donated (DA-RM) Receiving Report inspection, signed-paper evidence matching, atomic stockroom/quarantine posting, movements, discrepancies, history, and print owned by Leader (Stage 1 /opening-rms unchanged).
+  - name: Receiving Discrepancies
+    description: Receiving discrepancy follow-up and evidence-backed resolution loops for damaged or rejected PO/DA deliveries owned by Leader (RCV-05, RCV-06, INV-14).
+  - name: Receiving Holds
+    description: Missing-source delivery hold intake, source linking, and authorized refusal/return outside usable stock with zero IPC creation owned by Leader (RCV-01, RCV-10, S3-15).
+  - name: Receiving Operations
+    description: Action-receipt recovery lookups for uncertain Stage 2 receiving, discrepancy, and missing-source hold mutations owned by Leader.
 
 paths:
   /api/v1/chapters/{chapter_id}/replenishment/needs:
@@ -2921,6 +2931,1481 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
 
+  /api/v1/chapters/{chapter_id}/receiving-reports:
+    get:
+      operationId: listReceivingReports
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: List unified Stage 2 PO/DA Receiving Reports
+      description: >-
+        Lists chapter-scoped Stage 2 Receiving Reports (source_kind po or da; Stage 1
+        /opening-rms remains separate and untouched per RCV-01) ordered by updated_at
+        descending then id ascending under a 5-minute snapshot-bound cursor. Rejects
+        unknown or repeated query selectors with 400 invalid_selector.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/ReceivingSourceKindFilter'
+        - $ref: '#/components/parameters/ReceivingStatusFilter'
+        - $ref: '#/components/parameters/ReceivingSourceIdFilter'
+        - $ref: '#/components/parameters/ReceivingLocationFilter'
+      responses:
+        '200':
+          description: Current authorized page of Stage 2 Receiving Reports.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createReceivingReport
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.draft
+      summary: Create a unified Stage 2 PO-RM or DA-RM draft
+      description: >-
+        Creates a Stage 2 Receiving Report draft against an eligible same-chapter
+        source (source_kind po requires an issued or partially_received PO plus
+        supplier DR reference and date; source_kind da requires an acknowledged or
+        partially_received DA; Stage 1 IPC opening receipts remain strictly on
+        /opening-rms per RCV-01). Rejects closed/ineligible sources with 409
+        source_not_eligible and unamended PO overdeliveries or variant/unit
+        substitutions with 409 substitution_or_overdelivery_blocked (RCV-07). Enforces
+        exact variant quantity scale and delivered == accepted + damaged + rejected.
+        When originating_hold_id is supplied, verifies the hold is linked_to_source
+        matching the same source_kind and source_id.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReceivingReportRequest'
+      responses:
+        '201':
+          description: Receiving Report draft created.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingReportConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}:
+    get:
+      operationId: readReceivingReport
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: Read a Stage 2 Receiving Report
+      description: Reads the current authorized Stage 2 Receiving Report by ID within the chapter.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+      responses:
+        '200':
+          description: Current authorized Receiving Report.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    put:
+      operationId: replaceReceivingReport
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.draft
+      summary: Replace a non-posted Receiving Report draft (invalidating prior inspection/evidence binding)
+      description: >-
+        Full material replacement of a Receiving Report in draft, inspected, or
+        evidence_matched status. Requires expected_version and expected_material_version.
+        Bumps version and material_version; any material edit after inspection or
+        evidence-match automatically invalidates inspection, snapshot, and active
+        evidence_acknowledgment and returns status to draft (RCV-02). Posted and
+        canceled RMs are immutable (409 invalid_transition). Re-checks source
+        eligibility and unamended overdelivery/substitution guards.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceReceivingReportRequest'
+      responses:
+        '200':
+          description: Receiving Report material replaced; status is draft.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingReportConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/inspection:
+    post:
+      operationId: inspectReceivingReport
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.inspect
+      summary: Record receiving inspection and freeze canonical snapshot material
+      description: >-
+        Transitions a Receiving Report from draft to inspected. Records inspector
+        (current actor with receiving.inspect, independent of PO preparer/approver
+        for PO-RM per GOV-05..07), optional technical or requesting-unit
+        representative, inspection timestamp, inspection notes, and verified exact-scale
+        line counts (delivered == accepted + damaged + rejected), unit valuations, and
+        discrepancy notes. Computes and persists the canonical EvidenceSnapshot
+        (purpose po_supplier_dr for po, da_receipt for da) bound to material_version.
+        Rejects ineligible sources with 409 source_not_eligible and unamended PO
+        overdeliveries or variant/unit substitutions with 409
+        substitution_or_overdelivery_blocked (RCV-02, RCV-03, RCV-07).
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InspectReceivingReportRequest'
+      responses:
+        '200':
+          description: Receiving Report inspected and snapshot computed.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingReportConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/evidence-match:
+    post:
+      operationId: matchReceivingReportEvidence
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.match_evidence
+      summary: Bind verified signed-paper evidence to an inspected Receiving Report
+      description: >-
+        Transitions an inspected Receiving Report to evidence_matched. Verifies
+        expected_version, expected_material_version, exact snapshot_sha256, and
+        immutable uploaded signed-paper bytes (purpose po_supplier_dr for PO-RM,
+        da_receipt for DA-RM) synchronously through Leader's internal
+        checkEvidenceBinding participant inside the commit transaction. Any subsequent
+        material edit via replaceReceivingReport invalidates this binding and returns
+        the RM to draft.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchReceivingReportEvidenceRequest'
+      responses:
+        '200':
+          description: Signed paper evidence matched and acknowledged.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingReportConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/post:
+    post:
+      operationId: postReceivingReport
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.post
+      summary: Atomically allocate RM reference and post accepted and discrepant lots
+      description: >-
+        Transitions an evidence_matched Receiving Report to immutable posted status.
+        Inside Leader's single MySQL commit transaction: locks the chapter RM
+        reference series, source PO/DA, and RM; re-fences authority, setup policies
+        (RM reference_series, quantity_scale, valuation_rounding), exact
+        material_version, source_material_version, exact evidence acknowledgment via
+        checkEvidenceBinding, source eligibility (409 source_not_eligible), and
+        remaining PO/DA allowance (409 substitution_or_overdelivery_blocked); allocates
+        the shared chapter yearly RM reference; invokes Efren's internal synchronous
+        prepareReceivingInventory participant (source_kind po_rm | da_rm) to create
+        USABLE stockroom lots for accepted units immediately eligible under INV-09
+        (RCV-04, carrying BoundedRestriction for da_rm including ADR 0004 uninterpreted
+        lots) and QUARANTINE/REJECTED lots for damaged/rejected units (INV-14); creates
+        open ReceivingDiscrepancy records for any damaged/rejected line; updates source
+        PO accepted/rejected_or_disputed/outstanding counts (issued ->
+        partially_received | receiving_complete) or DA received/outstanding counts
+        (acknowledged -> partially_received | received); and appends transactional
+        outbox notices (stage2.receiving-report.changed.v1, stage1.stock-lot.changed.v1,
+        and source/discrepancy change events).
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostReceivingReportRequest'
+      responses:
+        '200':
+          description: Receiving Report posted atomically with allocated RM reference and lot summary.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingReportConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/cancel:
+    post:
+      operationId: cancelReceivingReport
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.cancel
+      summary: Cancel an unposted Receiving Report with mandatory reason
+      description: >-
+        Transitions a Receiving Report from draft, inspected, or evidence_matched to
+        canceled with a mandatory non-blank reason. Posted RMs are immutable and
+        cannot be canceled (409 invalid_transition). Allocates no RM reference and
+        posts zero stock movements.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelReceivingReportRequest'
+      responses:
+        '200':
+          description: Unposted Receiving Report canceled.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingReportConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/movements:
+    get:
+      operationId: listReceivingReportMovements
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: List stock movements created by posting a Receiving Report
+      description: >-
+        Lists immutable usable, quarantined, and rejected stock movements created
+        when the Receiving Report posted (empty list while unposted or canceled).
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Authorized page of Receiving Report stock movements.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingMovementList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/discrepancies:
+    get:
+      operationId: listReceivingReportDiscrepancies
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: List discrepancies created by or resolved by a Receiving Report
+      description: >-
+        Lists ReceivingDiscrepancy records created by damaged/rejected lines on this
+        RM as well as any prior PO discrepancies resolved by this replacement PO-RM.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Authorized page of Receiving Report discrepancies.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingDiscrepancyList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/history:
+    get:
+      operationId: listReceivingReportHistory
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: List immutable Receiving Report revision history
+      description: >-
+        Lists immutable version/action history entries for a Stage 2 Receiving Report,
+        newest version first. Also enforces current history.read and applicable
+        evidence.read when returning evidence metadata.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Authorized page of Receiving Report history entries.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportHistoryList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/versions/{version}:
+    get:
+      operationId: readReceivingReportVersion
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: Read an immutable historical Receiving Report version
+      description: >-
+        Reads an exact historical snapshot of a Stage 2 Receiving Report by version
+        number. Enforces current history.read and applicable evidence.read.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/ReceivingReportVersion'
+      responses:
+        '200':
+          description: Immutable historical Receiving Report snapshot.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/related:
+    get:
+      operationId: listReceivingReportRelated
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: List records linked to a Receiving Report
+      description: >-
+        Lists authorized related records (source PO or DA, created stock lots,
+        receiving discrepancies, and originating missing-source hold if linked).
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Authorized page of related receiving records.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingReportRelatedList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/print:
+    get:
+      operationId: printReceivingReport
+      tags:
+        - Receiving Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: Render escaped non-executable printable HTML for a Receiving Report
+      description: >-
+        Renders an escaped, non-executable printable HTML Receiving Report showing
+        chapter, RM reference (or DRAFT watermark), source_kind (PO or DA), source
+        reference, supplier DR reference/date when purchased, stockroom location,
+        inspector and optional technical/requesting representative, exact delivered/
+        accepted/damaged/rejected quantities, unit valuation, PHP accepted totals,
+        donor restriction states when donated, discrepancy notes, and sign-off block.
+        Omits raw evidence URLs and signature images. Sends Cache-Control: no-store,
+        strict PrintCsp, and NoSniff.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingReportId'
+      responses:
+        '200':
+          description: Escaped non-executable printable HTML Receiving Report view.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Content-Security-Policy:
+              $ref: '#/components/headers/PrintCsp'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+          content:
+            text/html:
+              schema:
+                type: string
+                minLength: 1
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-discrepancies:
+    get:
+      operationId: listReceivingDiscrepancies
+      tags:
+        - Receiving Discrepancies
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: List chapter receiving discrepancies
+      description: >-
+        Lists chapter-scoped ReceivingDiscrepancy records created by damaged or
+        rejected PO-RM and DA-RM deliveries ordered by updated_at descending then id
+        ascending under a 5-minute snapshot-bound cursor (RCV-05, RCV-06, INV-14).
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/DiscrepancyStatusFilter'
+        - $ref: '#/components/parameters/ReceivingSourceKindFilter'
+        - $ref: '#/components/parameters/DiscrepancyRmIdFilter'
+        - $ref: '#/components/parameters/ReceivingSourceIdFilter'
+      responses:
+        '200':
+          description: Current authorized page of receiving discrepancies.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingDiscrepancyList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-discrepancies/{discrepancy_id}:
+    get:
+      operationId: readReceivingDiscrepancy
+      tags:
+        - Receiving Discrepancies
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: Read a receiving discrepancy
+      description: Reads the current authorized ReceivingDiscrepancy record by ID within the chapter.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingDiscrepancyId'
+      responses:
+        '200':
+          description: Current authorized receiving discrepancy.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingDiscrepancyResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-discrepancies/{discrepancy_id}/notify-supplier:
+    post:
+      operationId: notifySupplierOfReceivingDiscrepancy
+      tags:
+        - Receiving Discrepancies
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: discrepancy.manage
+      summary: Record supplier notification for an open PO receiving discrepancy
+      description: >-
+        Transitions an open PO receiving discrepancy (source_kind po) to
+        supplier_notified, recording supplier contact reference, notification notes,
+        and optional expected replacement/resolution date (RCV-05, RCV-06, S3-21).
+        Rejects DA discrepancies with 409 source_not_eligible and already resolved
+        discrepancies with 409 discrepancy_already_resolved.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingDiscrepancyId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifySupplierDiscrepancyRequest'
+      responses:
+        '200':
+          description: Supplier notification recorded on PO receiving discrepancy.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingDiscrepancyMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingDiscrepancyConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-discrepancies/{discrepancy_id}/resolutions:
+    post:
+      operationId: resolveReceivingDiscrepancy
+      tags:
+        - Receiving Discrepancies
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: discrepancy.resolve
+      summary: Advance a receiving discrepancy to under_review or record evidence-backed resolution
+      description: >-
+        Advances an open or supplier_notified discrepancy to under_review
+        (action: start_review) or resolves an open, supplier_notified, or
+        under_review discrepancy to resolved (action: resolve). Final resolution
+        requires resolution_kind (supplier_replacement_received, returned_to_supplier,
+        or credit_or_short_closed for source_kind po; donated_declined_or_disposed
+        for source_kind da), mandatory reason, quarantined_lot_disposition, and exact
+        signed receiving_discrepancy paper evidence verified via Leader's internal
+        checkEvidenceBinding participant. supplier_replacement_received requires
+        replacement_rm_id referencing a separate posted PO-RM against the same PO
+        (never editing the immutable originating RM). Closing or short-closing a PO
+        or DA never auto-resolves discrepancies or clears quarantined/rejected lots
+        into usable stock (RCV-06, INV-14). Already resolved discrepancies reject
+        with 409 discrepancy_already_resolved.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingDiscrepancyId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveReceivingDiscrepancyRequest'
+      responses:
+        '200':
+          description: Discrepancy review started or resolved with verified evidence.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingDiscrepancyMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingDiscrepancyConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-holds:
+    get:
+      operationId: listReceivingHolds
+      tags:
+        - Receiving Holds
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: List missing-source delivery holds
+      description: >-
+        Lists chapter-scoped Missing-Source Delivery Holds ordered by updated_at
+        descending then id ascending under a 5-minute snapshot-bound cursor (RCV-01,
+        RCV-10, S3-15).
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/ReceivingHoldStatusFilter'
+      responses:
+        '200':
+          description: Current authorized page of missing-source delivery holds.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingHoldList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createReceivingHold
+      tags:
+        - Receiving Holds
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.hold_manage
+      summary: Record a missing-source delivery hold outside usable stock
+      description: >-
+        Records an undocumented delivery lacking a valid approved PO+DR or
+        acknowledged DA into held status outside usable inventory (usable_stock_posted
+        is always false; ipc_creation_prohibited is always true per RCV-01, RCV-10,
+        and S3-15). Requires verified missing_source_hold paper evidence when
+        intake_evidence is provided, and enforces holding_location_id exists in the
+        chapter. Posts zero stockroom lots or movements and never creates an IPC.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReceivingHoldRequest'
+      responses:
+        '201':
+          description: Missing-source delivery hold recorded outside usable stock.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingHoldMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingHoldConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-holds/{hold_id}:
+    get:
+      operationId: readReceivingHold
+      tags:
+        - Receiving Holds
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: Read a missing-source delivery hold
+      description: Reads the current authorized missing-source delivery hold by ID within the chapter.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingHoldId'
+      responses:
+        '200':
+          description: Current authorized missing-source delivery hold.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingHoldResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-holds/{hold_id}/link-source:
+    post:
+      operationId: linkReceivingHoldSource
+      tags:
+        - Receiving Holds
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.hold_manage
+      summary: Link a missing-source hold to a verified approved PO+DR or acknowledged DA
+      description: >-
+        Transitions a missing-source delivery hold from held to linked_to_source by
+        attaching a verified same-chapter approved PO (issued or partially_received
+        plus supplier DR reference and date) or acknowledged DA (acknowledged or
+        partially_received). Strictly accepts source_kind po or da only (IPC creation
+        and IPC linking are prohibited per RCV-01 and RCV-10). Posts zero usable
+        stock; unlocks standard Receiving Report creation via createReceivingReport
+        with originating_hold_id. Rejects ineligible sources with 409
+        source_not_eligible and already resolved holds with 409 hold_already_resolved.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingHoldId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkReceivingHoldSourceRequest'
+      responses:
+        '200':
+          description: Missing-source delivery hold linked to valid PO+DR or DA; zero usable stock posted.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingHoldMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingHoldConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-holds/{hold_id}/reject-return:
+    post:
+      operationId: rejectReturnReceivingHold
+      tags:
+        - Receiving Holds
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.hold_manage
+      summary: Record authorized refusal or return of a missing-source hold with evidence
+      description: >-
+        Transitions a missing-source delivery hold from held to rejected_returned
+        with mandatory reason, recipient/carrier handover details, and required
+        signed missing_source_hold paper evidence verified synchronously via Leader's
+        internal checkEvidenceBinding participant. Posts zero usable stock and never
+        creates an IPC (RCV-01, RCV-10, S3-15). Already resolved holds reject with
+        409 hold_already_resolved.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingHoldId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectReturnReceivingHoldRequest'
+      responses:
+        '200':
+          description: Missing-source delivery hold rejected/returned with verified evidence.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingHoldMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ReceivingAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/ReceivingHoldConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-holds/{hold_id}/history:
+    get:
+      operationId: listReceivingHoldHistory
+      tags:
+        - Receiving Holds
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: List immutable missing-source hold audit history
+      description: >-
+        Lists immutable version/action history entries for a missing-source delivery
+        hold, newest version first. Enforces current history.read and applicable
+        evidence.read when returning evidence metadata.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingHoldId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Authorized page of missing-source hold history entries.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingHoldHistoryList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-operations/by-key:
+    get:
+      operationId: findReceivingOperationByKey
+      tags:
+        - Receiving Operations
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: Recover a committed receiving action receipt by operation name and action key
+      description: >-
+        Recovers the immutable committed action receipt for an uncertain Stage 2
+        receiving, discrepancy, or missing-source hold mutation. Strictly limited to
+        the original immutable actor who still holds current chapter membership,
+        receiving.read, and the originating mutation's current required action duty.
+        Unknown, in-flight, or other-actor receipts return uniform 404
+        operation_not_found (never proof of rollback). Never log query strings
+        containing action_key.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingOperationNameParam'
+        - $ref: '#/components/parameters/ReceivingActionKeyLookup'
+      responses:
+        '200':
+          description: Authorized immutable committed receiving action receipt.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingOperationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/OperationNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/receiving-operations/{operation_id}:
+    get:
+      operationId: readReceivingOperation
+      tags:
+        - Receiving Operations
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: receiving.read
+      summary: Read a committed receiving action receipt by operation ID
+      description: >-
+        Reads the immutable committed action receipt for a Stage 2 receiving,
+        discrepancy, or missing-source hold mutation by operation_id. Strictly
+        limited to the original immutable actor who still holds current chapter
+        membership, receiving.read, and the originating mutation's required duty.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReceivingOperationId'
+      responses:
+        '200':
+          description: Authorized immutable committed receiving action receipt.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingOperationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/OperationNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
 components:
   securitySchemes:
     browserSession:
@@ -3248,6 +4733,106 @@ components:
       description: Optional boolean filter matching Purchase Orders flagged by Stage 1 cancelInternalRf (PRC-08).
       schema:
         type: boolean
+    ReceivingReportId:
+      in: path
+      name: rm_id
+      required: true
+      description: Chapter-scoped Stage 2 Receiving Report UUID.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ReceivingReportVersion:
+      in: path
+      name: version
+      required: true
+      description: Immutable Receiving Report version number to read.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+    ReceivingSourceKindFilter:
+      in: query
+      name: source_kind
+      required: false
+      description: Optional Stage 2 receiving source kind filter (po or da).
+      schema:
+        $ref: '#/components/schemas/ReceivingSourceKind'
+    ReceivingStatusFilter:
+      in: query
+      name: status
+      required: false
+      description: Optional Receiving Report status filter.
+      schema:
+        $ref: '#/components/schemas/ReceivingReportStatus'
+    ReceivingSourceIdFilter:
+      in: query
+      name: source_id
+      required: false
+      description: Optional source Purchase Order or Donation Acknowledgment UUID filter.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ReceivingLocationFilter:
+      in: query
+      name: location_id
+      required: false
+      description: Optional receiving stockroom location UUID filter.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ReceivingDiscrepancyId:
+      in: path
+      name: discrepancy_id
+      required: true
+      description: Chapter-scoped Receiving Discrepancy UUID.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    DiscrepancyStatusFilter:
+      in: query
+      name: status
+      required: false
+      description: Optional Receiving Discrepancy status filter.
+      schema:
+        $ref: '#/components/schemas/ReceivingDiscrepancyStatus'
+    DiscrepancyRmIdFilter:
+      in: query
+      name: rm_id
+      required: false
+      description: Optional originating or replacement Receiving Report UUID filter.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ReceivingHoldId:
+      in: path
+      name: hold_id
+      required: true
+      description: Chapter-scoped Missing-Source Delivery Hold UUID.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ReceivingHoldStatusFilter:
+      in: query
+      name: status
+      required: false
+      description: Optional Missing-Source Delivery Hold status filter.
+      schema:
+        $ref: '#/components/schemas/ReceivingHoldStatus'
+    ReceivingOperationNameParam:
+      in: query
+      name: operation_name
+      required: true
+      description: Stage 2 receiving, discrepancy, or hold mutation operationId to recover.
+      schema:
+        $ref: '#/components/schemas/ReceivingOperationName'
+    ReceivingActionKeyLookup:
+      in: query
+      name: action_key
+      required: true
+      description: Original X-Action-Key UUID for the uncertain receiving mutation (never log raw query strings).
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    ReceivingOperationId:
+      in: path
+      name: operation_id
+      required: true
+      description: Committed receiving action-receipt UUID.
+      schema:
+        $ref: '#/components/schemas/Uuid'
 
   schemas:
     # --- Shared Stage 1 Scalar & Envelope Primitives (verbatim reuse) ---
@@ -8783,6 +10368,2865 @@ components:
               coverage_conflicts:
                 minItems: 1
 
+    # --- Ticket 05: Unified PO/DA Receiving Reports, Discrepancies, Holds & Internal Posting ---
+    ReceivingSourceKind:
+      type: string
+      enum:
+        - po
+        - da
+      description: Stage 2 Receiving Report source kind (purchased PO or donated DA; Stage 1 IPC opening receipts remain exclusively on /opening-rms per RCV-01).
+    ReceivingReportStatus:
+      type: string
+      enum:
+        - draft
+        - inspected
+        - evidence_matched
+        - posted
+        - canceled
+    ReceivingDiscrepancyStatus:
+      type: string
+      enum:
+        - open
+        - supplier_notified
+        - under_review
+        - resolved
+    ReceivingDiscrepancyResolutionKind:
+      type: string
+      enum:
+        - supplier_replacement_received
+        - returned_to_supplier
+        - credit_or_short_closed
+        - donated_declined_or_disposed
+    ReceivingHoldStatus:
+      type: string
+      enum:
+        - held
+        - linked_to_source
+        - rejected_returned
+    ReceivingOperationName:
+      type: string
+      enum:
+        - createReceivingReport
+        - replaceReceivingReport
+        - inspectReceivingReport
+        - matchReceivingReportEvidence
+        - postReceivingReport
+        - cancelReceivingReport
+        - notifySupplierOfReceivingDiscrepancy
+        - resolveReceivingDiscrepancy
+        - createReceivingHold
+        - linkReceivingHoldSource
+        - rejectReturnReceivingHold
+      description: All unsafe Stage 2 receiving, discrepancy, and missing-source hold operations recoverable via /receiving-operations/*.
+    ReceivingReportLineInput:
+      type: object
+      additionalProperties: false
+      required:
+        - source_line_id
+        - variant_id
+        - unit_id
+        - delivered_quantity
+        - accepted_quantity
+        - damaged_quantity
+        - rejected_quantity
+        - unit_valuation_php
+        - discrepancy_notes
+        - resolves_discrepancy_id
+      properties:
+        source_line_id:
+          $ref: '#/components/schemas/Uuid'
+          description: Same-chapter PO line ID (source_kind po) or DA line ID (source_kind da).
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        delivered_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+          description: Exact-scale delivered quantity; must equal accepted_quantity + damaged_quantity + rejected_quantity.
+        accepted_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        damaged_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        rejected_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        unit_valuation_php:
+          $ref: '#/components/schemas/PhpAmount'
+          description: Must match approved PO line unit_price_php (po) or acknowledged DA line unit_value_php (da) under valuation_rounding policy.
+        discrepancy_notes:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+          description: Mandatory when damaged_quantity > 0 or rejected_quantity > 0 (RCV-02, RCV-03).
+        resolves_discrepancy_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+          description: Optional open/supplier_notified/under_review PO ReceivingDiscrepancy UUID being replaced by this new PO-RM (null for DA-RM).
+    ReceivingReportLine:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - source_line_id
+        - variant_id
+        - unit_id
+        - quantity_scale
+        - delivered_quantity
+        - accepted_quantity
+        - damaged_quantity
+        - rejected_quantity
+        - unit_valuation_php
+        - accepted_value_php
+        - restrictions
+        - discrepancy_notes
+        - resolves_discrepancy_id
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        source_line_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        delivered_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        accepted_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        damaged_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        rejected_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        unit_valuation_php:
+          $ref: '#/components/schemas/PhpAmount'
+        accepted_value_php:
+          $ref: '#/components/schemas/PhpAmount'
+        restrictions:
+          $ref: '#/components/schemas/BoundedRestriction'
+          description: Unrestricted for PO-RM; carries the DA line's current BoundedRestriction (unrestricted, bounded, or uninterpreted per ADR 0004) for DA-RM.
+        discrepancy_notes:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+        resolves_discrepancy_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+    ReceivingInspection:
+      type: object
+      additionalProperties: false
+      required:
+        - inspector
+        - technical_or_requesting_representative
+        - inspected_at
+        - inspection_notes
+      properties:
+        inspector:
+          $ref: '#/components/schemas/ProcurementActor'
+        technical_or_requesting_representative:
+          oneOf:
+            - $ref: '#/components/schemas/ProcurementActor'
+            - type: 'null'
+        inspected_at:
+          $ref: '#/components/schemas/UtcInstant'
+        inspection_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+    ReceivingReportEvidenceMaterial:
+      type: object
+      additionalProperties: false
+      required:
+        - chapter_id
+        - rm_id
+        - material_version
+        - source_kind
+        - source_id
+        - source_reference
+        - source_material_version
+        - supplier_dr_reference
+        - supplier_dr_date
+        - location_id
+        - accepted_total_value_php
+        - inspector_id
+        - technical_or_requesting_representative_id
+        - inspected_at
+        - lines
+      properties:
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        source_kind:
+          $ref: '#/components/schemas/ReceivingSourceKind'
+        source_id:
+          $ref: '#/components/schemas/Uuid'
+        source_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        source_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        supplier_dr_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        supplier_dr_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        accepted_total_value_php:
+          $ref: '#/components/schemas/PhpAmount'
+        inspector_id:
+          $ref: '#/components/schemas/Uuid'
+        technical_or_requesting_representative_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        inspected_at:
+          $ref: '#/components/schemas/UtcInstant'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingReportLine'
+      description: Canonical inspected Receiving Report material projection hashed as lowercase SHA-256 into snapshot.sha256 for po_supplier_dr or da_receipt evidence binding.
+    ReceivingReport:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - chapter_id
+        - rm_reference
+        - source_kind
+        - source_id
+        - source_reference
+        - source_material_version
+        - originating_hold_id
+        - supplier_dr_reference
+        - supplier_dr_date
+        - status
+        - version
+        - material_version
+        - location_id
+        - currency
+        - accepted_total_value_php
+        - preparer
+        - inspection
+        - snapshot
+        - evidence_acknowledgment
+        - posted_by
+        - posted_at
+        - posting_stock_version
+        - canceled_by
+        - canceled_at
+        - cancel_reason
+        - lines
+        - created_at
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+          description: Allocated atomically on postReceivingReport from the chapter's shared yearly RM reference_series; null before posting.
+        source_kind:
+          $ref: '#/components/schemas/ReceivingSourceKind'
+        source_id:
+          $ref: '#/components/schemas/Uuid'
+        source_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        source_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        originating_hold_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        supplier_dr_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        supplier_dr_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
+        status:
+          $ref: '#/components/schemas/ReceivingReportStatus'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        currency:
+          const: PHP
+        accepted_total_value_php:
+          $ref: '#/components/schemas/PhpAmount'
+        preparer:
+          $ref: '#/components/schemas/ProcurementActor'
+        inspection:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingInspection'
+            - type: 'null'
+        snapshot:
+          oneOf:
+            - $ref: '#/components/schemas/EvidenceSnapshot'
+            - type: 'null'
+        evidence_acknowledgment:
+          oneOf:
+            - $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+            - type: 'null'
+        posted_by:
+          oneOf:
+            - $ref: '#/components/schemas/ProcurementActor'
+            - type: 'null'
+        posted_at:
+          oneOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        posting_stock_version:
+          oneOf:
+            - type: integer
+              minimum: 1
+              maximum: 2147483647
+            - type: 'null'
+        canceled_by:
+          oneOf:
+            - $ref: '#/components/schemas/ProcurementActor'
+            - type: 'null'
+        canceled_at:
+          oneOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        cancel_reason:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingReportLine'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+      allOf:
+        - if:
+            properties:
+              source_kind:
+                const: po
+          then:
+            properties:
+              supplier_dr_reference:
+                type: string
+                minLength: 1
+                maxLength: 80
+                pattern: '\S'
+              supplier_dr_date:
+                type: string
+                format: date
+          else:
+            properties:
+              supplier_dr_reference:
+                type: 'null'
+              supplier_dr_date:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: draft
+          then:
+            properties:
+              rm_reference:
+                type: 'null'
+              inspection:
+                type: 'null'
+              snapshot:
+                type: 'null'
+              evidence_acknowledgment:
+                type: 'null'
+              posted_by:
+                type: 'null'
+              posted_at:
+                type: 'null'
+              posting_stock_version:
+                type: 'null'
+              canceled_by:
+                type: 'null'
+              canceled_at:
+                type: 'null'
+              cancel_reason:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: inspected
+          then:
+            properties:
+              rm_reference:
+                type: 'null'
+              inspection:
+                $ref: '#/components/schemas/ReceivingInspection'
+              snapshot:
+                $ref: '#/components/schemas/EvidenceSnapshot'
+              evidence_acknowledgment:
+                type: 'null'
+              posted_by:
+                type: 'null'
+              posted_at:
+                type: 'null'
+              posting_stock_version:
+                type: 'null'
+              canceled_by:
+                type: 'null'
+              canceled_at:
+                type: 'null'
+              cancel_reason:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: evidence_matched
+          then:
+            properties:
+              rm_reference:
+                type: 'null'
+              inspection:
+                $ref: '#/components/schemas/ReceivingInspection'
+              snapshot:
+                $ref: '#/components/schemas/EvidenceSnapshot'
+              evidence_acknowledgment:
+                $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+              posted_by:
+                type: 'null'
+              posted_at:
+                type: 'null'
+              posting_stock_version:
+                type: 'null'
+              canceled_by:
+                type: 'null'
+              canceled_at:
+                type: 'null'
+              cancel_reason:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: posted
+          then:
+            properties:
+              rm_reference:
+                type: string
+                minLength: 1
+                maxLength: 80
+                pattern: '\S'
+              inspection:
+                $ref: '#/components/schemas/ReceivingInspection'
+              snapshot:
+                $ref: '#/components/schemas/EvidenceSnapshot'
+              evidence_acknowledgment:
+                $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+              posted_by:
+                $ref: '#/components/schemas/ProcurementActor'
+              posted_at:
+                $ref: '#/components/schemas/UtcInstant'
+              posting_stock_version:
+                type: integer
+                minimum: 1
+                maximum: 2147483647
+              canceled_by:
+                type: 'null'
+              canceled_at:
+                type: 'null'
+              cancel_reason:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: canceled
+          then:
+            properties:
+              rm_reference:
+                type: 'null'
+              posted_by:
+                type: 'null'
+              posted_at:
+                type: 'null'
+              posting_stock_version:
+                type: 'null'
+              canceled_by:
+                $ref: '#/components/schemas/ProcurementActor'
+              canceled_at:
+                $ref: '#/components/schemas/UtcInstant'
+              cancel_reason:
+                type: string
+                minLength: 1
+                maxLength: 500
+                pattern: '\S'
+    ReceivingReportResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ReceivingReport'
+    ReceivingReportList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingReport'
+        page:
+          $ref: '#/components/schemas/Page'
+    CreateReceivingReportRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - source_kind
+        - source_id
+        - source_material_version
+        - originating_hold_id
+        - supplier_dr_reference
+        - supplier_dr_date
+        - location_id
+        - lines
+      properties:
+        source_kind:
+          $ref: '#/components/schemas/ReceivingSourceKind'
+        source_id:
+          $ref: '#/components/schemas/Uuid'
+        source_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        originating_hold_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        supplier_dr_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        supplier_dr_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingReportLineInput'
+      allOf:
+        - if:
+            properties:
+              source_kind:
+                const: po
+          then:
+            properties:
+              supplier_dr_reference:
+                type: string
+                minLength: 1
+                maxLength: 80
+                pattern: '\S'
+              supplier_dr_date:
+                type: string
+                format: date
+          else:
+            properties:
+              supplier_dr_reference:
+                type: 'null'
+              supplier_dr_date:
+                type: 'null'
+    ReplaceReceivingReportRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - source_material_version
+        - supplier_dr_reference
+        - supplier_dr_date
+        - location_id
+        - lines
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        source_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        supplier_dr_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        supplier_dr_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingReportLineInput'
+    InspectReceivingReportRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - source_material_version
+        - technical_or_requesting_representative_id
+        - inspected_at
+        - inspection_notes
+        - lines
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        source_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        technical_or_requesting_representative_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        inspected_at:
+          $ref: '#/components/schemas/UtcInstant'
+        inspection_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingReportLineInput'
+    MatchReceivingReportEvidenceRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - snapshot_sha256
+        - evidence
+        - acknowledged_at
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        snapshot_sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        evidence:
+          $ref: '#/components/schemas/EvidenceByteBinding'
+        acknowledged_at:
+          $ref: '#/components/schemas/UtcInstant'
+    PostReceivingReportRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - source_material_version
+        - acknowledgment_id
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        source_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        acknowledgment_id:
+          $ref: '#/components/schemas/Uuid'
+    CancelReceivingReportRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+    ReceivingPostingSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - stock_version
+        - usable_lot_ids
+        - quarantined_or_rejected_lot_ids
+        - created_discrepancy_ids
+        - source_status_after
+      properties:
+        stock_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        usable_lot_ids:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+        quarantined_or_rejected_lot_ids:
+          type: array
+          maxItems: 200
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+        created_discrepancy_ids:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+        source_status_after:
+          type: string
+          enum:
+            - issued
+            - partially_received
+            - receiving_complete
+            - acknowledged
+            - received
+    ReceivingReportOperationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - operation_id
+        - chapter_id
+        - actor_id
+        - operation_name
+        - action_key
+        - resource_kind
+        - resource_id
+        - committed_version
+        - committed_material_version
+        - status_code
+        - committed_at
+        - outcome
+        - result
+        - posting
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_name:
+          type: string
+          enum:
+            - createReceivingReport
+            - replaceReceivingReport
+            - inspectReceivingReport
+            - matchReceivingReportEvidence
+            - postReceivingReport
+            - cancelReceivingReport
+        action_key:
+          $ref: '#/components/schemas/Uuid'
+        resource_kind:
+          const: receiving_report
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        committed_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        status_code:
+          type: integer
+          enum:
+            - 200
+            - 201
+        committed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        outcome:
+          const: committed
+        result:
+          $ref: '#/components/schemas/ReceivingReport'
+        posting:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingPostingSummary'
+            - type: 'null'
+      allOf:
+        - if:
+            properties:
+              operation_name:
+                const: postReceivingReport
+          then:
+            properties:
+              posting:
+                $ref: '#/components/schemas/ReceivingPostingSummary'
+          else:
+            properties:
+              posting:
+                type: 'null'
+    ReceivingReportMutationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ReceivingReportOperationReceipt'
+    ReceivingMovementKind:
+      type: string
+      enum:
+        - accepted_receipt
+        - quarantined_receipt
+        - rejected_receipt
+    ReceivingMovement:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - chapter_id
+        - kind
+        - source_kind
+        - rm_id
+        - rm_reference
+        - rm_material_version
+        - rm_line_id
+        - source_id
+        - source_reference
+        - source_material_version
+        - source_line_id
+        - lot_id
+        - variant_id
+        - unit_id
+        - location_id
+        - quantity
+        - unit_valuation_php
+        - total_value_php
+        - currency
+        - condition
+        - restrictions
+        - immediately_allocatable
+        - posted_by
+        - posted_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        kind:
+          $ref: '#/components/schemas/ReceivingMovementKind'
+        source_kind:
+          type: string
+          enum:
+            - po_rm
+            - da_rm
+        rm_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        rm_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        rm_line_id:
+          $ref: '#/components/schemas/Uuid'
+        source_id:
+          $ref: '#/components/schemas/Uuid'
+        source_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        source_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        source_line_id:
+          $ref: '#/components/schemas/Uuid'
+        lot_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        unit_valuation_php:
+          $ref: '#/components/schemas/PhpAmount'
+        total_value_php:
+          $ref: '#/components/schemas/PhpAmount'
+        currency:
+          const: PHP
+        condition:
+          type: string
+          enum:
+            - usable
+            - quarantined
+            - rejected
+        restrictions:
+          $ref: '#/components/schemas/BoundedRestriction'
+        immediately_allocatable:
+          type: boolean
+        posted_by:
+          $ref: '#/components/schemas/Uuid'
+        posted_at:
+          $ref: '#/components/schemas/UtcInstant'
+      allOf:
+        - if:
+            properties:
+              kind:
+                const: accepted_receipt
+          then:
+            properties:
+              condition:
+                const: usable
+        - if:
+            properties:
+              kind:
+                const: quarantined_receipt
+          then:
+            properties:
+              condition:
+                const: quarantined
+              immediately_allocatable:
+                const: false
+        - if:
+            properties:
+              kind:
+                const: rejected_receipt
+          then:
+            properties:
+              condition:
+                const: rejected
+              immediately_allocatable:
+                const: false
+    ReceivingMovementList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingMovement'
+        page:
+          $ref: '#/components/schemas/Page'
+    ReceivingReportHistoryAction:
+      type: string
+      enum:
+        - created
+        - draft_replaced
+        - inspected
+        - evidence_matched
+        - posted
+        - canceled
+    ReceivingReportHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - version
+        - material_version
+        - action
+        - from_status
+        - to_status
+        - actor
+        - reason
+        - rm_reference
+        - evidence_binding_invalidated
+        - occurred_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        action:
+          $ref: '#/components/schemas/ReceivingReportHistoryAction'
+        from_status:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingReportStatus'
+            - type: 'null'
+        to_status:
+          $ref: '#/components/schemas/ReceivingReportStatus'
+        actor:
+          $ref: '#/components/schemas/ProcurementActor'
+        reason:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+        rm_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        evidence_binding_invalidated:
+          type: boolean
+        occurred_at:
+          $ref: '#/components/schemas/UtcInstant'
+    ReceivingReportHistoryList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingReportHistoryEntry'
+        page:
+          $ref: '#/components/schemas/Page'
+    ReceivingReportRelatedRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - id
+        - rm_line_id
+        - reference
+        - material_version
+        - state
+      properties:
+        kind:
+          type: string
+          enum:
+            - purchase_order
+            - donation
+            - stock_lot
+            - receiving_discrepancy
+            - receiving_hold
+        id:
+          $ref: '#/components/schemas/Uuid'
+        rm_line_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+    ReceivingReportRelatedList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingReportRelatedRecord'
+        page:
+          $ref: '#/components/schemas/Page'
+    DiscrepancySupplierNotification:
+      type: object
+      additionalProperties: false
+      required:
+        - notified_by
+        - notified_at
+        - supplier_contact_reference
+        - notification_notes
+        - expected_resolution_date
+      properties:
+        notified_by:
+          $ref: '#/components/schemas/ProcurementActor'
+        notified_at:
+          $ref: '#/components/schemas/UtcInstant'
+        supplier_contact_reference:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        notification_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        expected_resolution_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
+    ReceivingDiscrepancyResolution:
+      type: object
+      additionalProperties: false
+      required:
+        - resolution_kind
+        - resolved_by
+        - resolved_at
+        - reason
+        - replacement_rm_id
+        - replacement_rm_reference
+        - quarantined_lot_disposition
+        - evidence_acknowledgment
+      properties:
+        resolution_kind:
+          $ref: '#/components/schemas/ReceivingDiscrepancyResolutionKind'
+        resolved_by:
+          $ref: '#/components/schemas/ProcurementActor'
+        resolved_at:
+          $ref: '#/components/schemas/UtcInstant'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        replacement_rm_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        replacement_rm_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        quarantined_lot_disposition:
+          type: string
+          enum:
+            - retained_in_quarantine
+            - returned_to_supplier_physically
+            - disposed_per_policy
+          description: Physical disposition of quarantined/rejected lots; never silently converts quarantined units into usable stock (RCV-06, INV-14).
+        evidence_acknowledgment:
+          $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+      allOf:
+        - if:
+            properties:
+              resolution_kind:
+                const: supplier_replacement_received
+          then:
+            properties:
+              replacement_rm_id:
+                $ref: '#/components/schemas/Uuid'
+              replacement_rm_reference:
+                type: string
+                minLength: 1
+                maxLength: 80
+                pattern: '\S'
+          else:
+            properties:
+              replacement_rm_id:
+                type: 'null'
+              replacement_rm_reference:
+                type: 'null'
+    ReceivingDiscrepancyEvidenceMaterial:
+      type: object
+      additionalProperties: false
+      required:
+        - chapter_id
+        - discrepancy_id
+        - material_version
+        - resolution_kind
+        - reason
+        - replacement_rm_id
+        - quarantined_lot_disposition
+      properties:
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        discrepancy_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        resolution_kind:
+          $ref: '#/components/schemas/ReceivingDiscrepancyResolutionKind'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        replacement_rm_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        quarantined_lot_disposition:
+          type: string
+          enum:
+            - retained_in_quarantine
+            - returned_to_supplier_physically
+            - disposed_per_policy
+    ReceivingDiscrepancy:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - chapter_id
+        - status
+        - version
+        - material_version
+        - source_kind
+        - source_id
+        - source_reference
+        - source_line_id
+        - rm_id
+        - rm_reference
+        - rm_line_id
+        - variant_id
+        - unit_id
+        - quantity_scale
+        - damaged_quantity
+        - rejected_quantity
+        - total_discrepant_quantity
+        - quarantined_lot_id
+        - rejected_lot_id
+        - quarantined_lots_auto_cleared_on_source_close
+        - discrepancy_notes
+        - supplier_notification
+        - review_started_by
+        - review_started_at
+        - review_notes
+        - resolution
+        - created_at
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          $ref: '#/components/schemas/ReceivingDiscrepancyStatus'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        source_kind:
+          $ref: '#/components/schemas/ReceivingSourceKind'
+        source_id:
+          $ref: '#/components/schemas/Uuid'
+        source_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        source_line_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        rm_line_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        damaged_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        rejected_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        total_discrepant_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        quarantined_lot_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        rejected_lot_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        quarantined_lots_auto_cleared_on_source_close:
+          const: false
+          description: Normative RCV-06 invariant confirming closing or short-closing a PO or DA never clears quarantined/rejected lots.
+        discrepancy_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        supplier_notification:
+          oneOf:
+            - $ref: '#/components/schemas/DiscrepancySupplierNotification'
+            - type: 'null'
+        review_started_by:
+          oneOf:
+            - $ref: '#/components/schemas/ProcurementActor'
+            - type: 'null'
+        review_started_at:
+          oneOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        review_notes:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+        resolution:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingDiscrepancyResolution'
+            - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+      allOf:
+        - if:
+            properties:
+              status:
+                const: open
+          then:
+            properties:
+              supplier_notification:
+                type: 'null'
+              review_started_by:
+                type: 'null'
+              review_started_at:
+                type: 'null'
+              review_notes:
+                type: 'null'
+              resolution:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: supplier_notified
+          then:
+            properties:
+              source_kind:
+                const: po
+              supplier_notification:
+                $ref: '#/components/schemas/DiscrepancySupplierNotification'
+              resolution:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: under_review
+          then:
+            properties:
+              review_started_by:
+                $ref: '#/components/schemas/ProcurementActor'
+              review_started_at:
+                $ref: '#/components/schemas/UtcInstant'
+              review_notes:
+                type: string
+                minLength: 1
+                maxLength: 500
+                pattern: '\S'
+              resolution:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: resolved
+          then:
+            properties:
+              resolution:
+                $ref: '#/components/schemas/ReceivingDiscrepancyResolution'
+    ReceivingDiscrepancyResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ReceivingDiscrepancy'
+    ReceivingDiscrepancyList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingDiscrepancy'
+        page:
+          $ref: '#/components/schemas/Page'
+    NotifySupplierDiscrepancyRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - supplier_contact_reference
+        - notification_notes
+        - expected_resolution_date
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        supplier_contact_reference:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        notification_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        expected_resolution_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
+    ResolveReceivingDiscrepancyRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - action
+            - expected_version
+            - expected_material_version
+            - review_notes
+          properties:
+            action:
+              const: start_review
+            expected_version:
+              type: integer
+              minimum: 1
+              maximum: 2147483647
+            expected_material_version:
+              type: integer
+              minimum: 1
+              maximum: 2147483647
+            review_notes:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+        - type: object
+          additionalProperties: false
+          required:
+            - action
+            - expected_version
+            - expected_material_version
+            - resolution_kind
+            - reason
+            - replacement_rm_id
+            - quarantined_lot_disposition
+            - evidence
+            - signed_at
+          properties:
+            action:
+              const: resolve
+            expected_version:
+              type: integer
+              minimum: 1
+              maximum: 2147483647
+            expected_material_version:
+              type: integer
+              minimum: 1
+              maximum: 2147483647
+            resolution_kind:
+              $ref: '#/components/schemas/ReceivingDiscrepancyResolutionKind'
+            reason:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            replacement_rm_id:
+              oneOf:
+                - $ref: '#/components/schemas/Uuid'
+                - type: 'null'
+            quarantined_lot_disposition:
+              type: string
+              enum:
+                - retained_in_quarantine
+                - returned_to_supplier_physically
+                - disposed_per_policy
+            evidence:
+              $ref: '#/components/schemas/EvidenceByteBinding'
+            signed_at:
+              $ref: '#/components/schemas/UtcInstant'
+          allOf:
+            - if:
+                properties:
+                  resolution_kind:
+                    const: supplier_replacement_received
+              then:
+                properties:
+                  replacement_rm_id:
+                    $ref: '#/components/schemas/Uuid'
+              else:
+                properties:
+                  replacement_rm_id:
+                    type: 'null'
+    ReceivingDiscrepancyOperationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - operation_id
+        - chapter_id
+        - actor_id
+        - operation_name
+        - action_key
+        - resource_kind
+        - resource_id
+        - committed_version
+        - committed_material_version
+        - status_code
+        - committed_at
+        - outcome
+        - result
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_name:
+          type: string
+          enum:
+            - notifySupplierOfReceivingDiscrepancy
+            - resolveReceivingDiscrepancy
+        action_key:
+          $ref: '#/components/schemas/Uuid'
+        resource_kind:
+          const: receiving_discrepancy
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        committed_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        status_code:
+          const: 200
+        committed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        outcome:
+          const: committed
+        result:
+          $ref: '#/components/schemas/ReceivingDiscrepancy'
+    ReceivingDiscrepancyMutationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ReceivingDiscrepancyOperationReceipt'
+    ReceivingHoldItemInput:
+      type: object
+      additionalProperties: false
+      required:
+        - variant_id
+        - unit_id
+        - item_description
+        - arrived_quantity
+        - condition_notes
+      properties:
+        variant_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        unit_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        item_description:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        arrived_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        condition_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+    ReceivingHoldItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - variant_id
+        - unit_id
+        - item_description
+        - arrived_quantity
+        - condition_notes
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        unit_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        item_description:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        arrived_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        condition_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+    ReceivingHoldLinkedSource:
+      type: object
+      additionalProperties: false
+      required:
+        - source_kind
+        - source_id
+        - source_reference
+        - supplier_dr_reference
+        - supplier_dr_date
+        - linked_by
+        - linked_at
+        - link_notes
+      properties:
+        source_kind:
+          $ref: '#/components/schemas/ReceivingSourceKind'
+          description: Strictly po or da; IPC creation or linking is prohibited (RCV-01, RCV-10).
+        source_id:
+          $ref: '#/components/schemas/Uuid'
+        source_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        supplier_dr_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        supplier_dr_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
+        linked_by:
+          $ref: '#/components/schemas/ProcurementActor'
+        linked_at:
+          $ref: '#/components/schemas/UtcInstant'
+        link_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+      allOf:
+        - if:
+            properties:
+              source_kind:
+                const: po
+          then:
+            properties:
+              supplier_dr_reference:
+                type: string
+                minLength: 1
+                maxLength: 80
+                pattern: '\S'
+              supplier_dr_date:
+                type: string
+                format: date
+          else:
+            properties:
+              supplier_dr_reference:
+                type: 'null'
+              supplier_dr_date:
+                type: 'null'
+    ReceivingHoldRejectionReturn:
+      type: object
+      additionalProperties: false
+      required:
+        - rejected_by
+        - rejected_at
+        - reason
+        - recipient_or_carrier_name
+        - evidence_acknowledgment
+      properties:
+        rejected_by:
+          $ref: '#/components/schemas/ProcurementActor'
+        rejected_at:
+          $ref: '#/components/schemas/UtcInstant'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        recipient_or_carrier_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        evidence_acknowledgment:
+          $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+    ReceivingHoldRejectionEvidenceMaterial:
+      type: object
+      additionalProperties: false
+      required:
+        - chapter_id
+        - hold_id
+        - material_version
+        - reason
+        - recipient_or_carrier_name
+      properties:
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        hold_id:
+          $ref: '#/components/schemas/Uuid'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        recipient_or_carrier_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+    ReceivingHold:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - chapter_id
+        - status
+        - version
+        - material_version
+        - arrived_at
+        - holding_location_id
+        - carrier_or_sender_name
+        - sender_kind
+        - delivery_document_reference
+        - hold_reason
+        - usable_stock_posted
+        - ipc_creation_prohibited
+        - items
+        - intake_evidence
+        - recorded_by
+        - linked_source
+        - rejection_return
+        - created_at
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          $ref: '#/components/schemas/ReceivingHoldStatus'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        arrived_at:
+          $ref: '#/components/schemas/UtcInstant'
+        holding_location_id:
+          $ref: '#/components/schemas/Uuid'
+        carrier_or_sender_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        sender_kind:
+          type: string
+          enum:
+            - supplier
+            - donor
+            - carrier
+            - unknown
+        delivery_document_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        hold_reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        usable_stock_posted:
+          const: false
+          description: Missing-source delivery holds never post usable inventory (RCV-01, S3-15).
+        ipc_creation_prohibited:
+          const: true
+          description: Missing-source delivery holds never authorize or create a second IPC after opening baseline lock (RCV-10).
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingHoldItem'
+        intake_evidence:
+          oneOf:
+            - $ref: '#/components/schemas/EvidenceByteBinding'
+            - type: 'null'
+        recorded_by:
+          $ref: '#/components/schemas/ProcurementActor'
+        linked_source:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingHoldLinkedSource'
+            - type: 'null'
+        rejection_return:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingHoldRejectionReturn'
+            - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+      allOf:
+        - if:
+            properties:
+              status:
+                const: held
+          then:
+            properties:
+              linked_source:
+                type: 'null'
+              rejection_return:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: linked_to_source
+          then:
+            properties:
+              linked_source:
+                $ref: '#/components/schemas/ReceivingHoldLinkedSource'
+              rejection_return:
+                type: 'null'
+        - if:
+            properties:
+              status:
+                const: rejected_returned
+          then:
+            properties:
+              linked_source:
+                type: 'null'
+              rejection_return:
+                $ref: '#/components/schemas/ReceivingHoldRejectionReturn'
+    ReceivingHoldResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ReceivingHold'
+    ReceivingHoldList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingHold'
+        page:
+          $ref: '#/components/schemas/Page'
+    CreateReceivingHoldRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - arrived_at
+        - holding_location_id
+        - carrier_or_sender_name
+        - sender_kind
+        - delivery_document_reference
+        - hold_reason
+        - items
+        - intake_evidence
+      properties:
+        arrived_at:
+          $ref: '#/components/schemas/UtcInstant'
+        holding_location_id:
+          $ref: '#/components/schemas/Uuid'
+        carrier_or_sender_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        sender_kind:
+          type: string
+          enum:
+            - supplier
+            - donor
+            - carrier
+            - unknown
+        delivery_document_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        hold_reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingHoldItemInput'
+        intake_evidence:
+          oneOf:
+            - $ref: '#/components/schemas/EvidenceByteBinding'
+            - type: 'null'
+    LinkReceivingHoldSourceRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - source_kind
+        - source_id
+        - supplier_dr_reference
+        - supplier_dr_date
+        - link_notes
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        source_kind:
+          $ref: '#/components/schemas/ReceivingSourceKind'
+        source_id:
+          $ref: '#/components/schemas/Uuid'
+        supplier_dr_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        supplier_dr_date:
+          oneOf:
+            - type: string
+              format: date
+            - type: 'null'
+        link_notes:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+      allOf:
+        - if:
+            properties:
+              source_kind:
+                const: po
+          then:
+            properties:
+              supplier_dr_reference:
+                type: string
+                minLength: 1
+                maxLength: 80
+                pattern: '\S'
+              supplier_dr_date:
+                type: string
+                format: date
+          else:
+            properties:
+              supplier_dr_reference:
+                type: 'null'
+              supplier_dr_date:
+                type: 'null'
+    RejectReturnReceivingHoldRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - reason
+        - recipient_or_carrier_name
+        - evidence
+        - signed_at
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        recipient_or_carrier_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        evidence:
+          $ref: '#/components/schemas/EvidenceByteBinding'
+        signed_at:
+          $ref: '#/components/schemas/UtcInstant'
+    ReceivingHoldHistoryAction:
+      type: string
+      enum:
+        - held
+        - linked_to_source
+        - rejected_returned
+    ReceivingHoldHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - version
+        - material_version
+        - action
+        - from_status
+        - to_status
+        - actor
+        - reason
+        - linked_source_reference
+        - occurred_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        action:
+          $ref: '#/components/schemas/ReceivingHoldHistoryAction'
+        from_status:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingHoldStatus'
+            - type: 'null'
+        to_status:
+          $ref: '#/components/schemas/ReceivingHoldStatus'
+        actor:
+          $ref: '#/components/schemas/ProcurementActor'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+        linked_source_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        occurred_at:
+          $ref: '#/components/schemas/UtcInstant'
+    ReceivingHoldHistoryList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ReceivingHoldHistoryEntry'
+        page:
+          $ref: '#/components/schemas/Page'
+    ReceivingHoldOperationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - operation_id
+        - chapter_id
+        - actor_id
+        - operation_name
+        - action_key
+        - resource_kind
+        - resource_id
+        - committed_version
+        - committed_material_version
+        - status_code
+        - committed_at
+        - outcome
+        - result
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_name:
+          type: string
+          enum:
+            - createReceivingHold
+            - linkReceivingHoldSource
+            - rejectReturnReceivingHold
+        action_key:
+          $ref: '#/components/schemas/Uuid'
+        resource_kind:
+          const: receiving_hold
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        committed_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        status_code:
+          type: integer
+          enum:
+            - 200
+            - 201
+        committed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        outcome:
+          const: committed
+        result:
+          $ref: '#/components/schemas/ReceivingHold'
+    ReceivingHoldMutationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ReceivingHoldOperationReceipt'
+    ReceivingOperationReceipt:
+      oneOf:
+        - $ref: '#/components/schemas/ReceivingReportOperationReceipt'
+        - $ref: '#/components/schemas/ReceivingDiscrepancyOperationReceipt'
+        - $ref: '#/components/schemas/ReceivingHoldOperationReceipt'
+      description: Polymorphic committed receiving action receipt discriminated by resource_kind across Receiving Reports, Receiving Discrepancies, and Missing-Source Delivery Holds.
+    ReceivingOperationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ReceivingOperationReceipt'
+    ReceivingReportConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - request_id
+        - error
+        - failed_intent_committed
+        - current
+        - setup_blockers
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - version_conflict
+                - action_key_conflict
+                - invalid_transition
+                - source_not_eligible
+                - substitution_or_overdelivery_blocked
+                - evidence_missing
+                - evidence_invalid
+                - evidence_mismatch
+                - acknowledgment_missing
+                - target_locked
+                - setup_blocked
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+        failed_intent_committed:
+          const: false
+        current:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingReport'
+            - type: 'null'
+        setup_blockers:
+          type: array
+          minItems: 0
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+      allOf:
+        - if:
+            properties:
+              error:
+                properties:
+                  code:
+                    const: setup_blocked
+          then:
+            properties:
+              setup_blockers:
+                minItems: 1
+    ReceivingDiscrepancyConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - request_id
+        - error
+        - failed_intent_committed
+        - current
+        - setup_blockers
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - version_conflict
+                - action_key_conflict
+                - invalid_transition
+                - source_not_eligible
+                - discrepancy_already_resolved
+                - evidence_missing
+                - evidence_invalid
+                - evidence_mismatch
+                - target_locked
+                - setup_blocked
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+        failed_intent_committed:
+          const: false
+        current:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingDiscrepancy'
+            - type: 'null'
+        setup_blockers:
+          type: array
+          minItems: 0
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+      allOf:
+        - if:
+            properties:
+              error:
+                properties:
+                  code:
+                    const: setup_blocked
+          then:
+            properties:
+              setup_blockers:
+                minItems: 1
+    ReceivingHoldConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - request_id
+        - error
+        - failed_intent_committed
+        - current
+        - setup_blockers
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - version_conflict
+                - action_key_conflict
+                - invalid_transition
+                - source_not_eligible
+                - hold_already_resolved
+                - evidence_missing
+                - evidence_invalid
+                - evidence_mismatch
+                - target_locked
+                - setup_blocked
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+        failed_intent_committed:
+          const: false
+        current:
+          oneOf:
+            - $ref: '#/components/schemas/ReceivingHold'
+            - type: 'null'
+        setup_blockers:
+          type: array
+          minItems: 0
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+      allOf:
+        - if:
+            properties:
+              error:
+                properties:
+                  code:
+                    const: setup_blocked
+          then:
+            properties:
+              setup_blockers:
+                minItems: 1
+    PrepareReceivingInventoryLine:
+      type: object
+      additionalProperties: false
+      required:
+        - rm_line_id
+        - source_line_id
+        - variant_id
+        - variant_material_version
+        - item_id
+        - unit_id
+        - unit_material_version
+        - quantity_scale
+        - historical_variant_label
+        - delivered_quantity
+        - accepted_quantity
+        - damaged_quantity
+        - rejected_quantity
+        - unit_valuation_php
+        - restrictions
+        - discrepancy_notes
+        - resolves_discrepancy_id
+      properties:
+        rm_line_id:
+          $ref: '#/components/schemas/Uuid'
+        source_line_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        historical_variant_label:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: '\S'
+        delivered_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        accepted_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        damaged_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        rejected_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        unit_valuation_php:
+          $ref: '#/components/schemas/PhpAmount'
+        restrictions:
+          $ref: '#/components/schemas/BoundedRestriction'
+        discrepancy_notes:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+        resolves_discrepancy_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+    PrepareReceivingInventoryInput:
+      type: object
+      additionalProperties: false
+      required:
+        - actor_id
+        - chapter_id
+        - operation_id
+        - source_kind
+        - rm_id
+        - rm_reference
+        - rm_material_version
+        - source_id
+        - source_reference
+        - source_material_version
+        - donor_id
+        - donor_name
+        - location_id
+        - current_stock_version
+        - acknowledgment
+        - lines
+      properties:
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        source_kind:
+          type: string
+          enum:
+            - po_rm
+            - da_rm
+          description: Unified internal receiving posting source_kind mirroring Stage 1 StockSource.kind (po_rm or da_rm).
+        rm_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        rm_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        source_id:
+          $ref: '#/components/schemas/Uuid'
+        source_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        source_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        donor_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        donor_name:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 200
+              pattern: '\S'
+            - type: 'null'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        current_stock_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        acknowledgment:
+          $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/PrepareReceivingInventoryLine'
+      allOf:
+        - if:
+            properties:
+              source_kind:
+                const: da_rm
+          then:
+            properties:
+              donor_name:
+                type: string
+                minLength: 1
+                maxLength: 200
+                pattern: '\S'
+          else:
+            properties:
+              donor_id:
+                type: 'null'
+              donor_name:
+                type: 'null'
+    ReceivingPostedLot:
+      type: object
+      additionalProperties: false
+      required:
+        - lot_id
+        - basis_segment_id
+        - rm_line_id
+        - source_line_id
+        - variant_id
+        - unit_id
+        - location_id
+        - condition
+        - custody
+        - source_kind
+        - quantity
+        - restrictions
+        - immediately_allocatable
+      properties:
+        lot_id:
+          $ref: '#/components/schemas/Uuid'
+        basis_segment_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_line_id:
+          $ref: '#/components/schemas/Uuid'
+        source_line_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        condition:
+          type: string
+          enum:
+            - usable
+            - quarantined
+            - rejected
+        custody:
+          const: stockroom
+        source_kind:
+          type: string
+          enum:
+            - po_rm
+            - da_rm
+        quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        restrictions:
+          $ref: '#/components/schemas/BoundedRestriction'
+        immediately_allocatable:
+          type: boolean
+          description: True for usable stockroom lots whose restrictions.state is unrestricted or bounded (RCV-04, INV-09); false for quarantined/rejected lots (INV-14) and ADR 0004 uninterpreted DA lots.
+    ReceivingDiscrepancySeed:
+      type: object
+      additionalProperties: false
+      required:
+        - discrepancy_id
+        - rm_line_id
+        - source_line_id
+        - variant_id
+        - unit_id
+        - damaged_quantity
+        - rejected_quantity
+        - total_discrepant_quantity
+        - quarantined_lot_id
+        - rejected_lot_id
+      properties:
+        discrepancy_id:
+          $ref: '#/components/schemas/Uuid'
+        rm_line_id:
+          $ref: '#/components/schemas/Uuid'
+        source_line_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        damaged_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        rejected_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        total_discrepant_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        quarantined_lot_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        rejected_lot_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+    ReceivingSourceLineUpdate:
+      type: object
+      additionalProperties: false
+      required:
+        - source_line_id
+        - accepted_delta
+        - rejected_or_disputed_delta
+        - new_accepted_quantity
+        - new_outstanding_quantity
+        - new_source_status
+      properties:
+        source_line_id:
+          $ref: '#/components/schemas/Uuid'
+        accepted_delta:
+          $ref: '#/components/schemas/StockQuantity'
+        rejected_or_disputed_delta:
+          $ref: '#/components/schemas/StockQuantity'
+        new_accepted_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        new_outstanding_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        new_source_status:
+          type: string
+          enum:
+            - issued
+            - partially_received
+            - receiving_complete
+            - acknowledged
+            - received
+    PrepareReceivingInventoryResult:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - outcome
+            - stock_version
+            - usable_lots
+            - quarantined_or_rejected_lots
+            - movements
+            - created_discrepancies
+            - source_line_updates
+            - emit_stock_lot_changed_event
+          properties:
+            outcome:
+              const: ready
+            stock_version:
+              type: integer
+              minimum: 1
+              maximum: 2147483647
+            usable_lots:
+              type: array
+              maxItems: 100
+              items:
+                $ref: '#/components/schemas/ReceivingPostedLot'
+            quarantined_or_rejected_lots:
+              type: array
+              maxItems: 200
+              items:
+                $ref: '#/components/schemas/ReceivingPostedLot'
+            movements:
+              type: array
+              minItems: 1
+              maxItems: 300
+              items:
+                $ref: '#/components/schemas/ReceivingMovement'
+            created_discrepancies:
+              type: array
+              maxItems: 100
+              items:
+                $ref: '#/components/schemas/ReceivingDiscrepancySeed'
+            source_line_updates:
+              type: array
+              minItems: 1
+              maxItems: 100
+              items:
+                $ref: '#/components/schemas/ReceivingSourceLineUpdate'
+            emit_stock_lot_changed_event:
+              const: true
+        - type: object
+          additionalProperties: false
+          required:
+            - outcome
+            - reason
+          properties:
+            outcome:
+              const: rejected
+            reason:
+              type: string
+              enum:
+                - source_not_eligible
+                - substitution_or_overdelivery_blocked
+                - stale_version
+                - evidence_missing
+                - evidence_invalid
+                - evidence_mismatch
+                - setup_blocked
+                - target_locked
+                - authority_changed
+
   responses:
     InvalidSelector:
       description: Unknown, repeated, or malformed query selector, malformed chapter UUID after admission, or foreign/malformed cursor.
@@ -9204,6 +13648,70 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/PurchaseOrderConflict'
+    ReceivingAccessDenied:
+      description: >-
+        origin_denied for missing/foreign Origin, mfa_incomplete for limited session,
+        duty_denied for insufficient receiving/discrepancy/hold duty, or
+        independence_required when a PO-RM inspector/poster is the PO preparer or
+        approver (GOV-05..07).
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - properties:
+                  error:
+                    properties:
+                      code:
+                        enum:
+                          - origin_denied
+                          - mfa_incomplete
+                          - duty_denied
+                          - independence_required
+    ReceivingReportConflict:
+      description: >-
+        Uncommitted Receiving Report conflict: version_conflict, action_key_conflict,
+        invalid_transition, source_not_eligible, substitution_or_overdelivery_blocked,
+        evidence_missing, evidence_invalid, evidence_mismatch, acknowledgment_missing,
+        target_locked, or setup_blocked. Includes failed_intent_committed: false,
+        authorized current RM (or null), and setup_blockers.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ReceivingReportConflict'
+    ReceivingDiscrepancyConflict:
+      description: >-
+        Uncommitted Receiving Discrepancy conflict: version_conflict,
+        action_key_conflict, invalid_transition, source_not_eligible (e.g.,
+        notify-supplier on a DA discrepancy), discrepancy_already_resolved,
+        evidence_missing, evidence_invalid, evidence_mismatch, target_locked, or
+        setup_blocked.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ReceivingDiscrepancyConflict'
+    ReceivingHoldConflict:
+      description: >-
+        Uncommitted Missing-Source Delivery Hold conflict: version_conflict,
+        action_key_conflict, invalid_transition, source_not_eligible,
+        hold_already_resolved, evidence_missing, evidence_invalid, evidence_mismatch,
+        target_locked, or setup_blocked.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ReceivingHoldConflict'
 
 x-controlled-procedures:
   recordPolicy:
@@ -9311,6 +13819,38 @@ x-stage2-action-duties:
   po.cancel:
     - PURCHASING
     - BUDGET_APPROVER
+    - CHAPTER_HEAD
+  receiving.read:
+    - RECEIVING
+    - INVENTORY
+    - PURCHASING
+    - BUDGET_APPROVER
+    - CHAPTER_HEAD
+    - FINANCE
+    - INDEPENDENT_REVIEWER
+  receiving.draft:
+    - RECEIVING
+    - INVENTORY
+  receiving.inspect:
+    - RECEIVING
+  receiving.match_evidence:
+    - RECEIVING
+  receiving.post:
+    - RECEIVING
+  receiving.cancel:
+    - RECEIVING
+    - CHAPTER_HEAD
+  discrepancy.manage:
+    - RECEIVING
+    - PURCHASING
+  discrepancy.resolve:
+    - RECEIVING
+    - PURCHASING
+    - INVENTORY
+    - CHAPTER_HEAD
+  receiving.hold_manage:
+    - RECEIVING
+    - INVENTORY
     - CHAPTER_HEAD
 
 x-stage2-policy-values:
@@ -9630,7 +14170,108 @@ x-stage2-po-transitions:
     issued:
       - canceled
 
+x-stage2-receiving-participants:
+  prepareReceivingInventory:
+    owner: Efren
+    caller: Leader postReceivingReport
+    input:
+      $ref: '#/components/schemas/PrepareReceivingInventoryInput'
+    output:
+      $ref: '#/components/schemas/PrepareReceivingInventoryResult'
+    description: >-
+      Internal synchronous unified receiving-posting participant with zero public
+      HTTP routes. Parameterized by source_kind (po_rm or da_rm). Runs inside
+      Leader's outer MySQL commit transaction on postReceivingReport after shared
+      yearly chapter RM reference allocation: re-fences authority, setup policies,
+      evidence acknowledgment, source eligibility, and remaining PO/DA allowance;
+      posts accepted quantities to USABLE stockroom lots immediately eligible under
+      INV-09 (RCV-04; carrying BoundedRestriction for da_rm including ADR 0004
+      uninterpreted lots marked immediately_allocatable: false); posts damaged and
+      rejected quantities to QUARANTINE and REJECTED stockroom lots (INV-14) with
+      ReceivingDiscrepancySeed records; and returns exact PO accepted/rejected/
+      outstanding or DA received/outstanding line updates.
+
+x-stage2-receiving-transitions:
+  createReceivingReport:
+    absent:
+      - draft
+  replaceReceivingReport:
+    draft:
+      - draft
+    inspected:
+      - draft
+    evidence_matched:
+      - draft
+  inspectReceivingReport:
+    draft:
+      - inspected
+  matchReceivingReportEvidence:
+    inspected:
+      - evidence_matched
+  postReceivingReport:
+    evidence_matched:
+      - posted
+  cancelReceivingReport:
+    draft:
+      - canceled
+    inspected:
+      - canceled
+    evidence_matched:
+      - canceled
+
+x-stage2-discrepancy-transitions:
+  notifySupplierOfReceivingDiscrepancy:
+    open:
+      - supplier_notified
+  resolveReceivingDiscrepancy:
+    open:
+      - under_review
+      - resolved
+    supplier_notified:
+      - under_review
+      - resolved
+    under_review:
+      - resolved
+
+x-stage2-hold-transitions:
+  createReceivingHold:
+    absent:
+      - held
+  linkReceivingHoldSource:
+    held:
+      - linked_to_source
+  rejectReturnReceivingHold:
+    held:
+      - rejected_returned
+
 x-stage1-compatibility:
+  openingRmsUnchanged:
+    stage1_operations:
+      - GET /api/v1/chapters/{chapter_id}/opening-rms
+      - POST /api/v1/chapters/{chapter_id}/opening-rms
+      - GET /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}
+      - PUT /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}
+      - POST /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/inspection
+      - POST /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/evidence-match
+      - POST /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/post
+      - GET /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/movements
+      - GET /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/findings
+      - GET /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/history
+      - GET /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/versions/{revision}
+      - GET /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/related
+      - GET /api/v1/chapters/{chapter_id}/opening-rms/{rm_id}/print
+    owner: Leader
+    posting_participant_owner: Efren
+    requirements:
+      - RCV-01
+      - RCV-10
+    contract: >-
+      Stage 1 /opening-rms* routes, request/response schemas, IPC opening baseline
+      lock, and prepareOpeningInventory remain completely unchanged. Stage 2
+      /receiving-reports accepts strictly source_kind po or da and shares only the
+      chapter's yearly RM reference_series counter on postReceivingReport.
+      Missing-source deliveries live in /receiving-holds and never create or link
+      an IPC.
   cancelInternalRf:
     stage1_operation: POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/cancel
     owner: Glenn

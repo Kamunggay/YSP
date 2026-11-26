@@ -1,4 +1,4 @@
-# Schema-checked Stage 2 contract examples (Tickets 01, 02, 03, 04).
+# Schema-checked Stage 2 contract examples (Tickets 01, 02, 03, 04, 05).
 # Synthetic fixtures only; IDs, values, and approvals are illustrative, never approved setup.
 context:
   chapter_id: 60000000-0000-4000-8000-000000000001
@@ -7091,6 +7091,3231 @@ cases:
               code: invalid_format
               message: Must be a canonical SupplierSubtype value.
 
+  - name: stage2-05-rm-create-po-partial-draft
+    operationId: createReceivingReport
+    before_status: absent
+    before: PO-2026-0001 ordered 100 shirts; missing-source hold linked to PO+DR unlocks PO-RM draft for 50 delivered (40 accepted
+      + 10 rejected).
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000501
+      body:
+        source_kind: po
+        source_id: 96000000-0000-4000-8000-000000000101
+        source_material_version: 2
+        originating_hold_id: 97200000-0000-4000-8000-000000000001
+        supplier_dr_reference: DR-SUP-2026-881
+        supplier_dr_date: '2026-11-26'
+        location_id: 61000000-0000-4000-8000-000000000001
+        lines:
+        - source_line_id: 96000000-0000-4000-8000-000000000102
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          delivered_quantity: '50'
+          accepted_quantity: '40'
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          unit_valuation_php: '240.00'
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          resolves_discrepancy_id: null
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: createReceivingReport
+          action_key: 40000000-0000-4000-8000-000000000501
+          resource_kind: receiving_report
+          resource_id: 97000000-0000-4000-8000-000000000001
+          committed_version: 1
+          committed_material_version: 1
+          status_code: 201
+          committed_at: '2026-11-26T08:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rm_reference: null
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_material_version: 2
+            originating_hold_id: 97200000-0000-4000-8000-000000000001
+            supplier_dr_reference: DR-SUP-2026-881
+            supplier_dr_date: '2026-11-26'
+            status: draft
+            version: 1
+            material_version: 1
+            location_id: 61000000-0000-4000-8000-000000000001
+            currency: PHP
+            accepted_total_value_php: '9600.00'
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            inspection: null
+            snapshot: null
+            evidence_acknowledgment: null
+            posted_by: null
+            posted_at: null
+            posting_stock_version: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+            - id: 97000000-0000-4000-8000-000000000011
+              source_line_id: 96000000-0000-4000-8000-000000000102
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '50'
+              accepted_quantity: '40'
+              damaged_quantity: '0'
+              rejected_quantity: '10'
+              unit_valuation_php: '240.00'
+              accepted_value_php: '9600.00'
+              restrictions:
+                state: unrestricted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: null
+              discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+              resolves_discrepancy_id: null
+            created_at: '2026-11-26T08:00:00.000000Z'
+            updated_at: '2026-11-26T08:00:00.000000Z'
+          posting: null
+  - name: stage2-05-rm-inspect-po-partial
+    operationId: inspectReceivingReport
+    before_status: draft
+    before: 'Receiving officer + technical rep inspect PO-RM: delivered 50 == 40 accepted + 0 damaged + 10 rejected; freezes
+      canonical snapshot.'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000502
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        source_material_version: 2
+        technical_or_requesting_representative_id: 10000000-0000-4000-8000-000000000008
+        inspected_at: '2026-11-26T08:15:00.000000Z'
+        inspection_notes: Counted 50 shirts against PO-2026-0001 (ordered 100); 40 pass QA, 10 rejected for print defect.
+        lines:
+        - source_line_id: 96000000-0000-4000-8000-000000000102
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          delivered_quantity: '50'
+          accepted_quantity: '40'
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          unit_valuation_php: '240.00'
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          resolves_discrepancy_id: null
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: inspectReceivingReport
+          action_key: 40000000-0000-4000-8000-000000000502
+          resource_kind: receiving_report
+          resource_id: 97000000-0000-4000-8000-000000000001
+          committed_version: 2
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T08:15:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rm_reference: null
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_material_version: 2
+            originating_hold_id: 97200000-0000-4000-8000-000000000001
+            supplier_dr_reference: DR-SUP-2026-881
+            supplier_dr_date: '2026-11-26'
+            status: inspected
+            version: 2
+            material_version: 1
+            location_id: 61000000-0000-4000-8000-000000000001
+            currency: PHP
+            accepted_total_value_php: '9600.00'
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            inspection:
+              inspector:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              technical_or_requesting_representative:
+                user_id: 10000000-0000-4000-8000-000000000008
+                display_name: Marco Technical
+              inspected_at: '2026-11-26T08:15:00.000000Z'
+              inspection_notes: Counted 50 shirts against PO-2026-0001 (ordered 100); 40 pass QA, 10 rejected for print defect.
+            snapshot:
+              target:
+                purpose: po_supplier_dr
+                record_id: 97000000-0000-4000-8000-000000000001
+              material_version: 1
+              sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+            evidence_acknowledgment: null
+            posted_by: null
+            posted_at: null
+            posting_stock_version: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+            - id: 97000000-0000-4000-8000-000000000011
+              source_line_id: 96000000-0000-4000-8000-000000000102
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '50'
+              accepted_quantity: '40'
+              damaged_quantity: '0'
+              rejected_quantity: '10'
+              unit_valuation_php: '240.00'
+              accepted_value_php: '9600.00'
+              restrictions:
+                state: unrestricted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: null
+              discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+              resolves_discrepancy_id: null
+            created_at: '2026-11-26T08:00:00.000000Z'
+            updated_at: '2026-11-26T08:15:00.000000Z'
+          posting: null
+  - name: stage2-05-rm-evidence-match-po-dr
+    operationId: matchReceivingReportEvidence
+    before_status: inspected
+    before: Binds signed po_supplier_dr evidence bytes to exact inspected RM snapshot sha256.
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      rm_id: 97000000-0000-4000-8000-000000000001
+      material_version: 1
+      source_kind: po
+      source_id: 96000000-0000-4000-8000-000000000101
+      source_reference: PO-2026-0001
+      source_material_version: 2
+      supplier_dr_reference: DR-SUP-2026-881
+      supplier_dr_date: '2026-11-26'
+      location_id: 61000000-0000-4000-8000-000000000001
+      accepted_total_value_php: '9600.00'
+      inspector_id: 10000000-0000-4000-8000-000000000007
+      technical_or_requesting_representative_id: 10000000-0000-4000-8000-000000000008
+      inspected_at: '2026-11-26T08:15:00.000000Z'
+      lines:
+      - id: 97000000-0000-4000-8000-000000000011
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        quantity_scale: 0
+        delivered_quantity: '50'
+        accepted_quantity: '40'
+        damaged_quantity: '0'
+        rejected_quantity: '10'
+        unit_valuation_php: '240.00'
+        accepted_value_php: '9600.00'
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+        resolves_discrepancy_id: null
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000503
+      body:
+        expected_version: 2
+        expected_material_version: 1
+        snapshot_sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+        evidence:
+          evidence_id: 97400000-0000-4000-8000-000000000011
+          version_id: 97400000-0000-4000-8000-000000000012
+          attachments:
+          - attachment_id: 97400000-0000-4000-8000-000000000013
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        acknowledged_at: '2026-11-26T08:25:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: matchReceivingReportEvidence
+          action_key: 40000000-0000-4000-8000-000000000503
+          resource_kind: receiving_report
+          resource_id: 97000000-0000-4000-8000-000000000001
+          committed_version: 3
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T08:25:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rm_reference: null
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_material_version: 2
+            originating_hold_id: 97200000-0000-4000-8000-000000000001
+            supplier_dr_reference: DR-SUP-2026-881
+            supplier_dr_date: '2026-11-26'
+            status: evidence_matched
+            version: 3
+            material_version: 1
+            location_id: 61000000-0000-4000-8000-000000000001
+            currency: PHP
+            accepted_total_value_php: '9600.00'
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            inspection:
+              inspector:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              technical_or_requesting_representative:
+                user_id: 10000000-0000-4000-8000-000000000008
+                display_name: Marco Technical
+              inspected_at: '2026-11-26T08:15:00.000000Z'
+              inspection_notes: Counted 50 shirts against PO-2026-0001 (ordered 100); 40 pass QA, 10 rejected for print defect.
+            snapshot:
+              target:
+                purpose: po_supplier_dr
+                record_id: 97000000-0000-4000-8000-000000000001
+              material_version: 1
+              sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+            evidence_acknowledgment:
+              acknowledgment_id: 97500000-0000-4000-8000-000000000001
+              matched_by: 10000000-0000-4000-8000-000000000007
+              matched_at: '2026-11-26T08:25:00.000000Z'
+              recipient_id: null
+              acknowledged_at: '2026-11-26T08:25:00.000000Z'
+              snapshot:
+                target:
+                  purpose: po_supplier_dr
+                  record_id: 97000000-0000-4000-8000-000000000001
+                material_version: 1
+                sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+              bytes:
+                evidence_id: 97400000-0000-4000-8000-000000000011
+                version_id: 97400000-0000-4000-8000-000000000012
+                attachments:
+                - attachment_id: 97400000-0000-4000-8000-000000000013
+                  sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            posted_by: null
+            posted_at: null
+            posting_stock_version: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+            - id: 97000000-0000-4000-8000-000000000011
+              source_line_id: 96000000-0000-4000-8000-000000000102
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '50'
+              accepted_quantity: '40'
+              damaged_quantity: '0'
+              rejected_quantity: '10'
+              unit_valuation_php: '240.00'
+              accepted_value_php: '9600.00'
+              restrictions:
+                state: unrestricted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: null
+              discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+              resolves_discrepancy_id: null
+            created_at: '2026-11-26T08:00:00.000000Z'
+            updated_at: '2026-11-26T08:25:00.000000Z'
+          posting: null
+  - name: stage2-05-rm-replace-invalidates-evidence-binding
+    operationId: replaceReceivingReport
+    before_status: evidence_matched
+    before: Material edit on evidence_matched RM bumps material_version, clears inspection/snapshot/evidence_acknowledgment,
+      and returns status to draft.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000504
+      body:
+        expected_version: 3
+        expected_material_version: 1
+        source_material_version: 2
+        supplier_dr_reference: DR-SUP-2026-881-REV1
+        supplier_dr_date: '2026-11-26'
+        location_id: 61000000-0000-4000-8000-000000000001
+        lines:
+        - source_line_id: 96000000-0000-4000-8000-000000000102
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          delivered_quantity: '50'
+          accepted_quantity: '40'
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          unit_valuation_php: '240.00'
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          resolves_discrepancy_id: null
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000004
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: replaceReceivingReport
+          action_key: 40000000-0000-4000-8000-000000000504
+          resource_kind: receiving_report
+          resource_id: 97000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T08:30:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rm_reference: null
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_material_version: 2
+            originating_hold_id: 97200000-0000-4000-8000-000000000001
+            supplier_dr_reference: DR-SUP-2026-881-REV1
+            supplier_dr_date: '2026-11-26'
+            status: draft
+            version: 4
+            material_version: 2
+            location_id: 61000000-0000-4000-8000-000000000001
+            currency: PHP
+            accepted_total_value_php: '9600.00'
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            inspection: null
+            snapshot: null
+            evidence_acknowledgment: null
+            posted_by: null
+            posted_at: null
+            posting_stock_version: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+            - id: 97000000-0000-4000-8000-000000000011
+              source_line_id: 96000000-0000-4000-8000-000000000102
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '50'
+              accepted_quantity: '40'
+              damaged_quantity: '0'
+              rejected_quantity: '10'
+              unit_valuation_php: '240.00'
+              accepted_value_php: '9600.00'
+              restrictions:
+                state: unrestricted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: null
+              discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+              resolves_discrepancy_id: null
+            created_at: '2026-11-26T08:00:00.000000Z'
+            updated_at: '2026-11-26T08:30:00.000000Z'
+          posting: null
+  - name: stage2-05-rm-post-po-partial-40-accepted-10-rejected
+    operationId: postReceivingReport
+    before_status: evidence_matched
+    source_before_status: issued
+    before: 'Atomically allocates RM-2026-0002, invokes Efren prepareReceivingInventory (po_rm): +40 USABLE immediately allocatable
+      (RCV-04), +10 REJECTED + open discrepancy, PO partially_received leaving 60 open.'
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      rm_id: 97000000-0000-4000-8000-000000000001
+      material_version: 1
+      source_kind: po
+      source_id: 96000000-0000-4000-8000-000000000101
+      source_reference: PO-2026-0001
+      source_material_version: 2
+      supplier_dr_reference: DR-SUP-2026-881
+      supplier_dr_date: '2026-11-26'
+      location_id: 61000000-0000-4000-8000-000000000001
+      accepted_total_value_php: '9600.00'
+      inspector_id: 10000000-0000-4000-8000-000000000007
+      technical_or_requesting_representative_id: 10000000-0000-4000-8000-000000000008
+      inspected_at: '2026-11-26T08:15:00.000000Z'
+      lines:
+      - id: 97000000-0000-4000-8000-000000000011
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        quantity_scale: 0
+        delivered_quantity: '50'
+        accepted_quantity: '40'
+        damaged_quantity: '0'
+        rejected_quantity: '10'
+        unit_valuation_php: '240.00'
+        accepted_value_php: '9600.00'
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+        resolves_discrepancy_id: null
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000505
+      body:
+        expected_version: 3
+        expected_material_version: 1
+        source_material_version: 2
+        acknowledgment_id: 97500000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000005
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: postReceivingReport
+          action_key: 40000000-0000-4000-8000-000000000505
+          resource_kind: receiving_report
+          resource_id: 97000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T08:40:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rm_reference: RM-2026-0002
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_material_version: 2
+            originating_hold_id: 97200000-0000-4000-8000-000000000001
+            supplier_dr_reference: DR-SUP-2026-881
+            supplier_dr_date: '2026-11-26'
+            status: posted
+            version: 4
+            material_version: 1
+            location_id: 61000000-0000-4000-8000-000000000001
+            currency: PHP
+            accepted_total_value_php: '9600.00'
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            inspection:
+              inspector:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              technical_or_requesting_representative:
+                user_id: 10000000-0000-4000-8000-000000000008
+                display_name: Marco Technical
+              inspected_at: '2026-11-26T08:15:00.000000Z'
+              inspection_notes: Counted 50 shirts against PO-2026-0001 (ordered 100); 40 pass QA, 10 rejected for print defect.
+            snapshot:
+              target:
+                purpose: po_supplier_dr
+                record_id: 97000000-0000-4000-8000-000000000001
+              material_version: 1
+              sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+            evidence_acknowledgment:
+              acknowledgment_id: 97500000-0000-4000-8000-000000000001
+              matched_by: 10000000-0000-4000-8000-000000000007
+              matched_at: '2026-11-26T08:25:00.000000Z'
+              recipient_id: null
+              acknowledged_at: '2026-11-26T08:25:00.000000Z'
+              snapshot:
+                target:
+                  purpose: po_supplier_dr
+                  record_id: 97000000-0000-4000-8000-000000000001
+                material_version: 1
+                sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+              bytes:
+                evidence_id: 97400000-0000-4000-8000-000000000011
+                version_id: 97400000-0000-4000-8000-000000000012
+                attachments:
+                - attachment_id: 97400000-0000-4000-8000-000000000013
+                  sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            posted_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            posted_at: '2026-11-26T08:40:00.000000Z'
+            posting_stock_version: 21
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+            - id: 97000000-0000-4000-8000-000000000011
+              source_line_id: 96000000-0000-4000-8000-000000000102
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '50'
+              accepted_quantity: '40'
+              damaged_quantity: '0'
+              rejected_quantity: '10'
+              unit_valuation_php: '240.00'
+              accepted_value_php: '9600.00'
+              restrictions:
+                state: unrestricted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: null
+              discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+              resolves_discrepancy_id: null
+            created_at: '2026-11-26T08:00:00.000000Z'
+            updated_at: '2026-11-26T08:40:00.000000Z'
+          posting:
+            stock_version: 21
+            usable_lot_ids:
+            - 97300000-0000-4000-8000-000000000001
+            quarantined_or_rejected_lot_ids:
+            - 97300000-0000-4000-8000-000000000002
+            created_discrepancy_ids:
+            - 97100000-0000-4000-8000-000000000001
+            source_status_after: partially_received
+  - name: stage2-05-rm-post-po-replacement-second-rm
+    operationId: postReceivingReport
+    before_status: evidence_matched
+    source_before_status: partially_received
+    before: Supplier replacement + balance of 60 shirts arrives via a new PO-RM (RM-2026-0003) referencing resolves_discrepancy_id;
+      PO transitions partially_received -> receiving_complete without editing immutable RM-2026-0002.
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      rm_id: 97000000-0000-4000-8000-000000000002
+      material_version: 1
+      source_kind: po
+      source_id: 96000000-0000-4000-8000-000000000101
+      source_reference: PO-2026-0001
+      source_material_version: 2
+      supplier_dr_reference: DR-SUP-2026-912
+      supplier_dr_date: '2026-11-27'
+      location_id: 61000000-0000-4000-8000-000000000001
+      accepted_total_value_php: '14400.00'
+      inspector_id: 10000000-0000-4000-8000-000000000007
+      technical_or_requesting_representative_id: null
+      inspected_at: '2026-11-27T09:10:00.000000Z'
+      lines:
+      - id: 97000000-0000-4000-8000-000000000021
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        quantity_scale: 0
+        delivered_quantity: '60'
+        accepted_quantity: '60'
+        damaged_quantity: '0'
+        rejected_quantity: '0'
+        unit_valuation_php: '240.00'
+        accepted_value_php: '14400.00'
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        discrepancy_notes: null
+        resolves_discrepancy_id: 97100000-0000-4000-8000-000000000001
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000002
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000506
+      body:
+        expected_version: 3
+        expected_material_version: 1
+        source_material_version: 2
+        acknowledgment_id: 97500000-0000-4000-8000-000000000002
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000006
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: postReceivingReport
+          action_key: 40000000-0000-4000-8000-000000000506
+          resource_kind: receiving_report
+          resource_id: 97000000-0000-4000-8000-000000000002
+          committed_version: 4
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-27T09:20:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000002
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rm_reference: RM-2026-0003
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_material_version: 2
+            originating_hold_id: null
+            supplier_dr_reference: DR-SUP-2026-912
+            supplier_dr_date: '2026-11-27'
+            status: posted
+            version: 4
+            material_version: 1
+            location_id: 61000000-0000-4000-8000-000000000001
+            currency: PHP
+            accepted_total_value_php: '14400.00'
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            inspection:
+              inspector:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              technical_or_requesting_representative: null
+              inspected_at: '2026-11-27T09:10:00.000000Z'
+              inspection_notes: Replacement and balance delivery of 60 shirts verified defect-free against PO-2026-0001.
+            snapshot:
+              target:
+                purpose: po_supplier_dr
+                record_id: 97000000-0000-4000-8000-000000000002
+              material_version: 1
+              sha256: e6a789f16fa4e3896d041459c7deb8e303f6bb2fe73a00b6e6a7fbf5b2d59055
+            evidence_acknowledgment:
+              acknowledgment_id: 97500000-0000-4000-8000-000000000002
+              matched_by: 10000000-0000-4000-8000-000000000007
+              matched_at: '2026-11-27T09:15:00.000000Z'
+              recipient_id: null
+              acknowledged_at: '2026-11-27T09:15:00.000000Z'
+              snapshot:
+                target:
+                  purpose: po_supplier_dr
+                  record_id: 97000000-0000-4000-8000-000000000002
+                material_version: 1
+                sha256: e6a789f16fa4e3896d041459c7deb8e303f6bb2fe73a00b6e6a7fbf5b2d59055
+              bytes:
+                evidence_id: 97400000-0000-4000-8000-000000000021
+                version_id: 97400000-0000-4000-8000-000000000022
+                attachments:
+                - attachment_id: 97400000-0000-4000-8000-000000000023
+                  sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+            posted_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            posted_at: '2026-11-27T09:20:00.000000Z'
+            posting_stock_version: 22
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+            - id: 97000000-0000-4000-8000-000000000021
+              source_line_id: 96000000-0000-4000-8000-000000000102
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '60'
+              accepted_quantity: '60'
+              damaged_quantity: '0'
+              rejected_quantity: '0'
+              unit_valuation_php: '240.00'
+              accepted_value_php: '14400.00'
+              restrictions:
+                state: unrestricted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: null
+              discrepancy_notes: null
+              resolves_discrepancy_id: 97100000-0000-4000-8000-000000000001
+            created_at: '2026-11-27T09:00:00.000000Z'
+            updated_at: '2026-11-27T09:20:00.000000Z'
+          posting:
+            stock_version: 22
+            usable_lot_ids:
+            - 97300000-0000-4000-8000-000000000003
+            quarantined_or_rejected_lot_ids: []
+            created_discrepancy_ids: []
+            source_status_after: receiving_complete
+  - name: stage2-05-rm-post-da-restricted-and-uninterpreted-shared-sku
+    operationId: postReceivingReport
+    before_status: evidence_matched
+    source_before_status: acknowledged
+    before: 'DA-RM posts two lines sharing SHIRT-M: 20 bounded (internal_use, allocatable) + 10 uninterpreted (ADR 0004 physical
+      on-hand, unallocatable) + 2 damaged quarantined with open DA discrepancy.'
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      rm_id: 97000000-0000-4000-8000-000000000003
+      material_version: 1
+      source_kind: da
+      source_id: 80000000-0000-4000-8000-000000000004
+      source_reference: DA-2026-0001
+      source_material_version: 1
+      supplier_dr_reference: null
+      supplier_dr_date: null
+      location_id: 61000000-0000-4000-8000-000000000001
+      accepted_total_value_php: '6000.00'
+      inspector_id: 10000000-0000-4000-8000-000000000007
+      technical_or_requesting_representative_id: null
+      inspected_at: '2026-11-27T10:10:00.000000Z'
+      lines:
+      - id: 97000000-0000-4000-8000-000000000031
+        source_line_id: 80000000-0000-4000-8000-00000000000a
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        quantity_scale: 0
+        delivered_quantity: '20'
+        accepted_quantity: '20'
+        damaged_quantity: '0'
+        rejected_quantity: '0'
+        unit_valuation_php: '200.00'
+        accepted_value_php: '4000.00'
+        restrictions:
+          state: bounded
+          allowed_uses:
+          - internal_use
+          event_ids: []
+          requesting_unit_ids:
+          - 70000000-0000-4000-8000-000000000010
+          effective_from: null
+          effective_until: null
+          interpretation_id: 80000000-0000-4000-8000-000000000012
+          source_condition_reference: 'DA-2026-0001 line 1: internal committee distribution only, no sale'
+        discrepancy_notes: null
+        resolves_discrepancy_id: null
+      - id: 97000000-0000-4000-8000-000000000032
+        source_line_id: 80000000-0000-4000-8000-00000000000c
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        quantity_scale: 0
+        delivered_quantity: '12'
+        accepted_quantity: '10'
+        damaged_quantity: '2'
+        rejected_quantity: '0'
+        unit_valuation_php: '200.00'
+        accepted_value_php: '2000.00'
+        restrictions:
+          state: uninterpreted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: 'DA-2026-0001 line 2: preferential access during a named youth summit'
+        discrepancy_notes: 2 donated shirts water-stained during transit; placed in quarantine.
+        resolves_discrepancy_id: null
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000003
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000507
+      body:
+        expected_version: 3
+        expected_material_version: 1
+        source_material_version: 1
+        acknowledgment_id: 97500000-0000-4000-8000-000000000003
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000007
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: postReceivingReport
+          action_key: 40000000-0000-4000-8000-000000000507
+          resource_kind: receiving_report
+          resource_id: 97000000-0000-4000-8000-000000000003
+          committed_version: 4
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-27T10:20:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000003
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rm_reference: RM-2026-0004
+            source_kind: da
+            source_id: 80000000-0000-4000-8000-000000000004
+            source_reference: DA-2026-0001
+            source_material_version: 1
+            originating_hold_id: null
+            supplier_dr_reference: null
+            supplier_dr_date: null
+            status: posted
+            version: 4
+            material_version: 1
+            location_id: 61000000-0000-4000-8000-000000000001
+            currency: PHP
+            accepted_total_value_php: '6000.00'
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            inspection:
+              inspector:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              technical_or_requesting_representative: null
+              inspected_at: '2026-11-27T10:10:00.000000Z'
+              inspection_notes: Inspected donated shirts across bounded and uninterpreted lines; 2 water-stained quarantined.
+            snapshot:
+              target:
+                purpose: da_receipt
+                record_id: 97000000-0000-4000-8000-000000000003
+              material_version: 1
+              sha256: c7dca0c789690868fbabc9f519b5e7ae5d0380e63a40396b9ce279e08998aee7
+            evidence_acknowledgment:
+              acknowledgment_id: 97500000-0000-4000-8000-000000000003
+              matched_by: 10000000-0000-4000-8000-000000000007
+              matched_at: '2026-11-27T10:15:00.000000Z'
+              recipient_id: null
+              acknowledged_at: '2026-11-27T10:15:00.000000Z'
+              snapshot:
+                target:
+                  purpose: da_receipt
+                  record_id: 97000000-0000-4000-8000-000000000003
+                material_version: 1
+                sha256: c7dca0c789690868fbabc9f519b5e7ae5d0380e63a40396b9ce279e08998aee7
+              bytes:
+                evidence_id: 97400000-0000-4000-8000-000000000031
+                version_id: 97400000-0000-4000-8000-000000000032
+                attachments:
+                - attachment_id: 97400000-0000-4000-8000-000000000033
+                  sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+            posted_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            posted_at: '2026-11-27T10:20:00.000000Z'
+            posting_stock_version: 23
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+            - id: 97000000-0000-4000-8000-000000000031
+              source_line_id: 80000000-0000-4000-8000-00000000000a
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '20'
+              accepted_quantity: '20'
+              damaged_quantity: '0'
+              rejected_quantity: '0'
+              unit_valuation_php: '200.00'
+              accepted_value_php: '4000.00'
+              restrictions:
+                state: bounded
+                allowed_uses:
+                - internal_use
+                event_ids: []
+                requesting_unit_ids:
+                - 70000000-0000-4000-8000-000000000010
+                effective_from: null
+                effective_until: null
+                interpretation_id: 80000000-0000-4000-8000-000000000012
+                source_condition_reference: 'DA-2026-0001 line 1: internal committee distribution only, no sale'
+              discrepancy_notes: null
+              resolves_discrepancy_id: null
+            - id: 97000000-0000-4000-8000-000000000032
+              source_line_id: 80000000-0000-4000-8000-00000000000c
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '12'
+              accepted_quantity: '10'
+              damaged_quantity: '2'
+              rejected_quantity: '0'
+              unit_valuation_php: '200.00'
+              accepted_value_php: '2000.00'
+              restrictions:
+                state: uninterpreted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: 'DA-2026-0001 line 2: preferential access during a named youth summit'
+              discrepancy_notes: 2 donated shirts water-stained during transit; placed in quarantine.
+              resolves_discrepancy_id: null
+            created_at: '2026-11-27T10:00:00.000000Z'
+            updated_at: '2026-11-27T10:20:00.000000Z'
+          posting:
+            stock_version: 23
+            usable_lot_ids:
+            - 97300000-0000-4000-8000-000000000004
+            - 97300000-0000-4000-8000-000000000005
+            quarantined_or_rejected_lot_ids:
+            - 97300000-0000-4000-8000-000000000006
+            created_discrepancy_ids:
+            - 97100000-0000-4000-8000-000000000002
+            source_status_after: partially_received
+  - name: stage2-05-rm-cancel-draft
+    operationId: cancelReceivingReport
+    before_status: draft
+    before: Unposted RM draft canceled with mandatory reason; zero RM reference allocated.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000004
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000508
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        reason: Duplicate receiving draft opened before supplier courier arrived.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000008
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: cancelReceivingReport
+          action_key: 40000000-0000-4000-8000-000000000508
+          resource_kind: receiving_report
+          resource_id: 97000000-0000-4000-8000-000000000004
+          committed_version: 2
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T08:05:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000004
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rm_reference: null
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_material_version: 2
+            originating_hold_id: null
+            supplier_dr_reference: DR-SUP-2026-DUP
+            supplier_dr_date: '2026-11-26'
+            status: canceled
+            version: 2
+            material_version: 1
+            location_id: 61000000-0000-4000-8000-000000000001
+            currency: PHP
+            accepted_total_value_php: '9600.00'
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            inspection: null
+            snapshot: null
+            evidence_acknowledgment: null
+            posted_by: null
+            posted_at: null
+            posting_stock_version: null
+            canceled_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            canceled_at: '2026-11-26T08:05:00.000000Z'
+            cancel_reason: Duplicate receiving draft opened before supplier courier arrived.
+            lines:
+            - id: 97000000-0000-4000-8000-000000000041
+              source_line_id: 96000000-0000-4000-8000-000000000102
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '50'
+              accepted_quantity: '40'
+              damaged_quantity: '0'
+              rejected_quantity: '10'
+              unit_valuation_php: '240.00'
+              accepted_value_php: '9600.00'
+              restrictions:
+                state: unrestricted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: null
+              discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+              resolves_discrepancy_id: null
+            created_at: '2026-11-26T08:00:00.000000Z'
+            updated_at: '2026-11-26T08:05:00.000000Z'
+          posting: null
+  - name: stage2-05-rm-list
+    operationId: listReceivingReports
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        source_kind: po
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 97000000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0003
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_material_version: 2
+          originating_hold_id: null
+          supplier_dr_reference: DR-SUP-2026-912
+          supplier_dr_date: '2026-11-27'
+          status: posted
+          version: 4
+          material_version: 1
+          location_id: 61000000-0000-4000-8000-000000000001
+          currency: PHP
+          accepted_total_value_php: '14400.00'
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          inspection:
+            inspector:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            technical_or_requesting_representative: null
+            inspected_at: '2026-11-27T09:10:00.000000Z'
+            inspection_notes: Replacement and balance delivery of 60 shirts verified defect-free against PO-2026-0001.
+          snapshot:
+            target:
+              purpose: po_supplier_dr
+              record_id: 97000000-0000-4000-8000-000000000002
+            material_version: 1
+            sha256: e6a789f16fa4e3896d041459c7deb8e303f6bb2fe73a00b6e6a7fbf5b2d59055
+          evidence_acknowledgment:
+            acknowledgment_id: 97500000-0000-4000-8000-000000000002
+            matched_by: 10000000-0000-4000-8000-000000000007
+            matched_at: '2026-11-27T09:15:00.000000Z'
+            recipient_id: null
+            acknowledged_at: '2026-11-27T09:15:00.000000Z'
+            snapshot:
+              target:
+                purpose: po_supplier_dr
+                record_id: 97000000-0000-4000-8000-000000000002
+              material_version: 1
+              sha256: e6a789f16fa4e3896d041459c7deb8e303f6bb2fe73a00b6e6a7fbf5b2d59055
+            bytes:
+              evidence_id: 97400000-0000-4000-8000-000000000021
+              version_id: 97400000-0000-4000-8000-000000000022
+              attachments:
+              - attachment_id: 97400000-0000-4000-8000-000000000023
+                sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          posted_by:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          posted_at: '2026-11-27T09:20:00.000000Z'
+          posting_stock_version: 22
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+          - id: 97000000-0000-4000-8000-000000000021
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            delivered_quantity: '60'
+            accepted_quantity: '60'
+            damaged_quantity: '0'
+            rejected_quantity: '0'
+            unit_valuation_php: '240.00'
+            accepted_value_php: '14400.00'
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+            discrepancy_notes: null
+            resolves_discrepancy_id: 97100000-0000-4000-8000-000000000001
+          created_at: '2026-11-27T09:00:00.000000Z'
+          updated_at: '2026-11-27T09:20:00.000000Z'
+        - id: 97000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0002
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_material_version: 2
+          originating_hold_id: 97200000-0000-4000-8000-000000000001
+          supplier_dr_reference: DR-SUP-2026-881
+          supplier_dr_date: '2026-11-26'
+          status: posted
+          version: 4
+          material_version: 1
+          location_id: 61000000-0000-4000-8000-000000000001
+          currency: PHP
+          accepted_total_value_php: '9600.00'
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          inspection:
+            inspector:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            technical_or_requesting_representative:
+              user_id: 10000000-0000-4000-8000-000000000008
+              display_name: Marco Technical
+            inspected_at: '2026-11-26T08:15:00.000000Z'
+            inspection_notes: Counted 50 shirts against PO-2026-0001 (ordered 100); 40 pass QA, 10 rejected for print defect.
+          snapshot:
+            target:
+              purpose: po_supplier_dr
+              record_id: 97000000-0000-4000-8000-000000000001
+            material_version: 1
+            sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+          evidence_acknowledgment:
+            acknowledgment_id: 97500000-0000-4000-8000-000000000001
+            matched_by: 10000000-0000-4000-8000-000000000007
+            matched_at: '2026-11-26T08:25:00.000000Z'
+            recipient_id: null
+            acknowledged_at: '2026-11-26T08:25:00.000000Z'
+            snapshot:
+              target:
+                purpose: po_supplier_dr
+                record_id: 97000000-0000-4000-8000-000000000001
+              material_version: 1
+              sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+            bytes:
+              evidence_id: 97400000-0000-4000-8000-000000000011
+              version_id: 97400000-0000-4000-8000-000000000012
+              attachments:
+              - attachment_id: 97400000-0000-4000-8000-000000000013
+                sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          posted_by:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          posted_at: '2026-11-26T08:40:00.000000Z'
+          posting_stock_version: 21
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+          - id: 97000000-0000-4000-8000-000000000011
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            delivered_quantity: '50'
+            accepted_quantity: '40'
+            damaged_quantity: '0'
+            rejected_quantity: '10'
+            unit_valuation_php: '240.00'
+            accepted_value_php: '9600.00'
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+            discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+            resolves_discrepancy_id: null
+          created_at: '2026-11-26T08:00:00.000000Z'
+          updated_at: '2026-11-26T08:40:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 23
+  - name: stage2-05-rm-read
+    operationId: readReceivingReport
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          id: 97000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0002
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_material_version: 2
+          originating_hold_id: 97200000-0000-4000-8000-000000000001
+          supplier_dr_reference: DR-SUP-2026-881
+          supplier_dr_date: '2026-11-26'
+          status: posted
+          version: 4
+          material_version: 1
+          location_id: 61000000-0000-4000-8000-000000000001
+          currency: PHP
+          accepted_total_value_php: '9600.00'
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          inspection:
+            inspector:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            technical_or_requesting_representative:
+              user_id: 10000000-0000-4000-8000-000000000008
+              display_name: Marco Technical
+            inspected_at: '2026-11-26T08:15:00.000000Z'
+            inspection_notes: Counted 50 shirts against PO-2026-0001 (ordered 100); 40 pass QA, 10 rejected for print defect.
+          snapshot:
+            target:
+              purpose: po_supplier_dr
+              record_id: 97000000-0000-4000-8000-000000000001
+            material_version: 1
+            sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+          evidence_acknowledgment:
+            acknowledgment_id: 97500000-0000-4000-8000-000000000001
+            matched_by: 10000000-0000-4000-8000-000000000007
+            matched_at: '2026-11-26T08:25:00.000000Z'
+            recipient_id: null
+            acknowledged_at: '2026-11-26T08:25:00.000000Z'
+            snapshot:
+              target:
+                purpose: po_supplier_dr
+                record_id: 97000000-0000-4000-8000-000000000001
+              material_version: 1
+              sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+            bytes:
+              evidence_id: 97400000-0000-4000-8000-000000000011
+              version_id: 97400000-0000-4000-8000-000000000012
+              attachments:
+              - attachment_id: 97400000-0000-4000-8000-000000000013
+                sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          posted_by:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          posted_at: '2026-11-26T08:40:00.000000Z'
+          posting_stock_version: 21
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+          - id: 97000000-0000-4000-8000-000000000011
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            delivered_quantity: '50'
+            accepted_quantity: '40'
+            damaged_quantity: '0'
+            rejected_quantity: '10'
+            unit_valuation_php: '240.00'
+            accepted_value_php: '9600.00'
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+            discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+            resolves_discrepancy_id: null
+          created_at: '2026-11-26T08:00:00.000000Z'
+          updated_at: '2026-11-26T08:40:00.000000Z'
+  - name: stage2-05-rm-movements
+    operationId: listReceivingReportMovements
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 97600000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          kind: accepted_receipt
+          source_kind: po_rm
+          rm_id: 97000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0002
+          rm_material_version: 1
+          rm_line_id: 97000000-0000-4000-8000-000000000011
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_material_version: 2
+          source_line_id: 96000000-0000-4000-8000-000000000102
+          lot_id: 97300000-0000-4000-8000-000000000001
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          location_id: 61000000-0000-4000-8000-000000000001
+          quantity: '40'
+          unit_valuation_php: '240.00'
+          total_value_php: '9600.00'
+          currency: PHP
+          condition: usable
+          restrictions:
+            state: unrestricted
+            allowed_uses: []
+            event_ids: []
+            requesting_unit_ids: []
+            effective_from: null
+            effective_until: null
+            interpretation_id: null
+            source_condition_reference: null
+          immediately_allocatable: true
+          posted_by: 10000000-0000-4000-8000-000000000007
+          posted_at: '2026-11-26T08:40:00.000000Z'
+        - id: 97600000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          kind: rejected_receipt
+          source_kind: po_rm
+          rm_id: 97000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0002
+          rm_material_version: 1
+          rm_line_id: 97000000-0000-4000-8000-000000000011
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_material_version: 2
+          source_line_id: 96000000-0000-4000-8000-000000000102
+          lot_id: 97300000-0000-4000-8000-000000000002
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          location_id: 61000000-0000-4000-8000-000000000001
+          quantity: '10'
+          unit_valuation_php: '240.00'
+          total_value_php: '2400.00'
+          currency: PHP
+          condition: rejected
+          restrictions:
+            state: unrestricted
+            allowed_uses: []
+            event_ids: []
+            requesting_unit_ids: []
+            effective_from: null
+            effective_until: null
+            interpretation_id: null
+            source_condition_reference: null
+          immediately_allocatable: false
+          posted_by: 10000000-0000-4000-8000-000000000007
+          posted_at: '2026-11-26T08:40:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 21
+  - name: stage2-05-rm-discrepancies
+    operationId: listReceivingReportDiscrepancies
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 97100000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          status: open
+          version: 1
+          material_version: 1
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_line_id: 96000000-0000-4000-8000-000000000102
+          rm_id: 97000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0002
+          rm_line_id: 97000000-0000-4000-8000-000000000011
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          quantity_scale: 0
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          total_discrepant_quantity: '10'
+          quarantined_lot_id: null
+          rejected_lot_id: 97300000-0000-4000-8000-000000000002
+          quarantined_lots_auto_cleared_on_source_close: false
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          supplier_notification: null
+          review_started_by: null
+          review_started_at: null
+          review_notes: null
+          resolution: null
+          created_at: '2026-11-26T08:40:00.000000Z'
+          updated_at: '2026-11-26T08:40:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 21
+  - name: stage2-05-rm-history
+    operationId: listReceivingReportHistory
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 97800000-0000-4000-8000-000000000002
+          version: 4
+          material_version: 1
+          action: posted
+          from_status: evidence_matched
+          to_status: posted
+          actor:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          reason: null
+          rm_reference: RM-2026-0002
+          evidence_binding_invalidated: false
+          occurred_at: '2026-11-26T08:40:00.000000Z'
+        - id: 97800000-0000-4000-8000-000000000001
+          version: 1
+          material_version: 1
+          action: created
+          from_status: null
+          to_status: draft
+          actor:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          reason: null
+          rm_reference: null
+          evidence_binding_invalidated: false
+          occurred_at: '2026-11-26T08:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 21
+  - name: stage2-05-rm-read-version
+    operationId: readReceivingReportVersion
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+        version: 1
+    response:
+      status: '200'
+      body:
+        data:
+          id: 97000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          rm_reference: null
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_material_version: 2
+          originating_hold_id: 97200000-0000-4000-8000-000000000001
+          supplier_dr_reference: DR-SUP-2026-881
+          supplier_dr_date: '2026-11-26'
+          status: draft
+          version: 1
+          material_version: 1
+          location_id: 61000000-0000-4000-8000-000000000001
+          currency: PHP
+          accepted_total_value_php: '9600.00'
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          inspection: null
+          snapshot: null
+          evidence_acknowledgment: null
+          posted_by: null
+          posted_at: null
+          posting_stock_version: null
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+          - id: 97000000-0000-4000-8000-000000000011
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            delivered_quantity: '50'
+            accepted_quantity: '40'
+            damaged_quantity: '0'
+            rejected_quantity: '10'
+            unit_valuation_php: '240.00'
+            accepted_value_php: '9600.00'
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+            discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+            resolves_discrepancy_id: null
+          created_at: '2026-11-26T08:00:00.000000Z'
+          updated_at: '2026-11-26T08:00:00.000000Z'
+  - name: stage2-05-rm-related
+    operationId: listReceivingReportRelated
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+        - kind: purchase_order
+          id: 96000000-0000-4000-8000-000000000101
+          rm_line_id: 97000000-0000-4000-8000-000000000011
+          reference: PO-2026-0001
+          material_version: 2
+          state: partially_received
+        - kind: stock_lot
+          id: 97300000-0000-4000-8000-000000000001
+          rm_line_id: 97000000-0000-4000-8000-000000000011
+          reference: RM-2026-0002
+          material_version: 1
+          state: usable
+        - kind: receiving_discrepancy
+          id: 97100000-0000-4000-8000-000000000001
+          rm_line_id: 97000000-0000-4000-8000-000000000011
+          reference: RM-2026-0002
+          material_version: 1
+          state: open
+        - kind: receiving_hold
+          id: 97200000-0000-4000-8000-000000000001
+          rm_line_id: null
+          reference: WAYBILL-7721
+          material_version: 2
+          state: linked_to_source
+        page:
+          next_cursor: null
+          snapshot_version: 21
+  - name: stage2-05-rm-print
+    operationId: printReceivingReport
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      headers:
+        Accept: text/html
+    response:
+      status: '200'
+      media_type: text/html
+      headers:
+        Cache-Control: no-store
+        Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action
+          'none'
+        X-Content-Type-Options: nosniff
+      body: '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>RM-2026-0002</title></head><body><h1>Receiving
+        Report RM-2026-0002</h1><p>Source: PO-2026-0001 / DR-SUP-2026-881 | Accepted: 40 | Rejected: 10 | PHP 9600.00</p></body></html>'
+  - name: stage2-05-rm-overdelivery-blocked-conflict
+    operationId: inspectReceivingReport
+    before: Unamended PO overdelivery (65 delivered against 60 remaining open on PO-2026-0001) rejects with 409 substitution_or_overdelivery_blocked
+      (RCV-07).
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000002
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000591
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        source_material_version: 2
+        technical_or_requesting_representative_id: null
+        inspected_at: '2026-11-27T09:05:00.000000Z'
+        inspection_notes: Supplier shipped 65 instead of remaining 60 without approved PO amendment.
+        lines:
+        - source_line_id: 96000000-0000-4000-8000-000000000102
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          delivered_quantity: '65'
+          accepted_quantity: '65'
+          damaged_quantity: '0'
+          rejected_quantity: '0'
+          unit_valuation_php: '240.00'
+          discrepancy_notes: null
+          resolves_discrepancy_id: null
+    response:
+      status: '409'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000591
+        error:
+          code: substitution_or_overdelivery_blocked
+          message: Accepted quantity 65 exceeds PO line outstanding quantity 60; approved PO amendment is required before receiving.
+        failed_intent_committed: false
+        current:
+          id: 97000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          rm_reference: null
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_material_version: 2
+          originating_hold_id: 97200000-0000-4000-8000-000000000001
+          supplier_dr_reference: DR-SUP-2026-881
+          supplier_dr_date: '2026-11-26'
+          status: draft
+          version: 1
+          material_version: 1
+          location_id: 61000000-0000-4000-8000-000000000001
+          currency: PHP
+          accepted_total_value_php: '9600.00'
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          inspection: null
+          snapshot: null
+          evidence_acknowledgment: null
+          posted_by: null
+          posted_at: null
+          posting_stock_version: null
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+          - id: 97000000-0000-4000-8000-000000000011
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            delivered_quantity: '50'
+            accepted_quantity: '40'
+            damaged_quantity: '0'
+            rejected_quantity: '10'
+            unit_valuation_php: '240.00'
+            accepted_value_php: '9600.00'
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+            discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+            resolves_discrepancy_id: null
+          created_at: '2026-11-26T08:00:00.000000Z'
+          updated_at: '2026-11-26T08:00:00.000000Z'
+        setup_blockers: []
+  - name: stage2-05-rm-ineligible-source-blocked
+    operationId: createReceivingReport
+    before: Draft/unissued PO cannot be received against (409 source_not_eligible).
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000592
+      body:
+        source_kind: po
+        source_id: 96000000-0000-4000-8000-000000000199
+        source_material_version: 1
+        originating_hold_id: null
+        supplier_dr_reference: DR-UNISSUED-01
+        supplier_dr_date: '2026-11-26'
+        location_id: 61000000-0000-4000-8000-000000000001
+        lines:
+        - source_line_id: 96000000-0000-4000-8000-000000000102
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          delivered_quantity: '50'
+          accepted_quantity: '40'
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          unit_valuation_php: '240.00'
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          resolves_discrepancy_id: null
+    response:
+      status: '409'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000592
+        error:
+          code: source_not_eligible
+          message: Purchase Order is in pending_approval status and must be issued or partially_received before receiving.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+  - name: stage2-05-rm-immutable-posted-edit-rejected
+    operationId: replaceReceivingReport
+    before_status: posted
+    before: Posted RM-2026-0002 is immutable; replacement deliveries must use a new PO-RM.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        rm_id: 97000000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000593
+      body:
+        expected_version: 4
+        expected_material_version: 1
+        source_material_version: 2
+        supplier_dr_reference: DR-SUP-2026-881
+        supplier_dr_date: '2026-11-26'
+        location_id: 61000000-0000-4000-8000-000000000001
+        lines:
+        - source_line_id: 96000000-0000-4000-8000-000000000102
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          delivered_quantity: '50'
+          accepted_quantity: '40'
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          unit_valuation_php: '240.00'
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          resolves_discrepancy_id: null
+    response:
+      status: '409'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000593
+        error:
+          code: invalid_transition
+          message: Posted Receiving Reports are immutable; record supplier replacements through a new PO-RM.
+        failed_intent_committed: false
+        current:
+          id: 97000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0002
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_material_version: 2
+          originating_hold_id: 97200000-0000-4000-8000-000000000001
+          supplier_dr_reference: DR-SUP-2026-881
+          supplier_dr_date: '2026-11-26'
+          status: posted
+          version: 4
+          material_version: 1
+          location_id: 61000000-0000-4000-8000-000000000001
+          currency: PHP
+          accepted_total_value_php: '9600.00'
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          inspection:
+            inspector:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            technical_or_requesting_representative:
+              user_id: 10000000-0000-4000-8000-000000000008
+              display_name: Marco Technical
+            inspected_at: '2026-11-26T08:15:00.000000Z'
+            inspection_notes: Counted 50 shirts against PO-2026-0001 (ordered 100); 40 pass QA, 10 rejected for print defect.
+          snapshot:
+            target:
+              purpose: po_supplier_dr
+              record_id: 97000000-0000-4000-8000-000000000001
+            material_version: 1
+            sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+          evidence_acknowledgment:
+            acknowledgment_id: 97500000-0000-4000-8000-000000000001
+            matched_by: 10000000-0000-4000-8000-000000000007
+            matched_at: '2026-11-26T08:25:00.000000Z'
+            recipient_id: null
+            acknowledged_at: '2026-11-26T08:25:00.000000Z'
+            snapshot:
+              target:
+                purpose: po_supplier_dr
+                record_id: 97000000-0000-4000-8000-000000000001
+              material_version: 1
+              sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+            bytes:
+              evidence_id: 97400000-0000-4000-8000-000000000011
+              version_id: 97400000-0000-4000-8000-000000000012
+              attachments:
+              - attachment_id: 97400000-0000-4000-8000-000000000013
+                sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          posted_by:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          posted_at: '2026-11-26T08:40:00.000000Z'
+          posting_stock_version: 21
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+          - id: 97000000-0000-4000-8000-000000000011
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            delivered_quantity: '50'
+            accepted_quantity: '40'
+            damaged_quantity: '0'
+            rejected_quantity: '10'
+            unit_valuation_php: '240.00'
+            accepted_value_php: '9600.00'
+            restrictions:
+              state: unrestricted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: null
+            discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+            resolves_discrepancy_id: null
+          created_at: '2026-11-26T08:00:00.000000Z'
+          updated_at: '2026-11-26T08:40:00.000000Z'
+        setup_blockers: []
+  - name: stage2-05-discrepancy-list
+    operationId: listReceivingDiscrepancies
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        status: open
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 97100000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          status: open
+          version: 1
+          material_version: 1
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_line_id: 96000000-0000-4000-8000-000000000102
+          rm_id: 97000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0002
+          rm_line_id: 97000000-0000-4000-8000-000000000011
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          quantity_scale: 0
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          total_discrepant_quantity: '10'
+          quarantined_lot_id: null
+          rejected_lot_id: 97300000-0000-4000-8000-000000000002
+          quarantined_lots_auto_cleared_on_source_close: false
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          supplier_notification: null
+          review_started_by: null
+          review_started_at: null
+          review_notes: null
+          resolution: null
+          created_at: '2026-11-26T08:40:00.000000Z'
+          updated_at: '2026-11-26T08:40:00.000000Z'
+        - id: 97100000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          status: open
+          version: 1
+          material_version: 1
+          source_kind: da
+          source_id: 80000000-0000-4000-8000-000000000004
+          source_reference: DA-2026-0001
+          source_line_id: 80000000-0000-4000-8000-00000000000c
+          rm_id: 97000000-0000-4000-8000-000000000003
+          rm_reference: RM-2026-0004
+          rm_line_id: 97000000-0000-4000-8000-000000000032
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          quantity_scale: 0
+          damaged_quantity: '2'
+          rejected_quantity: '0'
+          total_discrepant_quantity: '2'
+          quarantined_lot_id: 97300000-0000-4000-8000-000000000006
+          rejected_lot_id: null
+          quarantined_lots_auto_cleared_on_source_close: false
+          discrepancy_notes: 2 donated shirts water-stained during transit; placed in quarantine.
+          supplier_notification: null
+          review_started_by: null
+          review_started_at: null
+          review_notes: null
+          resolution: null
+          created_at: '2026-11-27T10:20:00.000000Z'
+          updated_at: '2026-11-27T10:20:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 23
+  - name: stage2-05-discrepancy-read
+    operationId: readReceivingDiscrepancy
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        discrepancy_id: 97100000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          id: 97100000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          status: open
+          version: 1
+          material_version: 1
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_line_id: 96000000-0000-4000-8000-000000000102
+          rm_id: 97000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0002
+          rm_line_id: 97000000-0000-4000-8000-000000000011
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          quantity_scale: 0
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          total_discrepant_quantity: '10'
+          quarantined_lot_id: null
+          rejected_lot_id: 97300000-0000-4000-8000-000000000002
+          quarantined_lots_auto_cleared_on_source_close: false
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          supplier_notification: null
+          review_started_by: null
+          review_started_at: null
+          review_notes: null
+          resolution: null
+          created_at: '2026-11-26T08:40:00.000000Z'
+          updated_at: '2026-11-26T08:40:00.000000Z'
+  - name: stage2-05-discrepancy-notify-supplier
+    operationId: notifySupplierOfReceivingDiscrepancy
+    before_status: open
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        discrepancy_id: 97100000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000509
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        supplier_contact_reference: Cebu Print House / +63-917-555-0102
+        notification_notes: Notified supplier of 10 rejected shirts; requested replacement batch on remaining PO.
+        expected_resolution_date: '2026-11-27'
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000009
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000005
+          operation_name: notifySupplierOfReceivingDiscrepancy
+          action_key: 40000000-0000-4000-8000-000000000509
+          resource_kind: receiving_discrepancy
+          resource_id: 97100000-0000-4000-8000-000000000001
+          committed_version: 2
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T09:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 97100000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            status: supplier_notified
+            version: 2
+            material_version: 1
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            rm_id: 97000000-0000-4000-8000-000000000001
+            rm_reference: RM-2026-0002
+            rm_line_id: 97000000-0000-4000-8000-000000000011
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            damaged_quantity: '0'
+            rejected_quantity: '10'
+            total_discrepant_quantity: '10'
+            quarantined_lot_id: null
+            rejected_lot_id: 97300000-0000-4000-8000-000000000002
+            quarantined_lots_auto_cleared_on_source_close: false
+            discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+            supplier_notification:
+              notified_by:
+                user_id: 10000000-0000-4000-8000-000000000005
+                display_name: Ana Purchasing
+              notified_at: '2026-11-26T09:00:00.000000Z'
+              supplier_contact_reference: Cebu Print House / +63-917-555-0102
+              notification_notes: Notified supplier of 10 rejected shirts; requested replacement batch on remaining PO.
+              expected_resolution_date: '2026-11-27'
+            review_started_by: null
+            review_started_at: null
+            review_notes: null
+            resolution: null
+            created_at: '2026-11-26T08:40:00.000000Z'
+            updated_at: '2026-11-26T09:00:00.000000Z'
+  - name: stage2-05-discrepancy-start-review
+    operationId: resolveReceivingDiscrepancy
+    before_status: supplier_notified
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        discrepancy_id: 97100000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000519
+      body:
+        action: start_review
+        expected_version: 2
+        expected_material_version: 1
+        review_notes: Supplier confirmed replacement delivery and return pickup of 10 defective units.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000019
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: resolveReceivingDiscrepancy
+          action_key: 40000000-0000-4000-8000-000000000519
+          resource_kind: receiving_discrepancy
+          resource_id: 97100000-0000-4000-8000-000000000001
+          committed_version: 3
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-27T08:50:00.000000Z'
+          outcome: committed
+          result:
+            id: 97100000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            status: under_review
+            version: 3
+            material_version: 1
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            rm_id: 97000000-0000-4000-8000-000000000001
+            rm_reference: RM-2026-0002
+            rm_line_id: 97000000-0000-4000-8000-000000000011
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            damaged_quantity: '0'
+            rejected_quantity: '10'
+            total_discrepant_quantity: '10'
+            quarantined_lot_id: null
+            rejected_lot_id: 97300000-0000-4000-8000-000000000002
+            quarantined_lots_auto_cleared_on_source_close: false
+            discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+            supplier_notification:
+              notified_by:
+                user_id: 10000000-0000-4000-8000-000000000005
+                display_name: Ana Purchasing
+              notified_at: '2026-11-26T09:00:00.000000Z'
+              supplier_contact_reference: Cebu Print House / +63-917-555-0102
+              notification_notes: Notified supplier of 10 rejected shirts; requested replacement batch on remaining PO.
+              expected_resolution_date: '2026-11-27'
+            review_started_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            review_started_at: '2026-11-27T08:50:00.000000Z'
+            review_notes: Supplier confirmed replacement delivery and return pickup of 10 defective units.
+            resolution: null
+            created_at: '2026-11-26T08:40:00.000000Z'
+            updated_at: '2026-11-27T08:50:00.000000Z'
+  - name: stage2-05-discrepancy-resolve-po-replacement
+    operationId: resolveReceivingDiscrepancy
+    before_status: under_review
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      discrepancy_id: 97100000-0000-4000-8000-000000000001
+      material_version: 1
+      resolution_kind: supplier_replacement_received
+      reason: Supplier delivered 60 compliant replacement/balance units under RM-2026-0003 and picked up 10 rejected units.
+      replacement_rm_id: 97000000-0000-4000-8000-000000000002
+      quarantined_lot_disposition: returned_to_supplier_physically
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        discrepancy_id: 97100000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000510
+      body:
+        action: resolve
+        expected_version: 3
+        expected_material_version: 1
+        resolution_kind: supplier_replacement_received
+        reason: Supplier delivered 60 compliant replacement/balance units under RM-2026-0003 and picked up 10 rejected units.
+        replacement_rm_id: 97000000-0000-4000-8000-000000000002
+        quarantined_lot_disposition: returned_to_supplier_physically
+        evidence:
+          evidence_id: 97400000-0000-4000-8000-000000000041
+          version_id: 97400000-0000-4000-8000-000000000042
+          attachments:
+          - attachment_id: 97400000-0000-4000-8000-000000000043
+            sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+        signed_at: '2026-11-27T09:30:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000010
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: resolveReceivingDiscrepancy
+          action_key: 40000000-0000-4000-8000-000000000510
+          resource_kind: receiving_discrepancy
+          resource_id: 97100000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-27T09:30:00.000000Z'
+          outcome: committed
+          result:
+            id: 97100000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            status: resolved
+            version: 4
+            material_version: 2
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            rm_id: 97000000-0000-4000-8000-000000000001
+            rm_reference: RM-2026-0002
+            rm_line_id: 97000000-0000-4000-8000-000000000011
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            damaged_quantity: '0'
+            rejected_quantity: '10'
+            total_discrepant_quantity: '10'
+            quarantined_lot_id: null
+            rejected_lot_id: 97300000-0000-4000-8000-000000000002
+            quarantined_lots_auto_cleared_on_source_close: false
+            discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+            supplier_notification:
+              notified_by:
+                user_id: 10000000-0000-4000-8000-000000000005
+                display_name: Ana Purchasing
+              notified_at: '2026-11-26T09:00:00.000000Z'
+              supplier_contact_reference: Cebu Print House / +63-917-555-0102
+              notification_notes: Notified supplier of 10 rejected shirts; requested replacement batch on remaining PO.
+              expected_resolution_date: '2026-11-27'
+            review_started_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            review_started_at: '2026-11-27T08:50:00.000000Z'
+            review_notes: Supplier confirmed replacement delivery and return pickup of 10 defective units.
+            resolution:
+              resolution_kind: supplier_replacement_received
+              resolved_by:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              resolved_at: '2026-11-27T09:30:00.000000Z'
+              reason: Supplier delivered 60 compliant replacement/balance units under RM-2026-0003 and picked up 10 rejected
+                units.
+              replacement_rm_id: 97000000-0000-4000-8000-000000000002
+              replacement_rm_reference: RM-2026-0003
+              quarantined_lot_disposition: returned_to_supplier_physically
+              evidence_acknowledgment:
+                acknowledgment_id: 97500000-0000-4000-8000-000000000004
+                matched_by: 10000000-0000-4000-8000-000000000007
+                matched_at: '2026-11-27T09:30:00.000000Z'
+                recipient_id: null
+                acknowledged_at: '2026-11-27T09:30:00.000000Z'
+                snapshot:
+                  target:
+                    purpose: receiving_discrepancy
+                    record_id: 97100000-0000-4000-8000-000000000001
+                  material_version: 1
+                  sha256: e3a5c3a0906603cec06e4ab67c5c64d16d6413a1795be7e517ab90c68bd40c9e
+                bytes:
+                  evidence_id: 97400000-0000-4000-8000-000000000041
+                  version_id: 97400000-0000-4000-8000-000000000042
+                  attachments:
+                  - attachment_id: 97400000-0000-4000-8000-000000000043
+                    sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+            created_at: '2026-11-26T08:40:00.000000Z'
+            updated_at: '2026-11-27T09:30:00.000000Z'
+  - name: stage2-05-discrepancy-resolve-da-disposed
+    operationId: resolveReceivingDiscrepancy
+    before_status: open
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      discrepancy_id: 97100000-0000-4000-8000-000000000002
+      material_version: 1
+      resolution_kind: donated_declined_or_disposed
+      reason: 2 water-stained donated shirts disposed per chapter sanitation policy with witness sign-off.
+      replacement_rm_id: null
+      quarantined_lot_disposition: disposed_per_policy
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        discrepancy_id: 97100000-0000-4000-8000-000000000002
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000511
+      body:
+        action: resolve
+        expected_version: 1
+        expected_material_version: 1
+        resolution_kind: donated_declined_or_disposed
+        reason: 2 water-stained donated shirts disposed per chapter sanitation policy with witness sign-off.
+        replacement_rm_id: null
+        quarantined_lot_disposition: disposed_per_policy
+        evidence:
+          evidence_id: 97400000-0000-4000-8000-000000000051
+          version_id: 97400000-0000-4000-8000-000000000052
+          attachments:
+          - attachment_id: 97400000-0000-4000-8000-000000000053
+            sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        signed_at: '2026-11-27T11:00:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000011
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: resolveReceivingDiscrepancy
+          action_key: 40000000-0000-4000-8000-000000000511
+          resource_kind: receiving_discrepancy
+          resource_id: 97100000-0000-4000-8000-000000000002
+          committed_version: 2
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-27T11:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 97100000-0000-4000-8000-000000000002
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            status: resolved
+            version: 2
+            material_version: 2
+            source_kind: da
+            source_id: 80000000-0000-4000-8000-000000000004
+            source_reference: DA-2026-0001
+            source_line_id: 80000000-0000-4000-8000-00000000000c
+            rm_id: 97000000-0000-4000-8000-000000000003
+            rm_reference: RM-2026-0004
+            rm_line_id: 97000000-0000-4000-8000-000000000032
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            damaged_quantity: '2'
+            rejected_quantity: '0'
+            total_discrepant_quantity: '2'
+            quarantined_lot_id: 97300000-0000-4000-8000-000000000006
+            rejected_lot_id: null
+            quarantined_lots_auto_cleared_on_source_close: false
+            discrepancy_notes: 2 donated shirts water-stained during transit; placed in quarantine.
+            supplier_notification: null
+            review_started_by: null
+            review_started_at: null
+            review_notes: null
+            resolution:
+              resolution_kind: donated_declined_or_disposed
+              resolved_by:
+                user_id: 10000000-0000-4000-8000-000000000003
+                display_name: Carlo Chapter Head
+              resolved_at: '2026-11-27T11:00:00.000000Z'
+              reason: 2 water-stained donated shirts disposed per chapter sanitation policy with witness sign-off.
+              replacement_rm_id: null
+              replacement_rm_reference: null
+              quarantined_lot_disposition: disposed_per_policy
+              evidence_acknowledgment:
+                acknowledgment_id: 97500000-0000-4000-8000-000000000005
+                matched_by: 10000000-0000-4000-8000-000000000003
+                matched_at: '2026-11-27T11:00:00.000000Z'
+                recipient_id: null
+                acknowledged_at: '2026-11-27T11:00:00.000000Z'
+                snapshot:
+                  target:
+                    purpose: receiving_discrepancy
+                    record_id: 97100000-0000-4000-8000-000000000002
+                  material_version: 1
+                  sha256: b6833b6bcf6dc48d4bdd436f6af90100289e09c2e2d30785cf0f77a63d2cf3de
+                bytes:
+                  evidence_id: 97400000-0000-4000-8000-000000000051
+                  version_id: 97400000-0000-4000-8000-000000000052
+                  attachments:
+                  - attachment_id: 97400000-0000-4000-8000-000000000053
+                    sha256: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+            created_at: '2026-11-27T10:20:00.000000Z'
+            updated_at: '2026-11-27T11:00:00.000000Z'
+  - name: stage2-05-discrepancy-notify-da-blocked
+    operationId: notifySupplierOfReceivingDiscrepancy
+    before: DA discrepancy has no supplier and rejects notify-supplier with 409 source_not_eligible.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        discrepancy_id: 97100000-0000-4000-8000-000000000002
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000594
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        supplier_contact_reference: N/A
+        notification_notes: Attempted supplier notification on donation discrepancy.
+        expected_resolution_date: null
+    response:
+      status: '409'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000594
+        error:
+          code: source_not_eligible
+          message: notify-supplier applies only to PO receiving discrepancies (source_kind po).
+        failed_intent_committed: false
+        current:
+          id: 97100000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          status: open
+          version: 1
+          material_version: 1
+          source_kind: da
+          source_id: 80000000-0000-4000-8000-000000000004
+          source_reference: DA-2026-0001
+          source_line_id: 80000000-0000-4000-8000-00000000000c
+          rm_id: 97000000-0000-4000-8000-000000000003
+          rm_reference: RM-2026-0004
+          rm_line_id: 97000000-0000-4000-8000-000000000032
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          quantity_scale: 0
+          damaged_quantity: '2'
+          rejected_quantity: '0'
+          total_discrepant_quantity: '2'
+          quarantined_lot_id: 97300000-0000-4000-8000-000000000006
+          rejected_lot_id: null
+          quarantined_lots_auto_cleared_on_source_close: false
+          discrepancy_notes: 2 donated shirts water-stained during transit; placed in quarantine.
+          supplier_notification: null
+          review_started_by: null
+          review_started_at: null
+          review_notes: null
+          resolution: null
+          created_at: '2026-11-27T10:20:00.000000Z'
+          updated_at: '2026-11-27T10:20:00.000000Z'
+        setup_blockers: []
+  - name: stage2-05-discrepancy-already-resolved-conflict
+    operationId: resolveReceivingDiscrepancy
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        discrepancy_id: 97100000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000595
+      body:
+        action: start_review
+        expected_version: 4
+        expected_material_version: 2
+        review_notes: Attempted review on already resolved discrepancy.
+    response:
+      status: '409'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000595
+        error:
+          code: discrepancy_already_resolved
+          message: Receiving discrepancy is already resolved.
+        failed_intent_committed: false
+        current:
+          id: 97100000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          status: resolved
+          version: 4
+          material_version: 2
+          source_kind: po
+          source_id: 96000000-0000-4000-8000-000000000101
+          source_reference: PO-2026-0001
+          source_line_id: 96000000-0000-4000-8000-000000000102
+          rm_id: 97000000-0000-4000-8000-000000000001
+          rm_reference: RM-2026-0002
+          rm_line_id: 97000000-0000-4000-8000-000000000011
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          quantity_scale: 0
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          total_discrepant_quantity: '10'
+          quarantined_lot_id: null
+          rejected_lot_id: 97300000-0000-4000-8000-000000000002
+          quarantined_lots_auto_cleared_on_source_close: false
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          supplier_notification:
+            notified_by:
+              user_id: 10000000-0000-4000-8000-000000000005
+              display_name: Ana Purchasing
+            notified_at: '2026-11-26T09:00:00.000000Z'
+            supplier_contact_reference: Cebu Print House / +63-917-555-0102
+            notification_notes: Notified supplier of 10 rejected shirts; requested replacement batch on remaining PO.
+            expected_resolution_date: '2026-11-27'
+          review_started_by:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          review_started_at: '2026-11-27T08:50:00.000000Z'
+          review_notes: Supplier confirmed replacement delivery and return pickup of 10 defective units.
+          resolution:
+            resolution_kind: supplier_replacement_received
+            resolved_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            resolved_at: '2026-11-27T09:30:00.000000Z'
+            reason: Supplier delivered 60 compliant replacement/balance units under RM-2026-0003 and picked up 10 rejected units.
+            replacement_rm_id: 97000000-0000-4000-8000-000000000002
+            replacement_rm_reference: RM-2026-0003
+            quarantined_lot_disposition: returned_to_supplier_physically
+            evidence_acknowledgment:
+              acknowledgment_id: 97500000-0000-4000-8000-000000000004
+              matched_by: 10000000-0000-4000-8000-000000000007
+              matched_at: '2026-11-27T09:30:00.000000Z'
+              recipient_id: null
+              acknowledged_at: '2026-11-27T09:30:00.000000Z'
+              snapshot:
+                target:
+                  purpose: receiving_discrepancy
+                  record_id: 97100000-0000-4000-8000-000000000001
+                material_version: 1
+                sha256: e3a5c3a0906603cec06e4ab67c5c64d16d6413a1795be7e517ab90c68bd40c9e
+              bytes:
+                evidence_id: 97400000-0000-4000-8000-000000000041
+                version_id: 97400000-0000-4000-8000-000000000042
+                attachments:
+                - attachment_id: 97400000-0000-4000-8000-000000000043
+                  sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+          created_at: '2026-11-26T08:40:00.000000Z'
+          updated_at: '2026-11-27T09:30:00.000000Z'
+        setup_blockers: []
+  - name: stage2-05-hold-create
+    operationId: createReceivingHold
+    before_status: absent
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000512
+      body:
+        arrived_at: '2026-11-26T07:30:00.000000Z'
+        holding_location_id: 61000000-0000-4000-8000-000000000009
+        carrier_or_sender_name: Metro Express Courier
+        sender_kind: carrier
+        delivery_document_reference: WAYBILL-7721
+        hold_reason: Courier presented waybill without matching approved PO reference or supplier DR.
+        items:
+        - variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          item_description: Chapter Shirt / Medium — unmarked carton
+          arrived_quantity: '50'
+          condition_notes: Sealed carton arrived without printed PO reference.
+        intake_evidence: null
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000012
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: createReceivingHold
+          action_key: 40000000-0000-4000-8000-000000000512
+          resource_kind: receiving_hold
+          resource_id: 97200000-0000-4000-8000-000000000001
+          committed_version: 1
+          committed_material_version: 1
+          status_code: 201
+          committed_at: '2026-11-26T07:35:00.000000Z'
+          outcome: committed
+          result:
+            id: 97200000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            status: held
+            version: 1
+            material_version: 1
+            arrived_at: '2026-11-26T07:30:00.000000Z'
+            holding_location_id: 61000000-0000-4000-8000-000000000009
+            carrier_or_sender_name: Metro Express Courier
+            sender_kind: carrier
+            delivery_document_reference: WAYBILL-7721
+            hold_reason: Courier presented waybill without matching approved PO reference or supplier DR.
+            usable_stock_posted: false
+            ipc_creation_prohibited: true
+            items:
+            - id: 97210000-0000-4000-8000-000000000001
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              item_description: Chapter Shirt / Medium — unmarked carton
+              arrived_quantity: '50'
+              condition_notes: Sealed carton arrived without printed PO reference.
+            intake_evidence: null
+            recorded_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            linked_source: null
+            rejection_return: null
+            created_at: '2026-11-26T07:35:00.000000Z'
+            updated_at: '2026-11-26T07:35:00.000000Z'
+  - name: stage2-05-hold-list
+    operationId: listReceivingHolds
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        status: held
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 97200000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          status: held
+          version: 1
+          material_version: 1
+          arrived_at: '2026-11-26T07:30:00.000000Z'
+          holding_location_id: 61000000-0000-4000-8000-000000000009
+          carrier_or_sender_name: Metro Express Courier
+          sender_kind: carrier
+          delivery_document_reference: WAYBILL-7721
+          hold_reason: Courier presented waybill without matching approved PO reference or supplier DR.
+          usable_stock_posted: false
+          ipc_creation_prohibited: true
+          items:
+          - id: 97210000-0000-4000-8000-000000000001
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            item_description: Chapter Shirt / Medium — unmarked carton
+            arrived_quantity: '50'
+            condition_notes: Sealed carton arrived without printed PO reference.
+          intake_evidence: null
+          recorded_by:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          linked_source: null
+          rejection_return: null
+          created_at: '2026-11-26T07:35:00.000000Z'
+          updated_at: '2026-11-26T07:35:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 20
+  - name: stage2-05-hold-read
+    operationId: readReceivingHold
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        hold_id: 97200000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          id: 97200000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          status: held
+          version: 1
+          material_version: 1
+          arrived_at: '2026-11-26T07:30:00.000000Z'
+          holding_location_id: 61000000-0000-4000-8000-000000000009
+          carrier_or_sender_name: Metro Express Courier
+          sender_kind: carrier
+          delivery_document_reference: WAYBILL-7721
+          hold_reason: Courier presented waybill without matching approved PO reference or supplier DR.
+          usable_stock_posted: false
+          ipc_creation_prohibited: true
+          items:
+          - id: 97210000-0000-4000-8000-000000000001
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            item_description: Chapter Shirt / Medium — unmarked carton
+            arrived_quantity: '50'
+            condition_notes: Sealed carton arrived without printed PO reference.
+          intake_evidence: null
+          recorded_by:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          linked_source: null
+          rejection_return: null
+          created_at: '2026-11-26T07:35:00.000000Z'
+          updated_at: '2026-11-26T07:35:00.000000Z'
+  - name: stage2-05-hold-link-source-po
+    operationId: linkReceivingHoldSource
+    before_status: held
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        hold_id: 97200000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000513
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        source_kind: po
+        source_id: 96000000-0000-4000-8000-000000000101
+        supplier_dr_reference: DR-SUP-2026-881
+        supplier_dr_date: '2026-11-26'
+        link_notes: Supplier sent signed DR-SUP-2026-881 referencing issued PO-2026-0001; unlocked RM intake.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000013
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: linkReceivingHoldSource
+          action_key: 40000000-0000-4000-8000-000000000513
+          resource_kind: receiving_hold
+          resource_id: 97200000-0000-4000-8000-000000000001
+          committed_version: 2
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T07:50:00.000000Z'
+          outcome: committed
+          result:
+            id: 97200000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            status: linked_to_source
+            version: 2
+            material_version: 2
+            arrived_at: '2026-11-26T07:30:00.000000Z'
+            holding_location_id: 61000000-0000-4000-8000-000000000009
+            carrier_or_sender_name: Metro Express Courier
+            sender_kind: carrier
+            delivery_document_reference: WAYBILL-7721
+            hold_reason: Courier presented waybill without matching approved PO reference or supplier DR.
+            usable_stock_posted: false
+            ipc_creation_prohibited: true
+            items:
+            - id: 97210000-0000-4000-8000-000000000001
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              item_description: Chapter Shirt / Medium — unmarked carton
+              arrived_quantity: '50'
+              condition_notes: Sealed carton arrived without printed PO reference.
+            intake_evidence: null
+            recorded_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            linked_source:
+              source_kind: po
+              source_id: 96000000-0000-4000-8000-000000000101
+              source_reference: PO-2026-0001
+              supplier_dr_reference: DR-SUP-2026-881
+              supplier_dr_date: '2026-11-26'
+              linked_by:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              linked_at: '2026-11-26T07:50:00.000000Z'
+              link_notes: Supplier sent signed DR-SUP-2026-881 referencing issued PO-2026-0001; unlocked RM intake.
+            rejection_return: null
+            created_at: '2026-11-26T07:35:00.000000Z'
+            updated_at: '2026-11-26T07:50:00.000000Z'
+  - name: stage2-05-hold-reject-return-with-evidence
+    operationId: rejectReturnReceivingHold
+    before_status: held
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      hold_id: 97200000-0000-4000-8000-000000000002
+      material_version: 1
+      reason: Unordered promotional flyers from unknown sender refused and returned to courier.
+      recipient_or_carrier_name: 'FastDrop Logistics Rider #14'
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        hold_id: 97200000-0000-4000-8000-000000000002
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000514
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        reason: Unordered promotional flyers from unknown sender refused and returned to courier.
+        recipient_or_carrier_name: 'FastDrop Logistics Rider #14'
+        evidence:
+          evidence_id: 97400000-0000-4000-8000-000000000061
+          version_id: 97400000-0000-4000-8000-000000000062
+          attachments:
+          - attachment_id: 97400000-0000-4000-8000-000000000063
+            sha256: ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+        signed_at: '2026-11-26T14:00:00.000000Z'
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000014
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: rejectReturnReceivingHold
+          action_key: 40000000-0000-4000-8000-000000000514
+          resource_kind: receiving_hold
+          resource_id: 97200000-0000-4000-8000-000000000002
+          committed_version: 2
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T14:00:00.000000Z'
+          outcome: committed
+          result:
+            id: 97200000-0000-4000-8000-000000000002
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            status: rejected_returned
+            version: 2
+            material_version: 2
+            arrived_at: '2026-11-26T13:00:00.000000Z'
+            holding_location_id: 61000000-0000-4000-8000-000000000009
+            carrier_or_sender_name: FastDrop Logistics
+            sender_kind: unknown
+            delivery_document_reference: null
+            hold_reason: No approved PO or acknowledged DA exists for unordered promotional box.
+            usable_stock_posted: false
+            ipc_creation_prohibited: true
+            items:
+            - id: 97210000-0000-4000-8000-000000000002
+              variant_id: null
+              unit_id: null
+              item_description: Unordered promotional flyer bundles
+              arrived_quantity: '200'
+              condition_notes: Unopened parcel kept in receiving holding cage.
+            intake_evidence: null
+            recorded_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            linked_source: null
+            rejection_return:
+              rejected_by:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              rejected_at: '2026-11-26T14:00:00.000000Z'
+              reason: Unordered promotional flyers from unknown sender refused and returned to courier.
+              recipient_or_carrier_name: 'FastDrop Logistics Rider #14'
+              evidence_acknowledgment:
+                acknowledgment_id: 97500000-0000-4000-8000-000000000006
+                matched_by: 10000000-0000-4000-8000-000000000007
+                matched_at: '2026-11-26T14:00:00.000000Z'
+                recipient_id: null
+                acknowledged_at: '2026-11-26T14:00:00.000000Z'
+                snapshot:
+                  target:
+                    purpose: missing_source_hold
+                    record_id: 97200000-0000-4000-8000-000000000002
+                  material_version: 1
+                  sha256: 7deac66ac477b39d17d20e89194113e11c5c0be2259bccdff1a998323fd21a9e
+                bytes:
+                  evidence_id: 97400000-0000-4000-8000-000000000061
+                  version_id: 97400000-0000-4000-8000-000000000062
+                  attachments:
+                  - attachment_id: 97400000-0000-4000-8000-000000000063
+                    sha256: ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+            created_at: '2026-11-26T13:05:00.000000Z'
+            updated_at: '2026-11-26T14:00:00.000000Z'
+  - name: stage2-05-hold-history
+    operationId: listReceivingHoldHistory
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        hold_id: 97200000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+        - id: 97810000-0000-4000-8000-000000000002
+          version: 2
+          material_version: 2
+          action: linked_to_source
+          from_status: held
+          to_status: linked_to_source
+          actor:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          reason: Supplier sent signed DR-SUP-2026-881 referencing issued PO-2026-0001; unlocked RM intake.
+          linked_source_reference: PO-2026-0001
+          occurred_at: '2026-11-26T07:50:00.000000Z'
+        - id: 97810000-0000-4000-8000-000000000001
+          version: 1
+          material_version: 1
+          action: held
+          from_status: null
+          to_status: held
+          actor:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          reason: Courier presented waybill without matching approved PO reference or supplier DR.
+          linked_source_reference: null
+          occurred_at: '2026-11-26T07:35:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 20
+  - name: stage2-05-hold-already-resolved-conflict
+    operationId: linkReceivingHoldSource
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        hold_id: 97200000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000596
+      body:
+        expected_version: 2
+        expected_material_version: 2
+        source_kind: po
+        source_id: 96000000-0000-4000-8000-000000000101
+        supplier_dr_reference: DR-SUP-2026-881
+        supplier_dr_date: '2026-11-26'
+        link_notes: Duplicate link attempt.
+    response:
+      status: '409'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000596
+        error:
+          code: hold_already_resolved
+          message: Missing-source delivery hold is already resolved (linked_to_source).
+        failed_intent_committed: false
+        current:
+          id: 97200000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          status: linked_to_source
+          version: 2
+          material_version: 2
+          arrived_at: '2026-11-26T07:30:00.000000Z'
+          holding_location_id: 61000000-0000-4000-8000-000000000009
+          carrier_or_sender_name: Metro Express Courier
+          sender_kind: carrier
+          delivery_document_reference: WAYBILL-7721
+          hold_reason: Courier presented waybill without matching approved PO reference or supplier DR.
+          usable_stock_posted: false
+          ipc_creation_prohibited: true
+          items:
+          - id: 97210000-0000-4000-8000-000000000001
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            item_description: Chapter Shirt / Medium — unmarked carton
+            arrived_quantity: '50'
+            condition_notes: Sealed carton arrived without printed PO reference.
+          intake_evidence: null
+          recorded_by:
+            user_id: 10000000-0000-4000-8000-000000000007
+            display_name: Elena Receiving
+          linked_source:
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            supplier_dr_reference: DR-SUP-2026-881
+            supplier_dr_date: '2026-11-26'
+            linked_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            linked_at: '2026-11-26T07:50:00.000000Z'
+            link_notes: Supplier sent signed DR-SUP-2026-881 referencing issued PO-2026-0001; unlocked RM intake.
+          rejection_return: null
+          created_at: '2026-11-26T07:35:00.000000Z'
+          updated_at: '2026-11-26T07:50:00.000000Z'
+        setup_blockers: []
+  - name: stage2-05-hold-link-ipc-forbidden-invalid
+    operationId: linkReceivingHoldSource
+    request_valid: false
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        hold_id: 97200000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000597
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        source_kind: ipc
+        source_id: 99000000-0000-4000-8000-000000000001
+        supplier_dr_reference: null
+        supplier_dr_date: null
+        link_notes: Attempted IPC creation from missing-source hold.
+    response:
+      status: '422'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000597
+        error:
+          code: invalid_input
+          message: Missing-source holds may link only to approved po or da sources; IPC creation is prohibited (RCV-10).
+          fields:
+          - pointer: /source_kind
+            code: invalid_format
+            message: source_kind must be po or da
+  - name: stage2-05-rm-po-missing-dr-invalid
+    operationId: createReceivingReport
+    request_valid: false
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000598
+      body:
+        source_kind: po
+        source_id: 96000000-0000-4000-8000-000000000101
+        source_material_version: 2
+        originating_hold_id: null
+        supplier_dr_reference: null
+        supplier_dr_date: null
+        location_id: 61000000-0000-4000-8000-000000000001
+        lines:
+        - source_line_id: 96000000-0000-4000-8000-000000000102
+          variant_id: 95000000-0000-4000-8000-000000000051
+          unit_id: 95000000-0000-4000-8000-000000000052
+          delivered_quantity: '50'
+          accepted_quantity: '40'
+          damaged_quantity: '0'
+          rejected_quantity: '10'
+          unit_valuation_php: '240.00'
+          discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+          resolves_discrepancy_id: null
+    response:
+      status: '422'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000598
+        error:
+          code: invalid_input
+          message: PO Receiving Reports require supplier_dr_reference and supplier_dr_date (RCV-01).
+          fields:
+          - pointer: /supplier_dr_reference
+            code: required
+            message: supplier_dr_reference is required for source_kind po
+          - pointer: /supplier_dr_date
+            code: required
+            message: supplier_dr_date is required for source_kind po
+  - name: stage2-05-recovery-by-key-post-rm
+    operationId: findReceivingOperationByKey
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        operation_name: postReceivingReport
+        action_key: 40000000-0000-4000-8000-000000000505
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000005
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: postReceivingReport
+          action_key: 40000000-0000-4000-8000-000000000505
+          resource_kind: receiving_report
+          resource_id: 97000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T08:40:00.000000Z'
+          outcome: committed
+          result:
+            id: 97000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            rm_reference: RM-2026-0002
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_material_version: 2
+            originating_hold_id: 97200000-0000-4000-8000-000000000001
+            supplier_dr_reference: DR-SUP-2026-881
+            supplier_dr_date: '2026-11-26'
+            status: posted
+            version: 4
+            material_version: 1
+            location_id: 61000000-0000-4000-8000-000000000001
+            currency: PHP
+            accepted_total_value_php: '9600.00'
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            inspection:
+              inspector:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              technical_or_requesting_representative:
+                user_id: 10000000-0000-4000-8000-000000000008
+                display_name: Marco Technical
+              inspected_at: '2026-11-26T08:15:00.000000Z'
+              inspection_notes: Counted 50 shirts against PO-2026-0001 (ordered 100); 40 pass QA, 10 rejected for print defect.
+            snapshot:
+              target:
+                purpose: po_supplier_dr
+                record_id: 97000000-0000-4000-8000-000000000001
+              material_version: 1
+              sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+            evidence_acknowledgment:
+              acknowledgment_id: 97500000-0000-4000-8000-000000000001
+              matched_by: 10000000-0000-4000-8000-000000000007
+              matched_at: '2026-11-26T08:25:00.000000Z'
+              recipient_id: null
+              acknowledged_at: '2026-11-26T08:25:00.000000Z'
+              snapshot:
+                target:
+                  purpose: po_supplier_dr
+                  record_id: 97000000-0000-4000-8000-000000000001
+                material_version: 1
+                sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+              bytes:
+                evidence_id: 97400000-0000-4000-8000-000000000011
+                version_id: 97400000-0000-4000-8000-000000000012
+                attachments:
+                - attachment_id: 97400000-0000-4000-8000-000000000013
+                  sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            posted_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            posted_at: '2026-11-26T08:40:00.000000Z'
+            posting_stock_version: 21
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+            - id: 97000000-0000-4000-8000-000000000011
+              source_line_id: 96000000-0000-4000-8000-000000000102
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              delivered_quantity: '50'
+              accepted_quantity: '40'
+              damaged_quantity: '0'
+              rejected_quantity: '10'
+              unit_valuation_php: '240.00'
+              accepted_value_php: '9600.00'
+              restrictions:
+                state: unrestricted
+                allowed_uses: []
+                event_ids: []
+                requesting_unit_ids: []
+                effective_from: null
+                effective_until: null
+                interpretation_id: null
+                source_condition_reference: null
+              discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+              resolves_discrepancy_id: null
+            created_at: '2026-11-26T08:00:00.000000Z'
+            updated_at: '2026-11-26T08:40:00.000000Z'
+          posting:
+            stock_version: 21
+            usable_lot_ids:
+            - 97300000-0000-4000-8000-000000000001
+            quarantined_or_rejected_lot_ids:
+            - 97300000-0000-4000-8000-000000000002
+            created_discrepancy_ids:
+            - 97100000-0000-4000-8000-000000000001
+            source_status_after: partially_received
+  - name: stage2-05-recovery-by-id-discrepancy-resolution
+    operationId: readReceivingOperation
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        operation_id: 97700000-0000-4000-8000-000000000010
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 97700000-0000-4000-8000-000000000010
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000007
+          operation_name: resolveReceivingDiscrepancy
+          action_key: 40000000-0000-4000-8000-000000000510
+          resource_kind: receiving_discrepancy
+          resource_id: 97100000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-27T09:30:00.000000Z'
+          outcome: committed
+          result:
+            id: 97100000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            status: resolved
+            version: 4
+            material_version: 2
+            source_kind: po
+            source_id: 96000000-0000-4000-8000-000000000101
+            source_reference: PO-2026-0001
+            source_line_id: 96000000-0000-4000-8000-000000000102
+            rm_id: 97000000-0000-4000-8000-000000000001
+            rm_reference: RM-2026-0002
+            rm_line_id: 97000000-0000-4000-8000-000000000011
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quantity_scale: 0
+            damaged_quantity: '0'
+            rejected_quantity: '10'
+            total_discrepant_quantity: '10'
+            quarantined_lot_id: null
+            rejected_lot_id: 97300000-0000-4000-8000-000000000002
+            quarantined_lots_auto_cleared_on_source_close: false
+            discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+            supplier_notification:
+              notified_by:
+                user_id: 10000000-0000-4000-8000-000000000005
+                display_name: Ana Purchasing
+              notified_at: '2026-11-26T09:00:00.000000Z'
+              supplier_contact_reference: Cebu Print House / +63-917-555-0102
+              notification_notes: Notified supplier of 10 rejected shirts; requested replacement batch on remaining PO.
+              expected_resolution_date: '2026-11-27'
+            review_started_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            review_started_at: '2026-11-27T08:50:00.000000Z'
+            review_notes: Supplier confirmed replacement delivery and return pickup of 10 defective units.
+            resolution:
+              resolution_kind: supplier_replacement_received
+              resolved_by:
+                user_id: 10000000-0000-4000-8000-000000000007
+                display_name: Elena Receiving
+              resolved_at: '2026-11-27T09:30:00.000000Z'
+              reason: Supplier delivered 60 compliant replacement/balance units under RM-2026-0003 and picked up 10 rejected
+                units.
+              replacement_rm_id: 97000000-0000-4000-8000-000000000002
+              replacement_rm_reference: RM-2026-0003
+              quarantined_lot_disposition: returned_to_supplier_physically
+              evidence_acknowledgment:
+                acknowledgment_id: 97500000-0000-4000-8000-000000000004
+                matched_by: 10000000-0000-4000-8000-000000000007
+                matched_at: '2026-11-27T09:30:00.000000Z'
+                recipient_id: null
+                acknowledged_at: '2026-11-27T09:30:00.000000Z'
+                snapshot:
+                  target:
+                    purpose: receiving_discrepancy
+                    record_id: 97100000-0000-4000-8000-000000000001
+                  material_version: 1
+                  sha256: e3a5c3a0906603cec06e4ab67c5c64d16d6413a1795be7e517ab90c68bd40c9e
+                bytes:
+                  evidence_id: 97400000-0000-4000-8000-000000000041
+                  version_id: 97400000-0000-4000-8000-000000000042
+                  attachments:
+                  - attachment_id: 97400000-0000-4000-8000-000000000043
+                    sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+            created_at: '2026-11-26T08:40:00.000000Z'
+            updated_at: '2026-11-27T09:30:00.000000Z'
+
 procedure_cases:
   - name: stage2-01-policy-purchasing-quotation-committed
     procedureId: recordPolicy
@@ -7544,3 +10769,551 @@ participant_cases:
     output:
       outcome: rejected
       reason: target_locked
+  - name: stage2-05-participant-prepare-receiving-po-partial
+    participantId: prepareReceivingInventory
+    before: 'Efren internal participant posts PO 100 / RM 40 accepted + 10 rejected: +40 USABLE (immediately_allocatable: true),
+      +10 REJECTED (immediately_allocatable: false) + open discrepancy seed, PO partially_received leaving 60 open.'
+    input:
+      actor_id: 10000000-0000-4000-8000-000000000007
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      operation_id: 97700000-0000-4000-8000-000000000005
+      source_kind: po_rm
+      rm_id: 97000000-0000-4000-8000-000000000001
+      rm_reference: RM-2026-0002
+      rm_material_version: 1
+      source_id: 96000000-0000-4000-8000-000000000101
+      source_reference: PO-2026-0001
+      source_material_version: 2
+      donor_id: null
+      donor_name: null
+      location_id: 61000000-0000-4000-8000-000000000001
+      current_stock_version: 20
+      acknowledgment:
+        acknowledgment_id: 97500000-0000-4000-8000-000000000001
+        matched_by: 10000000-0000-4000-8000-000000000007
+        matched_at: '2026-11-26T08:25:00.000000Z'
+        recipient_id: null
+        acknowledged_at: '2026-11-26T08:25:00.000000Z'
+        snapshot:
+          target:
+            purpose: po_supplier_dr
+            record_id: 97000000-0000-4000-8000-000000000001
+          material_version: 1
+          sha256: e2543df2d927c5825840ac5878f020dc49e49028cbcb4fad5de02e5de788ef1a
+        bytes:
+          evidence_id: 97400000-0000-4000-8000-000000000011
+          version_id: 97400000-0000-4000-8000-000000000012
+          attachments:
+          - attachment_id: 97400000-0000-4000-8000-000000000013
+            sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      lines:
+      - rm_line_id: 97000000-0000-4000-8000-000000000011
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        variant_id: 95000000-0000-4000-8000-000000000051
+        variant_material_version: 1
+        item_id: 95000000-0000-4000-8000-000000000050
+        unit_id: 95000000-0000-4000-8000-000000000052
+        unit_material_version: 1
+        quantity_scale: 0
+        historical_variant_label: Chapter Shirt / Medium
+        delivered_quantity: '50'
+        accepted_quantity: '40'
+        damaged_quantity: '0'
+        rejected_quantity: '10'
+        unit_valuation_php: '240.00'
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+        resolves_discrepancy_id: null
+    output:
+      outcome: ready
+      stock_version: 21
+      usable_lots:
+      - lot_id: 97300000-0000-4000-8000-000000000001
+        basis_segment_id: 97310000-0000-4000-8000-000000000001
+        rm_line_id: 97000000-0000-4000-8000-000000000011
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        condition: usable
+        custody: stockroom
+        source_kind: po_rm
+        quantity: '40'
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        immediately_allocatable: true
+      quarantined_or_rejected_lots:
+      - lot_id: 97300000-0000-4000-8000-000000000002
+        basis_segment_id: 97310000-0000-4000-8000-000000000002
+        rm_line_id: 97000000-0000-4000-8000-000000000011
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        condition: rejected
+        custody: stockroom
+        source_kind: po_rm
+        quantity: '10'
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        immediately_allocatable: false
+      movements:
+      - id: 97600000-0000-4000-8000-000000000001
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        kind: accepted_receipt
+        source_kind: po_rm
+        rm_id: 97000000-0000-4000-8000-000000000001
+        rm_reference: RM-2026-0002
+        rm_material_version: 1
+        rm_line_id: 97000000-0000-4000-8000-000000000011
+        source_id: 96000000-0000-4000-8000-000000000101
+        source_reference: PO-2026-0001
+        source_material_version: 2
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        lot_id: 97300000-0000-4000-8000-000000000001
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        quantity: '40'
+        unit_valuation_php: '240.00'
+        total_value_php: '9600.00'
+        currency: PHP
+        condition: usable
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        immediately_allocatable: true
+        posted_by: 10000000-0000-4000-8000-000000000007
+        posted_at: '2026-11-26T08:40:00.000000Z'
+      - id: 97600000-0000-4000-8000-000000000002
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        kind: rejected_receipt
+        source_kind: po_rm
+        rm_id: 97000000-0000-4000-8000-000000000001
+        rm_reference: RM-2026-0002
+        rm_material_version: 1
+        rm_line_id: 97000000-0000-4000-8000-000000000011
+        source_id: 96000000-0000-4000-8000-000000000101
+        source_reference: PO-2026-0001
+        source_material_version: 2
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        lot_id: 97300000-0000-4000-8000-000000000002
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        quantity: '10'
+        unit_valuation_php: '240.00'
+        total_value_php: '2400.00'
+        currency: PHP
+        condition: rejected
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        immediately_allocatable: false
+        posted_by: 10000000-0000-4000-8000-000000000007
+        posted_at: '2026-11-26T08:40:00.000000Z'
+      created_discrepancies:
+      - discrepancy_id: 97100000-0000-4000-8000-000000000001
+        rm_line_id: 97000000-0000-4000-8000-000000000011
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        damaged_quantity: '0'
+        rejected_quantity: '10'
+        total_discrepant_quantity: '10'
+        quarantined_lot_id: null
+        rejected_lot_id: 97300000-0000-4000-8000-000000000002
+      source_line_updates:
+      - source_line_id: 96000000-0000-4000-8000-000000000102
+        accepted_delta: '40'
+        rejected_or_disputed_delta: '10'
+        new_accepted_quantity: '40'
+        new_outstanding_quantity: '60'
+        new_source_status: partially_received
+      emit_stock_lot_changed_event: true
+  - name: stage2-05-participant-prepare-receiving-da-mixed-restrictions
+    participantId: prepareReceivingInventory
+    before: Efren internal participant posts DA-RM sharing SHIRT-M across bounded (allocatable) and ADR 0004 uninterpreted (unallocatable)
+      usable lots plus 2 damaged quarantined.
+    input:
+      actor_id: 10000000-0000-4000-8000-000000000007
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      operation_id: 97700000-0000-4000-8000-000000000007
+      source_kind: da_rm
+      rm_id: 97000000-0000-4000-8000-000000000003
+      rm_reference: RM-2026-0004
+      rm_material_version: 1
+      source_id: 80000000-0000-4000-8000-000000000004
+      source_reference: DA-2026-0001
+      source_material_version: 1
+      donor_id: null
+      donor_name: Cebu Civic Youth Foundation
+      location_id: 61000000-0000-4000-8000-000000000001
+      current_stock_version: 22
+      acknowledgment:
+        acknowledgment_id: 97500000-0000-4000-8000-000000000003
+        matched_by: 10000000-0000-4000-8000-000000000007
+        matched_at: '2026-11-27T10:15:00.000000Z'
+        recipient_id: null
+        acknowledged_at: '2026-11-27T10:15:00.000000Z'
+        snapshot:
+          target:
+            purpose: da_receipt
+            record_id: 97000000-0000-4000-8000-000000000003
+          material_version: 1
+          sha256: c7dca0c789690868fbabc9f519b5e7ae5d0380e63a40396b9ce279e08998aee7
+        bytes:
+          evidence_id: 97400000-0000-4000-8000-000000000031
+          version_id: 97400000-0000-4000-8000-000000000032
+          attachments:
+          - attachment_id: 97400000-0000-4000-8000-000000000033
+            sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      lines:
+      - rm_line_id: 97000000-0000-4000-8000-000000000031
+        source_line_id: 80000000-0000-4000-8000-00000000000a
+        variant_id: 95000000-0000-4000-8000-000000000051
+        variant_material_version: 1
+        item_id: 95000000-0000-4000-8000-000000000050
+        unit_id: 95000000-0000-4000-8000-000000000052
+        unit_material_version: 1
+        quantity_scale: 0
+        historical_variant_label: Chapter Shirt / Medium
+        delivered_quantity: '20'
+        accepted_quantity: '20'
+        damaged_quantity: '0'
+        rejected_quantity: '0'
+        unit_valuation_php: '200.00'
+        restrictions:
+          state: bounded
+          allowed_uses:
+          - internal_use
+          event_ids: []
+          requesting_unit_ids:
+          - 70000000-0000-4000-8000-000000000010
+          effective_from: null
+          effective_until: null
+          interpretation_id: 80000000-0000-4000-8000-000000000012
+          source_condition_reference: 'DA-2026-0001 line 1: internal committee distribution only, no sale'
+        discrepancy_notes: null
+        resolves_discrepancy_id: null
+      - rm_line_id: 97000000-0000-4000-8000-000000000032
+        source_line_id: 80000000-0000-4000-8000-00000000000c
+        variant_id: 95000000-0000-4000-8000-000000000051
+        variant_material_version: 1
+        item_id: 95000000-0000-4000-8000-000000000050
+        unit_id: 95000000-0000-4000-8000-000000000052
+        unit_material_version: 1
+        quantity_scale: 0
+        historical_variant_label: Chapter Shirt / Medium
+        delivered_quantity: '12'
+        accepted_quantity: '10'
+        damaged_quantity: '2'
+        rejected_quantity: '0'
+        unit_valuation_php: '200.00'
+        restrictions:
+          state: uninterpreted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: 'DA-2026-0001 line 2: preferential access during a named youth summit'
+        discrepancy_notes: 2 donated shirts water-stained during transit; placed in quarantine.
+        resolves_discrepancy_id: null
+    output:
+      outcome: ready
+      stock_version: 23
+      usable_lots:
+      - lot_id: 97300000-0000-4000-8000-000000000004
+        basis_segment_id: 97310000-0000-4000-8000-000000000004
+        rm_line_id: 97000000-0000-4000-8000-000000000031
+        source_line_id: 80000000-0000-4000-8000-00000000000a
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        condition: usable
+        custody: stockroom
+        source_kind: da_rm
+        quantity: '20'
+        restrictions:
+          state: bounded
+          allowed_uses:
+          - internal_use
+          event_ids: []
+          requesting_unit_ids:
+          - 70000000-0000-4000-8000-000000000010
+          effective_from: null
+          effective_until: null
+          interpretation_id: 80000000-0000-4000-8000-000000000012
+          source_condition_reference: 'DA-2026-0001 line 1: internal committee distribution only, no sale'
+        immediately_allocatable: true
+      - lot_id: 97300000-0000-4000-8000-000000000005
+        basis_segment_id: 97310000-0000-4000-8000-000000000005
+        rm_line_id: 97000000-0000-4000-8000-000000000032
+        source_line_id: 80000000-0000-4000-8000-00000000000c
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        condition: usable
+        custody: stockroom
+        source_kind: da_rm
+        quantity: '10'
+        restrictions:
+          state: uninterpreted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: 'DA-2026-0001 line 2: preferential access during a named youth summit'
+        immediately_allocatable: false
+      quarantined_or_rejected_lots:
+      - lot_id: 97300000-0000-4000-8000-000000000006
+        basis_segment_id: 97310000-0000-4000-8000-000000000006
+        rm_line_id: 97000000-0000-4000-8000-000000000032
+        source_line_id: 80000000-0000-4000-8000-00000000000c
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        condition: quarantined
+        custody: stockroom
+        source_kind: da_rm
+        quantity: '2'
+        restrictions:
+          state: uninterpreted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: 'DA-2026-0001 line 2: preferential access during a named youth summit'
+        immediately_allocatable: false
+      movements:
+      - id: 97600000-0000-4000-8000-000000000003
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        kind: accepted_receipt
+        source_kind: da_rm
+        rm_id: 97000000-0000-4000-8000-000000000003
+        rm_reference: RM-2026-0004
+        rm_material_version: 1
+        rm_line_id: 97000000-0000-4000-8000-000000000031
+        source_id: 80000000-0000-4000-8000-000000000004
+        source_reference: DA-2026-0001
+        source_material_version: 1
+        source_line_id: 80000000-0000-4000-8000-00000000000a
+        lot_id: 97300000-0000-4000-8000-000000000004
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        quantity: '20'
+        unit_valuation_php: '200.00'
+        total_value_php: '4000.00'
+        currency: PHP
+        condition: usable
+        restrictions:
+          state: bounded
+          allowed_uses:
+          - internal_use
+          event_ids: []
+          requesting_unit_ids:
+          - 70000000-0000-4000-8000-000000000010
+          effective_from: null
+          effective_until: null
+          interpretation_id: 80000000-0000-4000-8000-000000000012
+          source_condition_reference: 'DA-2026-0001 line 1: internal committee distribution only, no sale'
+        immediately_allocatable: true
+        posted_by: 10000000-0000-4000-8000-000000000007
+        posted_at: '2026-11-27T10:20:00.000000Z'
+      - id: 97600000-0000-4000-8000-000000000004
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        kind: accepted_receipt
+        source_kind: da_rm
+        rm_id: 97000000-0000-4000-8000-000000000003
+        rm_reference: RM-2026-0004
+        rm_material_version: 1
+        rm_line_id: 97000000-0000-4000-8000-000000000032
+        source_id: 80000000-0000-4000-8000-000000000004
+        source_reference: DA-2026-0001
+        source_material_version: 1
+        source_line_id: 80000000-0000-4000-8000-00000000000c
+        lot_id: 97300000-0000-4000-8000-000000000005
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        quantity: '10'
+        unit_valuation_php: '200.00'
+        total_value_php: '2000.00'
+        currency: PHP
+        condition: usable
+        restrictions:
+          state: uninterpreted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: 'DA-2026-0001 line 2: preferential access during a named youth summit'
+        immediately_allocatable: false
+        posted_by: 10000000-0000-4000-8000-000000000007
+        posted_at: '2026-11-27T10:20:00.000000Z'
+      - id: 97600000-0000-4000-8000-000000000005
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        kind: quarantined_receipt
+        source_kind: da_rm
+        rm_id: 97000000-0000-4000-8000-000000000003
+        rm_reference: RM-2026-0004
+        rm_material_version: 1
+        rm_line_id: 97000000-0000-4000-8000-000000000032
+        source_id: 80000000-0000-4000-8000-000000000004
+        source_reference: DA-2026-0001
+        source_material_version: 1
+        source_line_id: 80000000-0000-4000-8000-00000000000c
+        lot_id: 97300000-0000-4000-8000-000000000006
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        location_id: 61000000-0000-4000-8000-000000000001
+        quantity: '2'
+        unit_valuation_php: '200.00'
+        total_value_php: '400.00'
+        currency: PHP
+        condition: quarantined
+        restrictions:
+          state: uninterpreted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: 'DA-2026-0001 line 2: preferential access during a named youth summit'
+        immediately_allocatable: false
+        posted_by: 10000000-0000-4000-8000-000000000007
+        posted_at: '2026-11-27T10:20:00.000000Z'
+      created_discrepancies:
+      - discrepancy_id: 97100000-0000-4000-8000-000000000002
+        rm_line_id: 97000000-0000-4000-8000-000000000032
+        source_line_id: 80000000-0000-4000-8000-00000000000c
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        damaged_quantity: '2'
+        rejected_quantity: '0'
+        total_discrepant_quantity: '2'
+        quarantined_lot_id: 97300000-0000-4000-8000-000000000006
+        rejected_lot_id: null
+      source_line_updates:
+      - source_line_id: 80000000-0000-4000-8000-00000000000a
+        accepted_delta: '20'
+        rejected_or_disputed_delta: '0'
+        new_accepted_quantity: '20'
+        new_outstanding_quantity: '0'
+        new_source_status: partially_received
+      - source_line_id: 80000000-0000-4000-8000-00000000000c
+        accepted_delta: '10'
+        rejected_or_disputed_delta: '2'
+        new_accepted_quantity: '10'
+        new_outstanding_quantity: '2'
+        new_source_status: partially_received
+      emit_stock_lot_changed_event: true
+  - name: stage2-05-participant-prepare-receiving-overdelivery-rejected
+    participantId: prepareReceivingInventory
+    before: Efren internal participant re-fences remaining PO balance inside commit and rejects unamended overdelivery.
+    input:
+      actor_id: 10000000-0000-4000-8000-000000000007
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      operation_id: 97700000-0000-4000-8000-000000000099
+      source_kind: po_rm
+      rm_id: 97000000-0000-4000-8000-000000000002
+      rm_reference: RM-2026-0099
+      rm_material_version: 1
+      source_id: 96000000-0000-4000-8000-000000000101
+      source_reference: PO-2026-0001
+      source_material_version: 2
+      donor_id: null
+      donor_name: null
+      location_id: 61000000-0000-4000-8000-000000000001
+      current_stock_version: 21
+      acknowledgment:
+        acknowledgment_id: 97500000-0000-4000-8000-000000000002
+        matched_by: 10000000-0000-4000-8000-000000000007
+        matched_at: '2026-11-27T09:15:00.000000Z'
+        recipient_id: null
+        acknowledged_at: '2026-11-27T09:15:00.000000Z'
+        snapshot:
+          target:
+            purpose: po_supplier_dr
+            record_id: 97000000-0000-4000-8000-000000000002
+          material_version: 1
+          sha256: e6a789f16fa4e3896d041459c7deb8e303f6bb2fe73a00b6e6a7fbf5b2d59055
+        bytes:
+          evidence_id: 97400000-0000-4000-8000-000000000021
+          version_id: 97400000-0000-4000-8000-000000000022
+          attachments:
+          - attachment_id: 97400000-0000-4000-8000-000000000023
+            sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      lines:
+      - rm_line_id: 97000000-0000-4000-8000-000000000021
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        variant_id: 95000000-0000-4000-8000-000000000051
+        variant_material_version: 1
+        item_id: 95000000-0000-4000-8000-000000000050
+        unit_id: 95000000-0000-4000-8000-000000000052
+        unit_material_version: 1
+        quantity_scale: 0
+        historical_variant_label: Chapter Shirt / Medium
+        delivered_quantity: '65'
+        accepted_quantity: '65'
+        damaged_quantity: '0'
+        rejected_quantity: '0'
+        unit_valuation_php: '240.00'
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        discrepancy_notes: null
+        resolves_discrepancy_id: null
+    output:
+      outcome: rejected
+      reason: substitution_or_overdelivery_blocked
