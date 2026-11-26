@@ -1,4 +1,4 @@
-# Schema-checked Stage 2 contract examples (Tickets 01, 02, 04).
+# Schema-checked Stage 2 contract examples (Tickets 01, 02, 03, 04).
 # Synthetic fixtures only; IDs, values, and approvals are illustrative, never approved setup.
 context:
   chapter_id: 60000000-0000-4000-8000-000000000001
@@ -4688,6 +4688,2408 @@ cases:
         error:
           code: operation_not_found
           message: Procurement operation receipt is unavailable.
+
+  # --- Ticket 03: Nested quotations, supplier selection & Purchase Order lifecycle ---
+  - name: stage2-03-quotation-create-with-evidence
+    operationId: createRepfQuotation
+    before: Purchasing officer records a comparable supplier quotation under an approved RepF with inline supplier metadata and optional quotation_attachment paper evidence.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000301
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        supplier:
+          supplier_name: Visayas Apparel Wholesalers
+          supplier_subtype: wholesaler
+          contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+          supplier_reference: VAW-Q-2026-114
+        quoted_at: '2026-11-26T04:00:00.000000Z'
+        valid_until: '2026-12-10'
+        lead_time_days: 5
+        availability_summary: 100 units ready for dispatch from Cebu warehouse.
+        quality_warranty_terms: 220gsm combed cotton; 30-day stitching replacement warranty.
+        payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+        reliability_notes: Prior chapter print supplier; zero late deliveries in 2025.
+        evidence:
+          evidence_id: 81000000-0000-4000-8000-000000000301
+          version_id: 82000000-0000-4000-8000-000000000301
+          attachments:
+            - attachment_id: 83000000-0000-4000-8000-000000000301
+              sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        lines:
+          - repf_line_id: 90100000-0000-4000-8000-000000000011
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quoted_quantity: '40'
+            unit_price_php: '240.00'
+            notes: Includes chapter crest silkscreen print.
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000301
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: createRepfQuotation
+          action_key: 40000000-0000-4000-8000-000000000301
+          resource_kind: quotation
+          resource_id: 93000000-0000-4000-8000-000000000001
+          committed_version: 1
+          committed_material_version: 1
+          status_code: 201
+          committed_at: '2026-11-26T04:05:00.000000Z'
+          outcome: committed
+          result:
+            id: 93000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_id: 90000000-0000-4000-8000-000000000010
+            version: 1
+            material_version: 1
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            quoted_at: '2026-11-26T04:00:00.000000Z'
+            valid_until: '2026-12-10'
+            lead_time_days: 5
+            availability_summary: 100 units ready for dispatch from Cebu warehouse.
+            quality_warranty_terms: 220gsm combed cotton; 30-day stitching replacement warranty.
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            reliability_notes: Prior chapter print supplier; zero late deliveries in 2025.
+            currency: PHP
+            total_amount_php: '9600.00'
+            is_selected: false
+            selected_at: null
+            evidence_binding:
+              evidence_id: 81000000-0000-4000-8000-000000000301
+              version_id: 82000000-0000-4000-8000-000000000301
+              attachments:
+                - attachment_id: 83000000-0000-4000-8000-000000000301
+                  sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            recorded_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            lines:
+              - id: 93100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                quoted_quantity: '40'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                notes: Includes chapter crest silkscreen print.
+            created_at: '2026-11-26T04:05:00.000000Z'
+            updated_at: '2026-11-26T04:05:00.000000Z'
+
+  - name: stage2-03-quotation-list
+    operationId: listRepfQuotations
+    before: Authorized officer lists comparable quotations nested under an approved RepF ordered by selection then total PHP cost.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - id: 93000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_id: 90000000-0000-4000-8000-000000000010
+            version: 2
+            material_version: 1
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            quoted_at: '2026-11-26T04:00:00.000000Z'
+            valid_until: '2026-12-10'
+            lead_time_days: 5
+            availability_summary: 100 units ready for dispatch from Cebu warehouse.
+            quality_warranty_terms: 220gsm combed cotton; 30-day stitching replacement warranty.
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            reliability_notes: Prior chapter print supplier; zero late deliveries in 2025.
+            currency: PHP
+            total_amount_php: '9600.00'
+            is_selected: true
+            selected_at: '2026-11-26T04:20:00.000000Z'
+            evidence_binding: null
+            recorded_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            lines:
+              - id: 93100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                quoted_quantity: '40'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                notes: Includes chapter crest silkscreen print.
+            created_at: '2026-11-26T04:05:00.000000Z'
+            updated_at: '2026-11-26T04:20:00.000000Z'
+          - id: 93000000-0000-4000-8000-000000000002
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_id: 90000000-0000-4000-8000-000000000010
+            version: 1
+            material_version: 1
+            supplier:
+              supplier_name: Mandaue Print Cooperative
+              supplier_subtype: cooperative
+              contact_reference: orders@mandauecoop.example.invalid
+              supplier_reference: null
+            quoted_at: '2026-11-26T04:08:00.000000Z'
+            valid_until: '2026-12-05'
+            lead_time_days: 7
+            availability_summary: Made to order within 7 calendar days.
+            quality_warranty_terms: 200gsm cotton; 15-day defect replacement.
+            payment_and_delivery_terms: Full payment upon delivery; buyer pickup.
+            reliability_notes: null
+            currency: PHP
+            total_amount_php: '9800.00'
+            is_selected: false
+            selected_at: null
+            evidence_binding: null
+            recorded_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            lines:
+              - id: 93100000-0000-4000-8000-000000000002
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                quoted_quantity: '40'
+                unit_price_php: '245.00'
+                line_total_php: '9800.00'
+                notes: null
+            created_at: '2026-11-26T04:10:00.000000Z'
+            updated_at: '2026-11-26T04:10:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 21
+
+  - name: stage2-03-quotation-replace-unselected
+    operationId: replaceRepfQuotation
+    before: Purchasing officer updates an unselected quotation's lead time and revised unit price with optimistic version checks.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000302
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+        quotation_id: 93000000-0000-4000-8000-000000000002
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        supplier:
+          supplier_name: Mandaue Print Cooperative
+          supplier_subtype: cooperative
+          contact_reference: orders@mandauecoop.example.invalid
+          supplier_reference: MPC-2026-77
+        quoted_at: '2026-11-26T04:12:00.000000Z'
+        valid_until: '2026-12-08'
+        lead_time_days: 6
+        availability_summary: Made to order within 6 calendar days.
+        quality_warranty_terms: 220gsm cotton; 15-day defect replacement.
+        payment_and_delivery_terms: Full payment upon delivery; free local drop-off.
+        reliability_notes: Updated revised quote received by phone.
+        evidence: null
+        lines:
+          - repf_line_id: 90100000-0000-4000-8000-000000000011
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quoted_quantity: '40'
+            unit_price_php: '242.50'
+            notes: Revised quote matching 220gsm specification.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000302
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: replaceRepfQuotation
+          action_key: 40000000-0000-4000-8000-000000000302
+          resource_kind: quotation
+          resource_id: 93000000-0000-4000-8000-000000000002
+          committed_version: 2
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T04:13:00.000000Z'
+          outcome: committed
+          result:
+            id: 93000000-0000-4000-8000-000000000002
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_id: 90000000-0000-4000-8000-000000000010
+            version: 2
+            material_version: 2
+            supplier:
+              supplier_name: Mandaue Print Cooperative
+              supplier_subtype: cooperative
+              contact_reference: orders@mandauecoop.example.invalid
+              supplier_reference: MPC-2026-77
+            quoted_at: '2026-11-26T04:12:00.000000Z'
+            valid_until: '2026-12-08'
+            lead_time_days: 6
+            availability_summary: Made to order within 6 calendar days.
+            quality_warranty_terms: 220gsm cotton; 15-day defect replacement.
+            payment_and_delivery_terms: Full payment upon delivery; free local drop-off.
+            reliability_notes: Updated revised quote received by phone.
+            currency: PHP
+            total_amount_php: '9700.00'
+            is_selected: false
+            selected_at: null
+            evidence_binding: null
+            recorded_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            lines:
+              - id: 93100000-0000-4000-8000-000000000002
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                quoted_quantity: '40'
+                unit_price_php: '242.50'
+                line_total_php: '9700.00'
+                notes: Revised quote matching 220gsm specification.
+            created_at: '2026-11-26T04:10:00.000000Z'
+            updated_at: '2026-11-26T04:13:00.000000Z'
+
+  - name: stage2-03-quotation-delete-unselected
+    operationId: deleteRepfQuotation
+    before: Purchasing officer deletes an unselected duplicate quotation using optimistic version query parameters.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000303
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+        quotation_id: 93000000-0000-4000-8000-000000000003
+      query:
+        expected_version: 1
+        expected_material_version: 1
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000303
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: deleteRepfQuotation
+          action_key: 40000000-0000-4000-8000-000000000303
+          resource_kind: quotation_deletion
+          resource_id: 93000000-0000-4000-8000-000000000003
+          committed_version: 2
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T04:15:00.000000Z'
+          outcome: committed
+          result:
+            id: 93000000-0000-4000-8000-000000000003
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_id: 90000000-0000-4000-8000-000000000010
+            deleted: true
+            deleted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            deleted_at: '2026-11-26T04:15:00.000000Z'
+            previous_version: 1
+            previous_material_version: 1
+
+  - name: stage2-03-supplier-selection-tier-compliant
+    operationId: recordSupplierSelection
+    before: Purchasing officer records supplier selection for PHP 9,600.00 under effective purchasing_quotation_policy (tier 0.00-10000.00 requires >= 2 comparable quotes; 2 provided).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000304
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_repf_version: 4
+        expected_repf_material_version: 2
+        selected_quotation_id: 93000000-0000-4000-8000-000000000001
+        comparable_quotation_ids:
+          - 93000000-0000-4000-8000-000000000001
+          - 93000000-0000-4000-8000-000000000002
+        selection_rationale: Lowest total cost (PHP 9,600.00 vs PHP 9,700.00), faster 5-day lead time, stronger 30-day warranty, and verified prior reliability.
+        emergency_waiver: null
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000304
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: recordSupplierSelection
+          action_key: 40000000-0000-4000-8000-000000000304
+          resource_kind: supplier_selection
+          resource_id: 93500000-0000-4000-8000-000000000001
+          committed_version: 1
+          committed_material_version: 1
+          status_code: 201
+          committed_at: '2026-11-26T04:20:00.000000Z'
+          outcome: committed
+          result:
+            id: 93500000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_id: 90000000-0000-4000-8000-000000000010
+            version: 1
+            material_version: 1
+            selected_quotation_id: 93000000-0000-4000-8000-000000000001
+            comparable_quotation_ids:
+              - 93000000-0000-4000-8000-000000000001
+              - 93000000-0000-4000-8000-000000000002
+            comparable_quote_count: 2
+            policy_evaluation:
+              policy_id: 72000000-0000-4000-8000-000000000001
+              policy_version: 1
+              evaluated_amount_php: '9600.00'
+              applicable_tier_min_php: '0.00'
+              applicable_tier_max_php: '10000.00'
+              required_minimum_quotes: 2
+              comparable_quote_count: 2
+              waiver_permitted: true
+              minimum_quotes_when_waived: 1
+              emergency_waiver_used: false
+              approving_duties_for_waiver:
+                - BUDGET_APPROVER
+                - CHAPTER_HEAD
+            emergency_waiver_used: false
+            emergency_waiver_reason: null
+            selection_rationale: Lowest total cost (PHP 9,600.00 vs PHP 9,700.00), faster 5-day lead time, stronger 30-day warranty, and verified prior reliability.
+            selected_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            selected_at: '2026-11-26T04:20:00.000000Z'
+
+  - name: stage2-03-supplier-selection-emergency-waiver
+    operationId: recordSupplierSelection
+    before: Policy-permitted emergency waiver allows 1 comparable quote for urgent relief kits (PHP 12,000.00 tier normally requires 3) with mandatory reason and BUDGET_APPROVER/CHAPTER_HEAD approval gate.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000305
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000011
+      body:
+        expected_repf_version: 3
+        expected_repf_material_version: 1
+        selected_quotation_id: 93000000-0000-4000-8000-000000000011
+        comparable_quotation_ids:
+          - 93000000-0000-4000-8000-000000000011
+        selection_rationale: Sole local wholesaler able to deliver emergency relief kits within 24 hours after typhoon response activation.
+        emergency_waiver:
+          reason: Typhoon response emergency activation; two other regional vendors closed due to road flooding.
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000305
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: recordSupplierSelection
+          action_key: 40000000-0000-4000-8000-000000000305
+          resource_kind: supplier_selection
+          resource_id: 93500000-0000-4000-8000-000000000002
+          committed_version: 1
+          committed_material_version: 1
+          status_code: 201
+          committed_at: '2026-11-26T04:22:00.000000Z'
+          outcome: committed
+          result:
+            id: 93500000-0000-4000-8000-000000000002
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_id: 90000000-0000-4000-8000-000000000011
+            version: 1
+            material_version: 1
+            selected_quotation_id: 93000000-0000-4000-8000-000000000011
+            comparable_quotation_ids:
+              - 93000000-0000-4000-8000-000000000011
+            comparable_quote_count: 1
+            policy_evaluation:
+              policy_id: 72000000-0000-4000-8000-000000000001
+              policy_version: 1
+              evaluated_amount_php: '12000.00'
+              applicable_tier_min_php: '10000.01'
+              applicable_tier_max_php: null
+              required_minimum_quotes: 3
+              comparable_quote_count: 1
+              waiver_permitted: true
+              minimum_quotes_when_waived: 1
+              emergency_waiver_used: true
+              approving_duties_for_waiver:
+                - BUDGET_APPROVER
+                - CHAPTER_HEAD
+            emergency_waiver_used: true
+            emergency_waiver_reason: Typhoon response emergency activation; two other regional vendors closed due to road flooding.
+            selection_rationale: Sole local wholesaler able to deliver emergency relief kits within 24 hours after typhoon response activation.
+            selected_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            selected_at: '2026-11-26T04:22:00.000000Z'
+
+  - name: stage2-03-po-create-draft
+    operationId: createPurchaseOrder
+    before_status: absent
+    before: Purchasing officer creates a Purchase Order draft from approved RepF and policy-compliant supplier selection (no PO reference allocated yet).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000306
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      body:
+        repf_id: 90000000-0000-4000-8000-000000000010
+        supplier_selection_id: 93500000-0000-4000-8000-000000000001
+        delivery_location: YSP Cebu Chapter Stockroom, Cebu City
+        expected_delivery_date: '2026-12-01'
+        payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+        lines:
+          - repf_line_id: 90100000-0000-4000-8000-000000000011
+            quotation_line_id: 93100000-0000-4000-8000-000000000001
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            ordered_quantity: '40'
+            unit_price_php: '240.00'
+            specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest.
+            notes: Pack in bundles of 10.
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000306
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: createPurchaseOrder
+          action_key: 40000000-0000-4000-8000-000000000306
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000001
+          committed_version: 1
+          committed_material_version: 1
+          status_code: 201
+          committed_at: '2026-11-26T04:25:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: null
+            status: draft
+            version: 1
+            material_version: 1
+            repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-000001
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000001
+            selected_quotation_id: 93000000-0000-4000-8000-000000000001
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            delivery_location: YSP Cebu Chapter Stockroom, Cebu City
+            expected_delivery_date: '2026-12-01'
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by: null
+            submitted_at: null
+            approved_by: null
+            approved_at: null
+            issued_at: null
+            review_decision_reason: null
+            acknowledgment: null
+            pending_amendment: null
+            approved_amendment_count: 0
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                quotation_line_id: 93100000-0000-4000-8000-000000000001
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '40'
+                accepted_quantity: '0'
+                rejected_or_disputed_quantity: '0'
+                closed_short_quantity: '0'
+                canceled_quantity: '0'
+                outstanding_quantity: '40'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: Pack in bundles of 10.
+            created_at: '2026-11-26T04:25:00.000000Z'
+            updated_at: '2026-11-26T04:25:00.000000Z'
+
+  - name: stage2-03-po-replace-from-returned
+    operationId: replacePurchaseOrder
+    before_status: returned_for_revision
+    before: Purchasing officer revises a returned PO via PUT, transitioning returned_for_revision back to draft and bumping version and material_version.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000307
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 3
+        expected_material_version: 1
+        delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+        expected_delivery_date: '2026-12-02'
+        payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+        lines:
+          - repf_line_id: 90100000-0000-4000-8000-000000000011
+            quotation_line_id: 93100000-0000-4000-8000-000000000001
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            ordered_quantity: '40'
+            unit_price_php: '240.00'
+            specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest and size tags.
+            notes: Updated receiving gate per Budget Approver return note.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000307
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: replacePurchaseOrder
+          action_key: 40000000-0000-4000-8000-000000000307
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000001
+          committed_version: 4
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T04:32:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: null
+            status: draft
+            version: 4
+            material_version: 2
+            repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-000001
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000001
+            selected_quotation_id: 93000000-0000-4000-8000-000000000001
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+            expected_delivery_date: '2026-12-02'
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by: null
+            submitted_at: null
+            approved_by: null
+            approved_at: null
+            issued_at: null
+            review_decision_reason: null
+            acknowledgment: null
+            pending_amendment: null
+            approved_amendment_count: 0
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                quotation_line_id: 93100000-0000-4000-8000-000000000001
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '40'
+                accepted_quantity: '0'
+                rejected_or_disputed_quantity: '0'
+                closed_short_quantity: '0'
+                canceled_quantity: '0'
+                outstanding_quantity: '40'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest and size tags.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: Updated receiving gate per Budget Approver return note.
+            created_at: '2026-11-26T04:25:00.000000Z'
+            updated_at: '2026-11-26T04:32:00.000000Z'
+
+  - name: stage2-03-po-submit
+    operationId: submitPurchaseOrder
+    before_status: draft
+    before: Purchasing officer submits revised PO draft for independent approval.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000308
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 4
+        expected_material_version: 2
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000308
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: submitPurchaseOrder
+          action_key: 40000000-0000-4000-8000-000000000308
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000001
+          committed_version: 5
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T04:35:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: null
+            status: pending_approval
+            version: 5
+            material_version: 2
+            repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-000001
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000001
+            selected_quotation_id: 93000000-0000-4000-8000-000000000001
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+            expected_delivery_date: '2026-12-02'
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_at: '2026-11-26T04:35:00.000000Z'
+            approved_by: null
+            approved_at: null
+            issued_at: null
+            review_decision_reason: null
+            acknowledgment: null
+            pending_amendment: null
+            approved_amendment_count: 0
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                quotation_line_id: 93100000-0000-4000-8000-000000000001
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '40'
+                accepted_quantity: '0'
+                rejected_or_disputed_quantity: '0'
+                closed_short_quantity: '0'
+                canceled_quantity: '0'
+                outstanding_quantity: '40'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest and size tags.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: Updated receiving gate per Budget Approver return note.
+            created_at: '2026-11-26T04:25:00.000000Z'
+            updated_at: '2026-11-26T04:35:00.000000Z'
+
+  - name: stage2-03-po-approve-and-issue
+    operationId: approvePurchaseOrder
+    before_status: pending_approval
+    before: Independent Budget Approver (distinct from both PO preparer Carla and originating RepF preparer Ana) approves PO directly into issued status, atomically allocating PO-2026-000001, updating RepF ordered progress, and increasing inbound_open_po by 40 without changing usable on-hand stock.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000309
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        approval_notes: Verified within approved RepF budget and two-quote policy.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000309
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000009
+          operation_name: approvePurchaseOrder
+          action_key: 40000000-0000-4000-8000-000000000309
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000001
+          committed_version: 6
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T04:40:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: PO-2026-000001
+            status: issued
+            version: 6
+            material_version: 2
+            repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-000001
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000001
+            selected_quotation_id: 93000000-0000-4000-8000-000000000001
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+            expected_delivery_date: '2026-12-02'
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_at: '2026-11-26T04:35:00.000000Z'
+            approved_by:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            approved_at: '2026-11-26T04:40:00.000000Z'
+            issued_at: '2026-11-26T04:40:00.000000Z'
+            review_decision_reason: null
+            acknowledgment: null
+            pending_amendment: null
+            approved_amendment_count: 0
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                quotation_line_id: 93100000-0000-4000-8000-000000000001
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '40'
+                accepted_quantity: '0'
+                rejected_or_disputed_quantity: '0'
+                closed_short_quantity: '0'
+                canceled_quantity: '0'
+                outstanding_quantity: '40'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest and size tags.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: Updated receiving gate per Budget Approver return note.
+            created_at: '2026-11-26T04:25:00.000000Z'
+            updated_at: '2026-11-26T04:40:00.000000Z'
+
+  - name: stage2-03-po-return
+    operationId: returnPurchaseOrder
+    before_status: pending_approval
+    before: Independent Budget Approver returns a submitted PO for revision with a mandatory reason.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000310
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 2
+        expected_material_version: 1
+        reason: Specify Gate 2 stockroom receiving instructions and confirm size tags on line 1.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000310
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000009
+          operation_name: returnPurchaseOrder
+          action_key: 40000000-0000-4000-8000-000000000310
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000001
+          committed_version: 3
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T04:30:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: null
+            status: returned_for_revision
+            version: 3
+            material_version: 1
+            repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-000001
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000001
+            selected_quotation_id: 93000000-0000-4000-8000-000000000001
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            delivery_location: YSP Cebu Chapter Stockroom, Cebu City
+            expected_delivery_date: '2026-12-01'
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_at: '2026-11-26T04:28:00.000000Z'
+            approved_by: null
+            approved_at: null
+            issued_at: null
+            review_decision_reason: Specify Gate 2 stockroom receiving instructions and confirm size tags on line 1.
+            acknowledgment: null
+            pending_amendment: null
+            approved_amendment_count: 0
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                quotation_line_id: 93100000-0000-4000-8000-000000000001
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '40'
+                accepted_quantity: '0'
+                rejected_or_disputed_quantity: '0'
+                closed_short_quantity: '0'
+                canceled_quantity: '0'
+                outstanding_quantity: '40'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: Pack in bundles of 10.
+            created_at: '2026-11-26T04:25:00.000000Z'
+            updated_at: '2026-11-26T04:30:00.000000Z'
+
+  - name: stage2-03-po-reject
+    operationId: rejectPurchaseOrder
+    before_status: pending_approval
+    before: Independent Budget Approver rejects a submitted PO with mandatory reason (terminal state; no PO reference allocated).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000311
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000002
+      body:
+        expected_version: 2
+        expected_material_version: 1
+        reason: Selected vendor failed prior chapter quality inspection; re-bid required.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000311
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000009
+          operation_name: rejectPurchaseOrder
+          action_key: 40000000-0000-4000-8000-000000000311
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000002
+          committed_version: 3
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T04:42:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000002
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: null
+            status: rejected
+            version: 3
+            material_version: 1
+            repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-000001
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000001
+            selected_quotation_id: 93000000-0000-4000-8000-000000000002
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Mandaue Print Cooperative
+              supplier_subtype: cooperative
+              contact_reference: orders@mandauecoop.example.invalid
+              supplier_reference: MPC-2026-77
+            delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+            expected_delivery_date: '2026-12-04'
+            payment_and_delivery_terms: Full payment upon delivery; free local drop-off.
+            currency: PHP
+            total_amount_php: '9700.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_at: '2026-11-26T04:40:00.000000Z'
+            approved_by: null
+            approved_at: null
+            issued_at: null
+            review_decision_reason: Selected vendor failed prior chapter quality inspection; re-bid required.
+            acknowledgment: null
+            pending_amendment: null
+            approved_amendment_count: 0
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000002
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                quotation_line_id: 93100000-0000-4000-8000-000000000002
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '40'
+                accepted_quantity: '0'
+                rejected_or_disputed_quantity: '0'
+                closed_short_quantity: '0'
+                canceled_quantity: '0'
+                outstanding_quantity: '40'
+                unit_price_php: '242.50'
+                line_total_php: '9700.00'
+                specifications: 220gsm cotton Chapter Shirt Medium.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: null
+            created_at: '2026-11-26T04:39:00.000000Z'
+            updated_at: '2026-11-26T04:42:00.000000Z'
+
+  - name: stage2-03-po-acknowledgment-optional
+    operationId: recordPurchaseOrderAcknowledgment
+    before_status: issued
+    before: Purchasing officer records optional non-blocking supplier acknowledgment on issued PO-2026-000001 (version bumps; status stays issued; receiving never requires this step).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000312
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 6
+        expected_material_version: 2
+        supplier_confirmation_reference: VAW-ACK-2026-88
+        acknowledged_at: '2026-11-26T05:00:00.000000Z'
+        revised_expected_delivery_date: '2026-12-03'
+        notes: Supplier confirmed schedule for afternoon delivery on Dec 3.
+        evidence: null
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000312
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: recordPurchaseOrderAcknowledgment
+          action_key: 40000000-0000-4000-8000-000000000312
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000001
+          committed_version: 7
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T05:05:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: PO-2026-000001
+            status: issued
+            version: 7
+            material_version: 2
+            repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-000001
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000001
+            selected_quotation_id: 93000000-0000-4000-8000-000000000001
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+            expected_delivery_date: '2026-12-02'
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_at: '2026-11-26T04:35:00.000000Z'
+            approved_by:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            approved_at: '2026-11-26T04:40:00.000000Z'
+            issued_at: '2026-11-26T04:40:00.000000Z'
+            review_decision_reason: null
+            acknowledgment:
+              supplier_confirmation_reference: VAW-ACK-2026-88
+              acknowledged_at: '2026-11-26T05:00:00.000000Z'
+              revised_expected_delivery_date: '2026-12-03'
+              notes: Supplier confirmed schedule for afternoon delivery on Dec 3.
+              evidence_binding: null
+              recorded_by:
+                user_id: 10000000-0000-4000-8000-000000000003
+                display_name: Purchasing Officer Carla
+              recorded_at: '2026-11-26T05:05:00.000000Z'
+            pending_amendment: null
+            approved_amendment_count: 0
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                quotation_line_id: 93100000-0000-4000-8000-000000000001
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '40'
+                accepted_quantity: '0'
+                rejected_or_disputed_quantity: '0'
+                closed_short_quantity: '0'
+                canceled_quantity: '0'
+                outstanding_quantity: '40'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest and size tags.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: Updated receiving gate per Budget Approver return note.
+            created_at: '2026-11-26T04:25:00.000000Z'
+            updated_at: '2026-11-26T05:05:00.000000Z'
+
+  - name: stage2-03-po-amendment-propose
+    operationId: proposePurchaseOrderAmendment
+    before_status: partially_received
+    before: On partially_received PO-2026-000003 (ordered 100, accepted 40, rejected/disputed 10, outstanding 60), Purchasing proposes amending ordered quantity from 100 to 80 (still >= 40 accepted) pending independent approval.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000313
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000003
+      body:
+        expected_version: 4
+        expected_material_version: 1
+        delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+        expected_delivery_date: '2026-12-08'
+        payment_and_delivery_terms: Net 15 days upon accepted delivery.
+        reason: Adjust remaining ordered balance to 80 units after supplier confirmed 40 remaining units available for replacement and final batch.
+        lines:
+          - po_line_id: 94100000-0000-4000-8000-000000000003
+            repf_line_id: 90100000-0000-4000-8000-000000000015
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            ordered_quantity: '80'
+            unit_price_php: '120.00'
+            specifications: 220gsm combed cotton Chapter Shirt Medium.
+            notes: Amended to 80 total ordered (40 accepted + 40 remaining).
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000313
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000003
+          operation_name: proposePurchaseOrderAmendment
+          action_key: 40000000-0000-4000-8000-000000000313
+          resource_kind: purchase_order_amendment
+          resource_id: 94500000-0000-4000-8000-000000000001
+          committed_version: 5
+          committed_material_version: 1
+          status_code: 201
+          committed_at: '2026-11-26T06:00:00.000000Z'
+          outcome: committed
+          result:
+            purchase_order:
+              id: 94000000-0000-4000-8000-000000000003
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              po_reference: PO-2026-000003
+              status: partially_received
+              version: 5
+              material_version: 1
+              repf_id: 90000000-0000-4000-8000-000000000012
+              repf_reference: REPF-2026-000003
+              originating_repf_preparer:
+                user_id: 10000000-0000-4000-8000-000000000002
+                display_name: Inventory Officer Ana
+              supplier_selection_id: 93500000-0000-4000-8000-000000000003
+              selected_quotation_id: 93000000-0000-4000-8000-000000000012
+              emergency_waiver_used: false
+              supplier:
+                supplier_name: Cebu Relief Supplies Inc.
+                supplier_subtype: distributor
+                contact_reference: sales@ceburelief.example.invalid
+                supplier_reference: CRS-2026-44
+              delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+              expected_delivery_date: '2026-12-05'
+              payment_and_delivery_terms: Net 15 days upon accepted delivery.
+              currency: PHP
+              total_amount_php: '12000.00'
+              linked_demand_canceled: false
+              preparer:
+                user_id: 10000000-0000-4000-8000-000000000003
+                display_name: Purchasing Officer Carla
+              submitted_by:
+                user_id: 10000000-0000-4000-8000-000000000003
+                display_name: Purchasing Officer Carla
+              submitted_at: '2026-11-26T05:10:00.000000Z'
+              approved_by:
+                user_id: 10000000-0000-4000-8000-000000000009
+                display_name: Chapter Head Ramon
+              approved_at: '2026-11-26T05:15:00.000000Z'
+              issued_at: '2026-11-26T05:15:00.000000Z'
+              review_decision_reason: null
+              acknowledgment: null
+              pending_amendment:
+                id: 94500000-0000-4000-8000-000000000001
+                chapter_id: 60000000-0000-4000-8000-000000000001
+                po_id: 94000000-0000-4000-8000-000000000003
+                amendment_number: 1
+                status: pending_approval
+                base_material_version: 1
+                applied_material_version: null
+                delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+                expected_delivery_date: '2026-12-08'
+                payment_and_delivery_terms: Net 15 days upon accepted delivery.
+                proposed_total_php: '9600.00'
+                reason: Adjust remaining ordered balance to 80 units after supplier confirmed 40 remaining units available for replacement and final batch.
+                lines:
+                  - po_line_id: 94100000-0000-4000-8000-000000000003
+                    repf_line_id: 90100000-0000-4000-8000-000000000015
+                    variant_id: 95000000-0000-4000-8000-000000000051
+                    unit_id: 95000000-0000-4000-8000-000000000052
+                    ordered_quantity: '80'
+                    unit_price_php: '120.00'
+                    specifications: 220gsm combed cotton Chapter Shirt Medium.
+                    notes: Amended to 80 total ordered (40 accepted + 40 remaining).
+                proposed_by:
+                  user_id: 10000000-0000-4000-8000-000000000003
+                  display_name: Purchasing Officer Carla
+                proposed_at: '2026-11-26T06:00:00.000000Z'
+                approved_by: null
+                approved_at: null
+              approved_amendment_count: 0
+              closed_short_by: null
+              closed_short_at: null
+              close_short_reason: null
+              canceled_by: null
+              canceled_at: null
+              cancel_reason: null
+              lines:
+                - id: 94100000-0000-4000-8000-000000000003
+                  repf_line_id: 90100000-0000-4000-8000-000000000015
+                  quotation_line_id: 93100000-0000-4000-8000-000000000012
+                  variant_id: 95000000-0000-4000-8000-000000000051
+                  unit_id: 95000000-0000-4000-8000-000000000052
+                  quantity_scale: 0
+                  ordered_quantity: '100'
+                  accepted_quantity: '40'
+                  rejected_or_disputed_quantity: '10'
+                  closed_short_quantity: '0'
+                  canceled_quantity: '0'
+                  outstanding_quantity: '60'
+                  unit_price_php: '120.00'
+                  line_total_php: '12000.00'
+                  specifications: 220gsm combed cotton Chapter Shirt Medium.
+                  linked_demand_canceled: false
+                  linked_demand_canceled_at: null
+                  notes: null
+              created_at: '2026-11-26T05:00:00.000000Z'
+              updated_at: '2026-11-26T06:00:00.000000Z'
+            amendment:
+              id: 94500000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              po_id: 94000000-0000-4000-8000-000000000003
+              amendment_number: 1
+              status: pending_approval
+              base_material_version: 1
+              applied_material_version: null
+              delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+              expected_delivery_date: '2026-12-08'
+              payment_and_delivery_terms: Net 15 days upon accepted delivery.
+              proposed_total_php: '9600.00'
+              reason: Adjust remaining ordered balance to 80 units after supplier confirmed 40 remaining units available for replacement and final batch.
+              lines:
+                - po_line_id: 94100000-0000-4000-8000-000000000003
+                  repf_line_id: 90100000-0000-4000-8000-000000000015
+                  variant_id: 95000000-0000-4000-8000-000000000051
+                  unit_id: 95000000-0000-4000-8000-000000000052
+                  ordered_quantity: '80'
+                  unit_price_php: '120.00'
+                  specifications: 220gsm combed cotton Chapter Shirt Medium.
+                  notes: Amended to 80 total ordered (40 accepted + 40 remaining).
+              proposed_by:
+                user_id: 10000000-0000-4000-8000-000000000003
+                display_name: Purchasing Officer Carla
+              proposed_at: '2026-11-26T06:00:00.000000Z'
+              approved_by: null
+              approved_at: null
+
+  - name: stage2-03-po-amendment-approve
+    operationId: approvePurchaseOrderAmendment
+    before_status: partially_received
+    before: Independent Chapter Head approves amendment 1 on PO-2026-000003, bumping material_version from 1 to 2 and updating ordered_quantity to 80 (outstanding_quantity = 40; accepted = 40; rejected/disputed = 10 preserved).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000314
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000003
+        amendment_id: 94500000-0000-4000-8000-000000000001
+      body:
+        expected_version: 5
+        expected_material_version: 1
+        approval_notes: Approved reduction to 80 units; 40 units remain open for final delivery.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000314
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000009
+          operation_name: approvePurchaseOrderAmendment
+          action_key: 40000000-0000-4000-8000-000000000314
+          resource_kind: purchase_order_amendment
+          resource_id: 94500000-0000-4000-8000-000000000001
+          committed_version: 6
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T06:10:00.000000Z'
+          outcome: committed
+          result:
+            purchase_order:
+              id: 94000000-0000-4000-8000-000000000003
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              po_reference: PO-2026-000003
+              status: partially_received
+              version: 6
+              material_version: 2
+              repf_id: 90000000-0000-4000-8000-000000000012
+              repf_reference: REPF-2026-000003
+              originating_repf_preparer:
+                user_id: 10000000-0000-4000-8000-000000000002
+                display_name: Inventory Officer Ana
+              supplier_selection_id: 93500000-0000-4000-8000-000000000003
+              selected_quotation_id: 93000000-0000-4000-8000-000000000012
+              emergency_waiver_used: false
+              supplier:
+                supplier_name: Cebu Relief Supplies Inc.
+                supplier_subtype: distributor
+                contact_reference: sales@ceburelief.example.invalid
+                supplier_reference: CRS-2026-44
+              delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+              expected_delivery_date: '2026-12-08'
+              payment_and_delivery_terms: Net 15 days upon accepted delivery.
+              currency: PHP
+              total_amount_php: '9600.00'
+              linked_demand_canceled: false
+              preparer:
+                user_id: 10000000-0000-4000-8000-000000000003
+                display_name: Purchasing Officer Carla
+              submitted_by:
+                user_id: 10000000-0000-4000-8000-000000000003
+                display_name: Purchasing Officer Carla
+              submitted_at: '2026-11-26T05:10:00.000000Z'
+              approved_by:
+                user_id: 10000000-0000-4000-8000-000000000009
+                display_name: Chapter Head Ramon
+              approved_at: '2026-11-26T05:15:00.000000Z'
+              issued_at: '2026-11-26T05:15:00.000000Z'
+              review_decision_reason: null
+              acknowledgment: null
+              pending_amendment: null
+              approved_amendment_count: 1
+              closed_short_by: null
+              closed_short_at: null
+              close_short_reason: null
+              canceled_by: null
+              canceled_at: null
+              cancel_reason: null
+              lines:
+                - id: 94100000-0000-4000-8000-000000000003
+                  repf_line_id: 90100000-0000-4000-8000-000000000015
+                  quotation_line_id: 93100000-0000-4000-8000-000000000012
+                  variant_id: 95000000-0000-4000-8000-000000000051
+                  unit_id: 95000000-0000-4000-8000-000000000052
+                  quantity_scale: 0
+                  ordered_quantity: '80'
+                  accepted_quantity: '40'
+                  rejected_or_disputed_quantity: '10'
+                  closed_short_quantity: '0'
+                  canceled_quantity: '0'
+                  outstanding_quantity: '40'
+                  unit_price_php: '120.00'
+                  line_total_php: '9600.00'
+                  specifications: 220gsm combed cotton Chapter Shirt Medium.
+                  linked_demand_canceled: false
+                  linked_demand_canceled_at: null
+                  notes: Amended to 80 total ordered (40 accepted + 40 remaining).
+              created_at: '2026-11-26T05:00:00.000000Z'
+              updated_at: '2026-11-26T06:10:00.000000Z'
+            amendment:
+              id: 94500000-0000-4000-8000-000000000001
+              chapter_id: 60000000-0000-4000-8000-000000000001
+              po_id: 94000000-0000-4000-8000-000000000003
+              amendment_number: 1
+              status: approved
+              base_material_version: 1
+              applied_material_version: 2
+              delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+              expected_delivery_date: '2026-12-08'
+              payment_and_delivery_terms: Net 15 days upon accepted delivery.
+              proposed_total_php: '9600.00'
+              reason: Adjust remaining ordered balance to 80 units after supplier confirmed 40 remaining units available for replacement and final batch.
+              lines:
+                - po_line_id: 94100000-0000-4000-8000-000000000003
+                  repf_line_id: 90100000-0000-4000-8000-000000000015
+                  variant_id: 95000000-0000-4000-8000-000000000051
+                  unit_id: 95000000-0000-4000-8000-000000000052
+                  ordered_quantity: '80'
+                  unit_price_php: '120.00'
+                  specifications: 220gsm combed cotton Chapter Shirt Medium.
+                  notes: Amended to 80 total ordered (40 accepted + 40 remaining).
+              proposed_by:
+                user_id: 10000000-0000-4000-8000-000000000003
+                display_name: Purchasing Officer Carla
+              proposed_at: '2026-11-26T06:00:00.000000Z'
+              approved_by:
+                user_id: 10000000-0000-4000-8000-000000000009
+                display_name: Chapter Head Ramon
+              approved_at: '2026-11-26T06:10:00.000000Z'
+
+  - name: stage2-03-po-close-short
+    operationId: closeShortPurchaseOrder
+    before_status: partially_received
+    before: Independent Chapter Head formally closes-short the 40-unit unreceived remainder of PO-2026-000003; outstanding_quantity becomes 0, inbound_open_po drops to 0, while 40 accepted and 10 rejected/disputed units remain preserved.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000315
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000003
+      body:
+        expected_version: 6
+        expected_material_version: 2
+        reason: Supplier discontinued remaining stock; credit memo issued and remaining 40 units closed short.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000315
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000009
+          operation_name: closeShortPurchaseOrder
+          action_key: 40000000-0000-4000-8000-000000000315
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000003
+          committed_version: 7
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T06:30:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000003
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: PO-2026-000003
+            status: closed_short
+            version: 7
+            material_version: 2
+            repf_id: 90000000-0000-4000-8000-000000000012
+            repf_reference: REPF-2026-000003
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000003
+            selected_quotation_id: 93000000-0000-4000-8000-000000000012
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Cebu Relief Supplies Inc.
+              supplier_subtype: distributor
+              contact_reference: sales@ceburelief.example.invalid
+              supplier_reference: CRS-2026-44
+            delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+            expected_delivery_date: '2026-12-08'
+            payment_and_delivery_terms: Net 15 days upon accepted delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_at: '2026-11-26T05:10:00.000000Z'
+            approved_by:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            approved_at: '2026-11-26T05:15:00.000000Z'
+            issued_at: '2026-11-26T05:15:00.000000Z'
+            review_decision_reason: null
+            acknowledgment: null
+            pending_amendment: null
+            approved_amendment_count: 1
+            closed_short_by:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            closed_short_at: '2026-11-26T06:30:00.000000Z'
+            close_short_reason: Supplier discontinued remaining stock; credit memo issued and remaining 40 units closed short.
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000003
+                repf_line_id: 90100000-0000-4000-8000-000000000015
+                quotation_line_id: 93100000-0000-4000-8000-000000000012
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '80'
+                accepted_quantity: '40'
+                rejected_or_disputed_quantity: '10'
+                closed_short_quantity: '40'
+                canceled_quantity: '0'
+                outstanding_quantity: '0'
+                unit_price_php: '120.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: Amended to 80 total ordered (40 accepted + 40 remaining).
+            created_at: '2026-11-26T05:00:00.000000Z'
+            updated_at: '2026-11-26T06:30:00.000000Z'
+
+  - name: stage2-03-po-cancel-issued-unreceived
+    operationId: cancelPurchaseOrder
+    before_status: issued
+    before: Independent Chapter Head cancels unreceived issued PO-2026-000001 after linked RF demand was canceled; po_reference is retained and inbound_open_po drops to 0.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000316
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 8
+        expected_material_version: 2
+        reason: Linked internal RF canceled before dispatch; supplier confirmed no shipment sent.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000316
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000009
+          operation_name: cancelPurchaseOrder
+          action_key: 40000000-0000-4000-8000-000000000316
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000001
+          committed_version: 9
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T06:45:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: PO-2026-000001
+            status: canceled
+            version: 9
+            material_version: 2
+            repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-000001
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000001
+            selected_quotation_id: 93000000-0000-4000-8000-000000000001
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+            expected_delivery_date: '2026-12-02'
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: true
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_at: '2026-11-26T04:35:00.000000Z'
+            approved_by:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            approved_at: '2026-11-26T04:40:00.000000Z'
+            issued_at: '2026-11-26T04:40:00.000000Z'
+            review_decision_reason: null
+            acknowledgment:
+              supplier_confirmation_reference: VAW-ACK-2026-88
+              acknowledged_at: '2026-11-26T05:00:00.000000Z'
+              revised_expected_delivery_date: '2026-12-03'
+              notes: Supplier confirmed schedule for afternoon delivery on Dec 3.
+              evidence_binding: null
+              recorded_by:
+                user_id: 10000000-0000-4000-8000-000000000003
+                display_name: Purchasing Officer Carla
+              recorded_at: '2026-11-26T05:05:00.000000Z'
+            pending_amendment: null
+            approved_amendment_count: 0
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            canceled_at: '2026-11-26T06:45:00.000000Z'
+            cancel_reason: Linked internal RF canceled before dispatch; supplier confirmed no shipment sent.
+            lines:
+              - id: 94100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                quotation_line_id: 93100000-0000-4000-8000-000000000001
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '40'
+                accepted_quantity: '0'
+                rejected_or_disputed_quantity: '0'
+                closed_short_quantity: '0'
+                canceled_quantity: '40'
+                outstanding_quantity: '0'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest and size tags.
+                linked_demand_canceled: true
+                linked_demand_canceled_at: '2026-11-26T06:40:00.000000Z'
+                notes: Updated receiving gate per Budget Approver return note.
+            created_at: '2026-11-26T04:25:00.000000Z'
+            updated_at: '2026-11-26T06:45:00.000000Z'
+
+  - name: stage2-03-po-list
+    operationId: listPurchaseOrders
+    before: Officer lists chapter Purchase Orders showing ordered, accepted, rejected/disputed, and outstanding quantities aligned with inbound_open_po.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        status: partially_received
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - id: 94000000-0000-4000-8000-000000000003
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: PO-2026-000003
+            status: partially_received
+            version: 6
+            material_version: 2
+            repf_id: 90000000-0000-4000-8000-000000000012
+            repf_reference: REPF-2026-000003
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000003
+            selected_quotation_id: 93000000-0000-4000-8000-000000000012
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Cebu Relief Supplies Inc.
+              supplier_subtype: distributor
+              contact_reference: sales@ceburelief.example.invalid
+              supplier_reference: CRS-2026-44
+            delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+            expected_delivery_date: '2026-12-08'
+            payment_and_delivery_terms: Net 15 days upon accepted delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_at: '2026-11-26T05:10:00.000000Z'
+            approved_by:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            approved_at: '2026-11-26T05:15:00.000000Z'
+            issued_at: '2026-11-26T05:15:00.000000Z'
+            review_decision_reason: null
+            acknowledgment: null
+            pending_amendment: null
+            approved_amendment_count: 1
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000003
+                repf_line_id: 90100000-0000-4000-8000-000000000015
+                quotation_line_id: 93100000-0000-4000-8000-000000000012
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '80'
+                accepted_quantity: '40'
+                rejected_or_disputed_quantity: '10'
+                closed_short_quantity: '0'
+                canceled_quantity: '0'
+                outstanding_quantity: '40'
+                unit_price_php: '120.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: Amended to 80 total ordered (40 accepted + 40 remaining).
+            created_at: '2026-11-26T05:00:00.000000Z'
+            updated_at: '2026-11-26T06:10:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 30
+
+  - name: stage2-03-po-read
+    operationId: readPurchaseOrder
+    before: Receiving officer reads issued PO-2026-000001 without requiring supplier acknowledgment.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      body:
+        data:
+          id: 94000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          po_reference: PO-2026-000001
+          status: issued
+          version: 6
+          material_version: 2
+          repf_id: 90000000-0000-4000-8000-000000000010
+          repf_reference: REPF-2026-000001
+          originating_repf_preparer:
+            user_id: 10000000-0000-4000-8000-000000000002
+            display_name: Inventory Officer Ana
+          supplier_selection_id: 93500000-0000-4000-8000-000000000001
+          selected_quotation_id: 93000000-0000-4000-8000-000000000001
+          emergency_waiver_used: false
+          supplier:
+            supplier_name: Visayas Apparel Wholesalers
+            supplier_subtype: wholesaler
+            contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+            supplier_reference: VAW-Q-2026-114
+          delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+          expected_delivery_date: '2026-12-02'
+          payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+          currency: PHP
+          total_amount_php: '9600.00'
+          linked_demand_canceled: false
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000003
+            display_name: Purchasing Officer Carla
+          submitted_by:
+            user_id: 10000000-0000-4000-8000-000000000003
+            display_name: Purchasing Officer Carla
+          submitted_at: '2026-11-26T04:35:00.000000Z'
+          approved_by:
+            user_id: 10000000-0000-4000-8000-000000000009
+            display_name: Chapter Head Ramon
+          approved_at: '2026-11-26T04:40:00.000000Z'
+          issued_at: '2026-11-26T04:40:00.000000Z'
+          review_decision_reason: null
+          acknowledgment: null
+          pending_amendment: null
+          approved_amendment_count: 0
+          closed_short_by: null
+          closed_short_at: null
+          close_short_reason: null
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+            - id: 94100000-0000-4000-8000-000000000001
+              repf_line_id: 90100000-0000-4000-8000-000000000011
+              quotation_line_id: 93100000-0000-4000-8000-000000000001
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              ordered_quantity: '40'
+              accepted_quantity: '0'
+              rejected_or_disputed_quantity: '0'
+              closed_short_quantity: '0'
+              canceled_quantity: '0'
+              outstanding_quantity: '40'
+              unit_price_php: '240.00'
+              line_total_php: '9600.00'
+              specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest and size tags.
+              linked_demand_canceled: false
+              linked_demand_canceled_at: null
+              notes: Updated receiving gate per Budget Approver return note.
+          created_at: '2026-11-26T04:25:00.000000Z'
+          updated_at: '2026-11-26T04:40:00.000000Z'
+
+  - name: stage2-03-po-history
+    operationId: listPurchaseOrderHistory
+    before: Officer inspects immutable PO lifecycle and amendment history newest version first.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000003
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - id: 94200000-0000-4000-8000-000000000007
+            version: 7
+            material_version: 2
+            action: closeShortPurchaseOrder
+            from_status: partially_received
+            to_status: closed_short
+            actor:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            reason: Supplier discontinued remaining stock; credit memo issued and remaining 40 units closed short.
+            po_reference: PO-2026-000003
+            amendment_id: null
+            occurred_at: '2026-11-26T06:30:00.000000Z'
+          - id: 94200000-0000-4000-8000-000000000006
+            version: 6
+            material_version: 2
+            action: approvePurchaseOrderAmendment
+            from_status: partially_received
+            to_status: partially_received
+            actor:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            reason: Approved reduction to 80 units; 40 units remain open for final delivery.
+            po_reference: PO-2026-000003
+            amendment_id: 94500000-0000-4000-8000-000000000001
+            occurred_at: '2026-11-26T06:10:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 31
+
+  - name: stage2-03-po-read-version
+    operationId: readPurchaseOrderVersion
+    before: Officer reads historical immutable version 6 of PO-2026-000003 prior to close-short.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000003
+        version: 6
+    response:
+      status: '200'
+      body:
+        data:
+          id: 94000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          po_reference: PO-2026-000003
+          status: partially_received
+          version: 6
+          material_version: 2
+          repf_id: 90000000-0000-4000-8000-000000000012
+          repf_reference: REPF-2026-000003
+          originating_repf_preparer:
+            user_id: 10000000-0000-4000-8000-000000000002
+            display_name: Inventory Officer Ana
+          supplier_selection_id: 93500000-0000-4000-8000-000000000003
+          selected_quotation_id: 93000000-0000-4000-8000-000000000012
+          emergency_waiver_used: false
+          supplier:
+            supplier_name: Cebu Relief Supplies Inc.
+            supplier_subtype: distributor
+            contact_reference: sales@ceburelief.example.invalid
+            supplier_reference: CRS-2026-44
+          delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+          expected_delivery_date: '2026-12-08'
+          payment_and_delivery_terms: Net 15 days upon accepted delivery.
+          currency: PHP
+          total_amount_php: '9600.00'
+          linked_demand_canceled: false
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000003
+            display_name: Purchasing Officer Carla
+          submitted_by:
+            user_id: 10000000-0000-4000-8000-000000000003
+            display_name: Purchasing Officer Carla
+          submitted_at: '2026-11-26T05:10:00.000000Z'
+          approved_by:
+            user_id: 10000000-0000-4000-8000-000000000009
+            display_name: Chapter Head Ramon
+          approved_at: '2026-11-26T05:15:00.000000Z'
+          issued_at: '2026-11-26T05:15:00.000000Z'
+          review_decision_reason: null
+          acknowledgment: null
+          pending_amendment: null
+          approved_amendment_count: 1
+          closed_short_by: null
+          closed_short_at: null
+          close_short_reason: null
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+            - id: 94100000-0000-4000-8000-000000000003
+              repf_line_id: 90100000-0000-4000-8000-000000000015
+              quotation_line_id: 93100000-0000-4000-8000-000000000012
+              variant_id: 95000000-0000-4000-8000-000000000051
+              unit_id: 95000000-0000-4000-8000-000000000052
+              quantity_scale: 0
+              ordered_quantity: '80'
+              accepted_quantity: '40'
+              rejected_or_disputed_quantity: '10'
+              closed_short_quantity: '0'
+              canceled_quantity: '0'
+              outstanding_quantity: '40'
+              unit_price_php: '120.00'
+              line_total_php: '9600.00'
+              specifications: 220gsm combed cotton Chapter Shirt Medium.
+              linked_demand_canceled: false
+              linked_demand_canceled_at: null
+              notes: Amended to 80 total ordered (40 accepted + 40 remaining).
+          created_at: '2026-11-26T05:00:00.000000Z'
+          updated_at: '2026-11-26T06:10:00.000000Z'
+
+  - name: stage2-03-po-related
+    operationId: listPurchaseOrderRelatedRecords
+    before: Officer inspects authorized linked RepF, quotation, selection, internal RF, receiving report, and receiving discrepancy for PO-2026-000003.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000003
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - kind: repf
+            id: 90000000-0000-4000-8000-000000000012
+            po_line_id: null
+            reference: REPF-2026-000003
+            material_version: 1
+            state: ordered
+            linked_demand_canceled: false
+          - kind: quotation
+            id: 93000000-0000-4000-8000-000000000012
+            po_line_id: null
+            reference: CRS-2026-44
+            material_version: 1
+            state: selected
+            linked_demand_canceled: false
+          - kind: receiving_report
+            id: 96000000-0000-4000-8000-000000000001
+            po_line_id: 94100000-0000-4000-8000-000000000003
+            reference: RM-2026-000005
+            material_version: 1
+            state: posted
+            linked_demand_canceled: false
+          - kind: receiving_discrepancy
+            id: 96500000-0000-4000-8000-000000000001
+            po_line_id: 94100000-0000-4000-8000-000000000003
+            reference: null
+            material_version: 1
+            state: open
+            linked_demand_canceled: false
+        page:
+          next_cursor: null
+          snapshot_version: 32
+
+  - name: stage2-03-po-print-html
+    operationId: printPurchaseOrder
+    before: Officer renders escaped non-executable printable HTML for issued PO-2026-000001.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+    response:
+      status: '200'
+      media_type: text/html
+      headers:
+        Cache-Control: no-store
+        Content-Security-Policy: "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+        X-Content-Type-Options: nosniff
+      body: '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>PO-2026-000001</title></head><body><h1>Purchase Order PO-2026-000001</h1><p>Supplier: Visayas Apparel Wholesalers | Total: PHP 9,600.00 | Status: issued</p></body></html>'
+
+  - name: stage2-03-procurement-recovery-po-approve
+    operationId: findProcurementOperationByKey
+    before: Chapter Head recovers committed approvePurchaseOrder receipt after dropped network connection using extended ProcurementOperationName enum.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        operation_name: approvePurchaseOrder
+        action_key: 40000000-0000-4000-8000-000000000309
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000309
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000009
+          operation_name: approvePurchaseOrder
+          action_key: 40000000-0000-4000-8000-000000000309
+          resource_kind: purchase_order
+          resource_id: 94000000-0000-4000-8000-000000000001
+          committed_version: 6
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T04:40:00.000000Z'
+          outcome: committed
+          result:
+            id: 94000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            po_reference: PO-2026-000001
+            status: issued
+            version: 6
+            material_version: 2
+            repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-000001
+            originating_repf_preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer Ana
+            supplier_selection_id: 93500000-0000-4000-8000-000000000001
+            selected_quotation_id: 93000000-0000-4000-8000-000000000001
+            emergency_waiver_used: false
+            supplier:
+              supplier_name: Visayas Apparel Wholesalers
+              supplier_subtype: wholesaler
+              contact_reference: sales@visayasapparel.example.invalid / +63-32-555-0101
+              supplier_reference: VAW-Q-2026-114
+            delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+            expected_delivery_date: '2026-12-02'
+            payment_and_delivery_terms: 50% upon delivery acceptance, 50% net 15 days; free Cebu City delivery.
+            currency: PHP
+            total_amount_php: '9600.00'
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000003
+              display_name: Purchasing Officer Carla
+            submitted_at: '2026-11-26T04:35:00.000000Z'
+            approved_by:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head Ramon
+            approved_at: '2026-11-26T04:40:00.000000Z'
+            issued_at: '2026-11-26T04:40:00.000000Z'
+            review_decision_reason: null
+            acknowledgment: null
+            pending_amendment: null
+            approved_amendment_count: 0
+            closed_short_by: null
+            closed_short_at: null
+            close_short_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 94100000-0000-4000-8000-000000000001
+                repf_line_id: 90100000-0000-4000-8000-000000000011
+                quotation_line_id: 93100000-0000-4000-8000-000000000001
+                variant_id: 95000000-0000-4000-8000-000000000051
+                unit_id: 95000000-0000-4000-8000-000000000052
+                quantity_scale: 0
+                ordered_quantity: '40'
+                accepted_quantity: '0'
+                rejected_or_disputed_quantity: '0'
+                closed_short_quantity: '0'
+                canceled_quantity: '0'
+                outstanding_quantity: '40'
+                unit_price_php: '240.00'
+                line_total_php: '9600.00'
+                specifications: 220gsm combed cotton Chapter Shirt Medium with silkscreen crest and size tags.
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                notes: Updated receiving gate per Budget Approver return note.
+            created_at: '2026-11-26T04:25:00.000000Z'
+            updated_at: '2026-11-26T04:40:00.000000Z'
+
+  # --- Ticket 03 Policy-Blocked, Conflict, Denial & Invalid Examples ---
+  - name: stage2-03-selection-quotation-policy-unmet
+    operationId: recordSupplierSelection
+    before: Selecting with only 1 quote and no emergency waiver under PHP 0.00-10000.00 tier (requires 2) returns 409 quotation_policy_unmet (PRC-05).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000320
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_repf_version: 4
+        expected_repf_material_version: 2
+        selected_quotation_id: 93000000-0000-4000-8000-000000000001
+        comparable_quotation_ids:
+          - 93000000-0000-4000-8000-000000000001
+        selection_rationale: Single quote submitted without waiver.
+        emergency_waiver: null
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000320
+        error:
+          code: quotation_policy_unmet
+          message: Tier requires at least 2 comparable quotations and no permitted emergency waiver was provided.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+        policy_evaluation:
+          policy_id: 72000000-0000-4000-8000-000000000001
+          policy_version: 1
+          evaluated_amount_php: '9600.00'
+          applicable_tier_min_php: '0.00'
+          applicable_tier_max_php: '10000.00'
+          required_minimum_quotes: 2
+          comparable_quote_count: 1
+          waiver_permitted: true
+          minimum_quotes_when_waived: 1
+          emergency_waiver_used: false
+          approving_duties_for_waiver:
+            - BUDGET_APPROVER
+            - CHAPTER_HEAD
+
+  - name: stage2-03-selection-setup-blocked-missing-policy
+    operationId: recordSupplierSelection
+    before: Missing or expired chapter purchasing_quotation_policy blocks supplier selection with 409 setup_blocked rather than silently allowing single-quote award.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000321
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_repf_version: 4
+        expected_repf_material_version: 2
+        selected_quotation_id: 93000000-0000-4000-8000-000000000001
+        comparable_quotation_ids:
+          - 93000000-0000-4000-8000-000000000001
+          - 93000000-0000-4000-8000-000000000002
+        selection_rationale: Comparable quotes ready pending chapter policy.
+        emergency_waiver: null
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000321
+        error:
+          code: setup_blocked
+          message: Effective chapter purchasing_quotation_policy is required before recording supplier selection.
+        failed_intent_committed: false
+        current: null
+        setup_blockers:
+          - setting_key: purchasing_quotation_policy
+            subject_id: null
+            state: missing
+            approval_owner: CHAPTER_HEAD
+            message: Record an effective chapter purchasing_quotation_policy via controlled CLI recordPolicy.
+        policy_evaluation: null
+
+  - name: stage2-03-po-approve-budget-limit-exceeded
+    operationId: approvePurchaseOrder
+    before: PO total exceeding originating approved RepF approved_budget_php fails with 409 budget_limit_exceeded without allocating a PO reference.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000322
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000004
+      body:
+        expected_version: 2
+        expected_material_version: 1
+        approval_notes: null
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000322
+        error:
+          code: budget_limit_exceeded
+          message: Cumulative PO commitments would exceed approved RepF approved_budget_php ceiling.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+        policy_evaluation: null
+
+  - name: stage2-03-po-approve-independence-required
+    operationId: approvePurchaseOrder
+    before: Budget Approver who prepared the originating Inventory RepF (even though Purchasing Officer Carla prepared the PO) is denied with 403 independence_required.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000323
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        approval_notes: null
+    response:
+      status: '403'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000323
+        error:
+          code: independence_required
+          message: PO approver must be independent of both the PO preparer and the originating RepF preparer.
+
+  - name: stage2-03-po-approve-duty-limit-exceeded
+    operationId: approvePurchaseOrder
+    before: Independent Budget Approver whose DutyGrant limit_php is 5000.00 is denied approving PHP 9,600.00 PO with 403 duty_limit_exceeded.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000324
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000001
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        approval_notes: null
+    response:
+      status: '403'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000324
+        error:
+          code: duty_limit_exceeded
+          message: Purchase Order total_amount_php exceeds the actor's active duty grant monetary limit.
+
+  - name: stage2-03-po-amendment-below-accepted-blocked
+    operationId: proposePurchaseOrderAmendment
+    before: Proposing a PO amendment reducing ordered_quantity to 30 when 40 units are already accepted rejects with 409 po_has_accepted_receipts (PRC-08, RCV-07).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000325
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000003
+      body:
+        expected_version: 4
+        expected_material_version: 1
+        delivery_location: YSP Cebu Chapter Stockroom, Gate 2, Cebu City
+        expected_delivery_date: '2026-12-08'
+        payment_and_delivery_terms: Net 15 days upon accepted delivery.
+        reason: Attempt to reduce ordered quantity below accepted receipts.
+        lines:
+          - po_line_id: 94100000-0000-4000-8000-000000000003
+            repf_line_id: 90100000-0000-4000-8000-000000000015
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            ordered_quantity: '30'
+            unit_price_php: '120.00'
+            specifications: 220gsm combed cotton Chapter Shirt Medium.
+            notes: null
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000325
+        error:
+          code: po_has_accepted_receipts
+          message: Proposed ordered_quantity (30) cannot be reduced below already accepted_quantity (40).
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+        policy_evaluation: null
+
+  - name: stage2-03-po-cancel-partially-received-blocked
+    operationId: cancelPurchaseOrder
+    before: Attempting to cancel a partially_received PO with 40 accepted units returns 409 po_has_accepted_receipts (must use close-short).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000326
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000003
+      body:
+        expected_version: 6
+        expected_material_version: 2
+        reason: Attempt cancel after partial delivery accepted.
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000326
+        error:
+          code: po_has_accepted_receipts
+          message: Purchase Order already has accepted receipts; use close-short to close the unreceived remainder.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+        policy_evaluation: null
+
+  - name: stage2-03-po-close-short-blank-reason-invalid
+    operationId: closeShortPurchaseOrder
+    request_valid: false
+    before: Blank reason on closeShortPurchaseOrder fails closed schema validation with 422 invalid_input pointing to /reason.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000327
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        po_id: 94000000-0000-4000-8000-000000000003
+      body:
+        expected_version: 6
+        expected_material_version: 2
+        reason: '   '
+    response:
+      status: '422'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000327
+        error:
+          code: invalid_input
+          message: Close-short reason must be non-blank.
+          fields:
+            - pointer: /reason
+              code: invalid_format
+              message: Provide a meaningful close-short reason.
+
+  - name: stage2-03-quotation-invalid-subtype-rejected
+    operationId: createRepfQuotation
+    request_valid: false
+    before: Invalid supplier_subtype enum value fails schema validation with 422 invalid_input pointing to /supplier/supplier_subtype.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000328
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        supplier:
+          supplier_name: Informal Vendor
+          supplier_subtype: unknown_kind
+          contact_reference: 0917-000-0000
+          supplier_reference: null
+        quoted_at: '2026-11-26T04:00:00.000000Z'
+        valid_until: null
+        lead_time_days: 3
+        availability_summary: In stock
+        quality_warranty_terms: Standard
+        payment_and_delivery_terms: COD
+        reliability_notes: null
+        evidence: null
+        lines:
+          - repf_line_id: 90100000-0000-4000-8000-000000000011
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            quoted_quantity: '40'
+            unit_price_php: '240.00'
+            notes: null
+    response:
+      status: '422'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000328
+        error:
+          code: invalid_input
+          message: Request body failed quotation validation.
+          fields:
+            - pointer: /supplier/supplier_subtype
+              code: invalid_format
+              message: Must be a canonical SupplierSubtype value.
 
 procedure_cases:
   - name: stage2-01-policy-purchasing-quotation-committed

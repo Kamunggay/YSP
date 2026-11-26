@@ -30,6 +30,18 @@ REQUIRED_STAGE2_ACTIONS = {
     "repf.submit",
     "repf.budget_review",
     "repf.cancel",
+    "quotation.read",
+    "quotation.manage",
+    "quotation.select",
+    "po.read",
+    "po.draft",
+    "po.submit",
+    "po.approve",
+    "po.acknowledge",
+    "po.amend_propose",
+    "po.amend_approve",
+    "po.close_short",
+    "po.cancel",
 }
 FORBIDDEN_PUBLIC_PATH_FRAGMENTS = (
     "/policies",
@@ -40,6 +52,7 @@ FORBIDDEN_PUBLIC_PATH_FRAGMENTS = (
     "/compute-net-shortage",
     "/prepare-receiving",
     "/apply-lot-restriction",
+    "/suppliers",
 )
 
 
@@ -261,6 +274,115 @@ def check_repf_invariants(repf, label):
         raise ValueError(f"{label}: approved_budget_php does not match estimated_total_php")
 
 
+def check_quotation_invariants(quotation, label):
+    """Verify quotation line totals, grand total, and unique repf_line_id per quotation."""
+    two_dp = Decimal("0.01")
+    total_php = Decimal("0.00")
+    seen_repf_lines = set()
+    for idx, line in enumerate(quotation["lines"]):
+        line_label = f"{label}.lines[{idx}]"
+        if line["repf_line_id"] in seen_repf_lines:
+            raise ValueError(f"{line_label}: duplicate repf_line_id within quotation")
+        seen_repf_lines.add(line["repf_line_id"])
+        expected_line_total = (Decimal(line["quoted_quantity"]) * Decimal(line["unit_price_php"])).quantize(
+            two_dp, rounding=ROUND_HALF_UP
+        )
+        if Decimal(line["line_total_php"]) != expected_line_total:
+            raise ValueError(f"{line_label}: line_total_php mismatch")
+        total_php += expected_line_total
+    if Decimal(quotation["total_amount_php"]) != total_php:
+        raise ValueError(f"{label}: total_amount_php does not equal sum of line totals")
+
+
+def check_supplier_selection_invariants(selection, label):
+    """Verify PRC-05 supplier selection quote counts and waiver coherence."""
+    ids = selection["comparable_quotation_ids"]
+    if selection["selected_quotation_id"] not in ids:
+        raise ValueError(f"{label}: selected_quotation_id not in comparable_quotation_ids")
+    if selection["comparable_quote_count"] != len(ids):
+        raise ValueError(f"{label}: comparable_quote_count mismatch")
+    ev = selection["policy_evaluation"]
+    if ev["comparable_quote_count"] != len(ids):
+        raise ValueError(f"{label}: policy_evaluation.comparable_quote_count mismatch")
+    if ev["emergency_waiver_used"] != selection["emergency_waiver_used"]:
+        raise ValueError(f"{label}: policy_evaluation.emergency_waiver_used mismatch")
+    if selection["emergency_waiver_used"]:
+        if not ev["waiver_permitted"] or ev["minimum_quotes_when_waived"] is None:
+            raise ValueError(f"{label}: emergency waiver recorded when policy disallows waiver")
+        if len(ids) < ev["minimum_quotes_when_waived"]:
+            raise ValueError(f"{label}: comparable quotes below policy minimum_quotes_when_waived")
+    else:
+        if len(ids) < ev["required_minimum_quotes"]:
+            raise ValueError(f"{label}: comparable quotes below tier required_minimum_quotes without waiver")
+
+
+def check_po_invariants(po, label):
+    """Verify PRC-06..PRC-09 PO quantity conservation, PHP totals, independence, and state invariants."""
+    two_dp = Decimal("0.01")
+    zero = Decimal("0")
+    total_php = Decimal("0.00")
+    any_demand_canceled = False
+    all_zero_outstanding = True
+    any_accepted = False
+    any_closed_short_or_canceled = False
+
+    for idx, line in enumerate(po["lines"]):
+        line_label = f"{label}.lines[{idx}]"
+        ordered = Decimal(line["ordered_quantity"])
+        accepted = Decimal(line["accepted_quantity"])
+        closed_short = Decimal(line["closed_short_quantity"])
+        canceled = Decimal(line["canceled_quantity"])
+        outstanding = Decimal(line["outstanding_quantity"])
+        if accepted + closed_short + canceled + outstanding != ordered:
+            raise ValueError(
+                f"{line_label}: accepted + closed_short + canceled + outstanding != ordered_quantity"
+            )
+        expected_line_total = (ordered * Decimal(line["unit_price_php"])).quantize(
+            two_dp, rounding=ROUND_HALF_UP
+        )
+        if Decimal(line["line_total_php"]) != expected_line_total:
+            raise ValueError(f"{line_label}: line_total_php mismatch")
+        total_php += expected_line_total
+        if line["linked_demand_canceled"]:
+            any_demand_canceled = True
+        if outstanding > zero:
+            all_zero_outstanding = False
+        if accepted > zero:
+            any_accepted = True
+        if closed_short > zero or canceled > zero:
+            any_closed_short_or_canceled = True
+
+    if Decimal(po["total_amount_php"]) != total_php:
+        raise ValueError(f"{label}: total_amount_php does not equal sum of line totals")
+    if po["linked_demand_canceled"] != any_demand_canceled:
+        raise ValueError(f"{label}: linked_demand_canceled mismatch")
+    status = po["status"]
+    if status in {"draft", "pending_approval", "returned_for_revision", "rejected"} and any_accepted:
+        raise ValueError(f"{label}: pre-issuance PO cannot have accepted receipts")
+    if status in {"receiving_complete", "closed_short", "canceled"} and not all_zero_outstanding:
+        raise ValueError(f"{label}: terminal PO status {status} must have zero outstanding_quantity")
+    if status == "receiving_complete" and any_closed_short_or_canceled:
+        raise ValueError(f"{label}: receiving_complete PO cannot have closed_short or canceled quantities")
+    if status == "canceled" and any_accepted:
+        raise ValueError(f"{label}: canceled PO cannot have accepted receipts")
+    if po["approved_by"] is not None:
+        approver_id = po["approved_by"]["user_id"]
+        if approver_id in {po["preparer"]["user_id"], po["originating_repf_preparer"]["user_id"]}:
+            raise ValueError(f"{label}: PO approver violates independence from PO or originating RepF preparer")
+    if po["pending_amendment"] is not None:
+        amend = po["pending_amendment"]
+        if amend["status"] != "pending_approval":
+            raise ValueError(f"{label}: pending_amendment must have status pending_approval")
+        amend_total = sum(
+            (Decimal(ln["ordered_quantity"]) * Decimal(ln["unit_price_php"])).quantize(
+                two_dp, rounding=ROUND_HALF_UP
+            )
+            for ln in amend["lines"]
+        )
+        if Decimal(amend["proposed_total_php"]) != amend_total:
+            raise ValueError(f"{label}: pending_amendment proposed_total_php mismatch")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--invalid-example", action="store_true")
@@ -428,6 +550,7 @@ def main():
         raise ValueError(f"ProcurementOperationName references non-unsafe or unknown operations: {sorted(unknown_proc_ops)}")
 
     donation_transitions = document.get("x-stage2-donation-transitions", {})
+    po_transitions = document.get("x-stage2-po-transitions", {})
     covered = set()
     names = set()
     for case in examples["cases"]:
@@ -490,13 +613,53 @@ def main():
                 elif case["operationId"] == "listRepfs":
                     for idx, repf in enumerate(body_data):
                         check_repf_invariants(repf, f"{name}[{idx}]")
+                elif case["operationId"] in {"readPurchaseOrder", "readPurchaseOrderVersion"}:
+                    check_po_invariants(body_data, name)
+                elif case["operationId"] == "listPurchaseOrders":
+                    for idx, po in enumerate(body_data):
+                        check_po_invariants(po, f"{name}[{idx}]")
+                elif case["operationId"] == "listRepfQuotations":
+                    for idx, quote in enumerate(body_data):
+                        check_quotation_invariants(quote, f"{name}[{idx}]")
                 elif case["operationId"] in proc_ops | {"findProcurementOperationByKey", "readProcurementOperation"}:
-                    if isinstance(body_data, dict) and body_data.get("resource_kind") == "repf":
-                        check_repf_invariants(body_data["result"], name)
+                    if isinstance(body_data, dict):
+                        rk = body_data.get("resource_kind")
+                        if rk == "repf":
+                            check_repf_invariants(body_data["result"], name)
+                        elif rk == "quotation":
+                            check_quotation_invariants(body_data["result"], name)
+                        elif rk == "supplier_selection":
+                            check_supplier_selection_invariants(body_data["result"], name)
+                        elif rk == "purchase_order":
+                            check_po_invariants(body_data["result"], name)
+                        elif rk == "purchase_order_amendment":
+                            check_po_invariants(body_data["result"]["purchase_order"], name)
+                            amend = body_data["result"]["amendment"]
+                            if amend["status"] == "approved":
+                                approver = amend["approved_by"]["user_id"]
+                                po_obj = body_data["result"]["purchase_order"]
+                                if approver in {
+                                    amend["proposed_by"]["user_id"],
+                                    po_obj["preparer"]["user_id"],
+                                    po_obj["originating_repf_preparer"]["user_id"],
+                                }:
+                                    raise ValueError(f"{name}: amendment approver violates independence")
         elif "body" in response:
             raise ValueError(f"{name}: bodyless status contains a body")
 
         operation_id = case["operationId"]
+        if operation_id in po_transitions and status.startswith("2") and "before_status" in case:
+            receipt = response["body"]["data"]
+            po_obj = (
+                receipt["result"]["purchase_order"]
+                if receipt["resource_kind"] == "purchase_order_amendment"
+                else receipt["result"]
+            )
+            allowed = po_transitions[operation_id].get(case["before_status"], [])
+            if receipt["operation_name"] != operation_id or receipt["status_code"] != int(status):
+                raise ValueError(f"{name}: PO receipt has the wrong operation or status")
+            if po_obj["status"] not in allowed:
+                raise ValueError(f"{name}: invalid PO state transition")
         if operation_id in donation_transitions and status.startswith("2"):
             receipt = response["body"]["data"]
             allowed = donation_transitions[operation_id].get(case["before_status"], [])
@@ -663,6 +826,42 @@ def main():
                     "page": {"next_cursor": None, "snapshot_version": 0},
                 },
                 "deliberately invalid replenishment response",
+            ),
+            (
+                "#/components/schemas/CreateRepfQuotationRequest",
+                {
+                    "supplier": {
+                        "supplier_name": "Invalid Vendor",
+                        "supplier_subtype": "unregistered_entity",
+                        "contact_reference": "0917-000-0000",
+                        "supplier_reference": None,
+                    },
+                    "quoted_at": "2026-11-26T04:00:00.000000Z",
+                    "valid_until": "2026-12-10",
+                    "lead_time_days": 5,
+                    "availability_summary": "In stock",
+                    "quality_warranty_terms": "30 days",
+                    "payment_and_delivery_terms": "COD",
+                    "reliability_notes": None,
+                    "evidence": None,
+                    "lines": [],
+                },
+                "deliberately invalid quotation supplier_subtype and empty lines",
+            ),
+            (
+                "#/components/schemas/PurchaseOrderConflict",
+                {
+                    "request_id": "55000000-0000-4000-8000-000000000999",
+                    "error": {
+                        "code": "quotation_policy_unmet",
+                        "message": "Minimum quotes not met.",
+                    },
+                    "failed_intent_committed": False,
+                    "current": None,
+                    "setup_blockers": [],
+                    "policy_evaluation": None,
+                },
+                "deliberately invalid quotation_policy_unmet conflict missing policy_evaluation",
             ),
         ]
         rejections = []
