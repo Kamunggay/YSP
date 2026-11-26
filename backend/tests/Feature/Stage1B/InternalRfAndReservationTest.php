@@ -16,7 +16,6 @@ use App\Models\InventoryMovement;
 use App\Models\StockHold;
 use App\Models\StockReservation;
 use App\Models\User;
-use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Inventory\PhysicalPostingService;
 use App\Services\Inventory\StockViewQueryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -588,26 +587,21 @@ class InternalRfAndReservationTest extends TestCase
             'expected_material_version' => 1,
             'resolution' => 'Cleared after physical reinspection',
             'condition_treatment_source_id' => null,
-            'signatories' => [['user_id' => $this->approverId, 'role' => 'CHAPTER_HEAD']],
+            'signatories' => [[
+                'user_id' => $this->approverId,
+                'role' => 'CHAPTER_HEAD',
+                'signed_at' => now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z'),
+            ]],
         ])->assertStatus(200);
 
         $sha1 = $propResp->json('data.result.clearance_proposal.material_sha256');
         $hold1Model = StockHold::findOrFail($hold1Id);
-        [$ev1, $blob1, $byteBinding1] = $this->storeReadyPaperEvidence(
+        [, , $byteBinding1] = $this->storeReadyPaperEvidence(
             $this->chapterId,
             $this->custodianId,
             'hold_clearance',
             $hold1Id,
             'Hold 1 Clearance',
-        );
-        $binding1 = app(CheckEvidenceBindingParticipant::class)->createOrUpdateBinding(
-            $this->chapterId,
-            $ev1->id,
-            $blob1->id,
-            'hold_clearance',
-            $hold1Id,
-            $this->custodianId,
-            [['variant_id' => $lotA->id, 'unit_id' => $lotA->basis_segment_id, 'quantity' => '4']]
         );
 
         // Non-preparer denied (403 duty_denied)
@@ -635,7 +629,7 @@ class InternalRfAndReservationTest extends TestCase
                 'material_version' => 2,
                 'sha256' => $sha1,
             ],
-            'evidence' => $byteBinding1 + ['binding_id' => $binding1->id],
+            'evidence' => $byteBinding1,
             'matches_paper' => true,
         ])->assertStatus(200)
             ->assertJsonPath('data.result.status', 'cleared');

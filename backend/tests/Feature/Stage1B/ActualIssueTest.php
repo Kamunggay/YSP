@@ -21,7 +21,6 @@ use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
 use App\Models\StockReservation;
 use App\Models\User;
-use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Inventory\Participants\PrepareActualIssueInventoryParticipant;
 use App\Services\Inventory\PhysicalPostingService;
 use App\Services\Inventory\StockViewQueryService;
@@ -734,23 +733,18 @@ class ActualIssueTest extends TestCase
             'expected_material_version' => 1,
             'resolution' => 'Cleared',
             'condition_treatment_source_id' => null,
-            'signatories' => [['user_id' => $this->headUserId, 'role' => 'CHAPTER_HEAD']],
+            'signatories' => [[
+                'user_id' => $this->headUserId,
+                'role' => 'CHAPTER_HEAD',
+                'signed_at' => now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z'),
+            ]],
         ])->assertStatus(200);
-        [$evClear, $blobClear, $byteClear] = $this->storeReadyPaperEvidence(
+        [, , $byteClear] = $this->storeReadyPaperEvidence(
             $this->chapterId,
             $this->custodianId,
             'hold_clearance',
             $holdId,
             'Clear Hold',
-        );
-        $bindClear = app(CheckEvidenceBindingParticipant::class)->createOrUpdateBinding(
-            $this->chapterId,
-            $evClear->id,
-            $blobClear->id,
-            'hold_clearance',
-            $holdId,
-            $this->custodianId,
-            [['variant_id' => $lot->id, 'unit_id' => $lot->basis_segment_id, 'quantity' => '4']]
         );
         $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$holdId}/clear", [
             'expected_version' => 2,
@@ -760,7 +754,7 @@ class ActualIssueTest extends TestCase
                 'material_version' => 2,
                 'sha256' => $propResp->json('data.result.clearance_proposal.material_sha256'),
             ],
-            'evidence' => $byteClear + ['binding_id' => $bindClear->id],
+            'evidence' => $byteClear,
             'matches_paper' => true,
         ])->assertStatus(200);
 
