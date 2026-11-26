@@ -5,7 +5,6 @@ namespace App\Services\Notifications;
 use App\Http\Requests\AuthInput;
 use App\Models\DomainNotificationOutbox;
 use App\Models\OpeningCount;
-use App\Models\PolicyRecord;
 use App\Models\RfReservationPreparation;
 use App\Models\StockReservation;
 use App\Models\User;
@@ -67,22 +66,13 @@ final class NotificationSubjectRead
             return null;
         }
 
-        if (in_array($user->id, [$ipc->created_by, $ipc->authorized_head_by, $ipc->authorized_finance_by], true)
+        $participants = [
+            $ipc->created_by, $ipc->authorized_head_by, $ipc->authorized_finance_by,
+            ...array_column($ipc->material_json['count_team'] ?? [], 'user_id'),
+        ];
+        if (in_array($user->id, $participants, true)
             || $ipc->lines()->where('counter_user_id', $user->id)->sharedLock()->first(['id'])) {
             return "ipcs/{$ipc->id}";
-        }
-
-        $policies = PolicyRecord::where('chapter_id', $event->chapter_id)->where('policy_code', 'ipc_authorization')
-            ->orderBy('id')->sharedLock()->get();
-        foreach ($policies as $policy) {
-            $approval = $policy->setupEvidence();
-            if ($policy->effective_from && ! $policy->effective_from->isFuture() && ! $policy->effective_until?->isPast()
-                && ($approval['subject_id'] ?? null) === $ipc->id
-                && ($approval['value_schema_reference'] ?? null) === '#/components/schemas/IpcAuthorizationPolicyValue'
-                && collect($approval['approvals'] ?? [])->contains('authority', 'CHAPTER_HEAD')
-                && in_array($user->id, $policy->rules_json['count_team_ids'] ?? [], true)) {
-                return "ipcs/{$ipc->id}";
-            }
         }
 
         return null;

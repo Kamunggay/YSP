@@ -138,6 +138,15 @@ class NotificationDeliveryTest extends TestCase
         $this->assertSame('stage1.ipc.changed.v1', $this->receive($writerSocket)['event']);
         $this->assertQuiet($memberSocket);
         fclose($writerSocket);
+        DB::transaction(function () use ($ipc, $member, $chapter) {
+            $ipc->update(['revision' => 2, 'material_json' => [
+                'cutoff_at' => null, 'informal_movements_suspended' => false, 'lines' => [], 'policies' => [], 'notes' => null,
+                'count_team' => [['user_id' => $member->id, 'regular_custodian' => false]],
+            ]]);
+            app(DomainNotificationOutboxService::class)->recordIntent('stage1.ipc.changed.v1', $chapter->id, $ipc->id, 2, 1);
+        });
+        $this->assertSame(0, Artisan::call('notifications:dispatch', ['--once' => true]));
+        $this->assertSame('stage1.ipc.changed.v1', $this->receive($memberSocket)['event']);
 
         $reader->dutyGrants()->update(['status' => 'revoked', 'version' => 2]);
         $this->send($readerSocket, 'pusher:subscribe', ['channel' => $chapterChannel, ...$auth]);
