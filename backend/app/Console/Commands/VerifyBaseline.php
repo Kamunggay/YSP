@@ -48,7 +48,8 @@ final class VerifyBaseline extends Command
                 'requisitions', 'requisition_lines', 'requisition_events',
                 'rf_reservation_preparations', 'rf_reservations', 'rf_reservation_cells', 'rf_reservation_events',
                 'sale_stock_pools', 'sales_orders', 'sales_invoices',
-                'so_funding_events', 'so_repf_forwards', 'so_late_payment_resolutions', 'sales_order_events'];
+                'so_funding_events', 'so_repf_forwards', 'so_late_payment_resolutions', 'sales_order_events',
+                'work_queue_items', 'report_output_jobs', 'operations_map_states', 'operations_map_audit_events'];
             sort($expectedTables);
             $actualTables = array_map(fn (object $table): string => $table->name, $tables);
             sort($actualTables);

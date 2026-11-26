@@ -1,5 +1,3 @@
-# DocumentsReporting
+# DocumentsReporting Module
 
-Documents and reporting: evidence, signatures, immutable forms and scoped alerts/reports/PDF/CSV through authorized domain queries. P03 owns operation-result/audit/durable follow-up; P04 owns evidence.
-
-Reserved boundary under TR-02. No business operation, model, table or HTTP endpoint is implemented here by the P01 health baseline. Future callers consume application operations; they must not write another module's models directly.
+Shared chapter action outcome engine (`ChapterOutcomes`), JCS request fingerprinting (`ChapterOutcomes::fingerprint`), strict `Idempotency-Key` replay/conflict handling, HMAC `cur_...` cursor pagination, plus Phase 4 (`P24`/`P25`) 7-view inventory reporting, asynchronous report/alert queue retries, and supporting-only interactive Operations Map with text-alternative parity.

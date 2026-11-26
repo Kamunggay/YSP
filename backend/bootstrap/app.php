@@ -13,6 +13,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             require __DIR__.'/../routes/inventory.php';
             require __DIR__.'/../routes/requisitions.php';
             require __DIR__.'/../routes/sales.php';
+            require __DIR__.'/../routes/reports.php';
         })
     ->withMiddleware(function (Middleware $middleware): void {})
     ->withExceptions(function (Exceptions $exceptions): void {})->create();
