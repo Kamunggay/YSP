@@ -247,11 +247,11 @@ class OpeningAuthorizeAndMatchTest extends TestCase
             ->assertJsonPath('data.authorizations.0.actor_id', $this->headId)
             ->assertJsonPath('data.authorizations.1.actor_id', $this->financeId);
 
-        $this->asOfficer($this->observerId)->get("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/related")
+        $ipcRelated = $this->asOfficer($this->observerId)->get("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/related")
             ->assertOk()
             ->assertJsonPath('data.ipc_id', $ipcId)
-            ->assertJsonPath('data.rm_ids', [$rmId])
-            ->assertJsonPath('data.evidence.0', $this->byteBinding($signedIpcPaper));
+            ->assertJsonPath('data.rm_ids', [$rmId]);
+        $this->assertSame(CanonicalJson::encode($this->byteBinding($signedIpcPaper)), CanonicalJson::encode($ipcRelated->json('data.evidence.0')));
 
         $ipcPrint = $this->asOfficer($this->observerId)->get("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/print")
             ->assertOk()
@@ -338,8 +338,8 @@ class OpeningAuthorizeAndMatchTest extends TestCase
             ->assertJsonPath('data.record.revision', 4)
             ->assertJsonPath('data.record.acknowledgment.matched_by', $this->observerId)
             ->assertJsonPath('data.record.acknowledgment.recipient_id', null)
-            ->assertJsonPath('data.record.acknowledgment.bytes', $this->byteBinding($receiptPaper))
             ->assertJsonPath('data.posting', null);
+        $this->assertSame(CanonicalJson::encode($this->byteBinding($receiptPaper)), CanonicalJson::encode($matched->json('data.record.acknowledgment.bytes')));
 
         // Replay returns original acknowledgment; a fresh match key while actively matched is rejected
         $this->asOfficer($this->observerId, $matchKey)
@@ -775,14 +775,14 @@ class OpeningAuthorizeAndMatchTest extends TestCase
 
         // Restore bytes and re-match with receiptV2
         Storage::disk('evidence')->put($blob->payload_path, $bytesBackup);
-        $this->asOfficer($this->observerId, (string) Str::uuid())
+        $rematched = $this->asOfficer($this->observerId, (string) Str::uuid())
             ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/evidence-match", [
                 'expected_revision' => 4, 'material_version' => 2, 'snapshot_sha256' => $sha,
                 'bytes' => $this->byteBinding($receiptV2), 'acknowledged_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
             ])
             ->assertOk()
-            ->assertJsonPath('data.record.state', 'matched')
-            ->assertJsonPath('data.record.acknowledgment.bytes', $this->byteBinding($receiptV2));
+            ->assertJsonPath('data.record.state', 'matched');
+        $this->assertSame(CanonicalJson::encode($this->byteBinding($receiptV2)), CanonicalJson::encode($rematched->json('data.record.acknowledgment.bytes')));
 
         // 5. Replacing IPC material invalidates the matched RM back to draft
         $this->asOfficer($this->custodianId, (string) Str::uuid())
