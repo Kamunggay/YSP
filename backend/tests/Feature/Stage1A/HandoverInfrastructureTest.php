@@ -13,6 +13,7 @@ use App\Models\Handover;
 use App\Models\HandoverLine;
 use App\Models\HandoverReceipt;
 use App\Models\IdempotencyRecord;
+use App\Models\InternalRf;
 use App\Models\IssueReconciliation;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderLine;
@@ -23,17 +24,19 @@ use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Feature\Concerns\AuthenticatesBrowserOfficer;
 use Tests\TestCase;
 
 class HandoverInfrastructureTest extends TestCase
 {
+    use AuthenticatesBrowserOfficer;
     use RefreshDatabase;
 
-    private string $chapterId = 'chap-cebu-01';
+    private string $chapterId = '60000000-0000-4000-8000-000000000101';
 
-    private string $otherChapterId = 'chap-davao-02';
+    private string $otherChapterId = '60000000-0000-4000-8000-000000000102';
 
-    private string $userId = 'user-officer-01';
+    private string $userId = '10000000-0000-4000-8000-000000000101';
 
     protected function setUp(): void
     {
@@ -73,15 +76,17 @@ class HandoverInfrastructureTest extends TestCase
             'version' => 1,
         ]);
 
-        DutyGrant::create([
-            'id' => (string) Str::uuid(),
-            'chapter_id' => $this->chapterId,
-            'user_id' => $this->userId,
-            'duty_code' => 'INVENTORY_CUSTODIAN',
-            'status' => 'active',
-            'valid_from' => now()->subDay(),
-            'version' => 1,
-        ]);
+        foreach (['INVENTORY_CUSTODIAN', 'INVENTORY'] as $duty) {
+            DutyGrant::create([
+                'id' => (string) Str::uuid(),
+                'chapter_id' => $this->chapterId,
+                'user_id' => $this->userId,
+                'duty_code' => $duty,
+                'status' => 'active',
+                'valid_from' => now()->subDay(),
+                'version' => 1,
+            ]);
+        }
 
         $this->withHeader('X-User-Id', $this->userId);
     }
@@ -551,7 +556,50 @@ class HandoverInfrastructureTest extends TestCase
      */
     public function test_issue_reconciliation_creation(): void
     {
+        $headId = (string) Str::uuid();
+        $financeId = (string) Str::uuid();
+        foreach ([[$headId, 'head-ho@example.invalid', 'CHAPTER_HEAD'], [$financeId, 'fin-ho@example.invalid', 'FINANCE']] as [$uid, $email, $duty]) {
+            User::create([
+                'id' => $uid,
+                'public_id' => $email,
+                'name' => $duty,
+                'email' => $email,
+                'password_hash' => hash('sha256', 'Password123!'),
+                'status' => 'active',
+                'version' => 1,
+            ]);
+            ChapterMembership::create([
+                'id' => (string) Str::uuid(),
+                'chapter_id' => $this->chapterId,
+                'user_id' => $uid,
+                'membership_status' => 'active',
+                'version' => 1,
+            ]);
+            DutyGrant::create([
+                'id' => (string) Str::uuid(),
+                'chapter_id' => $this->chapterId,
+                'user_id' => $uid,
+                'duty_code' => $duty,
+                'status' => 'active',
+                'valid_from' => now()->subDay(),
+                'version' => 1,
+            ]);
+        }
+
+        $this->seedEffectiveStage1Policies($this->chapterId, $headId, $financeId);
+
         $rfId = (string) Str::uuid();
+        InternalRf::create([
+            'id' => $rfId,
+            'chapter_id' => $this->chapterId,
+            'rf_number' => 'SYN-RF-000001',
+            'status' => 'approved',
+            'purpose' => 'internal_use',
+            'requester_user_id' => $headId,
+            'version' => 1,
+            'material_version' => 1,
+            'progress_version' => 1,
+        ]);
 
         // 1. Prepare actual issue
         $preparePayload = [
@@ -560,15 +608,16 @@ class HandoverInfrastructureTest extends TestCase
                 [
                     'variant_id' => 'VAR-RECON-01',
                     'unit_id' => 'UNIT-PCS',
-                    'actual_quantity' => 12.0000,
+                    'actual_quantity' => '12.0000',
                 ],
             ],
         ];
 
-        $prepareResp = $this->postJson(
-            "/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/actual-issues",
-            $preparePayload
-        );
+        $prepareResp = $this->asBrowserOfficer($this->userId, (string) Str::uuid())
+            ->postJson(
+                "/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/actual-issues",
+                $preparePayload
+            );
 
         $prepareResp->assertStatus(201)
             ->assertJsonPath('data.status', 'prepared')
@@ -576,17 +625,19 @@ class HandoverInfrastructureTest extends TestCase
 
         $issueId = $prepareResp->json('data.id');
 
-        // 2. Post reconciliation record
+        // 2. Post reconciliation record (handed_over_unposted requires matched acknowledgment or evidence reference)
         $reconPayload = [
             'finding' => 'handed_over_unposted',
             'notes' => 'Recipient verified delivery in physical log but server offline during event',
             'officer_user_id' => $this->userId,
+            'evidence' => ['evidence_id' => (string) Str::uuid()],
         ];
 
-        $reconResp = $this->postJson(
-            "/api/v1/chapters/{$this->chapterId}/actual-issues/{$issueId}/reconciliations",
-            $reconPayload
-        );
+        $reconResp = $this->asBrowserOfficer($this->userId, (string) Str::uuid())
+            ->postJson(
+                "/api/v1/chapters/{$this->chapterId}/actual-issues/{$issueId}/reconciliations",
+                $reconPayload
+            );
 
         $reconResp->assertStatus(201)
             ->assertJsonPath('data.actual_issue_id', $issueId)
@@ -600,9 +651,8 @@ class HandoverInfrastructureTest extends TestCase
         ]);
 
         // 3. Read back reconciliation
-        $readReconResp = $this->getJson(
-            "/api/v1/chapters/{$this->chapterId}/actual-issues/{$issueId}/reconciliation"
-        );
+        $readReconResp = $this->asBrowserOfficer($this->userId)
+            ->get("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issueId}/reconciliation");
 
         $readReconResp->assertStatus(200)
             ->assertJsonCount(1, 'data')

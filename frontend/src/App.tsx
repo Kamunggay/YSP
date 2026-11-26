@@ -408,23 +408,61 @@ export function App() {
                   userId={session.user.id}
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
                 />
               )}
-              {activeTab === 'stock' && <StockWorkspace chapterId={selectedChapterId} refreshSignal={refreshSignal} />}
-              {activeTab === 'evidence' && <PaperEvidenceWorkspace chapterId={selectedChapterId} />}
-              {activeTab === 'opening' && <OpeningBaselineWorkspace chapterId={selectedChapterId} refreshSignal={refreshSignal} />}
+              {activeTab === 'stock' && (
+                <StockWorkspace
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                />
+              )}
+              {activeTab === 'evidence' && (
+                <PaperEvidenceWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                />
+              )}
+              {activeTab === 'opening' && (
+                <OpeningBaselineWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                />
+              )}
               {activeTab === 'requisitions' && (
                 <RequisitionWorkspace
                   key={`${session.user.id}::${selectedChapterId}`}
                   userId={session.user.id}
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
                 />
               )}
               {activeTab === 'reservations_holds' && (
-                <ReservationAndHoldWorkspace chapterId={selectedChapterId} refreshSignal={refreshSignal} />
+                <ReservationAndHoldWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                />
               )}
-              {activeTab === 'actual_issues' && <ActualIssueWorkspace chapterId={selectedChapterId} />}
+              {activeTab === 'actual_issues' && (
+                <ActualIssueWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                />
+              )}
             </>
           ) : (
             activeTab !== 'my_work' && (

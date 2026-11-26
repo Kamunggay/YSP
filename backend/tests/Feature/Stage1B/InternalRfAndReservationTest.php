@@ -10,8 +10,6 @@ use App\Models\CatalogueVariant;
 use App\Models\Chapter;
 use App\Models\ChapterMembership;
 use App\Models\DutyGrant;
-use App\Models\EvidenceBlob;
-use App\Models\EvidenceRecord;
 use App\Models\InternalRf;
 use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
@@ -22,11 +20,14 @@ use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Inventory\PhysicalPostingService;
 use App\Services\Inventory\StockViewQueryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Tests\Feature\Concerns\AuthenticatesBrowserOfficer;
 use Tests\TestCase;
 
 class InternalRfAndReservationTest extends TestCase
 {
+    use AuthenticatesBrowserOfficer;
     use RefreshDatabase;
 
     private string $chapterId;
@@ -36,6 +37,12 @@ class InternalRfAndReservationTest extends TestCase
     private string $requesterId;
 
     private string $approverId;
+
+    private string $approverGrantId;
+
+    private string $headId;
+
+    private string $financeId;
 
     private string $custodianId;
 
@@ -54,11 +61,14 @@ class InternalRfAndReservationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Storage::fake('evidence');
 
         $this->chapterId = (string) Str::uuid();
         $this->foreignChapterId = (string) Str::uuid();
         $this->requesterId = (string) Str::uuid();
         $this->approverId = (string) Str::uuid();
+        $this->headId = (string) Str::uuid();
+        $this->financeId = (string) Str::uuid();
         $this->custodianId = (string) Str::uuid();
         $this->otherCustodianId = (string) Str::uuid();
         $this->requestingUnitId = (string) Str::uuid();
@@ -82,6 +92,8 @@ class InternalRfAndReservationTest extends TestCase
         $users = [
             $this->requesterId => ['requester@example.invalid', 'Requester', ['COMMITTEE_REQUESTER', 'RF_APPROVER']],
             $this->approverId => ['approver@example.invalid', 'Approver', ['RF_APPROVER']],
+            $this->headId => ['head@example.invalid', 'Chapter Head', ['CHAPTER_HEAD']],
+            $this->financeId => ['finance@example.invalid', 'Finance Officer', ['FINANCE']],
             $this->custodianId => ['custodian@example.invalid', 'Custodian', ['INVENTORY_CUSTODIAN', 'INVENTORY']],
             $this->otherCustodianId => ['custodian2@example.invalid', 'Other Custodian', ['INVENTORY_CUSTODIAN', 'INVENTORY']],
         ];
@@ -106,7 +118,7 @@ class InternalRfAndReservationTest extends TestCase
             ]);
 
             foreach ($duties as $duty) {
-                DutyGrant::create([
+                $grant = DutyGrant::create([
                     'id' => (string) Str::uuid(),
                     'chapter_id' => $this->chapterId,
                     'user_id' => $uid,
@@ -116,8 +128,19 @@ class InternalRfAndReservationTest extends TestCase
                     'valid_from' => now()->subDay(),
                     'version' => 1,
                 ]);
+                if ($uid === $this->approverId && $duty === 'RF_APPROVER') {
+                    $this->approverGrantId = $grant->id;
+                }
             }
         }
+
+        $this->seedEffectiveStage1Policies(
+            $this->chapterId,
+            $this->headId,
+            $this->financeId,
+            $this->requestingUnitId,
+            $this->approverGrantId,
+        );
 
         $this->unitId = (string) Str::uuid();
         CatalogueUnit::create([
@@ -194,10 +217,7 @@ class InternalRfAndReservationTest extends TestCase
 
     private function createAndApproveRf(int $qty): array
     {
-        $createResp = $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs", [
+        $createResp = $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs", [
             'purpose' => 'internal_use',
             'requesting_unit_id' => $this->requestingUnitId,
             'event_id' => null,
@@ -213,18 +233,12 @@ class InternalRfAndReservationTest extends TestCase
 
         $rfId = $createResp->json('data.rf_id');
 
-        $submitResp = $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/submit", [
+        $submitResp = $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/submit", [
             'expected_version' => 1,
             'expected_material_version' => 1,
         ])->assertStatus(200);
 
-        $approveResp = $this->withHeaders([
-            'X-User-Id' => $this->approverId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/approve", [
+        $approveResp = $this->asBrowserOfficer($this->approverId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/approve", [
             'expected_version' => 2,
             'expected_material_version' => 1,
         ])->assertStatus(200);
@@ -236,10 +250,7 @@ class InternalRfAndReservationTest extends TestCase
     {
         // 1. Create incomplete draft
         $draftKey = (string) Str::uuid();
-        $draftResp = $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => $draftKey,
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs", [
+        $draftResp = $this->asBrowserOfficer($this->requesterId, $draftKey)->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs", [
             'purpose' => 'internal_use',
             'requesting_unit_id' => $this->requestingUnitId,
             'event_id' => null,
@@ -256,19 +267,13 @@ class InternalRfAndReservationTest extends TestCase
         $rfId = $draftResp->json('data.rf_id');
 
         // Incomplete submit rejected with 422
-        $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/submit", [
+        $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/submit", [
             'expected_version' => 1,
             'expected_material_version' => 1,
         ])->assertStatus(422);
 
         // 2. Replace draft with complete line
-        $replaceResp = $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->putJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}", [
+        $replaceResp = $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->putJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}", [
             'expected_version' => 1,
             'expected_material_version' => 1,
             'purpose' => 'internal_use',
@@ -290,10 +295,7 @@ class InternalRfAndReservationTest extends TestCase
         $lineId = $replaceResp->json('data.result.lines.0.id');
 
         // 3. Submit assigns once-only monotonic RF number
-        $submitResp = $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/submit", [
+        $submitResp = $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/submit", [
             'expected_version' => 2,
             'expected_material_version' => 2,
         ]);
@@ -304,20 +306,14 @@ class InternalRfAndReservationTest extends TestCase
         $this->assertNotNull($rfNumber);
 
         // 4. GOV-05: Self-approval denied (403 independence_required)
-        $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/approve", [
+        $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/approve", [
             'expected_version' => 3,
             'expected_material_version' => 2,
         ])->assertStatus(403)
             ->assertJsonPath('error.code', 'independence_required');
 
         // 5. Independent approver returns RF with reason
-        $returnResp = $this->withHeaders([
-            'X-User-Id' => $this->approverId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/return", [
+        $returnResp = $this->asBrowserOfficer($this->approverId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/return", [
             'expected_version' => 3,
             'expected_material_version' => 2,
             'reason' => 'Clarify justification',
@@ -327,10 +323,7 @@ class InternalRfAndReservationTest extends TestCase
             ->assertJsonPath('data.result.reference', $rfNumber);
 
         // 6. Revise returned RF retains line ID and RF number
-        $reviseResp = $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/revise", [
+        $reviseResp = $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/revise", [
             'expected_version' => 4,
             'expected_material_version' => 2,
             'expected_progress_version' => 1,
@@ -352,20 +345,14 @@ class InternalRfAndReservationTest extends TestCase
             ->assertJsonPath('data.result.lines.0.id', $lineId);
 
         // 7. Re-submit and approve independently
-        $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/submit", [
+        $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/submit", [
             'expected_version' => 5,
             'expected_material_version' => 3,
         ])->assertStatus(200)
             ->assertJsonPath('data.result.reference', $rfNumber);
 
         $approveKey = (string) Str::uuid();
-        $approveResp = $this->withHeaders([
-            'X-User-Id' => $this->approverId,
-            'X-Action-Key' => $approveKey,
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/approve", [
+        $approveResp = $this->asBrowserOfficer($this->approverId, $approveKey)->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/approve", [
             'expected_version' => 6,
             'expected_material_version' => 3,
         ]);
@@ -375,26 +362,23 @@ class InternalRfAndReservationTest extends TestCase
             ->assertJsonPath('data.result.lines.0.progress.approved_quantity', '10');
 
         // Verify history, version read, related records, and operation recovery by key
-        $this->withHeaders(['X-User-Id' => $this->requesterId])
+        $this->asBrowserOfficer($this->requesterId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/history")
             ->assertStatus(200)
             ->assertJsonCount(7, 'data');
 
-        $this->withHeaders(['X-User-Id' => $this->requesterId])
+        $this->asBrowserOfficer($this->requesterId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/versions/7")
             ->assertStatus(200)
             ->assertJsonPath('data.snapshot.status', 'approved');
 
-        $this->withHeaders(['X-User-Id' => $this->approverId])
+        $this->asBrowserOfficer($this->approverId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/operation-results?action_key={$approveKey}")
             ->assertStatus(200)
             ->assertJsonPath('data.result.status', 'approved');
 
         // Formal remainder cancellation
-        $cancelResp = $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/cancel", [
+        $cancelResp = $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/cancel", [
             'expected_version' => 7,
             'expected_material_version' => 3,
             'expected_progress_version' => 1,
@@ -416,10 +400,7 @@ class InternalRfAndReservationTest extends TestCase
         $rfLineId = $rf['lines'][0]['id'];
 
         // Prepare exact 10 (preparation commits nothing)
-        $prep10 = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations", [
+        $prep10 = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations", [
             'expected_rf_version' => $rf['version'],
             'expected_rf_material_version' => $rf['material_version'],
             'expected_rf_progress_version' => $rf['progress_version'],
@@ -440,10 +421,7 @@ class InternalRfAndReservationTest extends TestCase
         $prep10Id = $prep10->json('data.resource_id');
 
         // Commit exact 10 -> 409 availability_conflict with failed_intent_committed = false
-        $commit10 = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations/{$prep10Id}/commit", [
+        $commit10 = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations/{$prep10Id}/commit", [
             'expected_preparation_version' => 1,
             'expected_rf_version' => $rf['version'],
             'expected_rf_material_version' => $rf['material_version'],
@@ -456,10 +434,7 @@ class InternalRfAndReservationTest extends TestCase
         $this->assertSame(0, StockReservation::count());
 
         // Prepare & commit explicit 6 -> succeeds and leaves 4 unreserved
-        $prep6 = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations", [
+        $prep6 = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations", [
             'expected_rf_version' => $rf['version'],
             'expected_rf_material_version' => $rf['material_version'],
             'expected_rf_progress_version' => $rf['progress_version'],
@@ -477,10 +452,7 @@ class InternalRfAndReservationTest extends TestCase
         ])->assertStatus(201);
 
         $prep6Id = $prep6->json('data.resource_id');
-        $commit6 = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations/{$prep6Id}/commit", [
+        $commit6 = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations/{$prep6Id}/commit", [
             'expected_preparation_version' => 1,
             'expected_rf_version' => $rf['version'],
             'expected_rf_material_version' => $rf['material_version'],
@@ -495,10 +467,7 @@ class InternalRfAndReservationTest extends TestCase
 
         // Attempting to cancel RF while reservation is active returns 409 commitment_conflict
         $updatedRf = InternalRf::find($rfId);
-        $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/cancel", [
+        $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/cancel", [
             'expected_version' => $updatedRf->version,
             'expected_material_version' => $updatedRf->material_version,
             'expected_progress_version' => $updatedRf->progress_version,
@@ -516,10 +485,7 @@ class InternalRfAndReservationTest extends TestCase
         $rfLineId = $rf['lines'][0]['id'];
 
         // Reserve 6 on Lot A [0, 6)
-        $prep = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations", [
+        $prep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations", [
             'expected_rf_version' => $rf['version'],
             'expected_rf_material_version' => $rf['material_version'],
             'expected_rf_progress_version' => $rf['progress_version'],
@@ -536,10 +502,7 @@ class InternalRfAndReservationTest extends TestCase
             'reason' => 'Reserve 6 on Lot A',
         ])->assertStatus(201);
 
-        $resResp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations/{$prep->json('data.resource_id')}/commit", [
+        $resResp = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations/{$prep->json('data.resource_id')}/commit", [
             'expected_preparation_version' => 1,
             'expected_rf_version' => $rf['version'],
             'expected_rf_material_version' => $rf['material_version'],
@@ -549,10 +512,7 @@ class InternalRfAndReservationTest extends TestCase
         $reservationId = $resResp->json('data.resource_id');
 
         // Prepare an ActualIssue batch on reservation (will later be invalidated by reallocation!)
-        $issuePrep = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/actual-issues", [
+        $issuePrep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/actual-issues", [
             'expected_rf_version' => $resResp->json('data.result.rf_version'),
             'expected_rf_material_version' => $rf['material_version'],
             'expected_rf_progress_version' => $resResp->json('data.result.rf_progress_version'),
@@ -579,10 +539,7 @@ class InternalRfAndReservationTest extends TestCase
         $preparedIssueId = $issuePrep->json('data.id');
 
         // Place Hold 1: [0, 4) -> blocked = 4
-        $hold1Resp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
+        $hold1Resp = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
             'targets' => [[
                 'stock_lot_id' => $lotA->id,
                 'basis_segment_id' => $lotA->basis_segment_id,
@@ -597,10 +554,7 @@ class InternalRfAndReservationTest extends TestCase
         $hold1Id = $hold1Resp->json('data.resource_id');
 
         // Place Hold 2: [2, 6) -> overlaps [0,4)! Union [0,4) U [2,6) = [0,6) -> blocked = 6 (NOT 8!)
-        $hold2Resp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
+        $hold2Resp = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
             'targets' => [[
                 'stock_lot_id' => $lotA->id,
                 'basis_segment_id' => $lotA->basis_segment_id,
@@ -614,7 +568,7 @@ class InternalRfAndReservationTest extends TestCase
         ])->assertStatus(201);
         $hold2Id = $hold2Resp->json('data.resource_id');
 
-        $resRead = $this->withHeaders(['X-User-Id' => $this->custodianId])
+        $resRead = $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservations/{$reservationId}")
             ->assertStatus(200);
         $resRead->assertJsonPath('data.blocked_quantity', '6')
@@ -629,10 +583,7 @@ class InternalRfAndReservationTest extends TestCase
         $this->assertSame('14', $views['available_to_allocate']['quantity']);
 
         // Propose clearance for Hold 1
-        $propResp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->putJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$hold1Id}/clearance-proposal", [
+        $propResp = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->putJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$hold1Id}/clearance-proposal", [
             'expected_version' => 1,
             'expected_material_version' => 1,
             'resolution' => 'Cleared after physical reinspection',
@@ -642,25 +593,13 @@ class InternalRfAndReservationTest extends TestCase
 
         $sha1 = $propResp->json('data.result.clearance_proposal.material_sha256');
         $hold1Model = StockHold::findOrFail($hold1Id);
-        $ev1 = EvidenceRecord::create([
-            'id' => (string) Str::uuid(),
-            'chapter_id' => $this->chapterId,
-            'evidence_type' => 'hold_clearance',
-            'purpose' => 'hold_clearance',
-            'record_id' => $hold1Id,
-            'technical_state' => 'ready',
-            'created_by' => $this->custodianId,
-        ]);
-        $blob1 = EvidenceBlob::create([
-            'id' => (string) Str::uuid(),
-            'evidence_id' => $ev1->id,
-            'version' => 1,
-            'sha256_hash' => str_repeat('a', 64),
-            'mime_type' => 'application/pdf',
-            'file_size' => 128,
-            'payload_path' => 'evidence/test1.pdf',
-            'created_by' => $this->custodianId,
-        ]);
+        [$ev1, $blob1, $byteBinding1] = $this->storeReadyPaperEvidence(
+            $this->chapterId,
+            $this->custodianId,
+            'hold_clearance',
+            $hold1Id,
+            'Hold 1 Clearance',
+        );
         $binding1 = app(CheckEvidenceBindingParticipant::class)->createOrUpdateBinding(
             $this->chapterId,
             $ev1->id,
@@ -672,10 +611,7 @@ class InternalRfAndReservationTest extends TestCase
         );
 
         // Non-preparer denied (403 duty_denied)
-        $this->withHeaders([
-            'X-User-Id' => $this->otherCustodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$hold1Id}/clear", [
+        $this->asBrowserOfficer($this->otherCustodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$hold1Id}/clear", [
             'expected_version' => 2,
             'expected_material_version' => 2,
             'expected_snapshot' => [
@@ -683,11 +619,7 @@ class InternalRfAndReservationTest extends TestCase
                 'material_version' => 2,
                 'sha256' => $sha1,
             ],
-            'evidence' => [
-                'evidence_id' => $ev1->id,
-                'version_id' => $blob1->id,
-                'attachments' => [['attachment_id' => $blob1->id, 'sha256' => str_repeat('a', 64)]],
-            ],
+            'evidence' => $byteBinding1,
             'matches_paper' => true,
         ])->assertStatus(403)
             ->assertJsonPath('error.code', 'duty_denied');
@@ -695,10 +627,7 @@ class InternalRfAndReservationTest extends TestCase
         $movementsBeforeClear = InventoryMovement::count();
 
         // Original preparer clears Hold 1 -> Hold 2 [2, 6) remains -> blocked drops from 6 to 4!
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$hold1Id}/clear", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$hold1Id}/clear", [
             'expected_version' => 2,
             'expected_material_version' => 2,
             'expected_snapshot' => [
@@ -706,12 +635,7 @@ class InternalRfAndReservationTest extends TestCase
                 'material_version' => 2,
                 'sha256' => $sha1,
             ],
-            'evidence' => [
-                'evidence_id' => $ev1->id,
-                'version_id' => $blob1->id,
-                'binding_id' => $binding1->id,
-                'attachments' => [['attachment_id' => $blob1->id, 'sha256' => str_repeat('a', 64)]],
-            ],
+            'evidence' => $byteBinding1 + ['binding_id' => $binding1->id],
             'matches_paper' => true,
         ])->assertStatus(200)
             ->assertJsonPath('data.result.status', 'cleared');
@@ -719,7 +643,7 @@ class InternalRfAndReservationTest extends TestCase
         // Zero physical movement on hold clearance
         $this->assertSame($movementsBeforeClear, InventoryMovement::count());
 
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
+        $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservations/{$reservationId}")
             ->assertStatus(200)
             ->assertJsonPath('data.blocked_quantity', '4')
@@ -729,10 +653,7 @@ class InternalRfAndReservationTest extends TestCase
         $resNow = StockReservation::findOrFail($reservationId);
         $rfNow = InternalRf::findOrFail($rfId);
 
-        $reallocResp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservations/{$reservationId}/reallocate", [
+        $reallocResp = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservations/{$reservationId}/reallocate", [
             'expected_version' => $resNow->version,
             'expected_material_version' => $resNow->material_version,
             'expected_rf_version' => $rfNow->version,
@@ -776,10 +697,7 @@ class InternalRfAndReservationTest extends TestCase
         $rf2 = $this->createAndApproveRf(5);
 
         // Both RFs prepare against the same [0, 5) segment before either commits
-        $p1 = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf1['id']}/reservation-preparations", [
+        $p1 = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf1['id']}/reservation-preparations", [
             'expected_rf_version' => $rf1['version'],
             'expected_rf_material_version' => $rf1['material_version'],
             'expected_rf_progress_version' => $rf1['progress_version'],
@@ -796,10 +714,7 @@ class InternalRfAndReservationTest extends TestCase
             'reason' => 'RF1 prep',
         ])->assertStatus(201);
 
-        $p2 = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf2['id']}/reservation-preparations", [
+        $p2 = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf2['id']}/reservation-preparations", [
             'expected_rf_version' => $rf2['version'],
             'expected_rf_material_version' => $rf2['material_version'],
             'expected_rf_progress_version' => $rf2['progress_version'],
@@ -817,10 +732,7 @@ class InternalRfAndReservationTest extends TestCase
         ])->assertStatus(201);
 
         // First commit wins
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf1['id']}/reservation-preparations/{$p1->json('data.resource_id')}/commit", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf1['id']}/reservation-preparations/{$p1->json('data.resource_id')}/commit", [
             'expected_preparation_version' => 1,
             'expected_rf_version' => $rf1['version'],
             'expected_rf_material_version' => $rf1['material_version'],
@@ -828,10 +740,7 @@ class InternalRfAndReservationTest extends TestCase
         ])->assertStatus(201);
 
         // Second commit MUST fail 409 availability_conflict with zero double-allocation
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf2['id']}/reservation-preparations/{$p2->json('data.resource_id')}/commit", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf2['id']}/reservation-preparations/{$p2->json('data.resource_id')}/commit", [
             'expected_preparation_version' => 1,
             'expected_rf_version' => $rf2['version'],
             'expected_rf_material_version' => $rf2['material_version'],
@@ -849,10 +758,7 @@ class InternalRfAndReservationTest extends TestCase
         $rf = $this->createAndApproveRf(10);
 
         // Overlapping targets inside prepareRfReservation -> 422 invalid_input
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/reservation-preparations", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/reservation-preparations", [
             'expected_rf_version' => $rf['version'],
             'expected_rf_material_version' => $rf['material_version'],
             'expected_rf_progress_version' => $rf['progress_version'],
@@ -881,10 +787,7 @@ class InternalRfAndReservationTest extends TestCase
             ->assertJsonPath('error.code', 'invalid_input');
 
         // Overlapping targets inside placeStockHold -> 422 invalid_input
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
             'targets' => [
                 [
                     'stock_lot_id' => $lot->id,
