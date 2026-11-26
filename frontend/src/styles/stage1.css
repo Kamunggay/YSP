@@ -219,6 +219,14 @@ html.dark .status-pill.bad {
   margin-top: 0.75rem;
 }
 
+.nested-row-panel {
+  margin-bottom: 0.45rem;
+  padding: 0.55rem 0.65rem;
+  background: var(--glass-field-bg);
+  border: 1px solid var(--glass-field-border);
+  border-radius: 10px;
+}
+
 .authority-banner {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);

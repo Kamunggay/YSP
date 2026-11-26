@@ -82,21 +82,21 @@ export function AuthGate({
       setPassword('');
       setShowPassword(false);
       onSessionUpdated(result.data);
-      const msg = result.replayed ? 'Replayed existing sign-in snapshot (X-Action-Replayed: true).' : 'Signed in cleanly.';
+      const msg = result.replayed ? 'Restored your existing sign-in session.' : 'Signed in cleanly.';
       setInfoMsg(msg);
       playApplePay(soundEnabled);
       onNotify?.('success', msg);
     } catch (err) {
       playErrorTone(soundEnabled);
       if (err instanceof ContractApiError) {
-        const msg = `${err.code}: ${err.message}${err.retryAfterSeconds ? ` (Retry in ${err.retryAfterSeconds}s)` : ''}`;
+        const msg = `${err.message}${err.retryAfterSeconds ? ` (Please wait ${err.retryAfterSeconds}s)` : ''}`;
         setErrorMsg(msg);
         onNotify?.('error', msg);
         if (err.status !== 503) {
           setPendingKey(null);
         }
       } else {
-        const msg = 'Network failure during sign-in; retaining action key for safe retry.';
+        const msg = 'Connection interrupted while signing in. Your confirmation reference is kept so you can retry safely.';
         setErrorMsg(msg);
         onNotify?.('warning', msg);
       }
@@ -114,12 +114,12 @@ export function AuthGate({
     try {
       const { result } = await apiMutate<MfaEnrollmentBegin>('POST', '/api/v1/auth/authenticator/enrollments', { password });
       setPendingEnrollment(result.data);
-      const msg = 'Authenticator enrollment initialized. Scan the QR code or enter the secret in your TOTP app, then confirm below.';
+      const msg = 'Authenticator setup started. Scan the QR code or enter the setup key in your authenticator app, then confirm below.';
       setInfoMsg(msg);
-      onNotify?.('info', 'Authenticator enrollment initialized.');
+      onNotify?.('info', 'Authenticator setup started.');
     } catch (err) {
       playErrorTone(soundEnabled);
-      setErrorMsg(err instanceof ContractApiError ? `${err.code}: ${err.message}` : 'Failed to begin enrollment.');
+      setErrorMsg(err instanceof ContractApiError ? err.message : 'Could not start authenticator setup.');
     } finally {
       setBusy(false);
     }
@@ -147,11 +147,11 @@ export function AuthGate({
       const current = await apiGet<SessionProjection>('/api/v1/auth/session');
       onSessionUpdated(current.data);
       playApplePay(soundEnabled);
-      setInfoMsg('MFA confirmed! Save the 10 recovery codes offline now — they are never persisted in browser storage.');
-      onNotify?.('success', 'Authenticator MFA confirmed.');
+      setInfoMsg('Two-step verification is now set up! Save these 10 backup codes somewhere safe — they will not be saved or shown again.');
+      onNotify?.('success', 'Two-step verification is active.');
     } catch (err) {
       playErrorTone(soundEnabled);
-      setErrorMsg(err instanceof ContractApiError ? `${err.code}: ${err.message}` : 'Confirmation failed.');
+      setErrorMsg(err instanceof ContractApiError ? err.message : 'Confirmation failed.');
     } finally {
       setBusy(false);
     }
@@ -170,10 +170,10 @@ export function AuthGate({
       setRecoveryCode('');
       playApplePay(soundEnabled);
       onSessionUpdated(result.data);
-      onNotify?.('success', 'MFA verification completed.');
+      onNotify?.('success', 'Verification complete.');
     } catch (err) {
       playErrorTone(soundEnabled);
-      setErrorMsg(err instanceof ContractApiError ? `${err.code}: ${err.message}` : 'Verification failed.');
+      setErrorMsg(err instanceof ContractApiError ? err.message : 'Verification failed.');
     } finally {
       setBusy(false);
     }
@@ -188,7 +188,7 @@ export function AuthGate({
       setRecoveryStatus(res.data.recovery_set);
     } catch (err) {
       playErrorTone(soundEnabled);
-      setErrorMsg(err instanceof ContractApiError ? `${err.code}: ${err.message}` : 'Could not fetch recovery status.');
+      setErrorMsg(err instanceof ContractApiError ? err.message : 'Could not load backup code details.');
     } finally {
       setBusy(false);
     }
@@ -210,11 +210,11 @@ export function AuthGate({
       setTotpCode('');
       await handleCheckRecoveryStatus();
       playApplePay(soundEnabled);
-      setInfoMsg('Recovery set rotated atomically.');
-      onNotify?.('success', 'Recovery codes rotated atomically.');
+      setInfoMsg('New backup codes generated. Your previous codes are no longer active.');
+      onNotify?.('success', 'New backup codes generated.');
     } catch (err) {
       playErrorTone(soundEnabled);
-      setErrorMsg(err instanceof ContractApiError ? `${err.code}: ${err.message}` : 'Rotation failed.');
+      setErrorMsg(err instanceof ContractApiError ? err.message : 'Could not replace backup codes.');
     } finally {
       setBusy(false);
     }
@@ -234,7 +234,7 @@ export function AuthGate({
       onNotify?.('info', 'Signed out cleanly.');
     } catch (err) {
       playErrorTone(soundEnabled);
-      setErrorMsg(err instanceof ContractApiError ? `${err.code}: ${err.message}` : 'Sign-out failed.');
+      setErrorMsg(err instanceof ContractApiError ? err.message : 'Sign-out failed.');
     } finally {
       setBusy(false);
     }
@@ -259,9 +259,9 @@ export function AuthGate({
 
   const recoveryCodesPanel = recoveryCodesDelivery && (
     <div className="card" style={{ marginBottom: '1rem' }}>
-      <h3>Recovery Codes (Save Offline Once)</h3>
+      <h3>Backup Recovery Codes (Save Offline Now)</h3>
       <p className="muted" style={{ marginBottom: '0.65rem' }}>
-        Set ID: <span className="mono">{recoveryCodesDelivery.recovery_set.id}</span> · Expires{' '}
+        Batch Reference: <span className="mono">{recoveryCodesDelivery.recovery_set.id}</span> · Expires{' '}
         {formatManilaTime(recoveryCodesDelivery.recovery_set.expires_at)}
       </p>
       <pre className="json-box">{recoveryCodesDelivery.codes.join('\n')}</pre>
@@ -290,7 +290,7 @@ export function AuthGate({
             <NavFlowHeader
               headingId="officer-signin-heading"
               title="Officer Sign-In"
-              subtitle="Same-origin cookie session (ysp_session + CSRF + X-Action-Key). Pre-chapter authentication only."
+              subtitle="Sign in with your chapter officer email and password."
             />
 
             <div className="form-stack">
@@ -308,10 +308,10 @@ export function AuthGate({
                   />
                   <span role="status">
                     {connection === 'checking'
-                      ? 'Checking Laravel & MySQL connection...'
+                      ? 'Checking server connection...'
                       : connection === 'connected'
-                        ? 'Laravel and MySQL are connected.'
-                        : 'Service unavailable — verify local stack.'}
+                        ? 'Connected and ready to sign in.'
+                        : 'Service unavailable — please verify local services are running.'}
                   </span>
                 </div>
                 <button
@@ -393,8 +393,8 @@ export function AuthGate({
         <div className="auth-centered-card surface-card">
           <NavFlowHeader
             headingId="mfa-heading"
-            title={session.next_step === 'enroll_authenticator' ? 'Authenticator Enrollment' : 'MFA Verification'}
-            subtitle={`${session.user.display_name} · Next step: ${session.next_step} · Expires ${formatManilaTime(session.expires_at)}`}
+            title={session.next_step === 'enroll_authenticator' ? 'Set Up Authenticator App' : 'Two-Step Verification'}
+            subtitle={`${session.user.display_name} · ${session.next_step === 'enroll_authenticator' ? 'Connect an authenticator app to continue' : 'Enter your 6-digit verification code'} · Session ends ${formatManilaTime(session.expires_at)}`}
           />
 
           <div className="form-stack">
@@ -434,15 +434,15 @@ export function AuthGate({
                       </div>
                     )}
                     <div className="session-ledger-row">
-                      <span className="session-ledger-key">Enrollment ID</span>
+                      <span className="session-ledger-key">Setup Reference</span>
                       <span className="session-ledger-val mono">{pendingEnrollment.enrollment_id}</span>
                     </div>
                     <div className="session-ledger-row">
-                      <span className="session-ledger-key">TOTP Secret</span>
+                      <span className="session-ledger-key">Manual Key</span>
                       <span className="session-ledger-val mono">{pendingEnrollment.secret}</span>
                     </div>
                     <div className="session-ledger-row">
-                      <span className="session-ledger-key">Provisioning URI</span>
+                      <span className="session-ledger-key">Setup Link</span>
                       <span className="session-ledger-val mono">{pendingEnrollment.provisioning_uri}</span>
                     </div>
                   </div>
@@ -453,7 +453,7 @@ export function AuthGate({
                       <input id="confirm-pw" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                     </div>
                     <div className="field">
-                      <label htmlFor="confirm-totp">6-Digit TOTP Code</label>
+                      <label htmlFor="confirm-totp">6-Digit Authenticator Code</label>
                       <input
                         id="confirm-totp"
                         type="text"
@@ -477,7 +477,7 @@ export function AuthGate({
                   className="btn-batcave-secondary"
                   onClick={() => setUseRecovery((v) => !v)}
                 >
-                  {useRecovery ? 'Use Authenticator TOTP Code' : 'Use Single-Use Recovery Code'}
+                  {useRecovery ? 'Use Authenticator App Code' : 'Use Single-Use Recovery Code'}
                 </button>
                 {useRecovery ? (
                   <div className="form-group">
@@ -496,7 +496,7 @@ export function AuthGate({
                 ) : (
                   <div className="form-group">
                     <label className="form-label" htmlFor="chal-totp">
-                      6-Digit TOTP Code
+                      6-Digit Authenticator Code
                     </label>
                     <input
                       id="chal-totp"
@@ -511,7 +511,7 @@ export function AuthGate({
                   </div>
                 )}
                 <button className="btn-batcave-primary" type="submit" disabled={busy}>
-                  Verify MFA
+                  Verify Code
                 </button>
               </form>
             )}
@@ -530,15 +530,21 @@ export function AuthGate({
     <div className="card">
       <div className="form-card-header" style={{ marginBottom: '1rem', paddingBottom: '0.75rem' }}>
         <div>
-          <h2 className="form-card-title">Session Security &amp; Recovery Controls</h2>
+          <h2 className="form-card-title">Account Security &amp; Backup Codes</h2>
           <p className="form-card-subtitle">
-            Authenticated as {session.user.display_name} ({session.authentication_method}) · Window expires{' '}
+            Signed in as {session.user.display_name} (
+            {session.authentication_method === 'authenticator'
+              ? 'Authenticator App'
+              : session.authentication_method === 'recovery_code'
+                ? 'Recovery Code'
+                : 'Password'}
+            ) · Session ends{' '}
             {formatManilaTime(session.expires_at)}
           </p>
         </div>
         <div className="row">
           <button type="button" className="btn secondary" onClick={handleCheckRecoveryStatus} disabled={busy}>
-            Check Recovery Set
+            Check Backup Codes
           </button>
           <button type="button" className="btn secondary" onClick={handleSignOut} disabled={busy}>
             Sign Out
@@ -553,7 +559,7 @@ export function AuthGate({
         {recoveryStatus && (
           <div className="session-ledger">
             <div className="session-ledger-row">
-              <span className="session-ledger-key">Active Recovery Set</span>
+              <span className="session-ledger-key">Current Backup Code Batch</span>
               <span className="session-ledger-val mono">
                 {recoveryStatus.id} · {recoveryStatus.remaining} remaining · Expires {formatManilaTime(recoveryStatus.expires_at)}
               </span>
@@ -568,7 +574,7 @@ export function AuthGate({
               <input id="rot-pw" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
             <div className="field">
-              <label htmlFor="rot-totp">Current TOTP Code</label>
+              <label htmlFor="rot-totp">Current Authenticator Code</label>
               <input
                 id="rot-totp"
                 type="text"
@@ -580,7 +586,7 @@ export function AuthGate({
               />
             </div>
             <button className="btn" type="submit" disabled={busy}>
-              Rotate Recovery Codes
+              Replace Backup Codes
             </button>
           </div>
         </form>

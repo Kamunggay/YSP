@@ -253,7 +253,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
         acknowledgmentId,
       }),
     });
-    setStatusMessage('Opening draft inputs held in chapter-scoped RAM only.');
+    setStatusMessage('Opening inventory changes saved as a temporary draft for this session.');
   }
 
   const loadAll = useCallback(async () => {
@@ -534,7 +534,19 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
       if (ackId) {
         setAcknowledgmentId(ackId);
       }
-      setStatusMessage(`${actionEndpoint} succeeded. Action key: ${key}`);
+      const openingActionLabels: Record<OpeningEndpoint, string> = {
+        createIpc: 'Opening inventory count created',
+        replaceIpc: 'Opening inventory count updated',
+        saveCount: 'Physical count quantities saved',
+        submitIpc: 'Opening inventory count submitted',
+        authorizeIpc: 'Opening inventory count authorized',
+        createRm: 'Opening receipt memo prepared',
+        replaceRm: 'Opening receipt memo updated',
+        inspectRm: 'Physical inspection recorded',
+        matchRm: 'Signed paper receipt matched',
+        postRm: 'Opening stock balances posted',
+      };
+      setStatusMessage(`${openingActionLabels[actionEndpoint]}. Reference: ${key}`);
       await loadAll();
     } catch (err) {
       setError(err);
@@ -603,33 +615,39 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
     <div>
       <div className="card">
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>Opening Inventory (`Ticket 05` · IPC → Inspected RM Baseline)</h2>
+          <h2>Opening Inventory Count &amp; Receipt</h2>
           <button type="button" className="btn secondary" onClick={() => void loadAll()}>
             Refresh Opening State
           </button>
         </div>
         <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
 
-        <h4>Chapter Opening Baseline (`GET /opening-baseline`)</h4>
-        <pre className="json-box">{JSON.stringify(baseline, null, 2)}</pre>
+        <h4>Current Opening Baseline Summary</h4>
+        {baseline !== null ? (
+          <pre className="json-box">{JSON.stringify(baseline, null, 2)}</pre>
+        ) : (
+          <p className="muted" style={{ marginBottom: '0.75rem' }}>
+            No opening stock baseline has been posted yet.
+          </p>
+        )}
 
         <div className="grid-2">
           <div>
-            <h4>IPCs ({ipcs.length})</h4>
+            <h4>Inventory Count Forms ({ipcs.length})</h4>
             <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="ipc-sel">Selected IPC</label>
+              <label htmlFor="ipc-sel">Selected Count Form</label>
               <select id="ipc-sel" value={selectedIpcId} onChange={(e) => setSelectedIpcId(e.target.value)}>
-                <option value="">-- select IPC --</option>
+                <option value="">-- Select Count Form --</option>
                 {ipcs.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {i.reference ?? i.id} ({i.state ?? i.status ?? '?'} r{i.revision ?? '?'} m{i.material_version ?? '?'})
+                    {i.reference ?? i.id} ({i.state ?? i.status ?? '?'} · rev. {i.revision ?? '?'}, content v{i.material_version ?? '?'})
                   </option>
                 ))}
               </select>
             </div>
             <div className="row">
               <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('ipc', 'detail')} disabled={!selectedIpcId}>
-                Read
+                View Details
               </button>
               <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('ipc', 'history')} disabled={!selectedIpcId}>
                 History
@@ -641,27 +659,27 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                 Revision #{exactRev}
               </button>
               <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('ipc', 'print')} disabled={!selectedIpcId}>
-                Print HTML
+                Print Preview
               </button>
             </div>
           </div>
 
           <div>
-            <h4>Opening RMs ({rms.length})</h4>
+            <h4>Opening Receipt Memos ({rms.length})</h4>
             <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="rm-sel">Selected Opening RM</label>
+              <label htmlFor="rm-sel">Selected Receipt Memo</label>
               <select id="rm-sel" value={selectedRmId} onChange={(e) => setSelectedRmId(e.target.value)}>
-                <option value="">-- select RM --</option>
+                <option value="">-- Select Receipt Memo --</option>
                 {rms.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.reference ?? r.id} ({r.state ?? r.status ?? '?'} r{r.revision ?? '?'} m{r.material_version ?? '?'})
+                    {r.reference ?? r.id} ({r.state ?? r.status ?? '?'} · rev. {r.revision ?? '?'}, content v{r.material_version ?? '?'})
                   </option>
                 ))}
               </select>
             </div>
             <div className="row">
               <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('rm', 'detail')} disabled={!selectedRmId}>
-                Read
+                View Details
               </button>
               <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('rm', 'history')} disabled={!selectedRmId}>
                 History
@@ -676,7 +694,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                 Findings
               </button>
               <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('rm', 'print')} disabled={!selectedRmId}>
-                Print HTML
+                Print Preview
               </button>
             </div>
           </div>
@@ -685,27 +703,27 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
 
       <div className="grid-2">
         <div className="card">
-          <h3>Execute Opening Transition (`X-Action-Key`)</h3>
+          <h3>Record or Update Opening Inventory</h3>
           <form onSubmit={runOpeningAction}>
             <div className="row" style={{ marginBottom: '0.5rem' }}>
               <div className="field">
                 <label htmlFor="op-act">Operation</label>
                 <select id="op-act" value={actionEndpoint} onChange={(e) => setActionEndpoint(e.target.value as OpeningEndpoint)}>
-                  <option value="createIpc">POST /ipcs (createIpc)</option>
-                  <option value="replaceIpc">PUT /ipcs/:id (replaceIpc)</option>
-                  <option value="saveCount">PUT /ipcs/:id/my-count (saveMyIpcCount)</option>
-                  <option value="submitIpc">POST /ipcs/:id/submit (submitIpc)</option>
-                  <option value="authorizeIpc">POST /ipcs/:id/authorizations (authorizeIpc)</option>
-                  <option value="createRm">POST /opening-rms (createOpeningRm)</option>
-                  <option value="replaceRm">PUT /opening-rms/:id (replaceOpeningRm)</option>
-                  <option value="inspectRm">POST /opening-rms/:id/inspection (inspectOpeningRm)</option>
-                  <option value="matchRm">POST /opening-rms/:id/evidence-match (matchOpeningRmEvidence)</option>
-                  <option value="postRm">POST /opening-rms/:id/post (postOpeningRm)</option>
+                  <option value="createIpc">1. Start Opening Inventory Count</option>
+                  <option value="replaceIpc">Edit Opening Count Form</option>
+                  <option value="saveCount">2. Enter Physical Count Quantities</option>
+                  <option value="submitIpc">3. Submit Signed Count Form</option>
+                  <option value="authorizeIpc">4. Authorize Count Form</option>
+                  <option value="createRm">5. Prepare Opening Receipt Memo</option>
+                  <option value="replaceRm">Edit Opening Receipt Memo</option>
+                  <option value="inspectRm">6. Record Physical Inspection</option>
+                  <option value="matchRm">7. Match Signed Receipt Document</option>
+                  <option value="postRm">8. Post Opening Stock Balances</option>
                 </select>
               </div>
               {actionEndpoint !== 'createIpc' && actionEndpoint !== 'createRm' && (
                 <div className="field" style={{ maxWidth: '8rem' }}>
-                  <label>expected_revision</label>
+                  <label>Current Revision</label>
                   <input type="number" min={1} required value={expectedRevision} onChange={(e) => setExpectedRevision(e.target.value)} />
                 </div>
               )}
@@ -715,7 +733,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                 actionEndpoint === 'matchRm' ||
                 actionEndpoint === 'postRm') && (
                 <div className="field" style={{ maxWidth: '8rem' }}>
-                  <label>material_version</label>
+                  <label>Content Version</label>
                   <input type="number" min={1} required value={materialVersion} onChange={(e) => setMaterialVersion(e.target.value)} />
                 </div>
               )}
@@ -724,7 +742,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                 actionEndpoint === 'inspectRm' ||
                 actionEndpoint === 'postRm') && (
                 <div className="field" style={{ maxWidth: '8.5rem' }}>
-                  <label>ipc_material_version</label>
+                  <label>Count Form Content Version</label>
                   <input type="number" min={1} required value={ipcMaterialVersion} onChange={(e) => setIpcMaterialVersion(e.target.value)} />
                 </div>
               )}
@@ -732,7 +750,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
 
             {(actionEndpoint === 'replaceIpc' || actionEndpoint === 'replaceRm') && (
               <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>Replacement Reason</label>
+                <label>Reason for Edit</label>
                 <input value={reason} onChange={(e) => setReason(e.target.value)} />
               </div>
             )}
@@ -741,7 +759,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
               <div>
                 <div className="row" style={{ marginBottom: '0.5rem' }}>
                   <div className="field">
-                    <label>cutoff_at (UTC microsecond or blank for null)</label>
+                    <label>Count Cutoff Date &amp; Time (optional)</label>
                     <input value={cutoffAt} placeholder="2026-11-26T00:00:00.000000Z" onChange={(e) => setCutoffAt(e.target.value)} />
                   </div>
                   <label className="row" style={{ alignItems: 'center' }}>
@@ -761,7 +779,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                     <div key={idx} className="row" style={{ marginBottom: '0.3rem' }}>
                       <div className="field">
                         <input
-                          placeholder="counter user_id UUID"
+                          placeholder="Team Member User ID"
                           value={t.user_id}
                           onChange={(e) => setTeam((p) => p.map((x, i) => (i === idx ? { ...x, user_id: e.target.value } : x)))}
                         />
@@ -772,7 +790,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                           checked={t.regular_custodian}
                           onChange={(e) => setTeam((p) => p.map((x, i) => (i === idx ? { ...x, regular_custodian: e.target.checked } : x)))}
                         />
-                        <span>regular_custodian</span>
+                        <span>Regular Custodian</span>
                       </label>
                     </div>
                   ))}
@@ -795,13 +813,13 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                         value={p.setting_key}
                         onChange={(e) => setPolicies((prev) => prev.map((x, i) => (i === idx ? { ...x, setting_key: e.target.value } : x)))}
                       >
-                        <option value="ipc_authorization">ipc_authorization</option>
-                        <option value="reference_series">reference_series</option>
-                        <option value="valuation_rounding">valuation_rounding</option>
-                        <option value="quantity_scale">quantity_scale</option>
+                        <option value="ipc_authorization">Count Authorization Rule</option>
+                        <option value="reference_series">Reference Numbering Rule</option>
+                        <option value="valuation_rounding">Valuation Rounding Rule</option>
+                        <option value="quantity_scale">Quantity Decimal Precision Rule</option>
                       </select>
                       <input
-                        placeholder="policy_id UUID"
+                        placeholder="Policy ID"
                         value={p.policy_id}
                         onChange={(e) => setPolicies((prev) => prev.map((x, i) => (i === idx ? { ...x, policy_id: e.target.value } : x)))}
                       />
@@ -818,19 +836,19 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
 
                 <div style={{ marginBottom: '0.5rem' }}>
                   <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <strong>IPC Lines</strong>
+                    <strong>Inventory Count Lines</strong>
                     <button type="button" className="btn secondary" onClick={() => setIpcLines((p) => [...p, emptyIpcLine()])}>
-                      + IPC Line
+                      + Add Count Line
                     </button>
                   </div>
                   {ipcLines.map((ln, idx) => (
-                    <div key={idx} style={{ padding: '0.45rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem', marginBottom: '0.4rem' }}>
+                    <div key={idx} className="nested-row-panel">
                       <div className="row" style={{ marginBottom: '0.35rem' }}>
                         <div className="field">
-                          <label>Variant</label>
+                          <label>Item Variant</label>
                           {catVariants.length > 0 ? (
                             <select value={ln.variant_id} onChange={(e) => updateIpcLine(idx, { variant_id: e.target.value })}>
-                              <option value="">-- pick variant --</option>
+                              <option value="">-- Select Item Variant --</option>
                               {catVariants.map((v) => (
                                 <option key={v.id} value={v.id}>
                                   {v.code} — {v.label} (v{v.material_version})
@@ -845,7 +863,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                           <label>Item</label>
                           {catItems.length > 0 ? (
                             <select value={ln.item_id} onChange={(e) => updateIpcLine(idx, { item_id: e.target.value })}>
-                              <option value="">-- pick item --</option>
+                              <option value="">-- Select Item --</option>
                               {catItems.map((it) => (
                                 <option key={it.id} value={it.id}>
                                   {it.code} — {it.description}
@@ -860,7 +878,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                           <label>Location</label>
                           {catLocations.length > 0 ? (
                             <select value={ln.location_id} onChange={(e) => updateIpcLine(idx, { location_id: e.target.value })}>
-                              <option value="">-- pick location --</option>
+                              <option value="">-- Select Location --</option>
                               {catLocations.map((loc) => (
                                 <option key={loc.id} value={loc.id}>
                                   {loc.code} — {loc.name} (v{loc.material_version})
@@ -874,51 +892,51 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                       </div>
                       <div className="row" style={{ marginBottom: '0.35rem' }}>
                         <div className="field">
-                          <label>line_id UUID</label>
+                          <label>Count Line ID</label>
                           <input required value={ln.line_id} onChange={(e) => updateIpcLine(idx, { line_id: e.target.value })} />
                         </div>
                         <div className="field">
-                          <label>historical_variant_label</label>
+                          <label>Recorded Item Description</label>
                           <input required value={ln.historical_variant_label} onChange={(e) => updateIpcLine(idx, { historical_variant_label: e.target.value })} />
                         </div>
                         <div className="field">
-                          <label>regular_custodian_ids (CSV UUIDs)</label>
+                          <label>Custodian User IDs (comma-separated)</label>
                           <input required value={ln.regular_custodian_ids_csv} onChange={(e) => updateIpcLine(idx, { regular_custodian_ids_csv: e.target.value })} />
                         </div>
                       </div>
                       <div className="row">
                         <div className="field" style={{ maxWidth: '8rem' }}>
-                          <label>condition</label>
+                          <label>Item Condition</label>
                           <select
                             value={ln.condition}
                             onChange={(e) => updateIpcLine(idx, { condition: e.target.value as 'usable' | 'damaged' | 'rejected' })}
                           >
-                            <option value="usable">usable</option>
-                            <option value="damaged">damaged</option>
-                            <option value="rejected">rejected</option>
+                            <option value="usable">Usable</option>
+                            <option value="damaged">Damaged</option>
+                            <option value="rejected">Rejected</option>
                           </select>
                         </div>
                         <div className="field" style={{ maxWidth: '8rem' }}>
-                          <label>counted_quantity</label>
+                          <label>Counted Quantity</label>
                           <input value={ln.counted_quantity} placeholder="e.g. 15" onChange={(e) => updateIpcLine(idx, { counted_quantity: e.target.value })} />
                         </div>
                         <div className="field" style={{ maxWidth: '7rem' }}>
-                          <label>unit_value (PHP)</label>
+                          <label>Unit Value (PHP)</label>
                           <input value={ln.unit_value} placeholder="25.00" onChange={(e) => updateIpcLine(idx, { unit_value: e.target.value })} />
                         </div>
                         <div className="field">
-                          <label>valuation_basis</label>
+                          <label>Valuation Basis</label>
                           <input value={ln.valuation_basis} onChange={(e) => updateIpcLine(idx, { valuation_basis: e.target.value })} />
                         </div>
                         <div className="field" style={{ maxWidth: '8rem' }}>
-                          <label>restrictions.state</label>
+                          <label>Usage Restriction</label>
                           <select
                             value={ln.restriction_state}
                             onChange={(e) => updateIpcLine(idx, { restriction_state: e.target.value as 'unrestricted' | 'bounded' | 'uninterpreted' })}
                           >
-                            <option value="unrestricted">unrestricted</option>
-                            <option value="bounded">bounded</option>
-                            <option value="uninterpreted">uninterpreted</option>
+                            <option value="unrestricted">Unrestricted</option>
+                            <option value="bounded">Restricted</option>
+                            <option value="uninterpreted">Pending Review</option>
                           </select>
                         </div>
                       </div>
@@ -936,16 +954,16 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
               <div>
                 <div className="row" style={{ marginBottom: '0.5rem' }}>
                   <div className="field">
-                    <label>counted_at</label>
+                    <label>Date &amp; Time Counted</label>
                     <input value={countedAt} onChange={(e) => setCountedAt(e.target.value)} />
                   </div>
                   <div className="field">
-                    <label>signed_at</label>
+                    <label>Date &amp; Time Signed</label>
                     <input value={signedAt} onChange={(e) => setSignedAt(e.target.value)} />
                   </div>
                   <label className="row" style={{ alignItems: 'center' }}>
                     <input type="checkbox" checked={countCompleted} onChange={(e) => setCountCompleted(e.target.checked)} />
-                    <span>completed</span>
+                    <span>Count completed</span>
                   </label>
                 </div>
                 <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
@@ -961,7 +979,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                 {countEntries.map((ce, idx) => (
                   <div key={idx} className="row" style={{ marginBottom: '0.4rem' }}>
                     <div className="field">
-                      <label>ipc_line_id</label>
+                      <label>Count Line ID</label>
                       <input
                         required
                         value={ce.ipc_line_id}
@@ -969,7 +987,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                       />
                     </div>
                     <div className="field" style={{ maxWidth: '7rem' }}>
-                      <label>quantity</label>
+                      <label>Quantity</label>
                       <input
                         value={ce.quantity}
                         onChange={(e) => setCountEntries((p) => p.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))}
@@ -983,9 +1001,9 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                         )
                       }
                     >
-                      <option value="usable">usable</option>
-                      <option value="damaged">damaged</option>
-                      <option value="rejected">rejected</option>
+                      <option value="usable">Usable</option>
+                      <option value="damaged">Damaged</option>
+                      <option value="rejected">Rejected</option>
                     </select>
                   </div>
                 ))}
@@ -997,17 +1015,17 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                 {actionEndpoint === 'matchRm' && (
                   <div className="row" style={{ marginBottom: '0.5rem' }}>
                     <div className="field">
-                      <label>snapshot_sha256</label>
+                      <label>Document Checksum</label>
                       <input required value={snapshotSha256} onChange={(e) => setSnapshotSha256(e.target.value)} />
                     </div>
                     <div className="field">
-                      <label>acknowledged_at</label>
+                      <label>Date &amp; Time Acknowledged</label>
                       <input required value={acknowledgedAt} onChange={(e) => setAcknowledgedAt(e.target.value)} />
                     </div>
                   </div>
                 )}
                 <EvidenceBindingFields
-                  label={actionEndpoint === 'submitIpc' ? 'signed_ipc Evidence Binding' : 'bytes Evidence Binding'}
+                  label={actionEndpoint === 'submitIpc' ? 'Signed Inventory Count Document' : 'Signed Opening Receipt Document'}
                   value={evidenceBinding}
                   onChange={setEvidenceBinding}
                 />
@@ -1017,14 +1035,14 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
             {actionEndpoint === 'authorizeIpc' && (
               <div className="row" style={{ marginBottom: '0.5rem' }}>
                 <div className="field">
-                  <label>Authorization Duty</label>
+                  <label>Authorizing Role</label>
                   <select value={authDuty} onChange={(e) => setAuthDuty(e.target.value as 'CHAPTER_HEAD' | 'FINANCE')}>
-                    <option value="CHAPTER_HEAD">CHAPTER_HEAD</option>
-                    <option value="FINANCE">FINANCE</option>
+                    <option value="CHAPTER_HEAD">Chapter Head</option>
+                    <option value="FINANCE">Finance Officer</option>
                   </select>
                 </div>
                 <div className="field">
-                  <label>signed_at</label>
+                  <label>Date &amp; Time Signed</label>
                   <input required value={signedAt} onChange={(e) => setSignedAt(e.target.value)} />
                 </div>
               </div>
@@ -1033,7 +1051,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
             {(actionEndpoint === 'createRm' || actionEndpoint === 'replaceRm') && (
               <div>
                 <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                  <strong>Opening RM Inspection Lines</strong>
+                  <strong>Inspection Results by Line</strong>
                   <button
                     type="button"
                     className="btn secondary"
@@ -1044,13 +1062,13 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                       ])
                     }
                   >
-                    + RM Line
+                    + Add Inspection Line
                   </button>
                 </div>
                 {rmLines.map((rl, idx) => (
-                  <div key={idx} className="row" style={{ marginBottom: '0.4rem', padding: '0.4rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div key={idx} className="row nested-row-panel">
                     <div className="field">
-                      <label>ipc_line_id</label>
+                      <label>Count Line ID</label>
                       <input
                         required
                         value={rl.ipc_line_id}
@@ -1058,35 +1076,35 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
                       />
                     </div>
                     <div className="field" style={{ maxWidth: '6.5rem' }}>
-                      <label>accepted</label>
+                      <label>Accepted Qty</label>
                       <input
                         value={rl.accepted_quantity}
                         onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, accepted_quantity: e.target.value } : x)))}
                       />
                     </div>
                     <div className="field" style={{ maxWidth: '6.5rem' }}>
-                      <label>damaged</label>
+                      <label>Damaged Qty</label>
                       <input
                         value={rl.damaged_quantity}
                         onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, damaged_quantity: e.target.value } : x)))}
                       />
                     </div>
                     <div className="field" style={{ maxWidth: '6.5rem' }}>
-                      <label>rejected</label>
+                      <label>Rejected Qty</label>
                       <input
                         value={rl.rejected_quantity}
                         onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, rejected_quantity: e.target.value } : x)))}
                       />
                     </div>
                     <div className="field" style={{ maxWidth: '7rem' }}>
-                      <label>accepted_value</label>
+                      <label>Accepted Value</label>
                       <input
                         value={rl.accepted_value}
                         onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, accepted_value: e.target.value } : x)))}
                       />
                     </div>
                     <div className="field">
-                      <label>finding_reason</label>
+                      <label>Finding / Notes</label>
                       <input
                         value={rl.finding_reason}
                         onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, finding_reason: e.target.value } : x)))}
@@ -1100,15 +1118,15 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
             {actionEndpoint === 'inspectRm' && (
               <div className="row" style={{ marginBottom: '0.5rem' }}>
                 <div className="field">
-                  <label>inspected_at</label>
+                  <label>Date &amp; Time Inspected</label>
                   <input required value={inspectedAt} onChange={(e) => setInspectedAt(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label>technical_representative_id (optional)</label>
+                  <label>Technical Representative ID (optional)</label>
                   <input value={techRepId} onChange={(e) => setTechRepId(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label>inspection_notes</label>
+                  <label>Inspection Notes</label>
                   <input required value={inspectionNotes} onChange={(e) => setInspectionNotes(e.target.value)} />
                 </div>
               </div>
@@ -1116,7 +1134,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
 
             {actionEndpoint === 'postRm' && (
               <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label>acknowledgment_id UUID</label>
+                <label>Acknowledgment Reference ID</label>
                 <input required value={acknowledgmentId} onChange={(e) => setAcknowledgmentId(e.target.value)} />
               </div>
             )}
@@ -1124,56 +1142,67 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
             {opBlockReason && <div className="alert info">{opBlockReason}</div>}
             <div className="row">
               <button className="btn" type="submit" disabled={busy || opBlockReason !== null} title={opBlockReason ?? undefined}>
-                Execute Opening Action
+                Submit Opening Action
               </button>
               <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
+                Save Temporary Draft
               </button>
             </div>
           </form>
         </div>
 
         <div className="card">
-          <h3>Opening Outcome Lookup, Exact Revision &amp; Inspection</h3>
+          <h3>Check Status, Past Revisions &amp; Printable Form</h3>
           <div className="row" style={{ marginBottom: '0.5rem' }}>
             <div className="field" style={{ maxWidth: '8rem' }}>
-              <label htmlFor="op-rev-n">Revision #</label>
+              <label htmlFor="op-rev-n">Revision Number</label>
               <input id="op-rev-n" type="number" min={1} value={exactRev} onChange={(e) => setExactRev(e.target.value)} />
             </div>
             <button type="button" className="btn secondary" disabled={!selectedRmId} onClick={() => void loadOpeningRead('rm', 'version')}>
-              Read RM Revision
+              View Receipt Revision
             </button>
           </div>
           <form onSubmit={lookupByKey}>
             <div className="row" style={{ marginBottom: '0.5rem' }}>
               <div className="field">
-                <label htmlFor="op-lkp-name">operation_name</label>
-                <input id="op-lkp-name" value={opName} onChange={(e) => setOpName(e.target.value)} required />
+                <label htmlFor="op-lkp-name">Action Type</label>
+                <select id="op-lkp-name" value={opName} onChange={(e) => setOpName(e.target.value)}>
+                  <option value="createIpc">Start Opening Inventory Count</option>
+                  <option value="replaceIpc">Edit Opening Count Form</option>
+                  <option value="saveMyIpcCount">Enter Physical Count Quantities</option>
+                  <option value="submitIpc">Submit Signed Count Form</option>
+                  <option value="authorizeIpc">Authorize Count Form</option>
+                  <option value="createOpeningRm">Prepare Opening Receipt Memo</option>
+                  <option value="replaceOpeningRm">Edit Opening Receipt Memo</option>
+                  <option value="inspectOpeningRm">Record Physical Inspection</option>
+                  <option value="matchOpeningRmEvidence">Match Signed Receipt Document</option>
+                  <option value="postOpeningRm">Post Opening Stock Balances</option>
+                </select>
               </div>
               <div className="field">
-                <label htmlFor="op-lkp-key">X-Action-Key UUID</label>
+                <label htmlFor="op-lkp-key">Submission Reference</label>
                 <input id="op-lkp-key" value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} required />
               </div>
               <button className="btn secondary" type="submit">
-                Lookup by Key
+                Check by Reference
               </button>
             </div>
           </form>
           <form onSubmit={lookupByOpId}>
             <div className="row" style={{ marginBottom: '0.65rem' }}>
               <div className="field">
-                <label htmlFor="op-lkp-id">operation_id UUID</label>
+                <label htmlFor="op-lkp-id">Change Record ID</label>
                 <input id="op-lkp-id" value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} required />
               </div>
               <button className="btn secondary" type="submit">
-                Read Operation ID
+                View by Record ID
               </button>
             </div>
           </form>
           {detailJson !== null && <pre className="json-box">{JSON.stringify(detailJson, null, 2)}</pre>}
           {printHtml !== null && (
             <div style={{ marginTop: '0.65rem' }}>
-              <h4>Printable Document Preview (sandboxed)</h4>
+              <h4>Printable Document Preview</h4>
               <iframe title="Opening Print Preview" sandbox="" srcDoc={printHtml} style={{ width: '100%', height: '240px', border: '1px solid #cbd5e1' }} />
             </div>
           )}

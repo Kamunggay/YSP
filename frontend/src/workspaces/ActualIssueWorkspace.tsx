@@ -159,7 +159,7 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
         snapshotSha,
       }),
     });
-    setStatusMessage('Actual issue inputs held in chapter-scoped RAM only.');
+    setStatusMessage('Issue handover details saved as a temporary draft for this session.');
   }
 
   const listRfIssues = useCallback(async () => {
@@ -348,7 +348,14 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
       if (ackId) {
         setAcknowledgmentId(ackId);
       }
-      setStatusMessage(`Actual Issue '${opKind}' completed. Key: ${key}`);
+      const issueOpLabels: Record<IssueOpKind, string> = {
+        prepare: 'Issue handover prepared',
+        revise: 'Prepared issue updated',
+        ack: 'Signed paper acknowledgment recorded',
+        post: 'Stock issue completed',
+        reconcile: 'Verification note recorded',
+      };
+      setStatusMessage(`${issueOpLabels[opKind]}. Reference: ${key}`);
       if (rfId.trim()) {
         await listRfIssues();
       }
@@ -389,22 +396,22 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
   return (
     <div>
       <div className="card">
-        <h2>Signed Actual RF Issue (`Ticket 08` · Prepare → Print → Paper Match → Post)</h2>
+        <h2>Stock Issue Handovers</h2>
         <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
 
         <div className="row" style={{ marginBottom: '0.75rem' }}>
           <div className="field">
-            <label htmlFor="iss-rf">rf_id UUID</label>
+            <label htmlFor="iss-rf">Requisition ID</label>
             <input id="iss-rf" value={rfId} onChange={(e) => setRfId(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="iss-id">issue_id UUID</label>
+            <label htmlFor="iss-id">Issue Handover ID</label>
             <input id="iss-id" value={issueId} onChange={(e) => setIssueId(e.target.value)} />
           </div>
         </div>
         <div className="row" style={{ marginBottom: '0.75rem' }}>
           <button type="button" className="btn secondary" onClick={() => void listRfIssues()} disabled={!rfId.trim()}>
-            List RF Issues
+            Load Issue Handovers
           </button>
           <button type="button" className="btn secondary" onClick={() => void readIssuePart('detail')} disabled={!issueId.trim()}>
             Read Detail
@@ -431,28 +438,28 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
 
       <div className="grid-2">
         <div className="card">
-          <h3>Execute Issue Transition (`X-Action-Key`)</h3>
+          <h3>Record or Update Issue Handover</h3>
           <form onSubmit={executeIssueOp}>
             <div className="field" style={{ marginBottom: '0.55rem' }}>
               <label htmlFor="iss-op">Operation</label>
               <select id="iss-op" value={opKind} onChange={(e) => setOpKind(e.target.value as IssueOpKind)}>
-                <option value="prepare">1. POST Prepare Actual Issue</option>
-                <option value="revise">PUT Revise Prepared Issue</option>
-                <option value="ack">2. POST Match Paper Acknowledgment</option>
-                <option value="post">3. POST Commit Actual Issue</option>
-                <option value="reconcile">POST Record Uncertain Reconciliation</option>
+                <option value="prepare">1. Prepare Issue Handover</option>
+                <option value="revise">Update Prepared Issue</option>
+                <option value="ack">2. Confirm Signed Paper Handover</option>
+                <option value="post">3. Complete &amp; Deduct Stock</option>
+                <option value="reconcile">Record Verification Note</option>
               </select>
             </div>
 
             {opKind !== 'prepare' && (
               <div className="row" style={{ marginBottom: '0.5rem' }}>
                 <div className="field">
-                  <label>expected_version</label>
+                  <label>Current Record Version</label>
                   <input type="number" min={1} required value={expectedVersion} onChange={(e) => setExpectedVersion(e.target.value)} />
                 </div>
                 {opKind !== 'reconcile' && (
                   <div className="field">
-                    <label>expected_material_version</label>
+                    <label>Current Content Version</label>
                     <input type="number" min={1} required value={expectedMatVersion} onChange={(e) => setExpectedMatVersion(e.target.value)} />
                   </div>
                 )}
@@ -462,15 +469,15 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
             {(opKind === 'prepare' || opKind === 'revise' || opKind === 'post') && (
               <div className="row" style={{ marginBottom: '0.5rem' }}>
                 <div className="field">
-                  <label>expected_rf_version</label>
+                  <label>Requisition Version</label>
                   <input type="number" min={1} required value={expectedRfVersion} onChange={(e) => setExpectedRfVersion(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label>expected_rf_material_version</label>
+                  <label>Requisition Content Version</label>
                   <input type="number" min={1} required value={expectedRfMatVersion} onChange={(e) => setExpectedRfMatVersion(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label>expected_rf_progress_version</label>
+                  <label>Requisition Progress Version</label>
                   <input type="number" min={1} required value={expectedRfProgressVersion} onChange={(e) => setExpectedRfProgressVersion(e.target.value)} />
                 </div>
               </div>
@@ -480,21 +487,21 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
               <>
                 <div className="row" style={{ marginBottom: '0.5rem' }}>
                   <div className="field">
-                    <label>recipient_id UUID</label>
+                    <label>Recipient User ID</label>
                     <input required value={recipientId} onChange={(e) => setRecipientId(e.target.value)} />
                   </div>
                   <div className="field">
-                    <label>handed_over_at</label>
+                    <label>Date &amp; Time Handed Over</label>
                     <input required value={handedOverAt} onChange={(e) => setHandedOverAt(e.target.value)} />
                   </div>
                   <div className="field">
-                    <label>acknowledged_at</label>
+                    <label>Date &amp; Time Acknowledged</label>
                     <input required value={acknowledgedAt} onChange={(e) => setAcknowledgedAt(e.target.value)} />
                   </div>
                 </div>
                 <label className="row" style={{ marginBottom: '0.5rem', alignItems: 'center' }}>
                   <input type="checkbox" checked={acceptsPartial} onChange={(e) => setAcceptsPartial(e.target.checked)} />
-                  <span>recipient_accepts_partial</span>
+                  <span>Recipient agrees to partial handover</span>
                 </label>
                 {opKind === 'revise' && (
                   <div className="field" style={{ marginBottom: '0.5rem' }}>
@@ -511,10 +518,10 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
                     </button>
                   </div>
                   {issueLines.map((ln, idx) => (
-                    <div key={idx} style={{ padding: '0.45rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem', marginBottom: '0.45rem' }}>
+                    <div key={idx} className="nested-row-panel">
                       <div className="row" style={{ marginBottom: '0.35rem' }}>
                         <div className="field">
-                          <label>rf_line_id</label>
+                          <label>Requisition Line ID</label>
                           <input
                             required
                             value={ln.rf_line_id}
@@ -522,7 +529,7 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
                           />
                         </div>
                         <div className="field">
-                          <label>reservation_id</label>
+                          <label>Reservation ID</label>
                           <input
                             required
                             value={ln.reservation_id}
@@ -530,7 +537,7 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
                           />
                         </div>
                         <div className="field" style={{ maxWidth: '6.5rem' }}>
-                          <label>res v</label>
+                          <label>Reservation Version</label>
                           <input
                             type="number"
                             min={1}
@@ -542,7 +549,7 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
                           />
                         </div>
                         <div className="field" style={{ maxWidth: '6.5rem' }}>
-                          <label>res mVer</label>
+                          <label>Reservation Content Version</label>
                           <input
                             type="number"
                             min={1}
@@ -571,18 +578,18 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
               <>
                 <div className="row" style={{ marginBottom: '0.5rem' }}>
                   <div className="field" style={{ maxWidth: '9rem' }}>
-                    <label>Snapshot material_version</label>
+                    <label>Signed Document Version</label>
                     <input type="number" min={1} required value={snapshotMatVer} onChange={(e) => setSnapshotMatVer(e.target.value)} />
                   </div>
                   <div className="field">
-                    <label>expected_snapshot.sha256</label>
+                    <label>Document Checksum</label>
                     <input required value={snapshotSha} onChange={(e) => setSnapshotSha(e.target.value)} />
                   </div>
                 </div>
                 <EvidenceBindingFields label="Signed IS/AR Evidence Binding" value={evidenceBinding} onChange={setEvidenceBinding} />
                 <label className="row" style={{ marginBottom: '0.6rem', alignItems: 'center' }}>
                   <input type="checkbox" checked={matchesPaper} onChange={(e) => setMatchesPaper(e.target.checked)} />
-                  <span>Confirmed physically inspected paper matches batch (`matches_paper: true`)</span>
+                  <span>I confirm the physically signed paper form matches this batch release</span>
                 </label>
               </>
             )}
@@ -590,12 +597,12 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
             {opKind === 'post' && (
               <>
                 <div className="field" style={{ marginBottom: '0.5rem' }}>
-                  <label>acknowledgment_id UUID</label>
+                  <label>Acknowledgment Reference ID</label>
                   <input required value={acknowledgmentId} onChange={(e) => setAcknowledgmentId(e.target.value)} />
                 </div>
                 <div style={{ marginBottom: '0.6rem' }}>
                   <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <strong>Current Sources Pin</strong>
+                    <strong>Batches to Deduct Stock From</strong>
                     <button
                       type="button"
                       className="btn secondary"
@@ -603,13 +610,13 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
                         setCurrentSources((p) => [...p, { stock_lot_id: '', expected_lot_material_version: '1', expected_stock_version: '1' }])
                       }
                     >
-                      + Source
+                      + Batch
                     </button>
                   </div>
                   {currentSources.map((src, idx) => (
                     <div key={idx} className="row" style={{ marginBottom: '0.35rem' }}>
                       <div className="field">
-                        <label>stock_lot_id</label>
+                        <label>Stock Batch ID</label>
                         <input
                           required
                           value={src.stock_lot_id}
@@ -617,7 +624,7 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
                         />
                       </div>
                       <div className="field" style={{ maxWidth: '6.5rem' }}>
-                        <label>lot mVer</label>
+                        <label>Batch Content Version</label>
                         <input
                           type="number"
                           min={1}
@@ -629,7 +636,7 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
                         />
                       </div>
                       <div className="field" style={{ maxWidth: '6.5rem' }}>
-                        <label>stockVer</label>
+                        <label>Stock Version</label>
                         <input
                           type="number"
                           min={1}
@@ -650,19 +657,19 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
               <>
                 <div className="row" style={{ marginBottom: '0.5rem' }}>
                   <div className="field">
-                    <label>finding</label>
+                    <label>Verification Result</label>
                     <select
                       value={finding}
                       onChange={(e) => setFinding(e.target.value as 'no_handover' | 'handed_over_unposted' | 'committed' | 'disputed')}
                     >
-                      <option value="no_handover">no_handover</option>
-                      <option value="handed_over_unposted">handed_over_unposted</option>
-                      <option value="committed">committed</option>
-                      <option value="disputed">disputed</option>
+                      <option value="no_handover">No Handover Occurred</option>
+                      <option value="handed_over_unposted">Handed Over (Not Yet Recorded)</option>
+                      <option value="committed">Completed &amp; Confirmed</option>
+                      <option value="disputed">Disputed / Needs Review</option>
                     </select>
                   </div>
                   <div className="field">
-                    <label>reason</label>
+                    <label>Reason</label>
                     <input required value={reconcileReason} onChange={(e) => setReconcileReason(e.target.value)} />
                   </div>
                 </div>
@@ -679,36 +686,36 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
             {opBlockReason && <div className="alert info">{opBlockReason}</div>}
             <div className="row">
               <button className="btn" type="submit" disabled={busy || opBlockReason !== null} title={opBlockReason ?? undefined}>
-                Run Issue Operation
+                Submit Issue Action
               </button>
               <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
+                Save Temporary Draft
               </button>
             </div>
           </form>
         </div>
 
         <div className="card">
-          <h3>Issue Outcome Lookup &amp; Printout</h3>
+          <h3>Status Check &amp; Printable Form</h3>
           <form onSubmit={lookupByKey}>
             <div className="row" style={{ marginBottom: '0.5rem' }}>
               <div className="field">
-                <label htmlFor="iss-lkp">X-Action-Key UUID</label>
+                <label htmlFor="iss-lkp">Submission Reference</label>
                 <input id="iss-lkp" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
               </div>
               <button className="btn secondary" type="submit">
-                Find by Key
+                Check Status
               </button>
             </div>
           </form>
           <form onSubmit={lookupByOpId}>
             <div className="row" style={{ marginBottom: '0.65rem' }}>
               <div className="field">
-                <label htmlFor="iss-opid">operation_id UUID</label>
+                <label htmlFor="iss-opid">Change Record ID</label>
                 <input id="iss-opid" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
               </div>
               <button className="btn secondary" type="submit">
-                Read Operation ID
+                View by Record ID
               </button>
             </div>
           </form>

@@ -26,14 +26,14 @@ import { ReservationAndHoldWorkspace } from './workspaces/ReservationAndHoldWork
 import { StockWorkspace } from './workspaces/StockWorkspace.tsx';
 
 const NAV_ITEMS: Array<{ id: WorkspaceTab; code: string; label: string; section: string }> = [
-  { id: 'my_work', code: 'S-02', label: 'My Work & Notices', section: 'Command Center' },
-  { id: 'requisitions', code: 'S-03/04', label: 'Internal RFs', section: 'Demand & Allocation' },
-  { id: 'reservations_holds', code: 'S-07/09', label: 'Reservations & Holds', section: 'Demand & Allocation' },
-  { id: 'actual_issues', code: 'S-07/08', label: 'Signed Actual Issues', section: 'Demand & Allocation' },
-  { id: 'stock', code: 'S-08', label: '7 Stock Views & Eligibility', section: 'Inventory & Baseline' },
-  { id: 'catalogue', code: 'P05', label: 'Catalogue & Precision', section: 'Inventory & Baseline' },
-  { id: 'opening', code: 'S-13', label: 'Opening IPC / RM', section: 'Inventory & Baseline' },
-  { id: 'evidence', code: 'DOC-08', label: 'Paper Evidence', section: 'Inventory & Baseline' },
+  { id: 'my_work', code: '01', label: 'My Work & Updates', section: 'Command Center' },
+  { id: 'requisitions', code: '02', label: 'Requisitions', section: 'Demand & Allocation' },
+  { id: 'reservations_holds', code: '03', label: 'Reservations & Holds', section: 'Demand & Allocation' },
+  { id: 'actual_issues', code: '04', label: 'Issue Handovers', section: 'Demand & Allocation' },
+  { id: 'stock', code: '05', label: 'Stock Levels & Eligibility', section: 'Inventory & Baseline' },
+  { id: 'catalogue', code: '06', label: 'Item Catalogue', section: 'Inventory & Baseline' },
+  { id: 'opening', code: '07', label: 'Opening Inventory', section: 'Inventory & Baseline' },
+  { id: 'evidence', code: '08', label: 'Signed Documents', section: 'Inventory & Baseline' },
 ];
 
 export function App() {
@@ -263,23 +263,32 @@ export function App() {
 
   const preAuthHeaderMeta = (
     <span className={`status-pill ${connection === 'connected' ? 'ok' : connection === 'unavailable' ? 'bad' : 'warn'}`}>
-      DB: {connection}
+      Database: {connection === 'connected' ? 'Connected' : connection === 'checking' ? 'Checking' : 'Offline'}
     </span>
   );
 
   const authHeaderMeta =
     session && session.state === 'authenticated' ? (
       <>
-        <span className={`status-pill ${connection === 'connected' ? 'ok' : 'bad'}`}>DB: {connection}</span>
+        <span className={`status-pill ${connection === 'connected' ? 'ok' : 'bad'}`}>
+          Database: {connection === 'connected' ? 'Connected' : connection === 'checking' ? 'Checking' : 'Offline'}
+        </span>
         <span
           className={`status-pill ${
             realtimeStatus === 'connected' ? 'ok' : realtimeStatus === 'stale_reconnect' ? 'warn' : 'bad'
           }`}
           title={realtimeDetail}
         >
-          Reverb WS: {realtimeStatus}
+          Live Sync: {realtimeStatus === 'connected' ? 'Active' : realtimeStatus === 'stale_reconnect' ? 'Reconnecting' : realtimeStatus === 'connecting' ? 'Connecting' : 'Standby'}
         </span>
-        <span className="status-pill">Auth: {session.authentication_method}</span>
+        <span className="status-pill">
+          Sign-In:{' '}
+          {session.authentication_method === 'authenticator'
+            ? 'Authenticator App'
+            : session.authentication_method === 'recovery_code'
+              ? 'Recovery Code'
+              : 'Password'}
+        </span>
       </>
     ) : (
       preAuthHeaderMeta
@@ -297,13 +306,13 @@ export function App() {
       >
         <main className="status-shell">
           <div className="surface-card status-card">
-            <div className="eyebrow">Stage 1 Access Gate</div>
-            <h1>YSP Stage 1 Workspace</h1>
+            <div className="eyebrow">YSP Chapter Portal</div>
+            <h1>YSP Chapter Operations</h1>
             <p role="status" className={`message connection ${connection}`}>
               {connection === 'checking'
-                ? 'Checking connection to Laravel and MySQL...'
+                ? 'Checking server connection...'
                 : connection === 'connected'
-                  ? 'Laravel and MySQL are connected.'
+                  ? 'System ready and connected.'
                   : 'Connection unavailable. Check that the local services are running, then try again.'}
             </p>
             <div className="button-group">
@@ -355,7 +364,7 @@ export function App() {
     >
       <div className="stage1-app">
         <div className="shell-grid">
-          <nav className="sidenav" aria-label="Stage 1 destinations">
+          <nav className="sidenav" aria-label="Workspace navigation">
             {(['Command Center', 'Demand & Allocation', 'Inventory & Baseline'] as const).map((sec) => (
               <div key={sec}>
                 <div className="nav-section-label">{sec}</div>
@@ -406,17 +415,18 @@ export function App() {
             {activeTab === 'my_work' && (
               <div className="grid-2">
                 <div className="card">
-                  <h2>My Work &amp; Realtime Invalidations (S-02 / Ticket 09)</h2>
+                  <h2>My Work &amp; Recent Updates</h2>
                   <p className="muted" style={{ marginBottom: '0.65rem' }}>
-                    Authorized channel events trigger fresh permitted HTTP reads—events never broadcast protected secrets or authorize mutations.
+                    Updates appear here automatically whenever records in your chapter change.
                   </p>
                   {recentNotices.length === 0 ? (
-                    <p className="muted">No committed change notices received in this session yet.</p>
+                    <p className="muted">No recent chapter updates in this session yet.</p>
                   ) : (
                     <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
                       {recentNotices.map((n) => (
                         <li key={n.event_id} style={{ marginBottom: '0.35rem' }}>
-                          <span className="mono">{n.event_name}</span> · {n.resource_kind}{' '}
+                          <span>{n.event_name.replace(/^stage1\./, '').replace(/\.v\d+$/, '').replace(/\./g, ' ')}</span> ·{' '}
+                          {n.resource_kind.replace(/_/g, ' ')}{' '}
                           <span className="mono">{n.resource_id}</span> @ {formatManilaTime(n.committed_at)}
                         </li>
                       ))}
@@ -425,14 +435,18 @@ export function App() {
                 </div>
 
                 <div className="card">
-                  <h2>Quarantined In-Memory Drafts (RAM Only)</h2>
+                  <h2>Unsaved Drafts (This Session Only)</h2>
                   {drafts.length === 0 ? (
-                    <p className="muted">No unsaved form buffers held in RAM.</p>
+                    <p className="muted">No unsaved form drafts stored in this session.</p>
                   ) : (
                     <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
                       {drafts.map((d) => (
                         <li key={`${d.chapterId}-${d.formKey}`}>
-                          <strong>{d.label}</strong> (Chapter <span className="mono">{d.chapterId}</span>, saved{' '}
+                          <strong>{d.label}</strong> (Chapter{' '}
+                          <span className="mono">
+                            {memberships.find((m) => m.chapter.id === d.chapterId)?.chapter.reference ?? d.chapterId}
+                          </span>
+                          , saved{' '}
                           {formatManilaTime(d.updatedAtIso)})
                         </li>
                       ))}

@@ -180,9 +180,9 @@ export function StockWorkspace({ chapterId, refreshSignal, chapterAccess }: Stoc
   return (
     <div>
       <div className="card">
-        <h2>Seven Non-Additive Stock Views &amp; Eligibility (INV-03)</h2>
+        <h2>Stock Overview &amp; Item Availability</h2>
         <p className="muted">
-          Advisory snapshots only (views_are_additive: false). Never sum Usable On-Hand, Available, RF/SO Reserved, Booth Custody, Quarantined, and Inbound PO together.
+          Advisory stock breakdown only. Each category shows a different way of looking at stock, so these totals must not be added together.
         </p>
 
         <OperationBanner error={error} />
@@ -190,27 +190,27 @@ export function StockWorkspace({ chapterId, refreshSignal, chapterAccess }: Stoc
 
         <div className="row" style={{ marginBottom: '0.85rem' }}>
           <div className="field">
-            <label htmlFor="stk-use">intended_use</label>
+            <label htmlFor="stk-use">Planned Use</label>
             <select id="stk-use" value={intendedUse} onChange={(e) => setIntendedUse(e.target.value as IntendedUse)}>
-              <option value="internal_use">internal_use</option>
-              <option value="sale">sale</option>
-              <option value="booth_transfer">booth_transfer</option>
+              <option value="internal_use">Internal Chapter Use</option>
+              <option value="sale">Sale</option>
+              <option value="booth_transfer">Booth Transfer</option>
             </select>
           </div>
           <div className="field">
-            <label htmlFor="stk-needed">needed_at (UTC microsecond)</label>
+            <label htmlFor="stk-needed">Date Needed (optional)</label>
             <input id="stk-needed" value={neededAt} onChange={(e) => setNeededAt(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="stk-unit">requesting_unit_id (optional)</label>
+            <label htmlFor="stk-unit">Requesting Unit ID (optional)</label>
             <input id="stk-unit" value={requestingUnitId} onChange={(e) => setRequestingUnitId(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="stk-event">event_id (optional)</label>
+            <label htmlFor="stk-event">Event ID (optional)</label>
             <input id="stk-event" value={eventId} onChange={(e) => setEventId(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="stk-var">variant_id (optional)</label>
+            <label htmlFor="stk-var">Item Variant ID (optional)</label>
             <input id="stk-var" value={variantFilter} onChange={(e) => setVariantFilter(e.target.value)} />
           </div>
           <button type="button" className="btn" disabled={busy} onClick={() => void handleManualQuery()}>
@@ -222,16 +222,18 @@ export function StockWorkspace({ chapterId, refreshSignal, chapterAccess }: Stoc
           <p className="muted">No stock summaries found for this context.</p>
         ) : (
           summaries.map((s) => (
-            <div key={s.variant_id} className="card" style={{ background: '#f8fafc' }}>
+            <div key={s.variant_id} className="card">
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <strong>Variant {s.variant_code ?? s.variant_id}</strong>{' '}
-                  <span className={`status-pill ${s.low_stock === 'above_rop' ? 'ok' : 'warn'}`}>{s.low_stock}</span>{' '}
-                  <span className="muted">Observed {formatManilaTime(s.observed_at)}</span>
+                  <strong>Item Variant {s.variant_code ?? s.variant_id}</strong>{' '}
+                  <span className={`status-pill ${s.low_stock === 'above_rop' ? 'ok' : 'warn'}`}>
+                    {s.low_stock === 'above_rop' ? 'Above Reorder Level' : s.low_stock.replace(/_/g, ' ')}
+                  </span>{' '}
+                  <span className="muted">Updated {formatManilaTime(s.observed_at)}</span>
                 </div>
                 <div className="row">
                   <button type="button" className="btn secondary" onClick={() => void loadLotsForVariant(s.variant_id)}>
-                    Inspect Lots
+                    View Batches
                   </button>
                   <button type="button" className="btn secondary" onClick={() => void inspectVariantDetail(s.variant_id)}>
                     Variant Detail
@@ -264,7 +266,7 @@ export function StockWorkspace({ chapterId, refreshSignal, chapterAccess }: Stoc
 
       <div className="grid-2">
         <div className="card">
-          <h3>Stock Lots &amp; Disjoint Segments</h3>
+          <h3>Stock Batches &amp; Allocations</h3>
           {lots.length === 0 ? (
             <p className="muted">Select “Inspect Lots” on a variant above.</p>
           ) : (
@@ -273,24 +275,24 @@ export function StockWorkspace({ chapterId, refreshSignal, chapterAccess }: Stoc
         </div>
 
         <div className="card">
-          <h3>Check Lot Eligibility</h3>
+          <h3>Check Stock Batch Availability</h3>
           <form onSubmit={checkEligibility}>
             <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="el-lot">stock_lot_id UUID</label>
+              <label htmlFor="el-lot">Stock Batch ID</label>
               <input id="el-lot" required value={selectedLotId} onChange={(e) => setSelectedLotId(e.target.value)} />
             </div>
             <div className="row" style={{ marginBottom: '0.5rem' }}>
               <div className="field">
-                <label htmlFor="el-qty">Exact Quantity String</label>
+                <label htmlFor="el-qty">Quantity to Check</label>
                 <input id="el-qty" required value={eligQty} onChange={(e) => setEligQty(e.target.value)} />
               </div>
               <div className="field">
-                <label htmlFor="el-unit">Expected Unit UUID</label>
+                <label htmlFor="el-unit">Unit of Measure ID</label>
                 <input id="el-unit" required value={eligUnitId} onChange={(e) => setEligUnitId(e.target.value)} />
               </div>
             </div>
             <div className="field" style={{ marginBottom: '0.65rem' }}>
-              <label htmlFor="el-line">rf_line_id UUID (optional)</label>
+              <label htmlFor="el-line">Requisition Line ID (optional)</label>
               <input id="el-line" value={eligRfLineId} onChange={(e) => setEligRfLineId(e.target.value)} />
             </div>
             <div className="row">
@@ -320,13 +322,13 @@ export function StockWorkspace({ chapterId, refreshSignal, chapterAccess }: Stoc
           {eligibilityResult !== null && <pre className="json-box">{JSON.stringify(eligibilityResult, null, 2)}</pre>}
           {lotDetail !== null && (
             <div style={{ marginTop: '0.65rem' }}>
-              <h4>Lot Detail</h4>
+              <h4>Batch Details</h4>
               <pre className="json-box">{JSON.stringify(lotDetail, null, 2)}</pre>
             </div>
           )}
           {lotHistory !== null && (
             <div style={{ marginTop: '0.65rem' }}>
-              <h4>Lot Movement History</h4>
+              <h4>Batch Movement History</h4>
               <pre className="json-box">{JSON.stringify(lotHistory, null, 2)}</pre>
             </div>
           )}

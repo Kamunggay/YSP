@@ -139,7 +139,7 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
       pendingActionKey: null,
       payloadJson: JSON.stringify({ code, titleField, parentItemId, unitId, reason }),
     });
-    setStatusMessage('Unsaved form kept in chapter-scoped RAM only (cleared on sign-out).');
+    setStatusMessage('Unsaved form changes saved as a temporary draft for this session (cleared when you sign out).');
   }
 
   function startEdit(row: CatalogueRecord) {
@@ -241,7 +241,8 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
       const opEntity = entity === 'items' ? 'Item' : entity === 'variants' ? 'Variant' : entity === 'units' ? 'Unit' : 'Location';
       memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setReplayed(result.replayed);
-      setStatusMessage(`${isReplace ? 'Replaced' : 'Created'} ${entity} ${record.code} (v${record.material_version}). Key: ${key}`);
+      const entityNoun = entity === 'items' ? 'item' : entity === 'variants' ? 'item variant' : entity === 'units' ? 'unit' : 'location';
+      setStatusMessage(`${isReplace ? 'Updated' : 'Added'} ${entityNoun} ${record.code} (rev. ${record.material_version}). Reference: ${key}`);
       setOpName(`${opPrefix}${opEntity}`);
       setLookupKey(key);
       if (payload.operation_id) {
@@ -323,7 +324,7 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
   return (
     <div>
       <div className="card">
-        <h2>Stage 1 Catalogue (PUT Versioned + Sticky Precision)</h2>
+        <h2>Item &amp; Location Catalogue</h2>
         <div className="tabs">
           {(['items', 'variants', 'units', 'locations'] as const).map((tab) => (
             <button
@@ -343,13 +344,13 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
           <div className="field">
             <label htmlFor="cat-state">State filter</label>
             <select id="cat-state" value={stateFilter} onChange={(e) => setStateFilter(e.target.value as 'active' | 'retired' | 'all')}>
-              <option value="active">active</option>
-              <option value="retired">retired</option>
-              <option value="all">all</option>
+              <option value="active">Active</option>
+              <option value="retired">Retired</option>
+              <option value="all">All</option>
             </select>
           </div>
           <div className="field">
-            <label htmlFor="cat-q">Prefix search (q)</label>
+            <label htmlFor="cat-q">Search by code or name</label>
             <input id="cat-q" value={queryText} onChange={(e) => setQueryText(e.target.value)} placeholder="Code or label prefix" />
           </div>
           <button type="button" className="btn secondary" onClick={() => void loadList()}>
@@ -364,7 +365,7 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
                 <th>Code</th>
                 <th>Name / Description</th>
                 <th>State</th>
-                <th>Material v</th>
+                <th>Revision</th>
                 <th>Details</th>
                 <th>Actions</th>
               </tr>
@@ -382,16 +383,16 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
                     <td className="mono">{r.code}</td>
                     <td>{r.description ?? r.label ?? r.name}</td>
                     <td>{r.state}</td>
-                    <td>v{r.material_version}</td>
+                    <td>rev. {r.material_version}</td>
                     <td className="mono">
                       {r.id}
-                      {r.quantity_scale !== undefined ? ` · scale=${r.quantity_scale}` : ''}
-                      {r.quantity_identity_locked ? ' [LOCKED]' : ''}
+                      {r.quantity_scale !== undefined ? ` · ${r.quantity_scale} decimals` : ''}
+                      {r.quantity_identity_locked ? ' (In Use)' : ''}
                     </td>
                     <td>
                       <div className="row">
                         <button type="button" className="btn secondary" onClick={() => void inspectRecord(r.id)}>
-                          Read Record
+                          View Details
                         </button>
                         <button
                           type="button"
@@ -400,7 +401,7 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
                           title={maintainReason ?? undefined}
                           onClick={() => startEdit(r)}
                         >
-                          Replace (`PUT`)
+                          Edit
                         </button>
                         <button
                           type="button"
@@ -439,11 +440,15 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
 
       <div className="grid-2">
         <div className="card">
-          <h3>{selected ? `Replace ${entity.slice(0, -1)} ${selected.code} (v${selected.material_version})` : `Create ${entity.slice(0, -1)}`}</h3>
+          <h3>
+            {selected
+              ? `Edit ${selected.code} (rev. ${selected.material_version})`
+              : `Add New ${entity === 'items' ? 'Item' : entity === 'variants' ? 'Item Variant' : entity === 'units' ? 'Unit' : 'Location'}`}
+          </h3>
           <form onSubmit={handleSubmit}>
             {!selected && (
               <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-code">Uppercase ASCII Code</label>
+                <label htmlFor="cat-code">Short Code (Letters &amp; Numbers)</label>
                 <input id="cat-code" required value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
               </div>
             )}
@@ -453,65 +458,65 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
             </div>
             {entity === 'variants' && !selected && (
               <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-item">Parent Item UUID</label>
+                <label htmlFor="cat-item">Parent Item</label>
                 <input id="cat-item" required value={parentItemId} onChange={(e) => setParentItemId(e.target.value)} />
               </div>
             )}
             {(entity === 'items' || entity === 'variants') && (
               <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-unit">Unit UUID</label>
+                <label htmlFor="cat-unit">Unit of Measure</label>
                 <input id="cat-unit" required value={unitId} onChange={(e) => setUnitId(e.target.value)} />
               </div>
             )}
             {entity === 'units' && (
               <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-qkind">Quantity Kind</label>
+                <label htmlFor="cat-qkind">Measurement Type</label>
                 <select id="cat-qkind" value={qtyKind} onChange={(e) => setQtyKind(e.target.value as 'count' | 'weight' | 'volume' | 'length')}>
-                  <option value="count">count</option>
-                  <option value="weight">weight</option>
-                  <option value="volume">volume</option>
-                  <option value="length">length</option>
+                  <option value="count">Count (pieces)</option>
+                  <option value="weight">Weight</option>
+                  <option value="volume">Volume</option>
+                  <option value="length">Length</option>
                 </select>
               </div>
             )}
             {(entity === 'units' || entity === 'variants') && (
               <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-qscale">Quantity Scale (0..6)</label>
+                <label htmlFor="cat-qscale">Decimal Places (0–6)</label>
                 <input id="cat-qscale" type="number" min={0} max={6} required value={qtyScale} onChange={(e) => setQtyScale(e.target.value)} />
               </div>
             )}
             {entity === 'locations' && (
               <>
                 <div className="field" style={{ marginBottom: '0.6rem' }}>
-                  <label htmlFor="cat-lkind">Location Kind</label>
+                  <label htmlFor="cat-lkind">Location Type</label>
                   <input id="cat-lkind" required value={locKind} onChange={(e) => setLocKind(e.target.value)} />
                 </div>
                 <div className="field" style={{ marginBottom: '0.6rem' }}>
-                  <label htmlFor="cat-cust">Custodian UUID (optional)</label>
+                  <label htmlFor="cat-cust">Assigned Custodian ID (optional)</label>
                   <input id="cat-cust" value={custodianId} onChange={(e) => setCustodianId(e.target.value)} />
                 </div>
               </>
             )}
             {selected && (
               <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-rstate">Target State</label>
+                <label htmlFor="cat-rstate">Status</label>
                 <select id="cat-rstate" value={replaceState} onChange={(e) => setReplaceState(e.target.value as 'active' | 'retired')}>
-                  <option value="active">active</option>
-                  <option value="retired">retired</option>
+                  <option value="active">Active</option>
+                  <option value="retired">Retired</option>
                 </select>
               </div>
             )}
             <div className="field" style={{ marginBottom: '0.75rem' }}>
-              <label htmlFor="cat-reason">Audit Reason</label>
+              <label htmlFor="cat-reason">Reason for Change</label>
               <input id="cat-reason" required value={reason} onChange={(e) => setReason(e.target.value)} />
             </div>
             {maintainReason && <div className="alert info">{maintainReason}</div>}
             <div className="row">
               <button className="btn" type="submit" disabled={busy || maintainReason !== null} title={maintainReason ?? undefined}>
-                {selected ? 'Submit PUT Replace' : 'Create (POST)'}
+                {selected ? 'Save Changes' : 'Add Record'}
               </button>
               <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
+                Save Temporary Draft
               </button>
               {selected && (
                 <button className="btn secondary" type="button" onClick={() => setSelected(null)}>
@@ -523,35 +528,44 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
         </div>
 
         <div className="card">
-          <h3>Operation Outcome Lookup (Ticket 03)</h3>
+          <h3>Check Submitted Change Status</h3>
           <form onSubmit={lookupOperation}>
             <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="op-name">operation_name</label>
-              <input id="op-name" required value={opName} onChange={(e) => setOpName(e.target.value)} />
+              <label htmlFor="op-name">Change Type</label>
+              <select id="op-name" value={opName} onChange={(e) => setOpName(e.target.value)}>
+                <option value="createCatalogueItem">Add Item</option>
+                <option value="replaceCatalogueItem">Edit Item</option>
+                <option value="createCatalogueVariant">Add Item Variant</option>
+                <option value="replaceCatalogueVariant">Edit Item Variant</option>
+                <option value="createCatalogueUnit">Add Unit of Measure</option>
+                <option value="replaceCatalogueUnit">Edit Unit of Measure</option>
+                <option value="createCatalogueLocation">Add Storage Location</option>
+                <option value="replaceCatalogueLocation">Edit Storage Location</option>
+              </select>
             </div>
             <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="op-key">action_key (X-Action-Key UUID)</label>
+              <label htmlFor="op-key">Submission Reference</label>
               <input id="op-key" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
             </div>
             <button className="btn secondary" type="submit">
-              Lookup by Key
+              Check by Reference
             </button>
           </form>
           <form onSubmit={lookupOperationById} style={{ marginTop: '0.65rem' }}>
             <div className="row">
               <div className="field">
-                <label htmlFor="op-id">operation_id UUID</label>
+                <label htmlFor="op-id">Change Record ID</label>
                 <input id="op-id" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
               </div>
               <button className="btn secondary" type="submit">
-                Lookup by Operation ID
+                View by Record ID
               </button>
             </div>
           </form>
           {selected && (
             <div className="row" style={{ marginTop: '0.65rem' }}>
               <div className="field" style={{ maxWidth: '8rem' }}>
-                <label htmlFor="cat-ver-n">Material Ver</label>
+                <label htmlFor="cat-ver-n">Revision Number</label>
                 <input id="cat-ver-n" type="number" min={1} value={lookupVersion} onChange={(e) => setLookupVersion(e.target.value)} />
               </div>
               <button
@@ -566,7 +580,7 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
           {lookupResult !== null && <pre className="json-box">{JSON.stringify(lookupResult, null, 2)}</pre>}
           {historyJson !== null && (
             <>
-              <h4 style={{ marginBottom: '0.3rem' }}>Version History / Snapshot</h4>
+              <h4 style={{ marginBottom: '0.3rem' }}>Change History &amp; Details</h4>
               <pre className="json-box">{JSON.stringify(historyJson, null, 2)}</pre>
             </>
           )}

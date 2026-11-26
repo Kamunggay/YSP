@@ -232,7 +232,7 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
         treatmentSourceId,
       }),
     });
-    setStatusMessage('Reservation/hold inputs held in chapter-scoped RAM only.');
+    setStatusMessage('Reservation and hold changes saved as a temporary draft for this session.');
   }
 
   const loadRfAllocations = useCallback(async () => {
@@ -307,7 +307,7 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
         expected_stock_version: String(lot.stock_version),
       },
     ]);
-    setStatusMessage(`Prefilled target from candidate lot ${lot.stock_lot_id.slice(0, 8)} (stock v${lot.stock_version}).`);
+    setStatusMessage(`Filled target details from stock batch ${lot.stock_lot_id.slice(0, 8)} (rev. ${lot.stock_version}).`);
   }
 
   function buildBody(): Record<string, unknown> {
@@ -432,7 +432,16 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
       if (clearanceSha) {
         setExpectedSnapshotSha(clearanceSha);
       }
-      setStatusMessage(`${opKind} executed cleanly. Key: ${key}`);
+      const actionLabels: Record<ResHoldOp, string> = {
+        prepare: 'Reservation prepared',
+        commit: 'Reservation confirmed',
+        release: 'Reserved stock released',
+        reallocate: 'Reservation moved',
+        placeHold: 'Stock hold placed',
+        proposeClear: 'Hold clearance submitted',
+        clearHold: 'Stock hold cleared',
+      };
+      setStatusMessage(`${actionLabels[opKind]}. Reference: ${key}`);
       await loadHolds();
       if (rfId.trim()) {
         await loadRfAllocations();
@@ -484,31 +493,31 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
   return (
     <div>
       <div className="card">
-        <h2>Two-Step Reservations &amp; HTTP Stock Holds (`Ticket 07`)</h2>
+        <h2>Stock Reservations &amp; Holds</h2>
         <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
 
         <div className="row" style={{ marginBottom: '0.75rem' }}>
           <div className="field">
-            <label htmlFor="res-rf">rf_id UUID</label>
+            <label htmlFor="res-rf">Requisition ID</label>
             <input id="res-rf" value={rfId} onChange={(e) => setRfId(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="res-prep">preparation_id UUID</label>
+            <label htmlFor="res-prep">Preparation ID</label>
             <input id="res-prep" value={prepId} onChange={(e) => setPrepId(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="res-id">reservation_id UUID</label>
+            <label htmlFor="res-id">Reservation ID</label>
             <input id="res-id" value={reservationId} onChange={(e) => setReservationId(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="hold-id">hold_id UUID</label>
+            <label htmlFor="hold-id">Stock Hold ID</label>
             <input id="hold-id" value={holdId} onChange={(e) => setHoldId(e.target.value)} />
           </div>
         </div>
 
         <div className="row" style={{ marginBottom: '0.75rem' }}>
           <button type="button" className="btn secondary" onClick={() => void loadRfAllocations()} disabled={!rfId.trim()}>
-            Load RF Allocation Review
+            Load Allocation Details
           </button>
           <button
             type="button"
@@ -545,13 +554,13 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
 
         {reviewData?.lines && reviewData.lines.length > 0 && (
           <div style={{ marginBottom: '0.75rem' }}>
-            <h4>Candidate Lots From Allocation Review</h4>
+            <h4>Available Stock Batches</h4>
             {reviewData.lines.map((ln) => (
               <div key={ln.rf_line_id} className="row" style={{ marginBottom: '0.4rem' }}>
                 <span className="mono muted">Line {ln.rf_line_id}</span>
                 {(ln.candidate_lots ?? []).map((lot) => (
                   <button key={lot.stock_lot_id} type="button" className="btn secondary" onClick={() => applyCandidateLot(lot)}>
-                    Prefill Lot {lot.stock_lot_id.slice(0, 8)} (qty {lot.quantity_on_hand})
+                    Use Batch {lot.stock_lot_id.slice(0, 8)} (on hand: {lot.quantity_on_hand})
                   </button>
                 ))}
               </div>
@@ -561,7 +570,7 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
 
         <div className="grid-2">
           <div>
-            <h4>RF Reservations ({reservations.length})</h4>
+            <h4>Requisition Reservations ({reservations.length})</h4>
             <pre className="json-box">{JSON.stringify({ review: reviewData, reservations }, null, 2)}</pre>
           </div>
           <div>
@@ -573,33 +582,33 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
 
       <div className="grid-2">
         <div className="card">
-          <h3>Execute Reservation or Stock Hold Action (`X-Action-Key`)</h3>
+          <h3>Update Reservation or Stock Hold</h3>
           <form onSubmit={executeAction}>
             <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="rh-op">Operation</label>
+              <label htmlFor="rh-op">Action</label>
               <select id="rh-op" value={opKind} onChange={(e) => setOpKind(e.target.value as ResHoldOp)}>
-                <option value="prepare">1. POST Prepare Reservation</option>
-                <option value="commit">2. POST Commit Prepared Reservation</option>
-                <option value="release">POST Release Reservation Ranges</option>
-                <option value="reallocate">POST Reallocate Reservation</option>
-                <option value="placeHold">POST Place Stock Hold</option>
-                <option value="proposeClear">PUT Propose Hold Clearance (Signatories)</option>
-                <option value="clearHold">POST Clear Hold (matches_paper)</option>
+                <option value="prepare">1. Prepare Stock Reservation</option>
+                <option value="commit">2. Confirm Prepared Reservation</option>
+                <option value="release">Release Reserved Stock</option>
+                <option value="reallocate">Move Reservation to Another Batch</option>
+                <option value="placeHold">Place Stock on Hold</option>
+                <option value="proposeClear">Submit Hold Clearance &amp; Signatories</option>
+                <option value="clearHold">Finalize Stock Hold Clearance</option>
               </select>
             </div>
 
             {(opKind === 'prepare' || opKind === 'commit' || opKind === 'release' || opKind === 'reallocate') && (
               <div className="row" style={{ marginBottom: '0.5rem' }}>
                 <div className="field">
-                  <label>expected_rf_version</label>
+                  <label>Requisition Version</label>
                   <input type="number" min={1} required value={expectedRfVersion} onChange={(e) => setExpectedRfVersion(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label>expected_rf_material_version</label>
+                  <label>Requisition Content Version</label>
                   <input type="number" min={1} required value={expectedRfMaterialVersion} onChange={(e) => setExpectedRfMaterialVersion(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label>expected_rf_progress_version</label>
+                  <label>Requisition Progress Version</label>
                   <input type="number" min={1} required value={expectedRfProgressVersion} onChange={(e) => setExpectedRfProgressVersion(e.target.value)} />
                 </div>
               </div>
@@ -608,11 +617,11 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
             {(opKind === 'release' || opKind === 'reallocate' || opKind === 'proposeClear' || opKind === 'clearHold') && (
               <div className="row" style={{ marginBottom: '0.5rem' }}>
                 <div className="field">
-                  <label>expected_version</label>
+                  <label>Current Record Version</label>
                   <input type="number" min={1} required value={expectedVersion} onChange={(e) => setExpectedVersion(e.target.value)} />
                 </div>
                 <div className="field">
-                  <label>expected_material_version</label>
+                  <label>Current Content Version</label>
                   <input type="number" min={1} required value={expectedMaterialVersion} onChange={(e) => setExpectedMaterialVersion(e.target.value)} />
                 </div>
               </div>
@@ -620,44 +629,44 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
 
             {opKind === 'prepare' && (
               <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>rf_line_id UUID</label>
+                <label>Requisition Line ID</label>
                 <input required value={rfLineId} onChange={(e) => setRfLineId(e.target.value)} />
               </div>
             )}
 
             {opKind === 'commit' && (
               <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>expected_preparation_version</label>
+                <label>Preparation Version</label>
                 <input type="number" min={1} required value={expectedPrepVersion} onChange={(e) => setExpectedPrepVersion(e.target.value)} />
               </div>
             )}
 
-            {(opKind === 'release' || opKind === 'reallocate') && <StockRangeRows label="Owned From Ranges" rows={ranges} onChange={setRanges} />}
+            {(opKind === 'release' || opKind === 'reallocate') && <StockRangeRows label="Stock Batches to Release" rows={ranges} onChange={setRanges} />}
 
             {(opKind === 'prepare' || opKind === 'reallocate' || opKind === 'placeHold') && (
-              <StockTargetRows label="Selected Disjoint Stock Targets" rows={targets} onChange={setTargets} />
+              <StockTargetRows label="Selected Stock Batch Allocations" rows={targets} onChange={setTargets} />
             )}
 
             {(opKind === 'prepare' || opKind === 'reallocate') && (
               <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>override_policy_id UUID (optional)</label>
+                <label>Override Policy ID (optional)</label>
                 <input value={overridePolicyId} onChange={(e) => setOverridePolicyId(e.target.value)} />
               </div>
             )}
 
             {opKind === 'release' && (
               <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>release_kind</label>
+                <label>Release Type</label>
                 <select value={releaseKind} onChange={(e) => setReleaseKind(e.target.value as 'release' | 'cancel_commitment')}>
-                  <option value="release">release</option>
-                  <option value="cancel_commitment">cancel_commitment</option>
+                  <option value="release">Return Reserved Quantity</option>
+                  <option value="cancel_commitment">Cancel Reservation</option>
                 </select>
               </div>
             )}
 
             {opKind === 'placeHold' && (
               <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>reason_code</label>
+                <label>Hold Reason Category</label>
                 <input required value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} />
               </div>
             )}
@@ -677,7 +686,7 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
                     <input required value={resolution} onChange={(e) => setResolution(e.target.value)} />
                   </div>
                   <div className="field">
-                    <label>condition_treatment_source_id UUID (optional)</label>
+                    <label>Related Treatment Record ID (optional)</label>
                     <input value={treatmentSourceId} onChange={(e) => setTreatmentSourceId(e.target.value)} />
                   </div>
                 </div>
@@ -689,9 +698,9 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
                     </button>
                   </div>
                   {signatories.map((s, idx) => (
-                    <div key={idx} className="row" style={{ marginBottom: '0.35rem', padding: '0.4rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div key={idx} className="row nested-row-panel">
                       <div className="field">
-                        <label>user_id</label>
+                        <label>Signatory User ID</label>
                         <input
                           required
                           value={s.user_id}
@@ -699,7 +708,7 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
                         />
                       </div>
                       <div className="field">
-                        <label>membership_id</label>
+                        <label>Membership ID</label>
                         <input
                           required
                           value={s.membership_id}
@@ -707,7 +716,7 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
                         />
                       </div>
                       <div className="field">
-                        <label>duty_grant_id</label>
+                        <label>Role Assignment ID</label>
                         <input
                           required
                           value={s.duty_grant_id}
@@ -715,7 +724,7 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
                         />
                       </div>
                       <div className="field">
-                        <label>signed_at</label>
+                        <label>Date &amp; Time Signed</label>
                         <input
                           required
                           value={s.signed_at}
@@ -737,18 +746,18 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
               <>
                 <div className="row" style={{ marginBottom: '0.5rem' }}>
                   <div className="field" style={{ maxWidth: '9rem' }}>
-                    <label>Snapshot material_version</label>
+                    <label>Signed Document Version</label>
                     <input type="number" min={1} required value={expectedSnapshotMatVer} onChange={(e) => setExpectedSnapshotMatVer(e.target.value)} />
                   </div>
                   <div className="field">
-                    <label>expected_snapshot.sha256</label>
+                    <label>Document Checksum</label>
                     <input required value={expectedSnapshotSha} onChange={(e) => setExpectedSnapshotSha(e.target.value)} />
                   </div>
                 </div>
                 <EvidenceBindingFields label="Ready Paper Evidence Binding" value={evidenceBinding} onChange={setEvidenceBinding} />
                 <label className="row" style={{ marginBottom: '0.65rem', alignItems: 'center' }}>
                   <input type="checkbox" checked={matchesPaper} onChange={(e) => setMatchesPaper(e.target.checked)} />
-                  <span>Confirmed physically inspected paper matches proposal (`matches_paper: true`)</span>
+                  <span>I confirm the physically inspected paper form matches this clearance record</span>
                 </label>
               </>
             )}
@@ -759,33 +768,33 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
                 Run Action
               </button>
               <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
+                Save Temporary Draft
               </button>
             </div>
           </form>
         </div>
 
         <div className="card">
-          <h3>Reservation / Hold Outcome Recovery</h3>
+          <h3>Check Submitted Action Status</h3>
           <form onSubmit={lookupByKey}>
             <div className="row" style={{ marginBottom: '0.5rem' }}>
               <div className="field">
-                <label htmlFor="rh-lkp">X-Action-Key UUID</label>
+                <label htmlFor="rh-lkp">Submission Reference</label>
                 <input id="rh-lkp" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
               </div>
               <button className="btn secondary" type="submit">
-                Lookup by Key
+                Check by Reference
               </button>
             </div>
           </form>
           <form onSubmit={lookupByOpId}>
             <div className="row" style={{ marginBottom: '0.65rem' }}>
               <div className="field">
-                <label htmlFor="rh-opid">operation_id UUID</label>
+                <label htmlFor="rh-opid">Change Record ID</label>
                 <input id="rh-opid" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
               </div>
               <button className="btn secondary" type="submit">
-                Read Operation ID
+                View by Record ID
               </button>
             </div>
           </form>

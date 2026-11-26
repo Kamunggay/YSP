@@ -193,7 +193,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
       pendingActionKey: null,
       payloadJson: JSON.stringify({ requestingUnitId, eventId, neededAt, justification, lines, reason }),
     });
-    setStatusMessage('RF edits held in chapter-scoped memory only (quarantined per user + chapter).');
+    setStatusMessage('Requisition changes saved as a temporary draft for this chapter during your current session.');
   }
 
   async function selectRf(id: string) {
@@ -303,7 +303,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
           key,
         );
       } else {
-        throw new Error('Select an RF first.');
+        throw new Error('Select a requisition first.');
       }
 
       const { record, operationId } = unwrapMutationData<InternalRfRecord & Record<string, unknown>>(resp.result.data);
@@ -315,7 +315,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
       if (operationId) {
         setLookupOpId(operationId);
       }
-      setStatusMessage(`RF ${record.reference ?? record.id} saved (v${record.version}). Key: ${key}`);
+      setStatusMessage(`Requisition ${record.reference ?? record.id} saved (rev. ${record.version}). Reference: ${key}`);
       await loadRfs();
     } catch (err) {
       setError(err);
@@ -358,7 +358,9 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
       if (operationId) {
         setLookupOpId(operationId);
       }
-      setStatusMessage(`RF transition '${kind}' completed. Status: ${record.status}. Key: ${key}`);
+      const actionWord =
+        kind === 'submit' ? 'submitted' : kind === 'approve' ? 'approved' : kind === 'return' ? 'returned for revision' : 'cancelled';
+      setStatusMessage(`Requisition ${actionWord}. Current status: ${record.status}. Reference: ${key}`);
       await loadRfs();
     } catch (err) {
       setError(err);
@@ -397,7 +399,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
   return (
     <div>
       <div className="card">
-        <h2>Internal Requisition Forms (`Ticket 06` · S-03 &amp; S-04)</h2>
+        <h2>Internal Requisitions</h2>
         <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
 
         <div className="row" style={{ marginBottom: '0.75rem' }}>
@@ -405,11 +407,11 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
             <label htmlFor="rf-status-f">Status Filter</label>
             <select id="rf-status-f" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">All visible states</option>
-              <option value="draft">draft</option>
-              <option value="submitted">submitted</option>
-              <option value="approved">approved</option>
-              <option value="returned">returned</option>
-              <option value="canceled">canceled</option>
+              <option value="draft">Draft</option>
+              <option value="submitted">Submitted</option>
+              <option value="approved">Approved</option>
+              <option value="returned">Returned</option>
+              <option value="canceled">Cancelled</option>
             </select>
           </div>
           <button type="button" className="btn secondary" onClick={() => void loadRfs()}>
@@ -424,16 +426,16 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
                 <th>Reference</th>
                 <th>Status</th>
                 <th>Fulfillment</th>
-                <th>Versions</th>
-                <th>Needed At</th>
-                <th>Inspect</th>
+                <th>Revision</th>
+                <th>Date Needed</th>
+                <th>View</th>
               </tr>
             </thead>
             <tbody>
               {rfs.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="muted">
-                    No internal RFs visible in this chapter.
+                    No requisitions found in this chapter.
                   </td>
                 </tr>
               ) : (
@@ -441,7 +443,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
                   <tr key={r.id}>
                     <td className="mono">{r.reference ?? r.id}</td>
                     <td>{r.status}</td>
-                    <td>{r.fulfillment_status}</td>
+                    <td>{r.fulfillment_status.replace(/_/g, ' ')}</td>
                     <td className="mono">
                       v{r.version}/m{r.material_version}/p{r.progress_version}
                     </td>
@@ -466,18 +468,18 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
 
       <div className="grid-2">
         <div className="card">
-          <h3>{selectedRf ? `RF Workspace: ${selectedRf.reference ?? selectedRf.id}` : 'Create Incomplete/Complete RF Draft'}</h3>
+          <h3>{selectedRf ? `Requisition: ${selectedRf.reference ?? selectedRf.id}` : 'New Requisition'}</h3>
           <div className="field" style={{ marginBottom: '0.45rem' }}>
-            <label htmlFor="rf-unit">requesting_unit_id UUID (nullable in draft)</label>
+            <label htmlFor="rf-unit">Requesting Unit ID (optional for draft)</label>
             <input id="rf-unit" value={requestingUnitId} onChange={(e) => setRequestingUnitId(e.target.value)} />
           </div>
           <div className="row" style={{ marginBottom: '0.45rem' }}>
             <div className="field">
-              <label htmlFor="rf-event">event_id UUID (optional)</label>
+              <label htmlFor="rf-event">Event ID (optional)</label>
               <input id="rf-event" value={eventId} onChange={(e) => setEventId(e.target.value)} />
             </div>
             <div className="field">
-              <label htmlFor="rf-needed">needed_at (UTC microsecond)</label>
+              <label htmlFor="rf-needed">Date &amp; Time Needed</label>
               <input id="rf-needed" value={neededAt} onChange={(e) => setNeededAt(e.target.value)} placeholder="2026-12-01T08:00:00.000000Z" />
             </div>
           </div>
@@ -488,7 +490,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
 
           <div style={{ marginBottom: '0.65rem' }}>
             <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <strong>Requested Lines (`requested_quantity`)</strong>
+              <strong>Requested Items &amp; Quantities</strong>
               <button type="button" className="btn secondary" onClick={() => setLines((prev) => [...prev, emptyRfLine()])}>
                 + Add Line
               </button>
@@ -496,14 +498,13 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
             {lines.map((line, idx) => (
               <div
                 key={idx}
-                className="row"
-                style={{ marginBottom: '0.4rem', padding: '0.45rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem' }}
+                className="row nested-row-panel"
               >
                 <div className="field">
-                  <label>Variant {line.line_id ? `(retained ${line.line_id.slice(0, 8)})` : '(new)'}</label>
+                  <label>Item Variant {line.line_id ? `(existing ${line.line_id.slice(0, 8)})` : '(new)'}</label>
                   {variants.length > 0 ? (
                     <select value={line.variant_id ?? ''} onChange={(e) => updateLine(idx, { variant_id: e.target.value || null })}>
-                      <option value="">(unset)</option>
+                      <option value="">-- Select --</option>
                       {variants.map((v) => (
                         <option key={v.id} value={v.id}>
                           {v.code} — {v.label}
@@ -513,7 +514,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
                   ) : (
                     <input
                       value={line.variant_id ?? ''}
-                      placeholder="variant_id UUID"
+                      placeholder="Item Variant ID"
                       onChange={(e) => updateLine(idx, { variant_id: e.target.value || null })}
                     />
                   )}
@@ -522,23 +523,23 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
                   <label>Unit</label>
                   {units.length > 0 ? (
                     <select value={line.unit_id ?? ''} onChange={(e) => updateLine(idx, { unit_id: e.target.value || null })}>
-                      <option value="">(unset)</option>
+                      <option value="">-- Select --</option>
                       {units.map((u) => (
                         <option key={u.id} value={u.id}>
-                          {u.code} (scale {u.quantity_scale})
+                          {u.code} — {u.name} (up to {u.quantity_scale} decimals)
                         </option>
                       ))}
                     </select>
                   ) : (
                     <input
                       value={line.unit_id ?? ''}
-                      placeholder="unit_id UUID"
+                      placeholder="Unit ID"
                       onChange={(e) => updateLine(idx, { unit_id: e.target.value || null })}
                     />
                   )}
                 </div>
                 <div className="field" style={{ maxWidth: '8.5rem' }}>
-                  <label>requested_quantity</label>
+                  <label>Requested Quantity</label>
                   <input
                     value={line.requested_quantity ?? ''}
                     placeholder="e.g. 5"
@@ -555,7 +556,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
           </div>
 
           <div className="field" style={{ marginBottom: '0.65rem' }}>
-            <label htmlFor="rf-reason">Reason (required for replace / return / revise / cancel)</label>
+            <label htmlFor="rf-reason">Reason (required when editing, returning, revising, or cancelling)</label>
             <input id="rf-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
 
@@ -576,10 +577,10 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
               title={draftReason ?? undefined}
               onClick={() => void submitDraftOrReplace('replace')}
             >
-              Save Draft (`PUT`)
+              Save Draft
             </button>
             <button type="button" className="btn secondary" onClick={saveMemoryBuffer}>
-              Park in RAM
+              Save Temporary Draft
             </button>
             {selectedRf && (
               <>
@@ -634,7 +635,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
         </div>
 
         <div className="card">
-          <h3>Connected RF Tabs, Exact Version &amp; Operation Lookup</h3>
+          <h3>Requisition History, Related Records &amp; Status Check</h3>
           <div className="tabs">
             {(['summary', 'history', 'related'] as const).map((t) => (
               <button key={t} type="button" className={`tab-btn ${activeSubTab === t ? 'active' : ''}`} onClick={() => void openSubTab(t)}>
@@ -645,7 +646,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
           {selectedRf && (
             <form onSubmit={readExactRfVersion} className="row" style={{ marginBottom: '0.6rem' }}>
               <div className="field" style={{ maxWidth: '8rem' }}>
-                <label htmlFor="rf-exact-ver">Exact Version</label>
+                <label htmlFor="rf-exact-ver">Revision Number</label>
                 <input id="rf-exact-ver" type="number" min={1} value={exactVersion} onChange={(e) => setExactVersion(e.target.value)} />
               </div>
               <button type="submit" className="btn secondary">
@@ -658,22 +659,22 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
           <form onSubmit={lookupByKey} style={{ marginTop: '0.75rem' }}>
             <div className="row">
               <div className="field">
-                <label htmlFor="rf-op-k">Lookup Operation by Action Key</label>
+                <label htmlFor="rf-op-k">Check by Submission Reference</label>
                 <input id="rf-op-k" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
               </div>
               <button type="submit" className="btn secondary">
-                Find by Key
+                Check Status
               </button>
             </div>
           </form>
           <form onSubmit={lookupByOpId} style={{ marginTop: '0.5rem' }}>
             <div className="row">
               <div className="field">
-                <label htmlFor="rf-op-id">Lookup by operation_id UUID</label>
+                <label htmlFor="rf-op-id">Check by Change Record ID</label>
                 <input id="rf-op-id" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
               </div>
               <button type="submit" className="btn secondary">
-                Read Operation ID
+                View by Record ID
               </button>
             </div>
           </form>

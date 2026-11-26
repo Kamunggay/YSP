@@ -88,7 +88,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
       pendingActionKey: null,
       payloadJson: JSON.stringify({ purpose, recordId, evidenceIdInput, expectedVersion, replaceReason }),
     });
-    setStatusMessage('Evidence metadata held in chapter-scoped RAM only (selected files must still be reattached if switched).');
+    setStatusMessage('Document details saved as a temporary draft for this session (reattach files if you switch chapters).');
   }
 
   function buildFormData(isReplace: boolean): FormData {
@@ -129,7 +129,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
       setEvidenceIdInput(result.data.evidence_id);
       setExpectedVersion(String(result.data.version));
       setReplayed(result.replayed);
-      setStatusMessage(`Uploaded ready evidence ${result.data.evidence_id} (v${result.data.version}).`);
+      setStatusMessage(`Signed document uploaded (Record ${result.data.evidence_id}, rev. ${result.data.version}).`);
       await inspectEvidence(result.data.evidence_id);
     } catch (err) {
       setError(err);
@@ -141,7 +141,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
   async function handleReplace(e: React.FormEvent) {
     e.preventDefault();
     if (!evidenceIdInput.trim() || !files || files.length === 0) {
-      setError(new Error('Provide evidence_id UUID and replacement file(s).'));
+      setError(new Error('Enter the Document Record ID and select replacement file(s).'));
       return;
     }
     setBusy(true);
@@ -155,7 +155,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
       memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setExpectedVersion(String(result.data.version));
       setReplayed(result.replayed);
-      setStatusMessage(`Replaced evidence -> v${result.data.version}.`);
+      setStatusMessage(`Replacement document uploaded (rev. ${result.data.version}).`);
       await inspectEvidence(result.data.evidence_id);
     } catch (err) {
       setError(err);
@@ -237,26 +237,26 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
   return (
     <div>
       <div className="card">
-        <h2>Protected Paper Evidence (`Ticket 04` · Multipart Only)</h2>
+        <h2>Signed Documents</h2>
         <p className="muted">
-          Stage 1 enforces real JPEG/PNG/PDF file uploads validated on Laravel (`purpose` + `record_id` + `attachments`). No Canvas signature or browser storage is accepted.
+          Upload photos or scans of your signed paper forms (JPEG, PNG, or PDF, up to 10 MiB each).
         </p>
         <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
         {prepareReason && <div className="alert info">{prepareReason}</div>}
 
         <div className="grid-2">
           <form onSubmit={handleUpload}>
-            <h3>Upload New Evidence</h3>
+            <h3>Upload Signed Document</h3>
             <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="ev-purpose">Purpose</label>
+              <label htmlFor="ev-purpose">Document Type</label>
               <select id="ev-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value as EvidencePurpose)}>
-                <option value="opening_receipt">opening_receipt</option>
-                <option value="hold_clearance">hold_clearance</option>
-                <option value="actual_issue">actual_issue</option>
+                <option value="opening_receipt">Opening Inventory Receipt</option>
+                <option value="hold_clearance">Stock Hold Clearance</option>
+                <option value="actual_issue">Issue Handover Form</option>
               </select>
             </div>
             <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="ev-rec">Target Record UUID (`record_id`)</label>
+              <label htmlFor="ev-rec">Linked Record ID</label>
               <input id="ev-rec" required value={recordId} onChange={(e) => setRecordId(e.target.value)} />
             </div>
             <div className="field" style={{ marginBottom: '0.65rem' }}>
@@ -265,23 +265,23 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
             </div>
             <div className="row">
               <button className="btn" type="submit" disabled={busy || prepareReason !== null} title={prepareReason ?? undefined}>
-                Upload Multipart Evidence
+                Upload Document
               </button>
               <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
+                Save Temporary Draft
               </button>
             </div>
           </form>
 
           <form onSubmit={handleReplace}>
-            <h3>Inspect / Supersede Existing Evidence</h3>
+            <h3>View or Replace Uploaded Document</h3>
             <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="ev-id">evidence_id UUID</label>
+              <label htmlFor="ev-id">Document Record ID</label>
               <input id="ev-id" required value={evidenceIdInput} onChange={(e) => setEvidenceIdInput(e.target.value)} />
             </div>
             <div className="row" style={{ marginBottom: '0.5rem' }}>
               <div className="field">
-                <label htmlFor="ev-ver">expected_version</label>
+                <label htmlFor="ev-ver">Current Revision Number</label>
                 <input id="ev-ver" type="number" min={1} value={expectedVersion} onChange={(e) => setExpectedVersion(e.target.value)} />
               </div>
               <div className="field">
@@ -318,10 +318,10 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
               <thead>
                 <tr>
                   <th>Attachment ID</th>
-                  <th>Media Type</th>
-                  <th>Bytes</th>
-                  <th>Server SHA-256</th>
-                  <th>Retrieve</th>
+                  <th>File Type</th>
+                  <th>File Size</th>
+                  <th>Checksum</th>
+                  <th>File Preview</th>
                 </tr>
               </thead>
               <tbody>
@@ -337,7 +337,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
                         className="btn secondary"
                         onClick={() => void downloadAttachment(readResult.current_version!.version_id, att.attachment_id)}
                       >
-                        Fetch Authorized Bytes
+                        Load File
                       </button>
                     </td>
                   </tr>
@@ -348,7 +348,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
           {previewUrl && (
             <div style={{ marginTop: '0.75rem' }}>
               <a href={previewUrl} target="_blank" rel="noreferrer" className="btn secondary">
-                Open Fetched Attachment Blob
+                Open Loaded File
               </a>
             </div>
           )}
@@ -357,7 +357,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
 
       {versionsJson !== null && (
         <div className="card">
-          <h3>Evidence Version Lineage</h3>
+          <h3>Document Revision History</h3>
           <pre className="json-box">{JSON.stringify(versionsJson, null, 2)}</pre>
         </div>
       )}

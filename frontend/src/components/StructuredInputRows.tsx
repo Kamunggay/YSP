@@ -27,29 +27,29 @@ export function StockTargetRows({ label, rows, onChange }: StockTargetRowsProps)
         </button>
       </div>
       {rows.map((r, idx) => (
-        <div key={idx} className="row" style={{ marginBottom: '0.4rem', padding: '0.4rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem' }}>
+        <div key={idx} className="row nested-row-panel">
           <div className="field">
-            <label>stock_lot_id</label>
+            <label>Stock Batch ID</label>
             <input required value={r.stock_lot_id} onChange={(e) => updateRow(idx, { stock_lot_id: e.target.value })} />
           </div>
           <div className="field">
-            <label>basis_segment_id</label>
+            <label>Batch Section ID</label>
             <input required value={r.basis_segment_id} onChange={(e) => updateRow(idx, { basis_segment_id: e.target.value })} />
           </div>
           <div className="field" style={{ maxWidth: '7rem' }}>
-            <label>offset</label>
+            <label>Starting Point</label>
             <input required value={r.offset_quantity} onChange={(e) => updateRow(idx, { offset_quantity: e.target.value })} />
           </div>
           <div className="field" style={{ maxWidth: '7rem' }}>
-            <label>qty</label>
+            <label>Quantity</label>
             <input required value={r.quantity} onChange={(e) => updateRow(idx, { quantity: e.target.value })} />
           </div>
           <div className="field" style={{ maxWidth: '5.5rem' }}>
-            <label>lot mVer</label>
+            <label>Lot Version</label>
             <input type="number" min={1} required value={r.expected_lot_material_version} onChange={(e) => updateRow(idx, { expected_lot_material_version: e.target.value })} />
           </div>
           <div className="field" style={{ maxWidth: '5.5rem' }}>
-            <label>stockVer</label>
+            <label>Stock Version</label>
             <input type="number" min={1} required value={r.expected_stock_version} onChange={(e) => updateRow(idx, { expected_stock_version: e.target.value })} />
           </div>
           {rows.length > 1 && (
@@ -83,21 +83,21 @@ export function StockRangeRows({ label, rows, onChange }: StockRangeRowsProps) {
         </button>
       </div>
       {rows.map((r, idx) => (
-        <div key={idx} className="row" style={{ marginBottom: '0.4rem', padding: '0.4rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem' }}>
+        <div key={idx} className="row nested-row-panel">
           <div className="field">
-            <label>stock_lot_id</label>
+            <label>Stock Batch ID</label>
             <input required value={r.stock_lot_id} onChange={(e) => updateRow(idx, { stock_lot_id: e.target.value })} />
           </div>
           <div className="field">
-            <label>basis_segment_id</label>
+            <label>Batch Section ID</label>
             <input required value={r.basis_segment_id} onChange={(e) => updateRow(idx, { basis_segment_id: e.target.value })} />
           </div>
           <div className="field" style={{ maxWidth: '7rem' }}>
-            <label>offset</label>
+            <label>Starting Point</label>
             <input required value={r.offset_quantity} onChange={(e) => updateRow(idx, { offset_quantity: e.target.value })} />
           </div>
           <div className="field" style={{ maxWidth: '7rem' }}>
-            <label>qty</label>
+            <label>Quantity</label>
             <input required value={r.quantity} onChange={(e) => updateRow(idx, { quantity: e.target.value })} />
           </div>
           {rows.length > 1 && (
@@ -126,7 +126,7 @@ export function EvidenceBindingFields({ label, value, onChange }: EvidenceBindin
   }
 
   return (
-    <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem' }}>
+    <div className="nested-row-panel" style={{ marginBottom: '0.75rem' }}>
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
         <strong>{label}</strong>
         <button
@@ -134,27 +134,27 @@ export function EvidenceBindingFields({ label, value, onChange }: EvidenceBindin
           className="btn secondary"
           onClick={() => onChange({ ...value, attachments: [...value.attachments, { attachment_id: '', sha256: '' }] })}
         >
-          + Add Attachment Byte
+          + Add File Reference
         </button>
       </div>
       <div className="row" style={{ marginBottom: '0.4rem' }}>
         <div className="field">
-          <label>evidence_id UUID</label>
+          <label>Document Record ID</label>
           <input required value={value.evidence_id} onChange={(e) => onChange({ ...value, evidence_id: e.target.value })} />
         </div>
         <div className="field">
-          <label>version_id UUID</label>
+          <label>Document Version ID</label>
           <input required value={value.version_id} onChange={(e) => onChange({ ...value, version_id: e.target.value })} />
         </div>
       </div>
       {value.attachments.map((a, idx) => (
         <div key={idx} className="row" style={{ marginBottom: '0.35rem' }}>
           <div className="field">
-            <label>attachment_id UUID</label>
+            <label>Attachment ID</label>
             <input required value={a.attachment_id} onChange={(e) => updateAttachment(idx, { attachment_id: e.target.value })} />
           </div>
           <div className="field">
-            <label>sha256 (64 hex)</label>
+            <label>File Verification Checksum</label>
             <input required value={a.sha256} onChange={(e) => updateAttachment(idx, { sha256: e.target.value })} />
           </div>
           {value.attachments.length > 1 && (
