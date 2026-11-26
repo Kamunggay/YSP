@@ -172,6 +172,7 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $ipcId, $actor, $authority, $key, $payload): array {
+                $this->sharedLockOpeningGuard($chapterId);
                 $ipc = $this->findIpc($chapterId, $ipcId, lock: true);
                 if (self::ipcState($ipc) === 'posted') {
                     throw new ContractException(409, 'target_locked', 'Posted IPC cannot be replaced.');
@@ -228,6 +229,7 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $ipcId, $actor, $key, $payload): array {
+                $this->sharedLockOpeningGuard($chapterId);
                 $ipc = $this->findIpc($chapterId, $ipcId, lock: true);
                 $material = $this->normalizedIpcMaterial($ipc);
                 $teamIds = array_column($material['count_team'], 'user_id');
@@ -353,6 +355,7 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $ipcId, $actor, $authority, $key, $payload): array {
+                $this->sharedLockOpeningGuard($chapterId);
                 $ipc = $this->findIpc($chapterId, $ipcId, lock: true);
                 $state = self::ipcState($ipc);
                 if ($state === 'posted') {
@@ -430,6 +433,7 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $ipcId, $actor, $authority, $key, $payload): array {
+                $this->sharedLockOpeningGuard($chapterId);
                 $ipc = $this->findIpc($chapterId, $ipcId, lock: true);
                 $state = self::ipcState($ipc);
                 if ($state === 'posted') {
@@ -744,6 +748,7 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $rmId, $actor, $key, $payload): array {
+                $this->sharedLockOpeningGuard($chapterId);
                 [$ipc, $rm] = $this->lockIpcThenRm($chapterId, $rmId);
                 if (self::rmState($rm) === 'posted') {
                     throw new ContractException(409, 'target_locked', 'Posted Opening RM cannot be replaced.');
@@ -798,6 +803,7 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $rmId, $actor, $authority, $key, $payload): array {
+                $this->sharedLockOpeningGuard($chapterId);
                 [$ipc, $rm] = $this->lockIpcThenRm($chapterId, $rmId);
                 $state = self::rmState($rm);
                 if ($state === 'posted') {
@@ -917,6 +923,7 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $rmId, $actor, $authority, $key, $payload): array {
+                $this->sharedLockOpeningGuard($chapterId);
                 [$ipc, $rm] = $this->lockIpcThenRm($chapterId, $rmId);
                 $state = self::rmState($rm);
                 if ($state === 'posted') {
@@ -1037,8 +1044,9 @@ final class OpeningDraftService
             $rmId,
             $payload,
             200,
-            function (string $operationId) use ($chapterId, $rmId, $actor, $key, $payload): array {
-                $guard = $this->lockOpeningGuard($chapterId);
+            function (string $operationId, mixed $lockedGuard) use ($chapterId, $rmId, $actor, $key, $payload): array {
+                /** @var ChapterOpeningGuard $guard */
+                $guard = $lockedGuard;
                 $actorAuth = $this->activeChapterAuthority($chapterId, $actor);
                 if (! $actorAuth) {
                     throw new ContractException(404, 'chapter_not_found', 'Chapter not found.');
@@ -1160,6 +1168,13 @@ final class OpeningDraftService
                         'baseline_already_posted' => new ContractException(409, 'baseline_already_posted', 'An opening baseline has already been posted for this chapter.'),
                         'stale_version' => new ContractException(409, 'snapshot_stale', 'Stock or catalogue version changed before posting.'),
                         'independence_required' => new ContractException(403, 'independence_required', 'Required count independence is not satisfied.'),
+                        'setup_blocked' => new ContractException(428, 'setup_blocked', 'Required chapter setup is not currently effective.', [
+                            'error' => [
+                                'code' => 'setup_blocked',
+                                'message' => 'Required chapter setup is not currently effective.',
+                                'blockers' => [ChapterAuthority::setupBlocker('valuation_rounding', 'FINANCE', 'missing')],
+                            ],
+                        ]),
                         'authority_changed' => new ContractException(409, 'source_not_authorized', 'Source authorization is no longer valid.'),
                         'evidence_missing', 'evidence_invalid', 'evidence_mismatch' => new ContractException(409, $reason, 'Signed paper verification failed.'),
                         default => new ContractException(409, 'invalid_source', 'Inventory participant rejected opening baseline staging.'),
@@ -1221,11 +1236,11 @@ final class OpeningDraftService
         OpeningDraftInput::selectors($request);
 
         $guard = ChapterOpeningGuard::where('chapter_id', $chapterId)->sharedLock()->first();
-        if (! $guard || $guard->posted_rm_id === null || ! is_array($guard->outcome_json)) {
+        if (! $guard || $guard->posted_rm_id === null) {
             return response()->json(['data' => null]);
         }
 
-        return response()->json(['data' => $guard->outcome_json]);
+        return response()->json(['data' => is_array($guard->outcome_json) ? $guard->outcome_json : $this->reconstructLegacyBaselineOutcome($guard)]);
     }
 
     public function listOpeningRmMovements(Request $request, string $chapterId, string $rmId): JsonResponse
@@ -1259,7 +1274,7 @@ final class OpeningDraftService
             'unit_id' => $mov->unit_id,
             'location_id' => $mov->location_id,
             'quantity' => BcMath::format($mov->quantity, (int) $mov->quantity_scale),
-            'value' => number_format((float) $mov->accepted_value, 2, '.', ''),
+            'value' => (string) BigDecimal::of((string) ($mov->accepted_value ?? '0.00'))->toScale(2),
             'currency' => 'PHP',
             'condition' => 'usable',
             'posted_by' => $mov->posted_by,
@@ -1476,9 +1491,9 @@ final class OpeningDraftService
     }
 
     /**
-     * @param  callable(string): array<string, mixed>  $execute
+     * @param  callable(string, mixed=): array<string, mixed>  $execute
      * @param  ?callable(): void  $verifyReplayTarget
-     * @param  ?callable(): void  $lockBeforeReplayRecheck
+     * @param  ?callable(): mixed  $lockBeforeReplayRecheck
      */
     private function runIdempotentWrite(
         string $chapterId,
@@ -1495,17 +1510,10 @@ final class OpeningDraftService
         $scope = ['chapter_id' => $chapterId, 'user_id' => $actor, 'operation' => $operation, 'key' => $key];
         $fingerprint = CanonicalJson::sha256(['target_id' => $targetId, 'payload' => $payload]);
 
-        // Use a non-locking read before acquiring any write fence so concurrent writers do not take S-gap locks on action_receipts before locking the chapter guard.
+        // Non-locking pre-check avoids taking S-gap locks on action_receipts before locking chapter_opening_guards.
         $existing = ActionReceipt::where($scope)->first();
         if ($existing) {
-            if ($verifyReplayTarget !== null) {
-                $verifyReplayTarget();
-            }
-            if (! hash_equals($existing->fingerprint, $fingerprint)) {
-                throw new ContractException(409, 'action_key_conflict', 'Use a new action key for changed input.');
-            }
-
-            return response()->json($existing->result, $existing->status, ['X-Action-Replayed' => 'true']);
+            return $this->replayReceiptResponse($existing, $fingerprint, $verifyReplayTarget);
         }
 
         $operationId = (string) Str::uuid();
@@ -1513,16 +1521,12 @@ final class OpeningDraftService
         $wasReplayed = false;
         try {
             DB::transaction(function () use ($scope, $fingerprint, $status, $operationId, $execute, $verifyReplayTarget, $lockBeforeReplayRecheck, &$receipt, &$wasReplayed): void {
+                $lockedResource = null;
                 if ($lockBeforeReplayRecheck !== null) {
-                    $lockBeforeReplayRecheck();
+                    $lockedResource = $lockBeforeReplayRecheck();
                     $existingInTx = ActionReceipt::where($scope)->sharedLock()->first();
                     if ($existingInTx) {
-                        if ($verifyReplayTarget !== null) {
-                            $verifyReplayTarget();
-                        }
-                        if (! hash_equals($existingInTx->fingerprint, $fingerprint)) {
-                            throw new ContractException(409, 'action_key_conflict', 'Use a new action key for changed input.');
-                        }
+                        $this->assertReplayReceipt($existingInTx, $fingerprint, $verifyReplayTarget);
                         $receipt = $existingInTx;
                         $wasReplayed = true;
 
@@ -1530,7 +1534,7 @@ final class OpeningDraftService
                     }
                 }
 
-                $result = $execute($operationId);
+                $result = $execute($operationId, $lockedResource);
                 $recorded = ActionReceipt::record($scope, $fingerprint, $status, $result, $operationId);
                 $receipt = $recorded;
                 if (! $recorded->wasRecentlyCreated) {
@@ -1551,6 +1555,25 @@ final class OpeningDraftService
         return response()->json($receipt->result, $receipt->status, [
             'X-Action-Replayed' => $wasReplayed ? 'true' : 'false',
         ]);
+    }
+
+    /** @param ?callable(): void $verifyReplayTarget */
+    private function assertReplayReceipt(ActionReceipt $existing, string $fingerprint, ?callable $verifyReplayTarget): void
+    {
+        if ($verifyReplayTarget !== null) {
+            $verifyReplayTarget();
+        }
+        if (! hash_equals($existing->fingerprint, $fingerprint)) {
+            throw new ContractException(409, 'action_key_conflict', 'Use a new action key for changed input.');
+        }
+    }
+
+    /** @param ?callable(): void $verifyReplayTarget */
+    private function replayReceiptResponse(ActionReceipt $existing, string $fingerprint, ?callable $verifyReplayTarget): JsonResponse
+    {
+        $this->assertReplayReceipt($existing, $fingerprint, $verifyReplayTarget);
+
+        return response()->json($existing->result, $existing->status, ['X-Action-Replayed' => 'true']);
     }
 
     /** @return array<string, mixed> */
@@ -1777,8 +1800,8 @@ final class OpeningDraftService
             }
         }
 
-        $postedRm = $rm && self::rmState($rm) === 'posted'
-            ? $rm
+        $postedRm = $rm !== null
+            ? (self::rmState($rm) === 'posted' ? $rm : null)
             : $rms->first(fn (OpeningRm $candidate) => self::rmState($candidate) === 'posted');
 
         $movementIds = [];
@@ -2084,6 +2107,11 @@ final class OpeningDraftService
         }
     }
 
+    private function sharedLockOpeningGuard(string $chapterId): ?ChapterOpeningGuard
+    {
+        return ChapterOpeningGuard::where('chapter_id', $chapterId)->sharedLock()->first();
+    }
+
     private function lockOpeningGuard(string $chapterId): ChapterOpeningGuard
     {
         $guard = ChapterOpeningGuard::where('chapter_id', $chapterId)->lockForUpdate()->first();
@@ -2092,6 +2120,29 @@ final class OpeningDraftService
         }
 
         return $guard;
+    }
+
+    /** @return array<string, mixed> Reconstruct locked baseline outcome for legacy pre-upgrade posted RMs lacking outcome_json. */
+    private function reconstructLegacyBaselineOutcome(ChapterOpeningGuard $guard): array
+    {
+        $rm = OpeningRm::where('chapter_id', $guard->chapter_id)->whereKey($guard->posted_rm_id)->sharedLock()->first();
+        $postedAt = $this->instant($guard->posted_at ?? $rm?->posted_at);
+
+        return [
+            'id' => (string) ($guard->outcome_id ?? $rm?->outcome_id ?? $guard->posted_rm_id),
+            'chapter_id' => $guard->chapter_id,
+            'rm_id' => (string) $guard->posted_rm_id,
+            'ipc_id' => (string) ($guard->posted_ipc_id ?? $rm?->ipc_id),
+            'posted_at' => $postedAt,
+            'stock_version' => (int) $guard->stock_version,
+            'movements' => [],
+            'findings' => [],
+            'lots' => [],
+            'accepted_value' => '0.00',
+            'currency' => 'PHP',
+            'baseline_locked' => true,
+            'acknowledgment_id' => (string) ($rm?->evidence_binding_id ?? $guard->outcome_id ?? $guard->posted_rm_id),
+        ];
     }
 
     private function isChapterMember(string $chapterId, string $userId): bool
@@ -2123,10 +2174,17 @@ final class OpeningDraftService
 
     private function assertOriginatingActionDuty(ChapterAuthority $authority, string $operation): void
     {
+        if ($operation === 'authorizeIpc') {
+            if (! array_intersect($authority->duties(), ChapterAuthority::ACTION_DUTIES['ipc.authorize'])) {
+                throw new ContractException(403, 'duty_denied', 'Current duty does not permit reading this action receipt.');
+            }
+
+            return;
+        }
+
         $required = match ($operation) {
             'createIpc', 'replaceIpc', 'submitIpc' => ['ipc.draft'],
             'saveMyIpcCount' => ['ipc.count'],
-            'authorizeIpc' => ['ipc.authorize'],
             'createOpeningRm', 'replaceOpeningRm', 'inspectOpeningRm' => ['opening_rm.prepare'],
             'matchOpeningRmEvidence' => ['opening_rm.prepare', 'evidence.read'],
             'postOpeningRm' => ['opening_rm.post'],
@@ -2163,19 +2221,21 @@ final class OpeningDraftService
                 }
             } elseif ($receipt->operation === 'authorizeIpc') {
                 $auths = (array) ($receipt->result['data']['record']['authorizations'] ?? []);
-                $actorDuties = array_values(array_unique(array_column(
-                    array_filter($auths, fn (array $a) => ($a['actor_id'] ?? null) === $actor),
-                    'duty',
-                )));
-                $stillAllowed = false;
-                foreach ($actorDuties as $duty) {
-                    if ($authority->allowsDuty($duty, decisionScope: 'ipc_authorization:'.$ipc->id)) {
-                        $stillAllowed = true;
-                        break;
-                    }
+                $committedAt = $op['committed_at'] ?? null;
+                $matched = array_values(array_filter(
+                    $auths,
+                    fn (array $a) => ($a['actor_id'] ?? null) === $actor && ($a['authorized_at'] ?? null) === $committedAt
+                ));
+                if ($matched === []) {
+                    $matched = array_values(array_filter($auths, fn (array $a) => ($a['actor_id'] ?? null) === $actor));
                 }
-                if ($actorDuties !== [] && ! $stillAllowed) {
+                if ($matched === []) {
                     throw new ContractException(403, 'duty_denied', 'Current authorization duty is required to read this receipt.');
+                }
+                foreach ($matched as $entry) {
+                    if (! $authority->allowsDuty((string) ($entry['duty'] ?? ''), decisionScope: 'ipc_authorization:'.$ipc->id)) {
+                        throw new ContractException(403, 'duty_denied', 'Current authorization duty is required to read this receipt.');
+                    }
                 }
             }
         } elseif ($recordKind === 'opening_rm') {

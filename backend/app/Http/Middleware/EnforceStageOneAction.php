@@ -62,7 +62,7 @@ class EnforceStageOneAction
         }
 
         $rfList = $request->route()->getActionMethod() === 'listInternalRfs';
-        $receipt = $request->isMethod('GET') && $request->is('*/internal-rfs/operation-results', '*/internal-rfs/operation-results/*', '*/actual-issue-operations/*', '*/reservation-operations/*');
+        $receipt = $request->isMethod('GET') && $request->is('*/internal-rfs/operation-results', '*/internal-rfs/operation-results/*', '*/actual-issue-operations/*', '*/reservation-operations/*', '*/opening-actions/*');
         if (! $rfList && ! $receipt) {
             foreach ($actions as $action) {
                 if ($action === 'ipc.authorize' || ($action === 'rf.draft' && ! $rf) || ($action === 'rf.read' && $rf)) {

@@ -79,6 +79,14 @@ final class OpeningDraftInput
             throw new ContractException(400, 'invalid_selector', 'Invalid selector or unexpected request body.');
         }
 
+        return self::parseQuerySelectors($request, $allowed);
+    }
+
+    /** @param list<string> $allowed
+     * @return array<string, string>
+     */
+    private static function parseQuerySelectors(Request $request, array $allowed): array
+    {
         $query = (string) $request->server('QUERY_STRING', '');
         $selectors = [];
         foreach ($query === '' ? [] : explode('&', $query) as $part) {
@@ -271,17 +279,7 @@ final class OpeningDraftInput
             throw new ContractException(400, 'invalid_selector', 'Supply a valid X-Action-Key UUID header.');
         }
 
-        $query = (string) $request->server('QUERY_STRING', '');
-        $selectors = [];
-        foreach ($query === '' ? [] : explode('&', $query) as $part) {
-            [$rawKey, $rawVal] = array_pad(explode('=', $part, 2), 2, '');
-            $key = urldecode($rawKey);
-            if ($rawKey !== $key || $key !== 'operation' || isset($selectors[$key]) || $rawVal === '') {
-                throw new ContractException(400, 'invalid_selector', 'Invalid query selector.');
-            }
-            $selectors[$key] = urldecode($rawVal);
-        }
-
+        $selectors = self::parseQuerySelectors($request, ['operation']);
         $operation = $selectors['operation'] ?? null;
         if ($operation === null || ! in_array($operation, self::OPENING_OPERATIONS, true)) {
             throw new ContractException(400, 'invalid_selector', 'Supply a valid operation selector.');

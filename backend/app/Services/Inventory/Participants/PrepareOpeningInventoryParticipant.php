@@ -12,10 +12,11 @@ use App\Models\InventoryMovement;
 use App\Models\InventoryPosting;
 use App\Models\OpeningFinding;
 use App\Models\OpeningRm;
-use App\Services\Inventory\PhysicalPostingService;
+use App\Models\PolicyRecord;
 use App\Services\Shared\BcMath;
 use App\Services\Shared\CanonicalJson;
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -24,10 +25,6 @@ use RuntimeException;
 class PrepareOpeningInventoryParticipant
 {
     private const MAX_PHP_VALUE = '999999999999.99';
-
-    public function __construct(
-        protected PhysicalPostingService $postingService
-    ) {}
 
     /**
      * Synchronous internal Inventory participant for postOpeningRm (PrepareOpeningInventoryInput -> PrepareOpeningInventoryResult).
@@ -108,6 +105,11 @@ class PrepareOpeningInventoryParticipant
 
         usort($rmLines, fn (array $a, array $b) => strcmp((string) ($a['ipc_line_id'] ?? ''), (string) ($b['ipc_line_id'] ?? '')));
 
+        $roundingMode = $this->resolveRoundingMode($chapterId, (array) ($snapshot['material']['policies'] ?? []));
+        if ($roundingMode === null) {
+            return ['outcome' => 'rejected', 'reason' => 'setup_blocked'];
+        }
+
         $plan = [];
         $seen = [];
         $acceptedTotal = BigDecimal::zero();
@@ -143,8 +145,9 @@ class PrepareOpeningInventoryParticipant
             $dmgStr = (string) ($rmLine['damaged_quantity'] ?? '');
             $rejStr = (string) ($rmLine['rejected_quantity'] ?? '');
             $valStr = (string) ($rmLine['accepted_value'] ?? '');
+            $unitValStr = (string) ($src['unit_value'] ?? '');
 
-            if ($accStr === '' || $dmgStr === '' || $rejStr === '' || $valStr === '') {
+            if ($accStr === '' || $dmgStr === '' || $rejStr === '' || $valStr === '' || $unitValStr === '') {
                 return ['outcome' => 'rejected', 'reason' => 'invalid_source'];
             }
 
@@ -167,7 +170,12 @@ class PrepareOpeningInventoryParticipant
                 return ['outcome' => 'rejected', 'reason' => 'invalid_source'];
             }
 
-            $acceptedTotal = $acceptedTotal->plus($val);
+            $expectedLineValue = $acc->multipliedBy($unitValStr)->toScale(2, $roundingMode);
+            if ($expectedLineValue->isGreaterThan($maxPhp) || $valStr !== (string) $expectedLineValue) {
+                return ['outcome' => 'rejected', 'reason' => 'invalid_source'];
+            }
+
+            $acceptedTotal = $acceptedTotal->plus($expectedLineValue);
             if ($acceptedTotal->isGreaterThan($maxPhp)) {
                 return ['outcome' => 'rejected', 'reason' => 'invalid_source'];
             }
@@ -451,5 +459,30 @@ class PrepareOpeningInventoryParticipant
             'created_at' => $postedAtStr,
             'observed_at' => $postedAtStr,
         ];
+    }
+
+    private function resolveRoundingMode(string $chapterId, array $policies): ?RoundingMode
+    {
+        foreach ($policies as $binding) {
+            if (($binding['setting_key'] ?? null) !== 'valuation_rounding') {
+                continue;
+            }
+            $policy = PolicyRecord::where('chapter_id', $chapterId)
+                ->where('policy_code', 'valuation_rounding')
+                ->where('policy_version', (int) ($binding['version'] ?? 0))
+                ->where(fn ($q) => $q->where('aggregate_id', $binding['policy_id'] ?? '')->orWhere('id', $binding['policy_id'] ?? ''))
+                ->sharedLock()
+                ->first();
+            $mode = $policy?->rules_json['rounding_mode'] ?? null;
+
+            return match ($mode) {
+                'half_up' => RoundingMode::HalfUp,
+                'half_even' => RoundingMode::HalfEven,
+                'down' => RoundingMode::Down,
+                default => null,
+            };
+        }
+
+        return null;
     }
 }

@@ -297,6 +297,24 @@ class OpeningBaselinePostAndRecoveryTest extends TestCase
             ->assertJsonPath('data.finding_ids', $findingIds)
             ->assertJsonPath('data.outcome_id', $outcomeId);
 
+        // Unposted sibling RM on the same IPC must NOT leak posted RM's movements/findings/outcome.
+        $unpostedSiblingRm = OpeningRm::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'ipc_id' => $c1['ipc_id'],
+            'status' => 'draft',
+            'prepared_by' => $this->receiverId,
+            'revision' => 1,
+            'material_version' => 1,
+            'material_json' => ['ipc_material_version' => 2, 'lines' => [], 'notes' => null],
+        ]);
+        $this->asOfficer($this->custodianId)
+            ->get("/api/v1/chapters/{$this->chapterId}/opening-rms/{$unpostedSiblingRm->id}/related")
+            ->assertOk()
+            ->assertJsonPath('data.movement_ids', [])
+            ->assertJsonPath('data.finding_ids', [])
+            ->assertJsonPath('data.outcome_id', null);
+
         $this->asOfficer($this->custodianId)
             ->get("/api/v1/chapters/{$this->chapterId}/opening-rms/{$c1['rm_id']}/history")
             ->assertOk()
@@ -463,6 +481,95 @@ class OpeningBaselinePostAndRecoveryTest extends TestCase
         // Nothing committed across all rejections
         $this->assertSame(0, InventoryMovement::where('chapter_id', $this->chapterId)->count());
         $this->assertNull(ChapterOpeningGuard::findOrFail($this->chapterId)->posted_rm_id);
+    }
+
+    public function test_dual_officer_authorize_receipt_requires_requested_duty_and_legacy_backfill_reads_locked_baseline(): void
+    {
+        // Grant headId FINANCE as well so one person fills both Head and Finance slots, then revoke FINANCE.
+        DutyGrant::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $this->headId,
+            'duty_code' => 'FINANCE',
+            'status' => 'active',
+            'is_alternate' => false,
+            'valid_from' => now()->subDay(),
+            'version' => 1,
+        ]);
+
+        $policies = $this->seedEffectivePolicies();
+        $lineId = (string) Str::uuid();
+        $ipcId = $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs", [
+                'material' => ['cutoff_at' => null, 'informal_movements_suspended' => false, 'count_team' => [], 'policies' => [], 'lines' => [], 'notes' => null],
+            ])->assertCreated()->json('data.record.id');
+        $rmId = $this->asOfficer($this->receiverId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms", [
+                'ipc_id' => $ipcId, 'material' => ['ipc_material_version' => 1, 'lines' => [], 'notes' => null],
+            ])->assertCreated()->json('data.record.id');
+        $ipcLines = [$this->makeIpcLine($lineId, 'usable', '4')];
+        $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}", [
+                'expected_revision' => 1, 'reason' => 'Populate',
+                'material' => [
+                    'cutoff_at' => $this->cutoffAt, 'informal_movements_suspended' => true,
+                    'count_team' => [['user_id' => $this->custodianId, 'regular_custodian' => true], ['user_id' => $this->receiverId, 'regular_custodian' => false]],
+                    'policies' => $policies, 'lines' => $ipcLines, 'notes' => null,
+                ],
+            ])->assertOk();
+        $countedAt = now('UTC')->subMinutes(4)->format('Y-m-d\TH:i:s.u\Z');
+        $entries = [['ipc_line_id' => $lineId, 'quantity' => '4', 'condition' => 'usable', 'notes' => null]];
+        $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/my-count", [
+                'expected_revision' => 2, 'material_version' => 2, 'counted_at' => $countedAt, 'completed' => true, 'signed_at' => $countedAt, 'entries' => $entries,
+            ])->assertOk();
+        $this->asOfficer($this->receiverId, (string) Str::uuid())
+            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/my-count", [
+                'expected_revision' => 3, 'material_version' => 2, 'counted_at' => $countedAt, 'completed' => true, 'signed_at' => $countedAt, 'entries' => $entries,
+            ])->assertOk();
+        $paper = $this->uploadPaper($this->receiverId, 'opening_receipt', $rmId, (string) Str::uuid())->assertCreated()->json('data');
+        $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/submit", [
+                'expected_revision' => 4, 'material_version' => 2, 'signed_ipc' => $this->byteBinding($paper),
+            ])->assertOk();
+
+        $signedAt = now('UTC')->subMinutes(3)->format('Y-m-d\TH:i:s.u\Z');
+        $headOpId = $this->asOfficer($this->headId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/authorizations", [
+                'expected_revision' => 5, 'material_version' => 2, 'duty' => 'CHAPTER_HEAD', 'signed_at' => $signedAt,
+            ])->assertOk()->json('data.operation.id');
+        $finOpId = $this->asOfficer($this->headId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/authorizations", [
+                'expected_revision' => 6, 'material_version' => 2, 'duty' => 'FINANCE', 'signed_at' => $signedAt,
+            ])->assertOk()->json('data.operation.id');
+
+        // Revoke FINANCE while keeping CHAPTER_HEAD: Head receipt remains readable, Finance receipt is denied (403).
+        DutyGrant::where('chapter_id', $this->chapterId)->where('user_id', $this->headId)->where('duty_code', 'FINANCE')
+            ->update(['status' => 'revoked']);
+
+        $this->asOfficer($this->headId)
+            ->get("/api/v1/chapters/{$this->chapterId}/opening-actions/{$headOpId}")
+            ->assertOk();
+        $this->asOfficer($this->headId)
+            ->get("/api/v1/chapters/{$this->chapterId}/opening-actions/{$finOpId}")
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'duty_denied');
+
+        // Legacy backfilled guard with posted_rm_id set and outcome_json = null still returns non-null locked outcome.
+        $legacyOutcomeId = (string) Str::uuid();
+        ChapterOpeningGuard::where('chapter_id', $this->chapterId)->update([
+            'stock_version' => 2,
+            'posted_rm_id' => $rmId,
+            'posted_ipc_id' => $ipcId,
+            'outcome_id' => $legacyOutcomeId,
+            'outcome_json' => null,
+            'posted_at' => now('UTC'),
+        ]);
+        $this->asOfficer($this->receiverId)
+            ->get("/api/v1/chapters/{$this->chapterId}/opening-baseline")
+            ->assertOk()
+            ->assertJsonPath('data.id', $legacyOutcomeId)
+            ->assertJsonPath('data.baseline_locked', true);
     }
 
     public function test_complete_zero_accepted_baseline_locks_once_with_no_accepted_movements(): void
