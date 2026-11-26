@@ -16,6 +16,21 @@ interface ChapterAuthorityBarProps {
   onRefreshAccess: () => void;
 }
 
+function humanizeActionState(state: string): string {
+  switch (state) {
+    case 'allowed':
+      return 'Ready';
+    case 'setup_blocked':
+      return 'Chapter Setup Incomplete';
+    case 'duty_denied':
+      return 'Role Restricted';
+    case 'context_required':
+      return 'Select a Chapter';
+    default:
+      return state;
+  }
+}
+
 export function ChapterAuthorityBar({
   memberships,
   selectedChapterId,
@@ -27,132 +42,155 @@ export function ChapterAuthorityBar({
   onLoadMoreMemberships,
   onRefreshAccess,
 }: ChapterAuthorityBarProps) {
-  const [showAccessDetails, setShowAccessDetails] = useState(false);
-
-  const blockedActions = access ? access.actions.filter((a) => a.state === 'setup_blocked') : [];
-  const activeMembership = context?.membership ?? memberships.find((m) => m.chapter.id === selectedChapterId) ?? null;
-
-  function requestChapterChange(targetId: string) {
-    if (!targetId || targetId === selectedChapterId) {
-      return;
-    }
-    if (drafts.length > 0) {
-      const ok = window.confirm(
-        `You have ${drafts.length} unsaved draft(s) for this chapter. Switching chapters keeps those drafts aside for this session and clears the screen. Continue?`,
-      );
-      if (!ok) {
-        return;
-      }
-    }
-    onSelectChapter(targetId);
-  }
+  const [showPermissions, setShowPermissions] = useState(true);
+  const currentMembership = context?.membership ?? memberships.find((m) => m.chapter.id === selectedChapterId) ?? null;
+  const blockedActions = (access?.actions ?? []).filter((a) => a.state !== 'allowed');
 
   return (
-    <div className="authority-banner">
-      <div>
-        {activeMembership ? (
-          <>
-            <div>
-              <strong>{activeMembership.chapter.display_name}</strong>{' '}
-              <span className="muted">({activeMembership.chapter.reference})</span>
-            </div>
-            <div style={{ marginTop: '0.25rem' }}>
-              {activeMembership.duties.length > 0 ? (
-                activeMembership.duties.map((d) => (
-                  <span key={d} className="duty-badge">
-                    {formatDutyName(d)}
-                  </span>
-                ))
-              ) : (
-                <span className="muted">Member view only (no assigned officer roles)</span>
-              )}
-              {access && (
-                <span className="muted" style={{ marginLeft: '0.4rem' }}>
-                  Permissions checked {formatManilaTime(access.checked_at)}
+    <section className="p03-card surface-card" aria-label="Chapter roles and permissions">
+      <div className="p03-card-header-row">
+        <div>
+          <h3 className="p03-section-title">Chapter Context &amp; Permissions</h3>
+          <p className="form-card-subtitle">
+            {currentMembership
+              ? `${currentMembership.chapter.reference} · ${currentMembership.chapter.display_name}`
+              : 'Select an active chapter to verify permissions.'}
+          </p>
+        </div>
+        <div className="p03-action-pair">
+          <button
+            type="button"
+            className="btn-batcave-secondary p03-shrink-btn"
+            onClick={onRefreshAccess}
+            disabled={!selectedChapterId}
+          >
+            Refresh Access
+          </button>
+          <button
+            type="button"
+            className="btn-batcave-secondary p03-shrink-btn"
+            onClick={() => setShowPermissions((prev) => !prev)}
+          >
+            {showPermissions ? 'Hide Permissions' : `Show Permissions (${access?.actions.length ?? 0})`}
+          </button>
+        </div>
+      </div>
+
+      <div className="p03-two-col" style={{ marginTop: '0.85rem' }}>
+        <div className="form-group">
+          <label className="form-label" htmlFor="auth-bar-chapter-select">
+            Active Chapter
+          </label>
+          <div className="p03-input-action-row">
+            <select
+              id="auth-bar-chapter-select"
+              className="form-control"
+              value={selectedChapterId ?? ''}
+              onChange={(e) => onSelectChapter(e.target.value)}
+            >
+              {memberships.length === 0 && <option value="">No chapters assigned</option>}
+              {memberships.map((m) => (
+                <option key={m.chapter.id} value={m.chapter.id}>
+                  {m.chapter.reference} — {m.chapter.display_name}
+                </option>
+              ))}
+            </select>
+            {nextCursor && (
+              <button
+                type="button"
+                className="btn-batcave-secondary p03-shrink-btn"
+                onClick={onLoadMoreMemberships}
+              >
+                Load More
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <span className="form-label">Assigned Roles &amp; Session Status</span>
+          <div className="p03-chip-wrap" style={{ marginTop: '0.25rem' }}>
+            {currentMembership?.duties.length ? (
+              currentMembership.duties.map((duty) => (
+                <span key={duty} className="s02-duty-chip">
+                  {formatDutyName(duty)}
                 </span>
-              )}
-            </div>
-          </>
-        ) : (
-          <span className="muted">Select an authorized chapter to begin operations.</span>
-        )}
+              ))
+            ) : (
+              <span className="s02-duty-chip">No active roles</span>
+            )}
+            <span className="p03-version-pill">
+              Unsaved Drafts: {drafts.length}
+            </span>
+            {context?.checked_at && (
+              <span className="p03-version-pill">
+                Verified {formatManilaTime(context.checked_at)}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="row" style={{ flexWrap: 'wrap' }}>
-        <select
-          aria-label="Active chapter selector"
-          value={selectedChapterId ?? ''}
-          onChange={(e) => requestChapterChange(e.target.value)}
-        >
-          <option value="" disabled>
-            Select chapter…
-          </option>
-          {memberships.map((m) => (
-            <option key={m.chapter.id} value={m.chapter.id}>
-              {m.chapter.reference} — {m.chapter.display_name}
-            </option>
-          ))}
-        </select>
-        {nextCursor && (
-          <button className="btn secondary" onClick={onLoadMoreMemberships}>
-            More chapters
-          </button>
-        )}
-        <button className="btn secondary" onClick={onRefreshAccess} disabled={!selectedChapterId}>
-          Refresh Permissions
-        </button>
-        {access && (
-          <button className="btn secondary" onClick={() => setShowAccessDetails((v) => !v)}>
-            {showAccessDetails ? 'Hide Permissions' : `View Permissions (${blockedActions.length} restricted)`}
-          </button>
-        )}
-      </div>
+      {blockedActions.length > 0 && (
+        <div className="callout-banner is-warning" style={{ marginTop: '0.85rem' }}>
+          <span className="callout-dot dot-warning" aria-hidden="true" />
+          <div>
+            <strong>{blockedActions.length} action{blockedActions.length === 1 ? '' : 's'} currently restricted:</strong>{' '}
+            {blockedActions
+              .slice(0, 4)
+              .map((a) => formatActionName(a.action))
+              .join(', ')}
+            {blockedActions.length > 4 ? ` and ${blockedActions.length - 4} more.` : '.'}
+          </div>
+        </div>
+      )}
 
-      {showAccessDetails && access && (
-        <div className="table-wrap" style={{ width: '100%', marginTop: '0.5rem' }}>
-          <table className="data-table">
+      {showPermissions && access && (
+        <div className="p05-table-wrap" style={{ marginTop: '1rem' }}>
+          <table className="p05-cells-table">
             <thead>
               <tr>
-                <th>Permission</th>
+                <th>Operation</th>
                 <th>Availability</th>
-                <th>Required Roles</th>
-                <th>Setup Requirements</th>
+                <th>Allowed Roles</th>
+                <th>Chapter Setup Notes</th>
               </tr>
             </thead>
             <tbody>
-              {access.actions.map((act) => (
-                <tr key={act.action}>
-                  <td>{formatActionName(act.action)}</td>
+              {access.actions.map((item) => (
+                <tr key={item.action}>
+                  <td>{formatActionName(item.action)}</td>
                   <td>
                     <span
-                      className={`status-pill ${
-                        act.state === 'allowed'
-                          ? 'ok'
-                          : act.state === 'context_required'
-                            ? 'info'
-                            : act.state === 'setup_blocked'
-                              ? 'warn'
-                              : 'bad'
+                      className={`s02-status-tag ${
+                        item.state === 'allowed'
+                          ? 'is-ready'
+                          : item.state === 'setup_blocked'
+                            ? 'is-overdue'
+                            : 'is-uncertain'
                       }`}
                     >
-                      {act.state === 'allowed'
-                        ? 'Allowed'
-                        : act.state === 'context_required'
-                          ? 'Needs Details'
-                          : act.state === 'setup_blocked'
-                            ? 'Setup Needed'
-                            : 'Restricted'}
+                      {humanizeActionState(item.state)}
                     </span>
                   </td>
-                  <td>{act.required_duties.map(formatDutyName).join(', ')}</td>
                   <td>
-                    {act.blockers.length > 0
-                      ? act.blockers
-                          .map((b) => {
-                            const key = formatSettingKey(b.setting_key ?? b.code ?? 'setup_required');
-                            return b.message ? `${key}: ${formatSettingKey(b.message)}` : key;
-                          })
-                          .join(' | ') || String(act.blockers.length)
+                    {item.required_duties.length > 0
+                      ? item.required_duties.map(formatDutyName).join(', ')
+                      : 'Any chapter member'}
+                  </td>
+                  <td>
+                    {item.blockers.length > 0
+                      ? item.blockers
+                          .map((b) =>
+                            b.message
+                              ? formatSettingKey(b.message)
+                              : b.setting_key
+                                ? `Needs setup: ${formatSettingKey(b.setting_key)}`
+                                : b.code
+                                  ? formatSettingKey(b.code)
+                                  : 'Setup incomplete',
+                          )
+                          .join('; ')
                       : '—'}
                   </td>
                 </tr>
@@ -161,6 +199,6 @@ export function ChapterAuthorityBar({
           </table>
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -33,12 +33,20 @@ interface CatalogueWorkspaceProps {
   chapterId: string;
   refreshSignal: number;
   chapterAccess: ChapterAccessSnapshot | null;
+  onBackToDashboard?: () => void;
 }
 
-export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: CatalogueWorkspaceProps) {
+export function CatalogueWorkspace({
+  userId,
+  chapterId,
+  refreshSignal,
+  chapterAccess,
+  onBackToDashboard,
+}: CatalogueWorkspaceProps) {
   const maintainReason = actionBlockReason(chapterAccess, 'catalogue.maintain');
   const historyReason = actionBlockReason(chapterAccess, 'history.read');
   const [entity, setEntity] = useState<CatalogueEntity>('items');
+  const [viewTab, setViewTab] = useState<'records' | 'audit'>('records');
   const [stateFilter, setStateFilter] = useState<'active' | 'retired' | 'all'>('active');
   const [queryText, setQueryText] = useState('');
   const [rows, setRows] = useState<CatalogueRecord[]>([]);
@@ -321,271 +329,537 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
     }
   }
 
+  const entityHeading =
+    entity === 'items'
+      ? 'Item'
+      : entity === 'variants'
+        ? 'Item Variant'
+        : entity === 'units'
+          ? 'Unit'
+          : 'Location';
+
   return (
-    <div>
-      <div className="card">
-        <h2>Item &amp; Location Catalogue</h2>
-        <div className="tabs">
-          {(['items', 'variants', 'units', 'locations'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={`tab-btn ${entity === tab ? 'active' : ''}`}
-              onClick={() => switchEntity(tab)}
+    <main className="p03-workspace-shell">
+      <div className="p03-workspace-inner">
+        <header className="p03-top-header surface-card">
+          <div className="p03-header-search-row">
+            <div className="p03-search-input-wrap">
+              <svg
+                className="p03-search-icon"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                id="cat-q"
+                className="form-control p03-search-input"
+                value={queryText}
+                onChange={(e) => setQueryText(e.target.value)}
+                placeholder="Search catalogue by code or name..."
+                aria-label="Search catalogue by code or name"
+              />
+            </div>
+
+            <select
+              id="cat-state"
+              className="form-control p03-shrink-btn"
+              style={{ width: 'auto', minHeight: '38px' }}
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value as 'active' | 'retired' | 'all')}
+              aria-label="Filter record status"
             >
-              {tab.toUpperCase()}
-            </button>
-          ))}
-        </div>
-
-        <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
-
-        <div className="row" style={{ marginBottom: '0.85rem' }}>
-          <div className="field">
-            <label htmlFor="cat-state">State filter</label>
-            <select id="cat-state" value={stateFilter} onChange={(e) => setStateFilter(e.target.value as 'active' | 'retired' | 'all')}>
               <option value="active">Active</option>
               <option value="retired">Retired</option>
-              <option value="all">All</option>
+              <option value="all">All states</option>
             </select>
-          </div>
-          <div className="field">
-            <label htmlFor="cat-q">Search by code or name</label>
-            <input id="cat-q" value={queryText} onChange={(e) => setQueryText(e.target.value)} placeholder="Code or label prefix" />
-          </div>
-          <button type="button" className="btn secondary" onClick={() => void loadList()}>
-            Reload
-          </button>
-        </div>
 
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Name / Description</th>
-                <th>State</th>
-                <th>Revision</th>
-                <th>Details</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="muted">
-                    No {entity} records returned.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((r) => (
-                  <tr key={r.id}>
-                    <td className="mono">{r.code}</td>
-                    <td>{r.description ?? r.label ?? r.name}</td>
-                    <td>{r.state}</td>
-                    <td>rev. {r.material_version}</td>
-                    <td className="mono">
-                      {r.id}
-                      {r.quantity_scale !== undefined ? ` · ${r.quantity_scale} decimals` : ''}
-                      {r.quantity_identity_locked ? ' (In Use)' : ''}
-                    </td>
-                    <td>
-                      <div className="row">
-                        <button type="button" className="btn secondary" onClick={() => void inspectRecord(r.id)}>
-                          View Details
-                        </button>
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          disabled={maintainReason !== null}
-                          title={maintainReason ?? undefined}
-                          onClick={() => startEdit(r)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          disabled={historyReason !== null}
-                          title={historyReason ?? undefined}
-                          onClick={() => void inspectHistory(r.id)}
-                        >
-                          History
-                        </button>
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          disabled={historyReason !== null}
-                          title={historyReason ?? undefined}
-                          onClick={() => void inspectVersion(r.id, r.material_version)}
-                        >
-                          Current Snapshot
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {nextCursor && (
-          <div style={{ marginTop: '0.6rem' }}>
-            <button type="button" className="btn secondary" onClick={() => void loadList(nextCursor)}>
-              Load Next Page
+            <button type="button" className="btn-batcave-secondary p03-shrink-btn" onClick={() => void loadList()}>
+              Reload
             </button>
           </div>
-        )}
-      </div>
 
-      <div className="grid-2">
-        <div className="card">
-          <h3>
-            {selected
-              ? `Edit ${selected.code} (rev. ${selected.material_version})`
-              : `Add New ${entity === 'items' ? 'Item' : entity === 'variants' ? 'Item Variant' : entity === 'units' ? 'Unit' : 'Location'}`}
-          </h3>
-          <form onSubmit={handleSubmit}>
-            {!selected && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-code">Short Code (Letters &amp; Numbers)</label>
-                <input id="cat-code" required value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-              </div>
-            )}
-            <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="cat-title">{entity === 'items' ? 'Description' : entity === 'variants' ? 'Label' : 'Name'}</label>
-              <input id="cat-title" required value={titleField} onChange={(e) => setTitleField(e.target.value)} />
+          <div className="p03-header-nav-row">
+            <div className="p03-header-left">
+              <h1 className="p03-main-title">Item &amp; Location Catalogue</h1>
             </div>
-            {entity === 'variants' && !selected && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-item">Parent Item</label>
-                <input id="cat-item" required value={parentItemId} onChange={(e) => setParentItemId(e.target.value)} />
+            <div className="p03-header-controls">
+              <div className="p03-filter-pill-bar" role="tablist" aria-label="Catalogue sections">
+                {(['items', 'variants', 'units', 'locations'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={viewTab === 'records' && entity === tab}
+                    className={`p03-filter-pill ${viewTab === 'records' && entity === tab ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setViewTab('records');
+                      switchEntity(tab);
+                    }}
+                  >
+                    {tab === 'items' ? 'Items' : tab === 'variants' ? 'Variants' : tab === 'units' ? 'Units' : 'Locations'}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'audit'}
+                  className={`p03-filter-pill ${viewTab === 'audit' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('audit')}
+                >
+                  History &amp; Lookup
+                </button>
               </div>
-            )}
-            {(entity === 'items' || entity === 'variants') && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-unit">Unit of Measure</label>
-                <input id="cat-unit" required value={unitId} onChange={(e) => setUnitId(e.target.value)} />
-              </div>
-            )}
-            {entity === 'units' && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-qkind">Measurement Type</label>
-                <select id="cat-qkind" value={qtyKind} onChange={(e) => setQtyKind(e.target.value as 'count' | 'weight' | 'volume' | 'length')}>
-                  <option value="count">Count (pieces)</option>
-                  <option value="weight">Weight</option>
-                  <option value="volume">Volume</option>
-                  <option value="length">Length</option>
-                </select>
-              </div>
-            )}
-            {(entity === 'units' || entity === 'variants') && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-qscale">Decimal Places (0–6)</label>
-                <input id="cat-qscale" type="number" min={0} max={6} required value={qtyScale} onChange={(e) => setQtyScale(e.target.value)} />
-              </div>
-            )}
-            {entity === 'locations' && (
-              <>
-                <div className="field" style={{ marginBottom: '0.6rem' }}>
-                  <label htmlFor="cat-lkind">Location Type</label>
-                  <input id="cat-lkind" required value={locKind} onChange={(e) => setLocKind(e.target.value)} />
-                </div>
-                <div className="field" style={{ marginBottom: '0.6rem' }}>
-                  <label htmlFor="cat-cust">Assigned Custodian ID (optional)</label>
-                  <input id="cat-cust" value={custodianId} onChange={(e) => setCustodianId(e.target.value)} />
-                </div>
-              </>
-            )}
-            {selected && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-rstate">Status</label>
-                <select id="cat-rstate" value={replaceState} onChange={(e) => setReplaceState(e.target.value as 'active' | 'retired')}>
-                  <option value="active">Active</option>
-                  <option value="retired">Retired</option>
-                </select>
-              </div>
-            )}
-            <div className="field" style={{ marginBottom: '0.75rem' }}>
-              <label htmlFor="cat-reason">Reason for Change</label>
-              <input id="cat-reason" required value={reason} onChange={(e) => setReason(e.target.value)} />
-            </div>
-            {maintainReason && <div className="alert info">{maintainReason}</div>}
-            <div className="row">
-              <button className="btn" type="submit" disabled={busy || maintainReason !== null} title={maintainReason ?? undefined}>
-                {selected ? 'Save Changes' : 'Add Record'}
-              </button>
-              <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Save Temporary Draft
-              </button>
-              {selected && (
-                <button className="btn secondary" type="button" onClick={() => setSelected(null)}>
-                  Cancel Edit
+              {onBackToDashboard && (
+                <button
+                  type="button"
+                  className="btn-batcave-secondary p03-shrink-btn"
+                  onClick={onBackToDashboard}
+                >
+                  Back to Chapter Workspace
                 </button>
               )}
             </div>
-          </form>
-        </div>
+          </div>
+        </header>
 
-        <div className="card">
-          <h3>Check Submitted Change Status</h3>
-          <form onSubmit={lookupOperation}>
-            <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="op-name">Change Type</label>
-              <select id="op-name" value={opName} onChange={(e) => setOpName(e.target.value)}>
-                <option value="createCatalogueItem">Add Item</option>
-                <option value="replaceCatalogueItem">Edit Item</option>
-                <option value="createCatalogueVariant">Add Item Variant</option>
-                <option value="replaceCatalogueVariant">Edit Item Variant</option>
-                <option value="createCatalogueUnit">Add Unit of Measure</option>
-                <option value="replaceCatalogueUnit">Edit Unit of Measure</option>
-                <option value="createCatalogueLocation">Add Storage Location</option>
-                <option value="replaceCatalogueLocation">Edit Storage Location</option>
-              </select>
+        <OperationBanner
+          error={error}
+          statusMessage={statusMessage}
+          replayed={replayed}
+          onDismiss={() => setStatusMessage(null)}
+        />
+
+        {viewTab === 'records' ? (
+          <div className="p02-members-grid">
+            <div className="p02-column-stack">
+              <section className="p03-card surface-card" aria-label="Catalogue records list">
+                <div className="p03-card-header-row" style={{ marginBottom: '0.65rem' }}>
+                  <div>
+                    <h2 className="p03-section-title">{entityHeading} Directory</h2>
+                    <p className="form-card-subtitle">
+                      {rows.length} {entity} record{rows.length === 1 ? '' : 's'} loaded
+                    </p>
+                  </div>
+                </div>
+
+                {rows.length === 0 ? (
+                  <div className="s02-empty-state">
+                    <div className="s02-empty-heading">No {entity} records found</div>
+                    <div className="s02-empty-caption">
+                      Add a new {entityHeading.toLowerCase()} using the form, or change the status filter above.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p03-history-list">
+                    {rows.map((r) => (
+                      <article
+                        key={r.id}
+                        className={`p03-history-card ${selected?.id === r.id ? 'is-search-match' : ''} ${
+                          r.state === 'retired' ? 'is-superseded' : ''
+                        }`}
+                      >
+                        <div className="p03-history-head">
+                          <div className="p03-history-title-group">
+                            <span className="p03-id-pill">{r.code}</span>
+                            <strong>{r.description ?? r.label ?? r.name}</strong>
+                            <span className={`s02-status-tag ${r.state === 'active' ? 'is-ready' : 'is-uncertain'}`}>
+                              {r.state}
+                            </span>
+                            <span className="p03-version-pill">rev. {r.material_version}</span>
+                            {r.quantity_scale !== undefined && (
+                              <span className="p03-version-pill">{r.quantity_scale} decimals</span>
+                            )}
+                            {r.quantity_identity_locked && (
+                              <span className="s02-status-tag is-overdue">In Use</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="p03-history-meta">
+                          <div className="p02-compact-actions">
+                            <button
+                              type="button"
+                              className="p02-compact-btn"
+                              disabled={maintainReason !== null}
+                              title={maintainReason ?? undefined}
+                              onClick={() => startEdit(r)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="p02-compact-btn"
+                              onClick={() => {
+                                void inspectRecord(r.id);
+                                setViewTab('audit');
+                              }}
+                            >
+                              Details
+                            </button>
+                            <button
+                              type="button"
+                              className="p02-compact-btn"
+                              disabled={historyReason !== null}
+                              title={historyReason ?? undefined}
+                              onClick={() => {
+                                void inspectHistory(r.id);
+                                setViewTab('audit');
+                              }}
+                            >
+                              History
+                            </button>
+                            <button
+                              type="button"
+                              className="p02-compact-btn"
+                              disabled={historyReason !== null}
+                              title={historyReason ?? undefined}
+                              onClick={() => {
+                                void inspectVersion(r.id, r.material_version);
+                                setViewTab('audit');
+                              }}
+                            >
+                              Snapshot
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                {nextCursor && (
+                  <div className="p03-action-pair" style={{ marginTop: '0.85rem' }}>
+                    <button
+                      type="button"
+                      className="btn-batcave-secondary p03-shrink-btn"
+                      onClick={() => void loadList(nextCursor)}
+                    >
+                      Load Next Page
+                    </button>
+                  </div>
+                )}
+              </section>
             </div>
-            <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="op-key">Submission Reference</label>
-              <input id="op-key" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
+
+            <div className="p02-column-stack">
+              <section className="p03-card surface-card" aria-label="Catalogue record editor">
+                <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+                  {selected ? `Edit ${selected.code} (rev. ${selected.material_version})` : `Add New ${entityHeading}`}
+                </h2>
+
+                {maintainReason && (
+                  <div className="callout-banner is-warning" style={{ marginBottom: '0.85rem' }}>
+                    <span className="callout-dot dot-warning" aria-hidden="true" />
+                    <span>{maintainReason}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="p02-column-stack">
+                  {!selected && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-code">
+                        Short Code (Letters &amp; Numbers)
+                      </label>
+                      <input
+                        id="cat-code"
+                        className="form-control"
+                        required
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.toUpperCase())}
+                      />
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cat-title">
+                      {entity === 'items' ? 'Description' : entity === 'variants' ? 'Label' : 'Name'}
+                    </label>
+                    <input
+                      id="cat-title"
+                      className="form-control"
+                      required
+                      value={titleField}
+                      onChange={(e) => setTitleField(e.target.value)}
+                    />
+                  </div>
+
+                  {entity === 'variants' && !selected && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-item">
+                        Parent Item Reference
+                      </label>
+                      <input
+                        id="cat-item"
+                        className="form-control"
+                        required
+                        value={parentItemId}
+                        onChange={(e) => setParentItemId(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {(entity === 'items' || entity === 'variants') && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-unit">
+                        Unit of Measure Reference
+                      </label>
+                      <input
+                        id="cat-unit"
+                        className="form-control"
+                        required
+                        value={unitId}
+                        onChange={(e) => setUnitId(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {entity === 'units' && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-qkind">
+                        Measurement Type
+                      </label>
+                      <select
+                        id="cat-qkind"
+                        className="form-control"
+                        value={qtyKind}
+                        onChange={(e) => setQtyKind(e.target.value as 'count' | 'weight' | 'volume' | 'length')}
+                      >
+                        <option value="count">Count (pieces)</option>
+                        <option value="weight">Weight</option>
+                        <option value="volume">Volume</option>
+                        <option value="length">Length</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {(entity === 'units' || entity === 'variants') && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-qscale">
+                        Decimal Places (0–6)
+                      </label>
+                      <input
+                        id="cat-qscale"
+                        className="form-control"
+                        type="number"
+                        min={0}
+                        max={6}
+                        required
+                        value={qtyScale}
+                        onChange={(e) => setQtyScale(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {entity === 'locations' && (
+                    <div className="p03-two-col">
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="cat-lkind">
+                          Location Type
+                        </label>
+                        <input
+                          id="cat-lkind"
+                          className="form-control"
+                          required
+                          value={locKind}
+                          onChange={(e) => setLocKind(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="cat-cust">
+                          Assigned Custodian (optional)
+                        </label>
+                        <input
+                          id="cat-cust"
+                          className="form-control"
+                          value={custodianId}
+                          onChange={(e) => setCustodianId(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {selected && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-rstate">
+                        Status
+                      </label>
+                      <select
+                        id="cat-rstate"
+                        className="form-control"
+                        value={replaceState}
+                        onChange={(e) => setReplaceState(e.target.value as 'active' | 'retired')}
+                      >
+                        <option value="active">Active</option>
+                        <option value="retired">Retired</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cat-reason">
+                      Reason for Change
+                    </label>
+                    <input
+                      id="cat-reason"
+                      className="form-control"
+                      required
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="p03-action-pair">
+                    <button
+                      className="btn-batcave-primary p03-shrink-btn"
+                      type="submit"
+                      disabled={busy || maintainReason !== null}
+                      title={maintainReason ?? undefined}
+                    >
+                      {selected ? 'Save Changes' : 'Add Record'}
+                    </button>
+                    <button
+                      className="btn-batcave-secondary p03-shrink-btn"
+                      type="button"
+                      onClick={parkDraftInMemory}
+                    >
+                      Save Temporary Draft
+                    </button>
+                    {selected && (
+                      <button
+                        className="btn-batcave-secondary p03-shrink-btn"
+                        type="button"
+                        onClick={() => setSelected(null)}
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </section>
             </div>
-            <button className="btn secondary" type="submit">
-              Check by Reference
-            </button>
-          </form>
-          <form onSubmit={lookupOperationById} style={{ marginTop: '0.65rem' }}>
-            <div className="row">
-              <div className="field">
-                <label htmlFor="op-id">Change Record ID</label>
-                <input id="op-id" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
-              </div>
-              <button className="btn secondary" type="submit">
-                View by Record ID
-              </button>
-            </div>
-          </form>
-          {selected && (
-            <div className="row" style={{ marginTop: '0.65rem' }}>
-              <div className="field" style={{ maxWidth: '8rem' }}>
-                <label htmlFor="cat-ver-n">Revision Number</label>
-                <input id="cat-ver-n" type="number" min={1} value={lookupVersion} onChange={(e) => setLookupVersion(e.target.value)} />
-              </div>
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => void inspectVersion(selected.id, Number.parseInt(lookupVersion, 10) || selected.material_version)}
-              >
-                Read Exact Version
-              </button>
-            </div>
-          )}
-          {lookupResult !== null && <pre className="json-box">{JSON.stringify(lookupResult, null, 2)}</pre>}
-          {historyJson !== null && (
-            <>
-              <h4 style={{ marginBottom: '0.3rem' }}>Change History &amp; Details</h4>
-              <pre className="json-box">{JSON.stringify(historyJson, null, 2)}</pre>
-            </>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card" aria-label="Change submission lookup">
+              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+                Check Submitted Change Status
+              </h2>
+              <form onSubmit={lookupOperation} className="p02-column-stack">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="op-name">
+                    Change Type
+                  </label>
+                  <select
+                    id="op-name"
+                    className="form-control"
+                    value={opName}
+                    onChange={(e) => setOpName(e.target.value)}
+                  >
+                    <option value="createCatalogueItem">Add Item</option>
+                    <option value="replaceCatalogueItem">Edit Item</option>
+                    <option value="createCatalogueVariant">Add Item Variant</option>
+                    <option value="replaceCatalogueVariant">Edit Item Variant</option>
+                    <option value="createCatalogueUnit">Add Unit of Measure</option>
+                    <option value="replaceCatalogueUnit">Edit Unit of Measure</option>
+                    <option value="createCatalogueLocation">Add Storage Location</option>
+                    <option value="replaceCatalogueLocation">Edit Storage Location</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="op-key">
+                    Submission Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="op-key"
+                      className="form-control"
+                      required
+                      value={lookupKey}
+                      onChange={(e) => setLookupKey(e.target.value)}
+                    />
+                    <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                      Check Reference
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              <form onSubmit={lookupOperationById} className="p02-column-stack" style={{ marginTop: '0.85rem' }}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="op-id">
+                    Change Record Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="op-id"
+                      className="form-control"
+                      required
+                      value={lookupOpId}
+                      onChange={(e) => setLookupOpId(e.target.value)}
+                    />
+                    <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                      View Record
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {selected && (
+                <div className="form-group" style={{ marginTop: '0.85rem' }}>
+                  <label className="form-label" htmlFor="cat-ver-n">
+                    Read Revision for {selected.code}
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="cat-ver-n"
+                      className="form-control"
+                      type="number"
+                      min={1}
+                      value={lookupVersion}
+                      onChange={(e) => setLookupVersion(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="btn-batcave-secondary p03-shrink-btn"
+                      onClick={() =>
+                        void inspectVersion(selected.id, Number.parseInt(lookupVersion, 10) || selected.material_version)
+                      }
+                    >
+                      Read Version
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="p03-card surface-card" aria-label="Change inspection output">
+              <h2 className="p03-section-title" style={{ marginBottom: '0.75rem' }}>
+                Record History &amp; Lookup Output
+              </h2>
+              {lookupResult === null && historyJson === null ? (
+                <div className="s02-empty-state">
+                  <div className="s02-empty-heading">No inspection selected</div>
+                  <div className="s02-empty-caption">
+                    Choose Details, History, or Snapshot on any record card, or check a submission reference on the left.
+                  </div>
+                </div>
+              ) : (
+                <div className="p02-column-stack">
+                  {lookupResult !== null && <pre className="json-box">{JSON.stringify(lookupResult, null, 2)}</pre>}
+                  {historyJson !== null && <pre className="json-box">{JSON.stringify(historyJson, null, 2)}</pre>}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

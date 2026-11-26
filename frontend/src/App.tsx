@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiGet, checkHealth, ContractApiError, formatManilaTime } from './api/client.ts';
+import { apiGet, apiMutate, checkHealth, ContractApiError } from './api/client.ts';
 import type {
   ChapterAccessSnapshot,
   ChapterContext,
@@ -12,8 +12,8 @@ import type {
 import { AuthGate } from './components/AuthGate.tsx';
 import { BatCaveShell } from './components/BatCaveShell.tsx';
 import { useBatCaveToast } from './components/batcaveToast.ts';
-import { ChapterAuthorityBar } from './components/ChapterAuthorityBar.tsx';
 import { OperationBanner } from './components/OperationBanner.tsx';
+import { S02Dashboard } from './components/S02Dashboard.tsx';
 import { Stage1ReverbClient, type RealtimeStatus } from './realtime/reverbClient.ts';
 import { memoryDraftStore, type MemoryDraftEntry } from './state/memoryDraftStore.ts';
 import { getInitialSoundsEnabled, playClickPen, playOutageSwitch } from './theme/batcaveAudio.ts';
@@ -24,17 +24,6 @@ import { PaperEvidenceWorkspace } from './workspaces/PaperEvidenceWorkspace.tsx'
 import { RequisitionWorkspace } from './workspaces/RequisitionWorkspace.tsx';
 import { ReservationAndHoldWorkspace } from './workspaces/ReservationAndHoldWorkspace.tsx';
 import { StockWorkspace } from './workspaces/StockWorkspace.tsx';
-
-const NAV_ITEMS: Array<{ id: WorkspaceTab; code: string; label: string; section: string }> = [
-  { id: 'my_work', code: '01', label: 'My Work & Updates', section: 'Command Center' },
-  { id: 'requisitions', code: '02', label: 'Requisitions', section: 'Demand & Allocation' },
-  { id: 'reservations_holds', code: '03', label: 'Reservations & Holds', section: 'Demand & Allocation' },
-  { id: 'actual_issues', code: '04', label: 'Issue Handovers', section: 'Demand & Allocation' },
-  { id: 'stock', code: '05', label: 'Stock Levels & Eligibility', section: 'Inventory & Baseline' },
-  { id: 'catalogue', code: '06', label: 'Item Catalogue', section: 'Inventory & Baseline' },
-  { id: 'opening', code: '07', label: 'Opening Inventory', section: 'Inventory & Baseline' },
-  { id: 'evidence', code: '08', label: 'Signed Documents', section: 'Inventory & Baseline' },
-];
 
 export function App() {
   const [connection, setConnection] = useState<ConnectionState>('checking');
@@ -261,38 +250,26 @@ export function App() {
     showToast({ tone, text });
   }
 
-  const preAuthHeaderMeta = (
-    <span className={`status-pill ${connection === 'connected' ? 'ok' : connection === 'unavailable' ? 'bad' : 'warn'}`}>
-      Database: {connection === 'connected' ? 'Connected' : connection === 'checking' ? 'Checking' : 'Offline'}
-    </span>
-  );
+  function handleSelectTab(nextTab: WorkspaceTab) {
+    playClickPen(soundEnabled);
+    setActiveTab(nextTab);
+  }
 
-  const authHeaderMeta =
-    session && session.state === 'authenticated' ? (
-      <>
-        <span className={`status-pill ${connection === 'connected' ? 'ok' : 'bad'}`}>
-          Database: {connection === 'connected' ? 'Connected' : connection === 'checking' ? 'Checking' : 'Offline'}
-        </span>
-        <span
-          className={`status-pill ${
-            realtimeStatus === 'connected' ? 'ok' : realtimeStatus === 'stale_reconnect' ? 'warn' : 'bad'
-          }`}
-          title={realtimeDetail}
-        >
-          Live Sync: {realtimeStatus === 'connected' ? 'Active' : realtimeStatus === 'stale_reconnect' ? 'Reconnecting' : realtimeStatus === 'connecting' ? 'Connecting' : 'Standby'}
-        </span>
-        <span className="status-pill">
-          Sign-In:{' '}
-          {session.authentication_method === 'authenticator'
-            ? 'Authenticator App'
-            : session.authentication_method === 'recovery_code'
-              ? 'Recovery Code'
-              : 'Password'}
-        </span>
-      </>
-    ) : (
-      preAuthHeaderMeta
-    );
+  function handleBackToDashboard() {
+    playClickPen(soundEnabled);
+    setActiveTab('my_work');
+  }
+
+  async function handleSignOut() {
+    playClickPen(soundEnabled);
+    try {
+      await apiMutate<void>('POST', '/api/v1/auth/sign-out', null);
+    } catch {
+      // Clear local session state even if server session already expired
+    }
+    handleSessionUpdated(null);
+    handleNotify('info', 'Signed out. Temporary session drafts cleared.');
+  }
 
   if (sessionBooting) {
     return (
@@ -302,8 +279,7 @@ export function App() {
         toast={toast}
         toastExiting={isExiting}
         onDismissToast={dismissToast}
-        headerMeta={preAuthHeaderMeta}
-      >
+        >
         <main className="status-shell">
           <div className="surface-card status-card">
             <div className="eyebrow">YSP Chapter Portal</div>
@@ -339,8 +315,7 @@ export function App() {
         toast={toast}
         toastExiting={isExiting}
         onDismissToast={dismissToast}
-        headerMeta={preAuthHeaderMeta}
-      >
+        >
         <AuthGate
           connection={connection}
           onRetryHealth={retryHealth}
@@ -360,185 +335,146 @@ export function App() {
       toast={toast}
       toastExiting={isExiting}
       onDismissToast={dismissToast}
-      headerMeta={authHeaderMeta}
     >
-      <div className="stage1-app">
-        <div className="shell-grid">
-          <nav className="sidenav" aria-label="Workspace navigation">
-            {(['Command Center', 'Demand & Allocation', 'Inventory & Baseline'] as const).map((sec) => (
-              <div key={sec}>
-                <div className="nav-section-label">{sec}</div>
-                {NAV_ITEMS.filter((item) => item.section === sec).map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`nav-btn ${activeTab === item.id ? 'active' : ''}`}
-                    onClick={() => {
-                      playClickPen(soundEnabled);
-                      setActiveTab(item.id);
-                    }}
-                  >
-                    <span>{item.label}</span>
-                    <span className="nav-code">{item.code}</span>
-                  </button>
-                ))}
+      {activeTab === 'my_work' ? (
+        <S02Dashboard
+          session={session}
+          connection={connection}
+          realtimeStatus={realtimeStatus}
+          realtimeDetail={realtimeDetail ?? null}
+          memberships={memberships}
+          membershipCursor={membershipCursor}
+          selectedChapterId={selectedChapterId}
+          chapterContext={chapterContext}
+          chapterAccess={chapterAccess}
+          recentNotices={recentNotices}
+          drafts={drafts}
+          refreshSignal={refreshSignal}
+          globalError={globalError}
+          onSelectTab={handleSelectTab}
+          onSelectChapter={(cid) => {
+            playClickPen(soundEnabled);
+            setGlobalError(null);
+            setChapterContext(null);
+            setChapterAccess(null);
+            setSelectedChapterId(cid);
+          }}
+          onLoadMoreMemberships={() => void loadMemberships(membershipCursor)}
+          onRefreshAccess={() => {
+            playClickPen(soundEnabled);
+            if (selectedChapterId) {
+              void loadChapterState(selectedChapterId, contextGenRef.current);
+            }
+          }}
+          onTriggerRefresh={() => {
+            playClickPen(soundEnabled);
+            setRefreshSignal((s) => s + 1);
+          }}
+          onRetryHealth={retryHealth}
+          onSessionUpdated={handleSessionUpdated}
+          onNotify={handleNotify}
+          soundEnabled={soundEnabled}
+          onSignOut={() => void handleSignOut()}
+        />
+      ) : (
+        <>
+          <OperationBanner error={globalError} />
+          {selectedChapterId ? (
+            <>
+              {activeTab === 'catalogue' && (
+                <CatalogueWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'stock' && (
+                <StockWorkspace
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'evidence' && (
+                <PaperEvidenceWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'opening' && (
+                <OpeningBaselineWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'requisitions' && (
+                <RequisitionWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'reservations_holds' && (
+                <ReservationAndHoldWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'actual_issues' && (
+                <ActualIssueWorkspace
+                  key={`${session.user.id}::${selectedChapterId}`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+            </>
+          ) : (
+            <main className="p03-workspace-shell">
+              <div className="p03-workspace-inner">
+                <section className="p03-card surface-card">
+                  <div className="p03-card-header-row">
+                    <div>
+                      <h1 className="p03-main-title">Select a Chapter</h1>
+                      <p className="form-card-subtitle">
+                        Choose an authorized chapter in My Work before opening chapter operations.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-batcave-secondary p03-shrink-btn"
+                      onClick={handleBackToDashboard}
+                    >
+                      Back to Chapter Workspace
+                    </button>
+                  </div>
+                </section>
               </div>
-            ))}
-          </nav>
-
-          <main className="workspace-main">
-            <OperationBanner error={globalError} />
-
-            <ChapterAuthorityBar
-              memberships={memberships}
-              selectedChapterId={selectedChapterId}
-              context={chapterContext}
-              access={chapterAccess}
-              nextCursor={membershipCursor}
-              drafts={drafts}
-              onSelectChapter={(cid) => {
-                playClickPen(soundEnabled);
-                setGlobalError(null);
-                setChapterContext(null);
-                setChapterAccess(null);
-                setSelectedChapterId(cid);
-              }}
-              onLoadMoreMemberships={() => void loadMemberships(membershipCursor)}
-              onRefreshAccess={() => {
-                playClickPen(soundEnabled);
-                if (selectedChapterId) {
-                  void loadChapterState(selectedChapterId, contextGenRef.current);
-                }
-              }}
-            />
-
-            {activeTab === 'my_work' && (
-              <div className="grid-2">
-                <div className="card">
-                  <h2>My Work &amp; Recent Updates</h2>
-                  <p className="muted" style={{ marginBottom: '0.65rem' }}>
-                    Updates appear here automatically whenever records in your chapter change.
-                  </p>
-                  {recentNotices.length === 0 ? (
-                    <p className="muted">No recent chapter updates in this session yet.</p>
-                  ) : (
-                    <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
-                      {recentNotices.map((n) => (
-                        <li key={n.event_id} style={{ marginBottom: '0.35rem' }}>
-                          <span>{n.event_name.replace(/^stage1\./, '').replace(/\.v\d+$/, '').replace(/\./g, ' ')}</span> ·{' '}
-                          {n.resource_kind.replace(/_/g, ' ')}{' '}
-                          <span className="mono">{n.resource_id}</span> @ {formatManilaTime(n.committed_at)}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <div className="card">
-                  <h2>Unsaved Drafts (This Session Only)</h2>
-                  {drafts.length === 0 ? (
-                    <p className="muted">No unsaved form drafts stored in this session.</p>
-                  ) : (
-                    <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
-                      {drafts.map((d) => (
-                        <li key={`${d.chapterId}-${d.formKey}`}>
-                          <strong>{d.label}</strong> (Chapter{' '}
-                          <span className="mono">
-                            {memberships.find((m) => m.chapter.id === d.chapterId)?.chapter.reference ?? d.chapterId}
-                          </span>
-                          , saved{' '}
-                          {formatManilaTime(d.updatedAtIso)})
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'my_work' && (
-              <AuthGate
-                connection={connection}
-                onRetryHealth={retryHealth}
-                session={session}
-                onSessionUpdated={handleSessionUpdated}
-                soundEnabled={soundEnabled}
-                onNotify={handleNotify}
-              />
-            )}
-
-            {selectedChapterId ? (
-              <>
-                {activeTab === 'catalogue' && (
-                  <CatalogueWorkspace
-                    key={`${session.user.id}::${selectedChapterId}`}
-                    userId={session.user.id}
-                    chapterId={selectedChapterId}
-                    refreshSignal={refreshSignal}
-                    chapterAccess={chapterAccess}
-                  />
-                )}
-                {activeTab === 'stock' && (
-                  <StockWorkspace
-                    chapterId={selectedChapterId}
-                    refreshSignal={refreshSignal}
-                    chapterAccess={chapterAccess}
-                  />
-                )}
-                {activeTab === 'evidence' && (
-                  <PaperEvidenceWorkspace
-                    key={`${session.user.id}::${selectedChapterId}`}
-                    userId={session.user.id}
-                    chapterId={selectedChapterId}
-                    refreshSignal={refreshSignal}
-                    chapterAccess={chapterAccess}
-                  />
-                )}
-                {activeTab === 'opening' && (
-                  <OpeningBaselineWorkspace
-                    key={`${session.user.id}::${selectedChapterId}`}
-                    userId={session.user.id}
-                    chapterId={selectedChapterId}
-                    refreshSignal={refreshSignal}
-                    chapterAccess={chapterAccess}
-                  />
-                )}
-                {activeTab === 'requisitions' && (
-                  <RequisitionWorkspace
-                    key={`${session.user.id}::${selectedChapterId}`}
-                    userId={session.user.id}
-                    chapterId={selectedChapterId}
-                    refreshSignal={refreshSignal}
-                    chapterAccess={chapterAccess}
-                  />
-                )}
-                {activeTab === 'reservations_holds' && (
-                  <ReservationAndHoldWorkspace
-                    key={`${session.user.id}::${selectedChapterId}`}
-                    userId={session.user.id}
-                    chapterId={selectedChapterId}
-                    refreshSignal={refreshSignal}
-                    chapterAccess={chapterAccess}
-                  />
-                )}
-                {activeTab === 'actual_issues' && (
-                  <ActualIssueWorkspace
-                    key={`${session.user.id}::${selectedChapterId}`}
-                    userId={session.user.id}
-                    chapterId={selectedChapterId}
-                    refreshSignal={refreshSignal}
-                    chapterAccess={chapterAccess}
-                  />
-                )}
-              </>
-            ) : (
-              activeTab !== 'my_work' && (
-                <div className="alert info">Select an authorized chapter above before loading chapter operations.</div>
-              )
-            )}
-          </main>
-        </div>
-      </div>
+            </main>
+          )}
+        </>
+      )}
     </BatCaveShell>
   );
 }

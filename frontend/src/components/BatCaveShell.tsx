@@ -16,7 +16,6 @@ interface BatCaveShellProps {
   toast: ToastState | null;
   toastExiting: boolean;
   onDismissToast: () => void;
-  headerMeta?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -26,7 +25,6 @@ export function BatCaveShell({
   toast,
   toastExiting,
   onDismissToast,
-  headerMeta,
   children,
 }: BatCaveShellProps) {
   const { preference, resolvedTheme, setThemeWithTransition } = useBatCaveTheme();
@@ -84,15 +82,9 @@ export function BatCaveShell({
               className="brand-clubs-mark"
               draggable={false}
             />
-            <div className="brand-titles">
-              <div className="brand-title-row">
-                <span className="brand-title">Chapter Ops</span>
-              </div>
-            </div>
           </div>
 
           <div className="system-controls">
-            {headerMeta}
 
             <div className="theme-switch" role="radiogroup" aria-label="Color theme">
               <button

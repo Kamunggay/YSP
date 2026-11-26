@@ -258,15 +258,17 @@ export function AuthGate({
   );
 
   const recoveryCodesPanel = recoveryCodesDelivery && (
-    <div className="card" style={{ marginBottom: '1rem' }}>
-      <h3>Backup Recovery Codes (Save Offline Now)</h3>
-      <p className="muted" style={{ marginBottom: '0.65rem' }}>
-        Batch Reference: <span className="mono">{recoveryCodesDelivery.recovery_set.id}</span> · Expires{' '}
+    <div className="p03-card surface-card" style={{ marginBottom: '1rem' }}>
+      <h3 className="s02-panel-title" style={{ marginBottom: '0.35rem' }}>
+        Backup Recovery Codes (Save Offline Now)
+      </h3>
+      <p className="form-card-subtitle" style={{ marginBottom: '0.65rem' }}>
+        Batch Reference: <span className="p03-mono-inline">{recoveryCodesDelivery.recovery_set.id}</span> · Expires{' '}
         {formatManilaTime(recoveryCodesDelivery.recovery_set.expires_at)}
       </p>
       <pre className="json-box">{recoveryCodesDelivery.codes.join('\n')}</pre>
       <div style={{ marginTop: '0.75rem' }}>
-        <button className="btn-batcave-secondary" type="button" onClick={() => setRecoveryCodesDelivery(null)}>
+        <button className="btn-batcave-secondary p03-shrink-btn" type="button" onClick={() => setRecoveryCodesDelivery(null)}>
           I have saved these codes
         </button>
       </div>
@@ -423,9 +425,9 @@ export function AuthGate({
                 </form>
               ) : (
                 <form className="form-stack" onSubmit={handleConfirmEnrollment}>
-                  <div className="session-ledger">
+                  <div className="s02-readiness-list">
                     {qrDataUrl && (
-                      <div className="session-ledger-row" style={{ alignItems: 'center', padding: '1rem' }}>
+                      <div className="s02-readiness-row" style={{ justifyContent: 'center', padding: '1rem' }}>
                         <img
                           src={qrDataUrl}
                           alt="Authenticator QR code"
@@ -433,29 +435,41 @@ export function AuthGate({
                         />
                       </div>
                     )}
-                    <div className="session-ledger-row">
-                      <span className="session-ledger-key">Setup Reference</span>
-                      <span className="session-ledger-val mono">{pendingEnrollment.enrollment_id}</span>
+                    <div className="s02-readiness-row">
+                      <span className="s02-readiness-key">Setup Reference</span>
+                      <span className="s02-readiness-val p03-mono-inline">{pendingEnrollment.enrollment_id}</span>
                     </div>
-                    <div className="session-ledger-row">
-                      <span className="session-ledger-key">Manual Key</span>
-                      <span className="session-ledger-val mono">{pendingEnrollment.secret}</span>
+                    <div className="s02-readiness-row">
+                      <span className="s02-readiness-key">Manual Key</span>
+                      <span className="s02-readiness-val p03-mono-inline">{pendingEnrollment.secret}</span>
                     </div>
-                    <div className="session-ledger-row">
-                      <span className="session-ledger-key">Setup Link</span>
-                      <span className="session-ledger-val mono">{pendingEnrollment.provisioning_uri}</span>
+                    <div className="s02-readiness-row">
+                      <span className="s02-readiness-key">Setup Link</span>
+                      <span className="s02-readiness-val p03-mono-inline">{pendingEnrollment.provisioning_uri}</span>
                     </div>
                   </div>
 
-                  <div className="row">
-                    <div className="field">
-                      <label htmlFor="confirm-pw">Password</label>
-                      <input id="confirm-pw" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <div className="p03-two-col">
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="confirm-pw">
+                        Password
+                      </label>
+                      <input
+                        id="confirm-pw"
+                        className="form-control"
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
                     </div>
-                    <div className="field">
-                      <label htmlFor="confirm-totp">6-Digit Authenticator Code</label>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="confirm-totp">
+                        6-Digit Authenticator Code
+                      </label>
                       <input
                         id="confirm-totp"
+                        className="form-control"
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]{6}"
@@ -525,58 +539,80 @@ export function AuthGate({
     );
   }
 
-  // 3. Authenticated Security & Recovery Controls (rendered in My Work tab)
+  // 3. Authenticated Security & Recovery Controls (rendered inside Account Security drawer)
   return (
-    <div className="card">
+    <div className="p03-card surface-card">
       <div className="form-card-header" style={{ marginBottom: '1rem', paddingBottom: '0.75rem' }}>
         <div>
-          <h2 className="form-card-title">Account Security &amp; Backup Codes</h2>
+          <h2 className="p03-section-title">Account Security &amp; Backup Codes</h2>
           <p className="form-card-subtitle">
             Signed in as {session.user.display_name} (
             {session.authentication_method === 'authenticator'
               ? 'Authenticator App'
               : session.authentication_method === 'recovery_code'
-                ? 'Recovery Code'
+                ? 'Backup Code'
                 : 'Password'}
             ) · Session ends{' '}
             {formatManilaTime(session.expires_at)}
           </p>
         </div>
-        <div className="row">
-          <button type="button" className="btn secondary" onClick={handleCheckRecoveryStatus} disabled={busy}>
+        <div className="p03-action-pair">
+          <button
+            type="button"
+            className="btn-batcave-secondary p03-shrink-btn"
+            onClick={handleCheckRecoveryStatus}
+            disabled={busy}
+          >
             Check Backup Codes
           </button>
-          <button type="button" className="btn secondary" onClick={handleSignOut} disabled={busy}>
+          <button
+            type="button"
+            className="btn-batcave-secondary p03-shrink-btn"
+            onClick={handleSignOut}
+            disabled={busy}
+          >
             Sign Out
           </button>
         </div>
       </div>
 
-      <div className="form-stack">
+      <div className="p02-column-stack">
         {feedbackBanners}
         {recoveryCodesPanel}
 
         {recoveryStatus && (
-          <div className="session-ledger">
-            <div className="session-ledger-row">
-              <span className="session-ledger-key">Current Backup Code Batch</span>
-              <span className="session-ledger-val mono">
-                {recoveryStatus.id} · {recoveryStatus.remaining} remaining · Expires {formatManilaTime(recoveryStatus.expires_at)}
+          <div className="s02-readiness-list">
+            <div className="s02-readiness-row">
+              <span className="s02-readiness-key">Current Backup Code Batch</span>
+              <span className="s02-readiness-val">
+                {recoveryStatus.remaining} remaining · Expires {formatManilaTime(recoveryStatus.expires_at)}
               </span>
             </div>
           </div>
         )}
 
         <form onSubmit={handleRotateRecoveryCodes}>
-          <div className="row">
-            <div className="field">
-              <label htmlFor="rot-pw">Password</label>
-              <input id="rot-pw" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <div className="p03-two-col">
+            <div className="form-group">
+              <label className="form-label" htmlFor="rot-pw">
+                Password
+              </label>
+              <input
+                id="rot-pw"
+                className="form-control"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-            <div className="field">
-              <label htmlFor="rot-totp">Current Authenticator Code</label>
+            <div className="form-group">
+              <label className="form-label" htmlFor="rot-totp">
+                Current Authenticator Code
+              </label>
               <input
                 id="rot-totp"
+                className="form-control"
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]{6}"
@@ -585,7 +621,9 @@ export function AuthGate({
                 onChange={(e) => setTotpCode(e.target.value)}
               />
             </div>
-            <button className="btn" type="submit" disabled={busy}>
+          </div>
+          <div className="p03-action-pair" style={{ marginTop: '0.75rem' }}>
+            <button className="btn-batcave-primary p03-shrink-btn" type="submit" disabled={busy}>
               Replace Backup Codes
             </button>
           </div>
