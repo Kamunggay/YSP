@@ -28,6 +28,11 @@ final class OpeningDraftInput
 
     public const RESTRICTION_STATES = ['unrestricted', 'bounded', 'uninterpreted'];
 
+    public const OPENING_OPERATIONS = [
+        'createIpc', 'replaceIpc', 'saveMyIpcCount', 'submitIpc', 'authorizeIpc',
+        'createOpeningRm', 'replaceOpeningRm', 'inspectOpeningRm', 'matchOpeningRmEvidence', 'postOpeningRm',
+    ];
+
     /** @return array{string, array<string, mixed>} */
     public static function parseWrite(Request $request, callable $validator): array
     {
@@ -239,6 +244,50 @@ final class OpeningDraftInput
                 : [],
             'acknowledged_at' => self::checkInstant($vals['acknowledged_at'] ?? null, array_key_exists('acknowledged_at', $vals), '/acknowledged_at', false, $errors),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function validatePostOpeningRm(stdClass $body, array &$errors): array
+    {
+        $vals = self::checkObjectKeys($body, ['expected_revision', 'material_version', 'ipc_material_version', 'acknowledgment_id'], '', $errors);
+
+        return [
+            'expected_revision' => self::checkInt($vals['expected_revision'] ?? null, array_key_exists('expected_revision', $vals), '/expected_revision', 1, 2147483647, $errors),
+            'material_version' => self::checkInt($vals['material_version'] ?? null, array_key_exists('material_version', $vals), '/material_version', 1, 2147483647, $errors),
+            'ipc_material_version' => self::checkInt($vals['ipc_material_version'] ?? null, array_key_exists('ipc_material_version', $vals), '/ipc_material_version', 1, 2147483647, $errors),
+            'acknowledgment_id' => self::checkUuid($vals['acknowledgment_id'] ?? null, array_key_exists('acknowledgment_id', $vals), '/acknowledgment_id', false, $errors),
+        ];
+    }
+
+    /** @return array{string, string} [actionKey, operation] */
+    public static function parseByKeyLookup(Request $request): array
+    {
+        if ($request->getContent() !== '') {
+            throw new ContractException(400, 'invalid_selector', 'Unexpected request body.');
+        }
+
+        $keys = $request->headers->all('X-Action-Key');
+        if (count($keys) !== 1 || ! preg_match(AuthInput::UUID, (string) $keys[0])) {
+            throw new ContractException(400, 'invalid_selector', 'Supply a valid X-Action-Key UUID header.');
+        }
+
+        $query = (string) $request->server('QUERY_STRING', '');
+        $selectors = [];
+        foreach ($query === '' ? [] : explode('&', $query) as $part) {
+            [$rawKey, $rawVal] = array_pad(explode('=', $part, 2), 2, '');
+            $key = urldecode($rawKey);
+            if ($rawKey !== $key || $key !== 'operation' || isset($selectors[$key]) || $rawVal === '') {
+                throw new ContractException(400, 'invalid_selector', 'Invalid query selector.');
+            }
+            $selectors[$key] = urldecode($rawVal);
+        }
+
+        $operation = $selectors['operation'] ?? null;
+        if ($operation === null || ! in_array($operation, self::OPENING_OPERATIONS, true)) {
+            throw new ContractException(400, 'invalid_selector', 'Supply a valid operation selector.');
+        }
+
+        return [(string) $keys[0], $operation];
     }
 
     /** @return array<string, mixed> */

@@ -3,6 +3,8 @@
 namespace App\Services\Shared;
 
 use App\Exceptions\ContractException;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 
 class BcMath
 {
@@ -11,43 +13,49 @@ class BcMath
     public static function str(int|float|string|null $value, int $scale = self::SCALE): string
     {
         if ($value === null || $value === '') {
-            return bcadd('0', '0', $scale);
+            return (string) BigDecimal::zero()->toScale($scale, RoundingMode::Down);
         }
 
         if (is_int($value)) {
-            return bcadd((string) $value, '0', $scale);
+            return (string) BigDecimal::of($value)->toScale($scale, RoundingMode::Down);
         }
 
         if (is_float($value)) {
-            return number_format($value, $scale, '.', '');
+            return (string) BigDecimal::of(number_format($value, $scale, '.', ''))->toScale($scale, RoundingMode::Down);
         }
 
         $trimmed = trim($value);
         if ($trimmed === '') {
-            return bcadd('0', '0', $scale);
+            return (string) BigDecimal::zero()->toScale($scale, RoundingMode::Down);
         }
 
-        return bcadd($trimmed, '0', $scale);
+        return (string) BigDecimal::of($trimmed)->toScale($scale, RoundingMode::Down);
     }
 
     public static function add(int|float|string|null $a, int|float|string|null $b, int $scale = self::SCALE): string
     {
-        return bcadd(self::str($a, $scale), self::str($b, $scale), $scale);
+        return (string) BigDecimal::of(self::str($a, $scale))
+            ->plus(self::str($b, $scale))
+            ->toScale($scale, RoundingMode::Down);
     }
 
     public static function sub(int|float|string|null $a, int|float|string|null $b, int $scale = self::SCALE): string
     {
-        return bcsub(self::str($a, $scale), self::str($b, $scale), $scale);
+        return (string) BigDecimal::of(self::str($a, $scale))
+            ->minus(self::str($b, $scale))
+            ->toScale($scale, RoundingMode::Down);
     }
 
     public static function mul(int|float|string|null $a, int|float|string|null $b, int $scale = self::SCALE): string
     {
-        return bcmul(self::str($a, $scale), self::str($b, $scale), $scale);
+        return (string) BigDecimal::of(self::str($a, $scale))
+            ->multipliedBy(self::str($b, $scale))
+            ->toScale($scale, RoundingMode::Down);
     }
 
     public static function comp(int|float|string|null $a, int|float|string|null $b, int $scale = self::SCALE): int
     {
-        return bccomp(self::str($a, $scale), self::str($b, $scale), $scale);
+        return BigDecimal::of(self::str($a, $scale))->compareTo(self::str($b, $scale));
     }
 
     public static function max(int|float|string|null $a, int|float|string|null $b, int $scale = self::SCALE): string
@@ -55,7 +63,7 @@ class BcMath
         $sa = self::str($a, $scale);
         $sb = self::str($b, $scale);
 
-        return bccomp($sa, $sb, $scale) >= 0 ? $sa : $sb;
+        return self::comp($sa, $sb, $scale) >= 0 ? $sa : $sb;
     }
 
     public static function min(int|float|string|null $a, int|float|string|null $b, int $scale = self::SCALE): string
@@ -63,7 +71,7 @@ class BcMath
         $sa = self::str($a, $scale);
         $sb = self::str($b, $scale);
 
-        return bccomp($sa, $sb, $scale) <= 0 ? $sa : $sb;
+        return self::comp($sa, $sb, $scale) <= 0 ? $sa : $sb;
     }
 
     public static function isZero(int|float|string|null $value, int $scale = self::SCALE): bool
@@ -89,7 +97,7 @@ class BcMath
             return $stripped === '' || $stripped === '-0' ? '0' : $stripped;
         }
 
-        return bcadd($norm, '0', $displayScale);
+        return (string) BigDecimal::of($norm)->toScale($displayScale, RoundingMode::Down);
     }
 
     /**
@@ -115,19 +123,19 @@ class BcMath
         }
 
         usort($segments, function (array $a, array $b): int {
-            $cmp = bccomp($a['start'], $b['start'], self::SCALE);
+            $cmp = self::comp($a['start'], $b['start'], self::SCALE);
             if ($cmp !== 0) {
                 return $cmp;
             }
 
-            return bccomp($a['end'], $b['end'], self::SCALE);
+            return self::comp($a['end'], $b['end'], self::SCALE);
         });
 
         $merged = [$segments[0]];
         for ($i = 1, $count = count($segments); $i < $count; $i++) {
             $lastIdx = count($merged) - 1;
-            if (bccomp($segments[$i]['start'], $merged[$lastIdx]['end'], self::SCALE) <= 0) {
-                if (bccomp($segments[$i]['end'], $merged[$lastIdx]['end'], self::SCALE) > 0) {
+            if (self::comp($segments[$i]['start'], $merged[$lastIdx]['end'], self::SCALE) <= 0) {
+                if (self::comp($segments[$i]['end'], $merged[$lastIdx]['end'], self::SCALE) > 0) {
                     $merged[$lastIdx]['end'] = $segments[$i]['end'];
                 }
             } else {
@@ -264,13 +272,13 @@ class BcMath
             }
 
             usort($intervals, function (array $a, array $b): int {
-                $cmp = bccomp($a['start'], $b['start'], self::SCALE);
+                $cmp = self::comp($a['start'], $b['start'], self::SCALE);
 
-                return $cmp !== 0 ? $cmp : bccomp($a['end'], $b['end'], self::SCALE);
+                return $cmp !== 0 ? $cmp : self::comp($a['end'], $b['end'], self::SCALE);
             });
 
             for ($i = 1, $count = count($intervals); $i < $count; $i++) {
-                if (bccomp($intervals[$i]['start'], $intervals[$i - 1]['end'], self::SCALE) < 0) {
+                if (self::comp($intervals[$i]['start'], $intervals[$i - 1]['end'], self::SCALE) < 0) {
                     throw new ContractException(
                         422,
                         'invalid_input',
