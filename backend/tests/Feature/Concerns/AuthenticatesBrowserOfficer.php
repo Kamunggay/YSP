@@ -37,6 +37,14 @@ trait AuthenticatesBrowserOfficer
             ->withHeaders($headers);
     }
 
+    protected function asGuest(): static
+    {
+        $this->unencryptedCookies = [];
+        $this->defaultCookies = [];
+
+        return $this->flushHeaders();
+    }
+
     /** @return array{token: string, csrf: string} */
     protected function browserSessionFor(string $userId): array
     {
@@ -165,6 +173,7 @@ trait AuthenticatesBrowserOfficer
     }
 
     /**
+     * @param  list<string>  $countTeamIds
      * @return list<array{setting_key: string, policy_id: string, version: int}>
      */
     protected function seedEffectiveStage1Policies(
@@ -174,13 +183,13 @@ trait AuthenticatesBrowserOfficer
         ?string $requestingUnitId = null,
         ?string $approverGrantId = null,
         string $cutoffAt = '2026-11-01T00:00:00.000000Z',
+        array $countTeamIds = [],
     ): array {
         $openingPolicies = [
             ['ipc_authorization', 'CHAPTER_HEAD', 'IpcAuthorizationPolicyValue', [
                 'cutoff_at' => $cutoffAt,
-                'informal_movements_suspended' => true,
-                'required_duties' => ['CHAPTER_HEAD', 'FINANCE'],
-                'require_independent_counter' => true,
+                'count_team_ids' => $countTeamIds,
+                'suspension_record_reference' => 'SUSP-1',
             ], $headId],
             ['reference_series', 'CHAPTER_HEAD', 'OpeningReferencePolicyValue', [
                 'ipc_prefix' => 'SYN-IPC',
@@ -189,8 +198,10 @@ trait AuthenticatesBrowserOfficer
             ], $headId],
             ['valuation_rounding', 'FINANCE', 'OpeningValuationPolicyValue', [
                 'currency' => 'PHP',
-                'decimal_places' => 2,
+                'unit_value_scale' => 2,
                 'rounding_mode' => 'half_up',
+                'round_at' => 'accepted_line',
+                'valuation_basis_reference' => 'VAL-1',
             ], $financeId],
         ];
 

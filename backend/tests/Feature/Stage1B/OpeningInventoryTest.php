@@ -113,7 +113,6 @@ class OpeningInventoryTest extends TestCase
                     'status' => 'active',
                     'is_alternate' => false,
                     'valid_from' => now()->subDay(),
-                    'limit_php' => in_array($duty, ['CHAPTER_HEAD', 'FINANCE'], true) ? '100000.00' : null,
                     'version' => 1,
                 ]);
             }
@@ -124,6 +123,7 @@ class OpeningInventoryTest extends TestCase
             $this->headUserId,
             $this->financeUserId,
             cutoffAt: $this->cutoffAt,
+            countTeamIds: [$this->counter1Id, $this->counter2Id],
         );
 
         $this->unitId = (string) Str::uuid();
@@ -361,7 +361,7 @@ class OpeningInventoryTest extends TestCase
                             'accepted_quantity' => '0',
                             'damaged_quantity' => '2',
                             'rejected_quantity' => '0',
-                            'accepted_value' => null,
+                            'accepted_value' => '0.00',
                             'finding_reason' => 'Torn packaging quarantined',
                         ],
                         [
@@ -369,7 +369,7 @@ class OpeningInventoryTest extends TestCase
                             'accepted_quantity' => '0',
                             'damaged_quantity' => '0',
                             'rejected_quantity' => '1',
-                            'accepted_value' => null,
+                            'accepted_value' => '0.00',
                             'finding_reason' => 'Broken seal rejected',
                         ],
                     ],
@@ -381,7 +381,7 @@ class OpeningInventoryTest extends TestCase
             ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/inspection", [
                 'expected_revision' => $replaceRm->json('data.record.revision'),
                 'ipc_material_version' => 1,
-                'inspected_at' => now('UTC')->subMinutes(2)->format('Y-m-d\TH:i:s.u\Z'),
+                'inspected_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
                 'technical_representative_id' => null,
                 'inspection_notes' => 'Inspected physical stock at cutoff',
             ]);
@@ -402,7 +402,7 @@ class OpeningInventoryTest extends TestCase
                 'material_version' => $inspectRm->json('data.record.material_version'),
                 'snapshot_sha256' => $inspectRm->json('data.record.snapshot_sha256'),
                 'bytes' => $signedRmBytes,
-                'acknowledged_at' => now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z'),
+                'acknowledged_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
             ]);
         $matchRm->assertStatus(200)
             ->assertJsonPath('data.record.state', 'matched');
@@ -424,13 +424,13 @@ class OpeningInventoryTest extends TestCase
         $this->assertDatabaseHas('opening_rms', [
             'id' => $rmId,
             'chapter_id' => $this->chapterId,
-            'status' => 'POSTED',
+            'status' => 'posted',
         ]);
 
         $this->assertDatabaseHas('opening_counts', [
             'id' => $ipcId,
             'chapter_id' => $this->chapterId,
-            'status' => 'POSTED',
+            'status' => 'posted',
         ]);
 
         $usableLot = InventoryLot::where('chapter_id', $this->chapterId)
@@ -469,7 +469,7 @@ class OpeningInventoryTest extends TestCase
     {
         $this->test_full_opening_baseline_lifecycle();
 
-        $postedRm = OpeningRm::where('chapter_id', $this->chapterId)->where('status', 'POSTED')->firstOrFail();
+        $postedRm = OpeningRm::where('chapter_id', $this->chapterId)->where('status', 'posted')->firstOrFail();
 
         // 1. Attempting to re-post with a new action key returns 409 baseline_already_posted
         $this->asBrowserOfficer($this->counter2Id, (string) Str::uuid())
@@ -481,13 +481,13 @@ class OpeningInventoryTest extends TestCase
             ])->assertStatus(409)
             ->assertJsonPath('error.code', 'baseline_already_posted');
 
-        // 2. Attempting to create a second Opening RM for the posted IPC returns 409 target_locked
+        // 2. Attempting to create a second Opening RM after baseline posting returns 409 baseline_already_posted
         $this->asBrowserOfficer($this->counter2Id, (string) Str::uuid())
             ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms", [
                 'ipc_id' => $postedRm->ipc_id,
                 'material' => ['ipc_material_version' => 1, 'lines' => [], 'notes' => null],
             ])->assertStatus(409)
-            ->assertJsonPath('error.code', 'target_locked');
+            ->assertJsonPath('error.code', 'baseline_already_posted');
     }
 
     /**

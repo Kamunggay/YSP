@@ -160,7 +160,7 @@ class EvidenceValidationTest extends TestCase
         $this->sendRawMultipartPaper($uri, $this->userId, (string) Str::uuid(), $fields, [
             ['filename' => 'voucher.jpg', 'media_type' => 'image/jpeg', 'bytes' => $exeBytes],
         ])->assertStatus(422)
-            ->assertJsonPath('error.code', 'invalid_input')
+            ->assertJsonPath('error.code', 'invalid_evidence')
             ->assertJsonPath('error.fields.0.code', 'content_mismatch');
 
         // 2. Upload of .txt disguised as PDF
@@ -168,14 +168,14 @@ class EvidenceValidationTest extends TestCase
         $this->sendRawMultipartPaper($uri, $this->userId, (string) Str::uuid(), $fields, [
             ['filename' => 'signed_issue.pdf', 'media_type' => 'application/pdf', 'bytes' => $txtBytes],
         ])->assertStatus(422)
-            ->assertJsonPath('error.code', 'invalid_input')
+            ->assertJsonPath('error.code', 'invalid_evidence')
             ->assertJsonPath('error.fields.0.code', 'content_mismatch');
 
         // 3. Upload of empty file (0 bytes)
         $this->sendRawMultipartPaper($uri, $this->userId, (string) Str::uuid(), $fields, [
             ['filename' => 'empty.pdf', 'media_type' => 'application/pdf', 'bytes' => ''],
         ])->assertStatus(422)
-            ->assertJsonPath('error.code', 'invalid_input')
+            ->assertJsonPath('error.code', 'invalid_evidence')
             ->assertJsonPath('error.fields.0.code', 'empty_file');
 
         // 4. Upload of file exceeding 10MiB -> 413 evidence_too_large
@@ -479,8 +479,7 @@ class EvidenceValidationTest extends TestCase
         $this->assertFalse(Storage::disk('public')->exists($blob->payload_path));
 
         // 2. Unauthenticated GET denied with 401
-        $this->flushHeaders();
-        $unauthenticatedResp = $this->get(
+        $unauthenticatedResp = $this->asGuest()->get(
             "/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/{$versionId}/attachments/{$attachmentId}/content",
             ['Accept' => 'application/json']
         );
