@@ -601,14 +601,15 @@ paths:
       x-required-action: repf.cancel
       summary: Cancel an un-ordered RepF or un-ordered RepF remainder
       description: >-
-        Cancels an un-ordered RepF (draft, pending_budget_review, held,
-        returned_for_revision, approved) or cancels the remaining un-ordered quantity of a
-        partially_ordered RepF with a mandatory non-blank reason while preserving full
-        version history and already-issued PO commitments (PRC-08). Pre-approval
-        cancellation is permitted for repf.cancel holders (INVENTORY, PURCHASING,
-        BUDGET_APPROVER, CHAPTER_HEAD); post-approval cancellation (approved or
-        partially_ordered) requires BUDGET_APPROVER or CHAPTER_HEAD (else 403 duty_denied).
-        Already ordered, rejected, or canceled RepFs return 409 invalid_transition.
+        Cancels an un-ordered RepF (draft, held, returned_for_revision, approved) or
+        cancels the remaining un-ordered quantity of a partially_ordered RepF with a
+        mandatory non-blank reason while preserving full version history and
+        already-issued PO commitments (PRC-08). Pre-approval cancellation (draft, held,
+        returned_for_revision) is permitted for repf.cancel holders (INVENTORY,
+        PURCHASING, BUDGET_APPROVER, CHAPTER_HEAD); post-approval cancellation (approved
+        or partially_ordered) requires BUDGET_APPROVER or CHAPTER_HEAD (else 403
+        duty_denied). pending_budget_review (must be decided/held/returned via budget
+        review first), ordered, rejected, and canceled RepFs return 409 invalid_transition.
       security:
         - browserSession: []
           csrfProof: []
@@ -1250,7 +1251,6 @@ components:
               type: string
               minLength: 1
               maxLength: 500
-
     ValidationError:
       type: object
       required:
@@ -1274,7 +1274,6 @@ components:
               type: string
               minLength: 1
               maxLength: 500
-
             fields:
               type: array
               minItems: 1
@@ -1368,7 +1367,6 @@ components:
               type: string
               minLength: 1
               maxLength: 500
-
             blockers:
               type: array
               minItems: 1
@@ -1421,7 +1419,6 @@ components:
               type: string
               minLength: 1
               maxLength: 500
-
               pattern: '\S'
         failed_intent_committed:
           const: false
@@ -2990,7 +2987,7 @@ components:
         line_number:
           type: integer
           minimum: 1
-          maximum: 200
+          maximum: 100
         trigger_kind:
           $ref: '#/components/schemas/RepfTriggerKind'
         item_id:
@@ -3250,7 +3247,7 @@ components:
         lines:
           type: array
           minItems: 1
-          maxItems: 200
+          maxItems: 100
           items:
             $ref: '#/components/schemas/RepfLine'
         created_at:
@@ -3369,7 +3366,7 @@ components:
         lines:
           type: array
           minItems: 1
-          maxItems: 200
+          maxItems: 100
           items:
             $ref: '#/components/schemas/RepfLineInput'
     ReplaceRepfRequest:
@@ -3403,7 +3400,7 @@ components:
         lines:
           type: array
           minItems: 1
-          maxItems: 200
+          maxItems: 100
           items:
             $ref: '#/components/schemas/RepfLineInput'
     SubmitRepfRequest:
@@ -3747,7 +3744,7 @@ components:
         line_index:
           type: integer
           minimum: 0
-          maximum: 199
+          maximum: 99
         trigger_kind:
           $ref: '#/components/schemas/RepfTriggerKind'
         variant_id:
@@ -3813,7 +3810,7 @@ components:
         coverage_conflicts:
           type: array
           minItems: 0
-          maxItems: 200
+          maxItems: 100
           items:
             $ref: '#/components/schemas/DuplicateSupplyCoverageDetail'
       allOf:
