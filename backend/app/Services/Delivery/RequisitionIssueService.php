@@ -253,20 +253,19 @@ class RequisitionIssueService
             if ($binding?->match_projection) {
                 if ($binding->id !== $lockedIssue->evidence_binding_id || $binding->status !== 'active') {
                     throw new ContractException(409, 'evidence_mismatch', 'Match the current signed paper before posting.', [
-                        'failed_intent_committed' => false, 'current' => $this->formatIssue($lockedIssue),
+                        'failed_intent_committed' => false, 'current' => null, 'setup_blockers' => [],
                     ]);
                 }
                 $acknowledgment = $binding->match_projection;
-                $current = $this->formatIssue($lockedIssue);
                 if ($acknowledgment['recipient_id'] !== $lockedIssue->recipient_user_id
                     || $acknowledgment['acknowledged_at'] !== $lockedIssue->acknowledged_at?->utc()->format('Y-m-d\TH:i:s.u\Z')) {
                     throw new ContractException(409, 'evidence_mismatch', 'The recipient acknowledgment has changed.', [
-                        'failed_intent_committed' => false, 'current' => $current,
+                        'failed_intent_committed' => false, 'current' => null, 'setup_blockers' => [],
                     ]);
                 }
                 $this->checkEvidenceBinding->verifyMatch(
                     $chapterId, $actorId, $lockedIssue->evidenceSnapshot(),
-                    $acknowledgment['bytes'], $acknowledgment, $current,
+                    $acknowledgment['bytes'], $acknowledgment, null,
                 );
                 $evidenceResult = ['acknowledgment_id' => $binding->id];
             } else {

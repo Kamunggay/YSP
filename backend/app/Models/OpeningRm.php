@@ -57,6 +57,7 @@ class OpeningRm extends Model
     {
         return $this->belongsTo(User::class, 'inspector_user_id');
     }
+
     public function evidenceSnapshot(): array
     {
         return [

@@ -819,14 +819,17 @@ class ReservationService
                     'material_version' => $hold->material_version,
                     'sha256' => $hold->clearance_material_sha256,
                 ];
-                $current = ['hold' => $this->formatHold($hold)];
+                $current = ['hold' => $this->formatHold($hold), 'rf' => null, 'preparation' => null, 'reservation' => null, 'review' => null];
                 if (CanonicalJson::encode($expectedSnapshot) !== CanonicalJson::encode($snapshot)) {
                     throw new ContractException(409, 'material_version_conflict', 'The clearance snapshot has changed.', [
-                        'failed_intent_committed' => false, 'current' => $current,
+                        'failed_intent_committed' => false, 'current' => $current, 'setup_blockers' => [],
                     ]);
                 }
                 $signedAt = collect($hold->clearance_proposal_json['signatories'] ?? [])->max('signed_at');
-                if (! $signedAt) {
+                $signed = is_string($signedAt) && preg_match('/\A[0-9T:.Z-]{27}\z/', $signedAt)
+                    ? \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:s.u\Z', $signedAt, new \DateTimeZone('UTC'))
+                    : false;
+                if (! $signed || $signed->format('Y-m-d\TH:i:s.u\Z') !== $signedAt || $signedAt > now('UTC')->toISOString()) {
                     throw new ContractException(409, 'evidence_mismatch', 'The clearance signatories are required.', [
                         'failed_intent_committed' => false, 'current' => $current, 'setup_blockers' => [],
                     ]);

@@ -99,8 +99,9 @@ final class PaperEvidenceStore
         return [$bytes, null];
     }
 
-    /** @param iterable<EvidenceBlob> $blobs
-     *  @return array{?string, ?string}
+    /**
+     * @param  iterable<EvidenceBlob>  $blobs
+     * @return array{?string, ?string}
      */
     public function checkVersion(iterable $blobs, ?string $attachmentId = null): array
     {

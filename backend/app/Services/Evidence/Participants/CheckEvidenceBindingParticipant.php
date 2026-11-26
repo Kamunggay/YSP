@@ -79,14 +79,14 @@ class CheckEvidenceBindingParticipant
         return ['outcome' => 'ready', 'binding' => $binding, 'snapshot' => $snapshot, 'acknowledgment_id' => $acknowledgment['acknowledgment_id']];
     }
 
-    public function recordMatch(string $chapterId, string $actorId, array $snapshot, array $bytes, ?string $recipientId, string $recipientName, string $acknowledgedAt, array $current): EvidenceBinding
+    public function recordMatch(string $chapterId, string $actorId, array $snapshot, array $bytes, ?string $recipientId, string $recipientName, string $acknowledgedAt, ?array $current): EvidenceBinding
     {
         $id = $bytes['evidence_id'] ?? null;
         if (is_string($id) && preg_match(AuthInput::UUID, $id)
             && ! EvidenceRecord::where('chapter_id', $chapterId)->whereKey($id)
                 ->where('purpose', $snapshot['target']['purpose'])->where('record_id', $snapshot['target']['record_id'])
                 ->sharedLock()->first(['id'])) {
-            $this->verifyMatch($chapterId, $actorId, $snapshot, null, null, $current);
+            throw new ContractException(404, 'resource_not_found', 'Evidence not found.');
         }
 
         $acknowledgment = [
@@ -115,7 +115,7 @@ class CheckEvidenceBindingParticipant
         ]);
     }
 
-    public function verifyMatch(string $chapterId, string $actorId, array $snapshot, ?array $bytes, ?array $acknowledgment, array $current): void
+    public function verifyMatch(string $chapterId, string $actorId, array $snapshot, ?array $bytes, ?array $acknowledgment, ?array $current): void
     {
         try {
             $result = $this->check([

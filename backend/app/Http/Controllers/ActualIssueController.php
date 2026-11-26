@@ -673,10 +673,9 @@ class ActualIssueController extends Controller
 
                 if (array_key_exists('version_id', $evidenceInput)) {
                     $snapshot = $issue->evidenceSnapshot();
-                    $current = $this->issueService->formatIssue($issue);
                     if (CanonicalJson::encode($request->input('expected_snapshot')) !== CanonicalJson::encode($snapshot)) {
                         throw new ContractException(409, 'material_version_conflict', 'The issue snapshot has changed.', [
-                            'failed_intent_committed' => false, 'current' => $current,
+                            'failed_intent_committed' => false, 'current' => null, 'setup_blockers' => [],
                         ]);
                     }
                     $handoverAt = $issue->handed_over_at ?? $issue->actual_handover_at;
@@ -684,12 +683,12 @@ class ActualIssueController extends Controller
                         || ! $handoverAt || $handoverAt->gt($issue->acknowledged_at)
                         || $issue->acknowledged_at->isFuture()) {
                         throw new ContractException(409, 'recipient_invalid', 'A named recipient and valid actual acknowledgment are required.', [
-                            'failed_intent_committed' => false, 'current' => $current,
+                            'failed_intent_committed' => false, 'current' => null, 'setup_blockers' => [],
                         ]);
                     }
                     $binding = $this->checkEvidenceBinding->recordMatch(
                         $chapterId, $userId, $snapshot, $evidenceInput, $issue->recipient_user_id, $issue->recipient_name,
-                        $issue->acknowledged_at->utc()->format('Y-m-d\TH:i:s.u\Z'), $current,
+                        $issue->acknowledged_at->utc()->format('Y-m-d\TH:i:s.u\Z'), null,
                     );
                     $result = ['acknowledgment_id' => $binding->id];
                 } else {

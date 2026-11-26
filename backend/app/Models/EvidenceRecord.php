@@ -24,6 +24,7 @@ class EvidenceRecord extends Model
     {
         return $this->hasOne(EvidenceBlob::class, 'evidence_id')->latestOfMany('version');
     }
+
     public function currentVersionBlob(): ?EvidenceBlob
     {
         return $this->blobs()->orderByDesc('version')->orderByRaw('position IS NULL')->orderBy('position')->orderBy('id')

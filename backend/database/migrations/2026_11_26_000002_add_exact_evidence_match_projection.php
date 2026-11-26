@@ -14,16 +14,16 @@ return new class extends Migration
 
         Schema::table('action_receipts', function (Blueprint $table): void {
             $table->string('evidence_scope', 36)->default('');
+            $table->unique(['chapter_id', 'user_id', 'operation', 'evidence_scope', 'key'], 'action_receipt_lineage_scope');
             $table->dropUnique('action_receipt_scope');
-            $table->unique(['chapter_id', 'user_id', 'operation', 'evidence_scope', 'key'], 'action_receipt_scope');
         });
     }
 
     public function down(): void
     {
         Schema::table('action_receipts', function (Blueprint $table): void {
-            $table->dropUnique('action_receipt_scope');
             $table->unique(['chapter_id', 'user_id', 'operation', 'key'], 'action_receipt_scope');
+            $table->dropUnique('action_receipt_lineage_scope');
             $table->dropColumn('evidence_scope');
         });
 

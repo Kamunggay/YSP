@@ -50,6 +50,7 @@ class ActualIssue extends Model
     {
         return $this->belongsTo(InternalRf::class, 'requisition_id');
     }
+
     public function evidenceSnapshot(): array
     {
         return [
