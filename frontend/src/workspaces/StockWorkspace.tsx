@@ -46,6 +46,9 @@ export function StockWorkspace({ chapterId, refreshSignal }: StockWorkspaceProps
   const [eligUnitId, setEligUnitId] = useState('');
   const [eligRfLineId, setEligRfLineId] = useState('');
   const [eligibilityResult, setEligibilityResult] = useState<unknown>(null);
+  const [variantDetail, setVariantDetail] = useState<unknown>(null);
+  const [lotDetail, setLotDetail] = useState<unknown>(null);
+  const [lotHistory, setLotHistory] = useState<unknown>(null);
 
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
@@ -103,6 +106,45 @@ export function StockWorkspace({ chapterId, refreshSignal }: StockWorkspaceProps
       if (res.data[0]?.id) {
         setSelectedLotId(res.data[0].id);
       }
+    } catch (err) {
+      setError(err);
+    }
+  }
+
+  async function inspectVariantDetail(variantId: string) {
+    setError(null);
+    try {
+      const qs = buildQuery({ intended_use: intendedUse, needed_at: neededAt });
+      const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/stock/variants/${variantId}${qs}`);
+      setVariantDetail(res.data);
+    } catch (err) {
+      setError(err);
+    }
+  }
+
+  async function inspectLotDetail(lotId: string) {
+    const trimmed = lotId.trim();
+    if (!trimmed) {
+      return;
+    }
+    setError(null);
+    try {
+      const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/stock/lots/${trimmed}`);
+      setLotDetail(res.data);
+    } catch (err) {
+      setError(err);
+    }
+  }
+
+  async function inspectLotHistory(lotId: string) {
+    const trimmed = lotId.trim();
+    if (!trimmed) {
+      return;
+    }
+    setError(null);
+    try {
+      const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/stock/lots/${trimmed}/history`);
+      setLotHistory(res.data);
     } catch (err) {
       setError(err);
     }
@@ -182,9 +224,14 @@ export function StockWorkspace({ chapterId, refreshSignal }: StockWorkspaceProps
                   <span className={`status-pill ${s.low_stock === 'above_rop' ? 'ok' : 'warn'}`}>{s.low_stock}</span>{' '}
                   <span className="muted">Observed {formatManilaTime(s.observed_at)}</span>
                 </div>
-                <button type="button" className="btn secondary" onClick={() => void loadLotsForVariant(s.variant_id)}>
-                  Inspect Lots
-                </button>
+                <div className="row">
+                  <button type="button" className="btn secondary" onClick={() => void loadLotsForVariant(s.variant_id)}>
+                    Inspect Lots
+                  </button>
+                  <button type="button" className="btn secondary" onClick={() => void inspectVariantDetail(s.variant_id)}>
+                    Variant Detail
+                  </button>
+                </div>
               </div>
               <div className="seven-views-grid">
                 {Object.values(s.views).map((bucket) => (
@@ -201,6 +248,12 @@ export function StockWorkspace({ chapterId, refreshSignal }: StockWorkspaceProps
               )}
             </div>
           ))
+        )}
+        {variantDetail !== null && (
+          <div style={{ marginTop: '0.85rem' }}>
+            <h3>Variant Stock Detail</h3>
+            <pre className="json-box">{JSON.stringify(variantDetail, null, 2)}</pre>
+          </div>
         )}
       </div>
 
@@ -235,11 +288,31 @@ export function StockWorkspace({ chapterId, refreshSignal }: StockWorkspaceProps
               <label htmlFor="el-line">rf_line_id UUID (optional)</label>
               <input id="el-line" value={eligRfLineId} onChange={(e) => setEligRfLineId(e.target.value)} />
             </div>
-            <button className="btn secondary" type="submit">
-              Evaluate Eligibility
-            </button>
+            <div className="row">
+              <button className="btn secondary" type="submit">
+                Evaluate Eligibility
+              </button>
+              <button type="button" className="btn secondary" onClick={() => void inspectLotDetail(selectedLotId)}>
+                Read Lot Detail
+              </button>
+              <button type="button" className="btn secondary" onClick={() => void inspectLotHistory(selectedLotId)}>
+                Lot History
+              </button>
+            </div>
           </form>
           {eligibilityResult !== null && <pre className="json-box">{JSON.stringify(eligibilityResult, null, 2)}</pre>}
+          {lotDetail !== null && (
+            <div style={{ marginTop: '0.65rem' }}>
+              <h4>Lot Detail</h4>
+              <pre className="json-box">{JSON.stringify(lotDetail, null, 2)}</pre>
+            </div>
+          )}
+          {lotHistory !== null && (
+            <div style={{ marginTop: '0.65rem' }}>
+              <h4>Lot Movement History</h4>
+              <pre className="json-box">{JSON.stringify(lotHistory, null, 2)}</pre>
+            </div>
+          )}
         </div>
       </div>
     </div>

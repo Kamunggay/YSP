@@ -241,6 +241,16 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
     }
   }
 
+  async function inspectRecord(id: string) {
+    setError(null);
+    try {
+      const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/catalogue/${entity}/${id}`);
+      setHistoryJson(res.data);
+    } catch (err) {
+      setError(err);
+    }
+  }
+
   async function inspectHistory(id: string) {
     setError(null);
     try {
@@ -362,6 +372,9 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
                     </td>
                     <td>
                       <div className="row">
+                        <button type="button" className="btn secondary" onClick={() => void inspectRecord(r.id)}>
+                          Read Record
+                        </button>
                         <button type="button" className="btn secondary" onClick={() => startEdit(r)}>
                           Replace (`PUT`)
                         </button>
