@@ -41,9 +41,12 @@ paths:
         non-overlapping proposed uncovered replenishment quantity per INV-10 through
         INV-12 and PRC-02. Safe GET accepts no request body and no X-Action-Key. Reject
         unknown or repeated query selectors with 400 invalid_selector. Missing or expired
-        ROP, target_level, or quantity_scale setup for an explicitly filtered item/variant
-        or rop_breach query returns 409 setup_blocked; expired or mutated 5-minute
-        cursors return 409 snapshot_stale. Every response sends Cache-Control: no-store.
+        quantity_scale setup for any evaluated variant, or missing/expired ROP or
+        target_level setup when trigger_filter=rop_breach, returns 409 setup_blocked; for
+        trigger_filter=all or rf_shortage, missing ROP/target appears in each row's
+        setup_blockers without hiding active approved RF shortages (INV-10). Expired or
+        mutated 5-minute cursors return 409 snapshot_stale. Every response sends
+        Cache-Control: no-store.
       security:
         - browserSession: []
       parameters:
@@ -469,10 +472,8 @@ components:
         failed_intent_committed:
           const: false
         current:
-          description: Authorized current resource snapshot when permitted, or null when unavailable or inapplicable.
-          oneOf:
-            - type: object
-            - type: 'null'
+          description: Baseline closed null slot; ticket-specific mutation conflicts (02-05) define typed closed current resource schemas or null.
+          type: 'null'
         setup_blockers:
           type: array
           minItems: 0
@@ -899,7 +900,15 @@ components:
                 - committed
                 - replayed
             procedure_id:
-              const: recordPolicy
+              enum:
+                - prepareAccount
+                - setAccountStatus
+                - prepareChapter
+                - setMembership
+                - setDuty
+                - setAlternate
+                - recordPolicy
+                - resetMfa
             action_key:
               $ref: '#/components/schemas/Uuid'
             target_id:
@@ -916,6 +925,8 @@ components:
               enum:
                 - none
                 - recheck_authority
+                - revoke_all
+                - require_reenrollment
         - type: object
           required:
             - outcome
@@ -928,13 +939,22 @@ components:
             outcome:
               const: rejected
             procedure_id:
-              const: recordPolicy
+              enum:
+                - prepareAccount
+                - setAccountStatus
+                - prepareChapter
+                - setMembership
+                - setDuty
+                - setAlternate
+                - recordPolicy
+                - resetMfa
             action_key:
               $ref: '#/components/schemas/Uuid'
             code:
               enum:
                 - operator_denied
                 - approval_required
+                - identity_verification_required
                 - invalid_input
                 - version_conflict
                 - action_key_conflict
@@ -992,12 +1012,14 @@ components:
             require_reason:
               type: boolean
             minimum_quotes_when_waived:
-              type: integer
-              minimum: 1
-              maximum: 5
+              oneOf:
+                - type: integer
+                  minimum: 1
+                  maximum: 5
+                - type: 'null'
             approving_duties:
               type: array
-              minItems: 1
+              minItems: 0
               maxItems: 2
               uniqueItems: true
               items:
@@ -1014,6 +1036,20 @@ components:
                 properties:
                   require_reason:
                     const: true
+                  minimum_quotes_when_waived:
+                    type: integer
+                    minimum: 1
+                    maximum: 5
+                  approving_duties:
+                    minItems: 1
+              else:
+                properties:
+                  require_reason:
+                    const: false
+                  minimum_quotes_when_waived:
+                    type: 'null'
+                  approving_duties:
+                    maxItems: 0
       description: >-
         Chapter-scoped operational quotation policy (PRC-05). Tiers must be ordered,
         contiguous, and non-overlapping from 0.00 upward with at most one open-ended
@@ -1382,11 +1418,10 @@ components:
         source_id:
           $ref: '#/components/schemas/Uuid'
         source_reference:
-          oneOf:
-            - type: string
-              minLength: 1
-              maxLength: 80
-            - type: 'null'
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Allocated chapter REPF (post-submit) or PO (post-approval/issued) reference.
         status:
           type: string
           enum:
@@ -1412,6 +1447,24 @@ components:
               maxLength: 200
             - type: 'null'
       allOf:
+        - if:
+            properties:
+              source_kind:
+                const: repf
+          then:
+            properties:
+              status:
+                enum:
+                  - pending_budget_review
+                  - held
+                  - approved
+                  - partially_ordered
+          else:
+            properties:
+              status:
+                enum:
+                  - issued
+                  - partially_received
         - if:
             properties:
               coverage_state:
@@ -1630,15 +1683,17 @@ components:
         observed_at:
           $ref: '#/components/schemas/UtcInstant'
         variant_ids:
-          oneOf:
-            - type: array
-              minItems: 1
-              maxItems: 100
-              uniqueItems: true
-              items:
-                $ref: '#/components/schemas/Uuid'
-            - type: 'null'
-          description: Exact chapter variant IDs for RepF write re-verification, or null for chapter-wide replenishment/needs reads.
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+          description: >-
+            Bounded batch (1..100) of active chapter variant IDs. listReplenishmentNeeds
+            resolves the snapshot-paginated page of variant IDs (up to limit <= 100)
+            before calling this participant; Leader RepF writes pass the RepF's exact
+            line variant IDs.
         include_rf_line_breakdown:
           type: boolean
         require_rop_and_target_policies:

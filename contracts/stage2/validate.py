@@ -57,44 +57,46 @@ def read_yaml(path):
 
 def check_replenishment_math(item, label):
     """Verify INV-10..INV-12 non-overlapping exact decimal math on worked examples."""
-    d = lambda field: Decimal(item[field])
+    def qty(field):
+        return Decimal(item[field])
+
     zero = Decimal("0")
-    if d("eligible_usable_stockroom_on_hand") > d("usable_stockroom_on_hand"):
+    if qty("eligible_usable_stockroom_on_hand") > qty("usable_stockroom_on_hand"):
         raise ValueError(f"{label}: eligible usable stock exceeds usable stockroom on-hand")
-    expected_avail = max(zero, d("eligible_usable_stockroom_on_hand") - d("active_rf_reservations"))
-    if d("eligible_available_to_allocate") != expected_avail:
+    expected_avail = max(zero, qty("eligible_usable_stockroom_on_hand") - qty("active_rf_reservations"))
+    if qty("eligible_available_to_allocate") != expected_avail:
         raise ValueError(f"{label}: eligible_available_to_allocate mismatch")
-    expected_rf_short = max(zero, d("total_unreserved_approved_rf_demand") - expected_avail)
-    if d("unreserved_approved_rf_shortage") != expected_rf_short:
+    expected_rf_short = max(zero, qty("total_unreserved_approved_rf_demand") - expected_avail)
+    if qty("unreserved_approved_rf_shortage") != expected_rf_short:
         raise ValueError(f"{label}: unreserved_approved_rf_shortage mismatch")
-    if d("gross_rf_shortage_need") != expected_rf_short:
+    if qty("gross_rf_shortage_need") != expected_rf_short:
         raise ValueError(f"{label}: gross_rf_shortage_need differs from unreserved_approved_rf_shortage")
-    expected_inbound = d("open_repf_quantity") + d("open_po_inbound_quantity")
-    if d("total_open_inbound_coverage") != expected_inbound:
+    expected_inbound = qty("open_repf_quantity") + qty("open_po_inbound_quantity")
+    if qty("total_open_inbound_coverage") != expected_inbound:
         raise ValueError(f"{label}: total_open_inbound_coverage mismatch")
     approved_rop = Decimal(item["approved_rop"]) if item["approved_rop"] is not None else None
-    expected_breach = approved_rop is not None and d("usable_stockroom_on_hand") <= approved_rop
+    expected_breach = approved_rop is not None and qty("usable_stockroom_on_hand") <= approved_rop
     if item["low_stock_breach"] != expected_breach:
         raise ValueError(f"{label}: low_stock_breach indicator mismatch")
     approved_target = Decimal(item["approved_target_level"]) if item["approved_target_level"] is not None else None
-    post_rf = d("eligible_usable_stockroom_on_hand") - d("active_rf_reservations") - d("total_unreserved_approved_rf_demand")
+    post_rf = qty("eligible_usable_stockroom_on_hand") - qty("active_rf_reservations") - qty("total_unreserved_approved_rf_demand")
     expected_rop_gross = (
         max(zero, approved_target - max(zero, post_rf))
         if expected_breach and approved_target is not None
         else zero
     )
-    if d("gross_rop_replenishment_need") != expected_rop_gross:
+    if qty("gross_rop_replenishment_need") != expected_rop_gross:
         raise ValueError(f"{label}: gross_rop_replenishment_need mismatch")
-    if d("gross_combined_need") != expected_rf_short + expected_rop_gross:
+    if qty("gross_combined_need") != expected_rf_short + expected_rop_gross:
         raise ValueError(f"{label}: gross_combined_need overlaps RF shortage and ROP")
     expected_uncovered_rf = max(zero, expected_rf_short - expected_inbound)
     remaining_inbound = max(zero, expected_inbound - expected_rf_short)
     expected_uncovered_rop = max(zero, expected_rop_gross - remaining_inbound)
-    if d("uncovered_rf_shortage_quantity") != expected_uncovered_rf:
+    if qty("uncovered_rf_shortage_quantity") != expected_uncovered_rf:
         raise ValueError(f"{label}: uncovered_rf_shortage_quantity mismatch")
-    if d("uncovered_rop_replenishment_quantity") != expected_uncovered_rop:
+    if qty("uncovered_rop_replenishment_quantity") != expected_uncovered_rop:
         raise ValueError(f"{label}: uncovered_rop_replenishment_quantity mismatch")
-    if d("proposed_uncovered_quantity") != expected_uncovered_rf + expected_uncovered_rop:
+    if qty("proposed_uncovered_quantity") != expected_uncovered_rf + expected_uncovered_rop:
         raise ValueError(f"{label}: proposed_uncovered_quantity mismatch")
     counted_sources = sum(
         (Decimal(src["open_quantity"]) for src in item["inbound_sources"] if src["coverage_state"] == "counted"),
@@ -104,7 +106,7 @@ def check_replenishment_math(item, label):
         (Decimal(src["open_quantity"]) for src in item["inbound_sources"] if src["coverage_state"] != "counted"),
         zero,
     )
-    if counted_sources != expected_inbound or excluded_sources != d("excluded_inbound_quantity"):
+    if counted_sources != expected_inbound or excluded_sources != qty("excluded_inbound_quantity"):
         raise ValueError(f"{label}: inbound_sources breakdown does not sum to totals")
 
 
@@ -171,10 +173,28 @@ def main():
             raise ValueError(f"{label}: {detail}")
         checked += 1
 
-    # Verify Stage 2 additive EvidencePurpose enum coverage
+    def check_inline_examples(pointer):
+        _, node = dereference(pointer)
+        if "schema" not in node:
+            return
+        if "example" in node:
+            check_value(pointer + "/schema", node["example"], pointer + " example")
+        for name in node.get("examples", {}):
+            _, example = dereference(pointer + "/examples/" + pointer_part(name))
+            if "value" not in example:
+                raise ValueError(f"Example {name} must have a local value")
+            check_value(pointer + "/schema", example["value"], pointer + " " + name)
+
+    # Validate reusable parameter and header inline examples as well as operation-bound ones
+    for param_name in document.get("components", {}).get("parameters", {}):
+        check_inline_examples("#/components/parameters/" + pointer_part(param_name))
+    for header_name in document.get("components", {}).get("headers", {}):
+        check_inline_examples("#/components/headers/" + pointer_part(header_name))
+
+    # Verify exact Stage 1 + Stage 2 additive EvidencePurpose enum coverage
     purposes = set(document["components"]["schemas"]["EvidencePurpose"]["enum"])
-    if not (STAGE1_EVIDENCE_PURPOSES | STAGE2_EVIDENCE_PURPOSES) <= purposes:
-        raise ValueError("EvidencePurpose is missing Stage 1 or additive Stage 2 values")
+    if purposes != (STAGE1_EVIDENCE_PURPOSES | STAGE2_EVIDENCE_PURPOSES):
+        raise ValueError("EvidencePurpose must equal Stage 1 plus additive Stage 2 values")
 
     # Verify action duties use canonical 14-duty vocabulary
     valid_duties = set(document["components"]["schemas"]["Duty"]["enum"])
@@ -200,6 +220,20 @@ def main():
                 raise ValueError(f"Operation {operation_id} action missing from x-stage2-action-duties")
             pointer = f"#/paths/{pointer_part(path)}/{method}"
             operations[operation_id] = (pointer, operation)
+            for index, _ in enumerate(operation.get("parameters", [])):
+                parameter_pointer, _ = dereference(pointer + f"/parameters/{index}")
+                check_inline_examples(parameter_pointer)
+            if "requestBody" in operation:
+                body_pointer, body = dereference(pointer + "/requestBody")
+                for media in body["content"]:
+                    check_inline_examples(body_pointer + "/content/" + pointer_part(media))
+            for status in operation["responses"]:
+                response_pointer, response = dereference(pointer + "/responses/" + status)
+                for media in response.get("content", {}):
+                    check_inline_examples(response_pointer + "/content/" + pointer_part(media))
+                for header in response.get("headers", {}):
+                    header_pointer, _ = dereference(response_pointer + "/headers/" + pointer_part(header))
+                    check_inline_examples(header_pointer)
 
     covered = set()
     names = set()
@@ -265,6 +299,14 @@ def main():
                 values = [values]
             for value in values:
                 check_value(header_pointer + "/schema", value, name + " response header")
+        if status == "422" and "requestBody" in operation:
+            _, schema = dereference(request_schema)
+            for field in response["body"]["error"]["fields"]:
+                field_pointer = field["pointer"]
+                if field_pointer and field["code"] != "unexpected_field":
+                    key = field_pointer.split("/")[1].replace("~1", "/").replace("~0", "~")
+                    if key not in schema.get("properties", {}):
+                        raise ValueError(f"{name}: feedback points outside operation body")
 
     if covered != operations.keys():
         raise ValueError(f"Missing worked success: {sorted(operations.keys() - covered)}")

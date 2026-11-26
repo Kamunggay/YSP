@@ -70,11 +70,11 @@ Leader's internal `checkEvidenceBinding` participant is reused verbatim with zer
 - Requires full individual session + MFA, active membership in `{chapter_id}`, and current `replenishment.read` duty (`INVENTORY`, `PURCHASING`, `BUDGET_APPROVER`, or `CHAPTER_HEAD`). Insufficient duty returns `403 duty_denied`; non-member/unknown chapter returns uniform `404 chapter_not_found`; unknown/foreign `item_id` or `variant_id` returns `404 resource_not_found`.
 - Allowed query selectors are strictly `limit`, `cursor`, `item_id`, `variant_id`, `trigger_filter` (`all | rf_shortage | rop_breach | uncovered_only`, default `all`), and `q`. Unknown, repeated, or invalid selectors (including Stage 3's `so_shortage`) return `400 invalid_selector`.
 - Ordering is deterministic: `item_code` ascending, then `variant_code` ascending, then `variant_id` ascending. Pagination binds a 5-minute snapshot cursor to actor, chapter, authority version, normalized filters, limit, and `snapshot_version`; stale or expired cursors return `409 snapshot_stale`.
-- When `trigger_filter=rop_breach` or when `require_rop_and_target_policies=true` (used by Leader for `rop_replenishment` RepF writes), missing or expired `rop`, `target_level`, or `quantity_scale` for the requested item/variant returns `409 setup_blocked` (`SetupBlocked`). For `trigger_filter=all` or `rf_shortage`, missing `rop`/`target_level` appears in the item's `setup_blockers` array without hiding an active approved RF shortage (`INV-10`).
+- When `trigger_filter=rop_breach` or when `require_rop_and_target_policies=true` (used by Leader for `rop_replenishment` RepF writes), missing or expired `rop` or `target_level` for the requested scope returns `409 setup_blocked` (`SetupBlocked`). Missing or expired `quantity_scale` for any evaluated variant always returns `409 setup_blocked`. For `trigger_filter=all` or `rf_shortage`, missing `rop`/`target_level` appears in the item's `setup_blockers` array without hiding an active approved RF shortage (`INV-10`).
 
 ### Exact non-overlapping calculation (`INV-10`–`INV-12`, `PRC-02`)
 
-All arithmetic uses exact decimal math at the variant's approved `quantity_scale` (never floating point):
+All arithmetic uses exact decimal math at the variant's approved `quantity_scale` (never floating point). Stage 1 defines `rop` and `target_level` at `subject_scope: item` (`unit_id`, `quantity`). For single-variant items (the common chapter case), item usable stock equals the variant's `usable_stockroom_on_hand`. For multi-variant items sharing the policy's `unit_id`, runtime aggregates item-level usable stock and open inbound across sibling variants sharing that `unit_id` when evaluating item-level ROP breach and item-level target top-up so multiple variants of the same item never multiply `approved_target_level`, while each variant continues to surface its own exact `unreserved_approved_rf_shortage`:
 
 1. `eligible_available_to_allocate = max(0, eligible_usable_stockroom_on_hand - active_rf_reservations)`
 2. `unreserved_approved_rf_shortage = max(0, total_unreserved_approved_rf_demand - eligible_available_to_allocate)`
@@ -92,7 +92,7 @@ All arithmetic uses exact decimal math at the variant's approved `quantity_scale
 ### Internal `computeNetShortageSnapshot` transaction boundary
 
 - Owned by Glenn; exposes zero public HTTP routes.
-- Called synchronously inside `listReplenishmentNeeds` (shared read snapshot) and inside Leader's `createRepf`, `replaceRepf`, `submitRepf`, and `reviewRepfBudget` transactions (under Leader's outer MySQL transaction locks so concurrent RepF submissions serialize cleanly against live stock/RF/inbound state).
+- Called synchronously with a bounded `variant_ids` batch (`1..100`) by `listReplenishmentNeeds` (after resolving the current snapshot-paginated page of up to `limit` active variant IDs) and by Leader's `createRepf`, `replaceRepf`, `submitRepf`, and `reviewRepfBudget` transactions (under Leader's outer MySQL transaction locks so concurrent RepF submissions serialize cleanly against live stock/RF/inbound state).
 - Accepts `exclude_repf_id` so replacing, submitting, or budget-reviewing an existing RepF does not count that RepF's own open lines against itself.
 - Returns `ready`, `setup_blocked`, or `rejected`; Leader aborts the enclosing write transaction on any non-`ready` outcome.
 
