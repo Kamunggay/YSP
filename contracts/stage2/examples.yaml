@@ -1,0 +1,724 @@
+# Schema-checked Stage 2 contract examples (Ticket 01).
+# Synthetic fixtures only; IDs, values, and approvals are illustrative, never approved setup.
+context:
+  chapter_id: 60000000-0000-4000-8000-000000000001
+  actor: 10000000-0000-4000-8000-000000000002
+  clock: '2026-11-26T02:00:00.000000Z'
+request_defaults:
+  headers:
+    Origin: https://ysp.example.invalid
+    X-Action-Key: 40000000-0000-4000-8000-000000000201
+    Cookie: ysp_session=synthetic; XSRF-TOKEN=synthetic-xsrf
+    X-XSRF-TOKEN: synthetic-xsrf
+    Accept: application/json
+    Content-Type: application/json
+response_defaults:
+  headers:
+    Cache-Control: no-store
+    X-Action-Replayed: 'false'
+
+cases:
+  - name: stage2-01-rop-breach-normal
+    operationId: listReplenishmentNeeds
+    before: >-
+      Normal ROP breach with no open RF demand and no open inbound. Usable stockroom
+      on-hand (15) <= approved ROP (20); approved target stock level is 50 -> proposed
+      uncovered replenishment quantity is 35 (all ROP portion).
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        trigger_filter: rop_breach
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - chapter_id: 60000000-0000-4000-8000-000000000001
+            item_id: 95000000-0000-4000-8000-000000000050
+            item_code: SHIRT
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: SHIRT-M
+            display_name: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: EA
+            quantity_scale: 0
+            approved_rop: '20'
+            rop_policy:
+              policy_id: 71000000-0000-4000-8000-000000000001
+              version: 1
+            approved_target_level: '50'
+            target_level_policy:
+              policy_id: 71000000-0000-4000-8000-000000000002
+              version: 1
+            usable_stockroom_on_hand: '15'
+            eligible_usable_stockroom_on_hand: '15'
+            active_rf_reservations: '0'
+            eligible_available_to_allocate: '15'
+            total_unreserved_approved_rf_demand: '0'
+            unreserved_approved_rf_shortage: '0'
+            open_repf_quantity: '0'
+            open_po_inbound_quantity: '0'
+            total_open_inbound_coverage: '0'
+            excluded_inbound_quantity: '0'
+            low_stock_breach: true
+            gross_rf_shortage_need: '0'
+            gross_rop_replenishment_need: '35'
+            gross_combined_need: '35'
+            uncovered_rf_shortage_quantity: '0'
+            uncovered_rop_replenishment_quantity: '35'
+            proposed_uncovered_quantity: '35'
+            contributing_rf_lines: []
+            inbound_sources: []
+            setup_blockers: []
+            observed_at: '2026-11-26T02:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 14
+
+  - name: stage2-01-combined-rf-shortage-and-rop
+    operationId: listReplenishmentNeeds
+    before: >-
+      Combined RF shortage and ROP breach without double-counting (INV-10..INV-12).
+      Usable/eligible stockroom on-hand is 18 (<= ROP 20), active RF reservations = 8 ->
+      eligible available-to-allocate = 10. Approved RF unreserved demand = 25 -> RF
+      shortage = 15 (leaving post-RF stock at 0). Non-overlapping ROP top-up from 0 to
+      target 50 = 50; gross combined need = 65. Counted open PO inbound = 10 (plus 5
+      disputed PO units excluded per INV-12) -> uncovered RF shortage = 5, uncovered
+      ROP = 50, proposed uncovered total = 55.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        variant_id: 95000000-0000-4000-8000-000000000051
+        trigger_filter: uncovered_only
+    response:
+      status: '200'
+      body:
+        data:
+          - chapter_id: 60000000-0000-4000-8000-000000000001
+            item_id: 95000000-0000-4000-8000-000000000050
+            item_code: SHIRT
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: SHIRT-M
+            display_name: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: EA
+            quantity_scale: 0
+            approved_rop: '20'
+            rop_policy:
+              policy_id: 71000000-0000-4000-8000-000000000001
+              version: 1
+            approved_target_level: '50'
+            target_level_policy:
+              policy_id: 71000000-0000-4000-8000-000000000002
+              version: 1
+            usable_stockroom_on_hand: '18'
+            eligible_usable_stockroom_on_hand: '18'
+            active_rf_reservations: '8'
+            eligible_available_to_allocate: '10'
+            total_unreserved_approved_rf_demand: '25'
+            unreserved_approved_rf_shortage: '15'
+            open_repf_quantity: '0'
+            open_po_inbound_quantity: '10'
+            total_open_inbound_coverage: '10'
+            excluded_inbound_quantity: '5'
+            low_stock_breach: true
+            gross_rf_shortage_need: '15'
+            gross_rop_replenishment_need: '50'
+            gross_combined_need: '65'
+            uncovered_rf_shortage_quantity: '5'
+            uncovered_rop_replenishment_quantity: '50'
+            proposed_uncovered_quantity: '55'
+            contributing_rf_lines:
+              - rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                requesting_unit_id: 85000000-0000-4000-8000-000000000001
+                needed_at: '2026-12-01T01:00:00.000000Z'
+                approved_quantity: '33'
+                issued_quantity: '0'
+                canceled_quantity: '0'
+                active_reserved_quantity: '8'
+                unreserved_outstanding_quantity: '25'
+            inbound_sources:
+              - source_kind: po
+                source_id: 91000000-0000-4000-8000-000000000010
+                source_reference: CEB-PO-2026-000004
+                status: partially_received
+                open_quantity: '10'
+                coverage_state: counted
+                exclusion_reason: null
+              - source_kind: po
+                source_id: 91000000-0000-4000-8000-000000000011
+                source_reference: CEB-PO-2026-000003
+                status: partially_received
+                open_quantity: '5'
+                coverage_state: disputed
+                exclusion_reason: Open receiving discrepancy pending supplier replacement.
+            setup_blockers: []
+            observed_at: '2026-11-26T02:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 15
+
+  - name: stage2-01-fully-covered-inbound-zero-need
+    operationId: listReplenishmentNeeds
+    before: >-
+      ROP breach (usable 15 <= ROP 20, target 50, gross need 35) fully covered by open
+      RepF (15) + open PO inbound (20) = 35 -> proposed uncovered quantity is 0 (INV-12).
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        item_id: 95000000-0000-4000-8000-000000000050
+        trigger_filter: all
+    response:
+      status: '200'
+      body:
+        data:
+          - chapter_id: 60000000-0000-4000-8000-000000000001
+            item_id: 95000000-0000-4000-8000-000000000050
+            item_code: SHIRT
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: SHIRT-M
+            display_name: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: EA
+            quantity_scale: 0
+            approved_rop: '20'
+            rop_policy:
+              policy_id: 71000000-0000-4000-8000-000000000001
+              version: 1
+            approved_target_level: '50'
+            target_level_policy:
+              policy_id: 71000000-0000-4000-8000-000000000002
+              version: 1
+            usable_stockroom_on_hand: '15'
+            eligible_usable_stockroom_on_hand: '15'
+            active_rf_reservations: '0'
+            eligible_available_to_allocate: '15'
+            total_unreserved_approved_rf_demand: '0'
+            unreserved_approved_rf_shortage: '0'
+            open_repf_quantity: '15'
+            open_po_inbound_quantity: '20'
+            total_open_inbound_coverage: '35'
+            excluded_inbound_quantity: '0'
+            low_stock_breach: true
+            gross_rf_shortage_need: '0'
+            gross_rop_replenishment_need: '35'
+            gross_combined_need: '35'
+            uncovered_rf_shortage_quantity: '0'
+            uncovered_rop_replenishment_quantity: '0'
+            proposed_uncovered_quantity: '0'
+            contributing_rf_lines: []
+            inbound_sources:
+              - source_kind: repf
+                source_id: 90000000-0000-4000-8000-000000000001
+                source_reference: CEB-REPF-2026-000001
+                status: approved
+                open_quantity: '15'
+                coverage_state: counted
+                exclusion_reason: null
+              - source_kind: po
+                source_id: 91000000-0000-4000-8000-000000000012
+                source_reference: CEB-PO-2026-000005
+                status: issued
+                open_quantity: '20'
+                coverage_state: counted
+                exclusion_reason: null
+            setup_blockers: []
+            observed_at: '2026-11-26T02:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 16
+
+  - name: stage2-01-missing-rop-target-setup-blocked
+    operationId: listReplenishmentNeeds
+    before: >-
+      Explicit rop_breach query for an item lacking effective rop and with expired
+      target_level returns 409 setup_blocked naming exact SetupBlocker records (GOV-09).
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        item_id: 95000000-0000-4000-8000-000000000060
+        trigger_filter: rop_breach
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000201
+        error:
+          code: setup_blocked
+          message: Required ROP and target stock level policies are not effective for the requested item.
+          blockers:
+            - setting_key: rop
+              subject_id: 95000000-0000-4000-8000-000000000060
+              state: missing
+              approval_owner: CHAPTER_HEAD
+              message: Effective approved rop policy is required for ROP replenishment evaluation.
+            - setting_key: target_level
+              subject_id: 95000000-0000-4000-8000-000000000060
+              state: expired
+              approval_owner: CHAPTER_HEAD
+              message: Effective approved target_level policy expired and must be renewed via recordPolicy.
+
+  - name: stage2-01-unauthorized-duty-denied
+    operationId: listReplenishmentNeeds
+    before: >-
+      Authenticated chapter member holding only COMMITTEE_REQUESTER lacks replenishment.read
+      duty and receives 403 duty_denied without disclosing stock or policy details.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000202
+        error:
+          code: duty_denied
+          message: Current chapter duties do not authorize replenishment.read.
+
+  - name: stage2-01-stale-cursor
+    operationId: listReplenishmentNeeds
+    before: >-
+      Cursor exceeds its 5-minute snapshot window or underlying stock/demand changed ->
+      409 snapshot_stale requiring restart from page 1 with preserved filters.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        cursor: synthetic-expired-replenishment-cursor
+        limit: 25
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000203
+        error:
+          code: snapshot_stale
+          message: Replenishment snapshot cursor expired or underlying state changed; restart from the first page.
+
+  - name: stage2-01-invalid-selector
+    operationId: listReplenishmentNeeds
+    before: Unsupported trigger_filter value returns 400 invalid_selector.
+    invalid_parameters:
+      - query.trigger_filter
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        trigger_filter: so_shortage
+    response:
+      status: '400'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000204
+        error:
+          code: invalid_selector
+          message: Unsupported or malformed query selector.
+
+  - name: stage2-01-chapter-not-found
+    operationId: listReplenishmentNeeds
+    before: Non-member or unknown chapter yields uniform 404 chapter_not_found.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000999
+    response:
+      status: '404'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000205
+        error:
+          code: chapter_not_found
+          message: Chapter is unavailable.
+
+procedure_cases:
+  - name: stage2-01-policy-purchasing-quotation-committed
+    procedureId: recordPolicy
+    before: Controlled CLI setup of chapter purchasing_quotation_policy with two PHP tiers and emergency waiver rule.
+    input:
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000001
+      operator_id: 10000000-0000-4000-8000-000000000099
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      target_id: 72000000-0000-4000-8000-000000000001
+      expected_version: 0
+      reason: Approve chapter Stage 2 purchasing quotation tier policy.
+      approvals:
+        - id: 79000000-0000-4000-8000-000000000001
+          approver_id: 10000000-0000-4000-8000-000000000009
+          authority: CHAPTER_HEAD
+          approved_at: '2026-11-26T01:00:00.000000Z'
+          evidence_reference: CEB-GOV-2026-QUOTE-01
+      input:
+        setting_key: purchasing_quotation_policy
+        subject_id: null
+        ownership: operational
+        value: '{"currency":"PHP","emergency_waiver":{"approving_duties":["BUDGET_APPROVER","CHAPTER_HEAD"],"minimum_quotes_when_waived":1,"permitted":true,"require_reason":true},"tiers":[{"max_amount_php":"10000.00","min_amount_php":"0.00","minimum_comparable_quotes":2},{"max_amount_php":null,"min_amount_php":"10000.01","minimum_comparable_quotes":3}]}'
+        value_schema_reference: '#/components/schemas/PurchasingQuotationPolicyValue'
+        effective_from: '2026-11-26T01:00:00.000000Z'
+        effective_until: null
+    output:
+      outcome: committed
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000001
+      target_id: 72000000-0000-4000-8000-000000000001
+      version: 1
+      audit_id: 78000000-0000-4000-8000-000000000001
+      committed_at: '2026-11-26T01:05:00.000000Z'
+      session_effect: none
+
+  - name: stage2-01-policy-da-authorization-committed
+    procedureId: recordPolicy
+    before: Controlled CLI setup of chapter da_authorization policy requiring preparer independence and signed evidence.
+    input:
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000002
+      operator_id: 10000000-0000-4000-8000-000000000099
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      target_id: 72000000-0000-4000-8000-000000000002
+      expected_version: 0
+      reason: Approve chapter Stage 2 DA acknowledgment and donor-restriction authorization policy.
+      approvals:
+        - id: 79000000-0000-4000-8000-000000000002
+          approver_id: 10000000-0000-4000-8000-000000000009
+          authority: CHAPTER_HEAD
+          approved_at: '2026-11-26T01:00:00.000000Z'
+          evidence_reference: CEB-GOV-2026-DA-01
+      input:
+        setting_key: da_authorization
+        subject_id: null
+        ownership: operational
+        value: '{"acknowledge_duties":["CHAPTER_HEAD","FINANCE"],"require_preparer_independence":true,"require_signed_acknowledgment_evidence":true,"require_signed_resolution_evidence":true,"restriction_resolve_duties":["CHAPTER_HEAD","FINANCE"]}'
+        value_schema_reference: '#/components/schemas/DaAuthorizationPolicyValue'
+        effective_from: '2026-11-26T01:00:00.000000Z'
+        effective_until: null
+    output:
+      outcome: committed
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000002
+      target_id: 72000000-0000-4000-8000-000000000002
+      version: 1
+      audit_id: 78000000-0000-4000-8000-000000000002
+      committed_at: '2026-11-26T01:05:00.000000Z'
+      session_effect: none
+
+  - name: stage2-01-policy-ref-series-repf-committed
+    procedureId: recordPolicy
+    before: Controlled CLI setup of Stage 2 REPF reference_series family.
+    input:
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000003
+      operator_id: 10000000-0000-4000-8000-000000000099
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      target_id: 72000000-0000-4000-8000-000000000003
+      expected_version: 0
+      reason: Approve chapter REPF reference series family.
+      approvals:
+        - id: 79000000-0000-4000-8000-000000000003
+          approver_id: 10000000-0000-4000-8000-000000000009
+          authority: CHAPTER_HEAD
+          approved_at: '2026-11-26T01:00:00.000000Z'
+          evidence_reference: CEB-GOV-2026-REF-REPF
+      input:
+        setting_key: reference_series
+        subject_id: null
+        ownership: operational
+        value: '{"document_kind":"REPF","prefix":"CEBREPF","sequence_width":6,"year_basis":"Asia/Manila"}'
+        value_schema_reference: '#/components/schemas/RepfReferenceSeriesPolicyValue'
+        effective_from: '2026-11-26T01:00:00.000000Z'
+        effective_until: null
+    output:
+      outcome: committed
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000003
+      target_id: 72000000-0000-4000-8000-000000000003
+      version: 1
+      audit_id: 78000000-0000-4000-8000-000000000003
+      committed_at: '2026-11-26T01:05:00.000000Z'
+      session_effect: none
+
+  - name: stage2-01-policy-ref-series-po-committed
+    procedureId: recordPolicy
+    before: Controlled CLI setup of Stage 2 PO reference_series family.
+    input:
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000004
+      operator_id: 10000000-0000-4000-8000-000000000099
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      target_id: 72000000-0000-4000-8000-000000000004
+      expected_version: 0
+      reason: Approve chapter PO reference series family.
+      approvals:
+        - id: 79000000-0000-4000-8000-000000000004
+          approver_id: 10000000-0000-4000-8000-000000000009
+          authority: CHAPTER_HEAD
+          approved_at: '2026-11-26T01:00:00.000000Z'
+          evidence_reference: CEB-GOV-2026-REF-PO
+      input:
+        setting_key: reference_series
+        subject_id: null
+        ownership: operational
+        value: '{"document_kind":"PO","prefix":"CEBPO","sequence_width":6,"year_basis":"Asia/Manila"}'
+        value_schema_reference: '#/components/schemas/PoReferenceSeriesPolicyValue'
+        effective_from: '2026-11-26T01:00:00.000000Z'
+        effective_until: null
+    output:
+      outcome: committed
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000004
+      target_id: 72000000-0000-4000-8000-000000000004
+      version: 1
+      audit_id: 78000000-0000-4000-8000-000000000004
+      committed_at: '2026-11-26T01:05:00.000000Z'
+      session_effect: none
+
+  - name: stage2-01-policy-ref-series-da-committed
+    procedureId: recordPolicy
+    before: Controlled CLI setup of Stage 2 DA reference_series family.
+    input:
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000005
+      operator_id: 10000000-0000-4000-8000-000000000099
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      target_id: 72000000-0000-4000-8000-000000000005
+      expected_version: 0
+      reason: Approve chapter DA reference series family.
+      approvals:
+        - id: 79000000-0000-4000-8000-000000000005
+          approver_id: 10000000-0000-4000-8000-000000000009
+          authority: CHAPTER_HEAD
+          approved_at: '2026-11-26T01:00:00.000000Z'
+          evidence_reference: CEB-GOV-2026-REF-DA
+      input:
+        setting_key: reference_series
+        subject_id: null
+        ownership: operational
+        value: '{"document_kind":"DA","prefix":"CEBDA","sequence_width":6,"year_basis":"Asia/Manila"}'
+        value_schema_reference: '#/components/schemas/DaReferenceSeriesPolicyValue'
+        effective_from: '2026-11-26T01:00:00.000000Z'
+        effective_until: null
+    output:
+      outcome: committed
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000005
+      target_id: 72000000-0000-4000-8000-000000000005
+      version: 1
+      audit_id: 78000000-0000-4000-8000-000000000005
+      committed_at: '2026-11-26T01:05:00.000000Z'
+      session_effect: none
+
+  - name: stage2-01-policy-purchasing-quotation-invalid-rejected
+    procedureId: recordPolicy
+    before: Emergency waiver permitted without require_reason=true violates PurchasingQuotationPolicyValue and is rejected.
+    policy_value_valid: false
+    input:
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000006
+      operator_id: 10000000-0000-4000-8000-000000000099
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      target_id: 72000000-0000-4000-8000-000000000006
+      expected_version: 0
+      reason: Invalid waiver rule test case.
+      approvals:
+        - id: 79000000-0000-4000-8000-000000000006
+          approver_id: 10000000-0000-4000-8000-000000000009
+          authority: CHAPTER_HEAD
+          approved_at: '2026-11-26T01:00:00.000000Z'
+          evidence_reference: CEB-GOV-2026-QUOTE-BAD
+      input:
+        setting_key: purchasing_quotation_policy
+        subject_id: null
+        ownership: operational
+        value: '{"currency":"PHP","emergency_waiver":{"approving_duties":["CHAPTER_HEAD"],"minimum_quotes_when_waived":1,"permitted":true,"require_reason":false},"tiers":[{"max_amount_php":null,"min_amount_php":"0.00","minimum_comparable_quotes":2}]}'
+        value_schema_reference: '#/components/schemas/PurchasingQuotationPolicyValue'
+        effective_from: '2026-11-26T01:00:00.000000Z'
+        effective_until: null
+    output:
+      outcome: rejected
+      procedure_id: recordPolicy
+      action_key: 41000000-0000-4000-8000-000000000006
+      code: invalid_input
+      audit_id: 78000000-0000-4000-8000-000000000006
+
+participant_cases:
+  - name: stage2-01-participant-net-shortage-ready
+    participantId: computeNetShortageSnapshot
+    before: Leader RepF submission invokes Glenn computeNetShortageSnapshot synchronously excluding the RepF being submitted.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000002
+      observed_at: '2026-11-26T02:00:00.000000Z'
+      variant_ids:
+        - 95000000-0000-4000-8000-000000000051
+      include_rf_line_breakdown: true
+      require_rop_and_target_policies: true
+      exclude_repf_id: 90000000-0000-4000-8000-000000000099
+    output:
+      outcome: ready
+      snapshot_version: 15
+      observed_at: '2026-11-26T02:00:00.000000Z'
+      items:
+        - chapter_id: 60000000-0000-4000-8000-000000000001
+          item_id: 95000000-0000-4000-8000-000000000050
+          item_code: SHIRT
+          variant_id: 95000000-0000-4000-8000-000000000051
+          variant_code: SHIRT-M
+          display_name: Chapter Shirt / Medium
+          unit_id: 95000000-0000-4000-8000-000000000052
+          unit_code: EA
+          quantity_scale: 0
+          approved_rop: '20'
+          rop_policy:
+            policy_id: 71000000-0000-4000-8000-000000000001
+            version: 1
+          approved_target_level: '50'
+          target_level_policy:
+            policy_id: 71000000-0000-4000-8000-000000000002
+            version: 1
+          usable_stockroom_on_hand: '18'
+          eligible_usable_stockroom_on_hand: '18'
+          active_rf_reservations: '8'
+          eligible_available_to_allocate: '10'
+          total_unreserved_approved_rf_demand: '25'
+          unreserved_approved_rf_shortage: '15'
+          open_repf_quantity: '0'
+          open_po_inbound_quantity: '10'
+          total_open_inbound_coverage: '10'
+          excluded_inbound_quantity: '0'
+          low_stock_breach: true
+          gross_rf_shortage_need: '15'
+          gross_rop_replenishment_need: '50'
+          gross_combined_need: '65'
+          uncovered_rf_shortage_quantity: '5'
+          uncovered_rop_replenishment_quantity: '50'
+          proposed_uncovered_quantity: '55'
+          contributing_rf_lines:
+            - rf_id: 81000000-0000-4000-8000-000000000001
+              rf_reference: CEB-RF-2026-000001
+              rf_line_id: 82000000-0000-4000-8000-000000000001
+              rf_material_version: 2
+              requesting_unit_id: 85000000-0000-4000-8000-000000000001
+              needed_at: '2026-12-01T01:00:00.000000Z'
+              approved_quantity: '33'
+              issued_quantity: '0'
+              canceled_quantity: '0'
+              active_reserved_quantity: '8'
+              unreserved_outstanding_quantity: '25'
+          inbound_sources:
+            - source_kind: po
+              source_id: 91000000-0000-4000-8000-000000000010
+              source_reference: CEB-PO-2026-000004
+              status: partially_received
+              open_quantity: '10'
+              coverage_state: counted
+              exclusion_reason: null
+          setup_blockers: []
+          observed_at: '2026-11-26T02:00:00.000000Z'
+
+  - name: stage2-01-participant-net-shortage-setup-blocked
+    participantId: computeNetShortageSnapshot
+    before: Missing ROP policy when require_rop_and_target_policies is true returns setup_blocked.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000002
+      observed_at: '2026-11-26T02:00:00.000000Z'
+      variant_ids:
+        - 95000000-0000-4000-8000-000000000061
+      include_rf_line_breakdown: false
+      require_rop_and_target_policies: true
+      exclude_repf_id: null
+    output:
+      outcome: setup_blocked
+      blockers:
+        - setting_key: rop
+          subject_id: 95000000-0000-4000-8000-000000000060
+          state: missing
+          approval_owner: CHAPTER_HEAD
+          message: Effective approved rop policy is required for ROP replenishment evaluation.
+
+  - name: stage2-01-participant-net-shortage-rejected
+    participantId: computeNetShortageSnapshot
+    before: Foreign or unknown variant ID returns rejected resource_not_found.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000002
+      observed_at: '2026-11-26T02:00:00.000000Z'
+      variant_ids:
+        - 95000000-0000-4000-8000-000000000999
+      include_rf_line_breakdown: false
+      require_rop_and_target_policies: false
+      exclude_repf_id: null
+    output:
+      outcome: rejected
+      code: resource_not_found
+      message: Requested variant is not active in this chapter.
+
+  - name: stage2-01-participant-check-evidence-binding-ready
+    participantId: checkEvidenceBinding
+    before: Stage 2 DA acknowledgment reuses Leader checkEvidenceBinding with additive EvidencePurpose da_acknowledgment.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000009
+      snapshot:
+        target:
+          purpose: da_acknowledgment
+          record_id: 93000000-0000-4000-8000-000000000001
+        material_version: 1
+        sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      required_bytes:
+        evidence_id: 94000000-0000-4000-8000-000000000001
+        version_id: 94000000-0000-4000-8000-000000000002
+        attachments:
+          - attachment_id: 94000000-0000-4000-8000-000000000003
+            sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      acknowledgment:
+        acknowledgment_id: 94000000-0000-4000-8000-000000000004
+        matched_by: 10000000-0000-4000-8000-000000000009
+        matched_at: '2026-11-26T01:55:00.000000Z'
+        recipient_id: null
+        acknowledged_at: '2026-11-26T01:50:00.000000Z'
+        snapshot:
+          target:
+            purpose: da_acknowledgment
+            record_id: 93000000-0000-4000-8000-000000000001
+          material_version: 1
+          sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        bytes:
+          evidence_id: 94000000-0000-4000-8000-000000000001
+          version_id: 94000000-0000-4000-8000-000000000002
+          attachments:
+            - attachment_id: 94000000-0000-4000-8000-000000000003
+              sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    output:
+      outcome: ready
+      binding:
+        evidence_id: 94000000-0000-4000-8000-000000000001
+        version_id: 94000000-0000-4000-8000-000000000002
+        attachments:
+          - attachment_id: 94000000-0000-4000-8000-000000000003
+            sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      snapshot:
+        target:
+          purpose: da_acknowledgment
+          record_id: 93000000-0000-4000-8000-000000000001
+        material_version: 1
+        sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      acknowledgment_id: 94000000-0000-4000-8000-000000000004
+
+  - name: stage2-01-participant-check-evidence-binding-missing
+    participantId: checkEvidenceBinding
+    before: Missing signed donor_restriction_resolution evidence aborts commit with evidence_missing.
+    input:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      actor_id: 10000000-0000-4000-8000-000000000009
+      snapshot:
+        target:
+          purpose: donor_restriction_resolution
+          record_id: 93000000-0000-4000-8000-000000000002
+        material_version: 2
+        sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      required_bytes: null
+      acknowledgment: null
+    output:
+      outcome: missing
+      reason: evidence_missing
