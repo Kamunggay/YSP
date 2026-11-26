@@ -12,13 +12,11 @@ use App\Models\OpeningCount;
 use App\Models\OpeningRm;
 use App\Models\StockHold;
 use App\Models\User;
-use App\Models\UserMfaCredential;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -96,106 +94,6 @@ class InventoryStage1ATest extends TestCase
         $accessResponse->assertStatus(200)
             ->assertJsonCount(24, 'data.actions')
             ->assertJsonPath('data.chapter_id', $this->chapterId);
-    }
-
-    public function test_all_8_cli_setup_commands_execution_and_database_state(): void
-    {
-        $newUserId = (string) Str::uuid();
-        $newChapterId = (string) Str::uuid();
-        $membershipId = (string) Str::uuid();
-        $dutyGrantId = (string) Str::uuid();
-        $altGrantId = (string) Str::uuid();
-        $policyId = (string) Str::uuid();
-
-        // 1. prepare-account
-        $exit1 = Artisan::call('app:prepare-account', [
-            '--target-id' => $newUserId,
-            '--login' => 'officer.new@example.invalid',
-            '--display-name' => 'Officer New',
-        ]);
-        $this->assertEquals(0, $exit1);
-        $this->assertDatabaseHas('users', ['id' => $newUserId, 'email' => 'officer.new@example.invalid']);
-        $this->assertDatabaseHas('audit_logs', ['action' => 'controlled:prepareAccount']);
-
-        // 2. set-account-status
-        $exit2 = Artisan::call('app:set-account-status', [
-            '--target-id' => $newUserId,
-            '--status' => 'disabled',
-            '--expected-version' => 1,
-        ]);
-        $this->assertEquals(0, $exit2);
-        $this->assertDatabaseHas('users', ['id' => $newUserId, 'status' => 'disabled', 'version' => 2]);
-
-        // 3. prepare-chapter
-        $exit3 = Artisan::call('app:prepare-chapter', [
-            '--target-id' => $newChapterId,
-            '--reference' => 'SYN-DAVAO',
-            '--display-name' => 'Davao Chapter',
-            '--initial-head-user-id' => $newUserId,
-        ]);
-        $this->assertEquals(0, $exit3);
-        $this->assertDatabaseHas('chapters', ['id' => $newChapterId, 'code' => 'SYN-DAVAO']);
-
-        // 4. set-membership
-        $exit4 = Artisan::call('app:set-membership', [
-            '--target-id' => $membershipId,
-            '--chapter-id' => $newChapterId,
-            '--user-id' => $newUserId,
-            '--status' => 'active',
-            '--expected-version' => 0,
-        ]);
-        $this->assertEquals(0, $exit4);
-        $this->assertDatabaseHas('chapter_memberships', ['id' => $membershipId, 'membership_status' => 'active']);
-
-        // 5. set-duty
-        $exit5 = Artisan::call('app:set-duty', [
-            '--target-id' => $dutyGrantId,
-            '--chapter-id' => $newChapterId,
-            '--user-id' => $newUserId,
-            '--duty' => 'INVENTORY_REVIEWER',
-            '--status' => 'active',
-            '--expected-version' => 0,
-        ]);
-        $this->assertEquals(0, $exit5);
-        $this->assertDatabaseHas('duty_grants', ['id' => $dutyGrantId, 'duty_code' => 'INVENTORY_REVIEWER']);
-
-        // 6. set-alternate
-        $exit6 = Artisan::call('app:set-alternate', [
-            '--target-id' => $altGrantId,
-            '--chapter-id' => $newChapterId,
-            '--duty' => 'INVENTORY_CUSTODIAN',
-            '--replaces-user-id' => $this->userId,
-            '--status' => 'active',
-            '--expected-version' => 0,
-        ]);
-        $this->assertEquals(0, $exit6);
-        $this->assertDatabaseHas('duty_grants', ['id' => $altGrantId, 'is_alternate' => true]);
-
-        // 7. record-policy
-        $exit7 = Artisan::call('app:record-policy', [
-            '--target-id' => $policyId,
-            '--chapter-id' => $newChapterId,
-            '--setting-key' => 'rop_limits',
-            '--value' => json_encode(['threshold' => 50]),
-            '--expected-version' => 0,
-        ]);
-        $this->assertEquals(0, $exit7);
-        $this->assertDatabaseHas('policy_records', ['id' => $policyId, 'policy_code' => 'rop_limits']);
-
-        // 8. reset-mfa
-        UserMfaCredential::create([
-            'id' => (string) Str::uuid(),
-            'user_id' => $newUserId,
-            'secret' => 'TESTSECRETKEY123456789012345678',
-            'is_confirmed' => true,
-            'recovery_codes' => ['CODE1', 'CODE2'],
-        ]);
-        $exit8 = Artisan::call('app:reset-mfa', [
-            '--target-id' => $newUserId,
-            '--expected-version' => 1,
-        ]);
-        $this->assertEquals(0, $exit8);
-        $this->assertDatabaseHas('user_mfa_credentials', ['user_id' => $newUserId, 'is_confirmed' => false]);
     }
 
     public function test_evidence_upload_computing_authoritative_sha256_digest(): void

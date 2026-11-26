@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,21 @@ class ChapterMembership extends Model
     use HasFactory, HasUuids;
 
     protected $guarded = [];
+
+    protected $casts = ['effective_from' => 'immutable_datetime'];
+
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
+    public function scopeCurrent(Builder $query): Builder
+    {
+        return $query->where('membership_status', 'active')->where(fn (Builder $query) => $query
+            ->whereNull('effective_from')->orWhere('effective_from', '<=', now()->format('Y-m-d H:i:s.u')));
+    }
+
+    public function isCurrent(): bool
+    {
+        return $this->membership_status === 'active' && ! $this->effective_from?->isFuture();
+    }
 
     public function chapter(): BelongsTo
     {

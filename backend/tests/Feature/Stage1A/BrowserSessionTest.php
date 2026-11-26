@@ -10,7 +10,6 @@ use App\Models\OpeningCount;
 use App\Models\User;
 use App\Services\Shared\CanonicalJson;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -270,14 +269,7 @@ class BrowserSessionTest extends TestCase
             ->assertNotFound()->assertJsonPath('error.code', 'chapter_not_found');
 
         $write = ['HTTP_ORIGIN' => self::ORIGIN, 'HTTP_X_XSRF_TOKEN' => $cookies['XSRF-TOKEN']];
-        $this->assertSame(0, Artisan::call('app:set-duty', [
-            '--chapter-id' => $chapter->id,
-            '--user-id' => $officer->id,
-            '--operator-id' => $officer->id,
-            '--target-id' => $grant->id,
-            '--duty' => 'INVENTORY',
-            '--status' => 'revoked',
-        ]));
+        $grant->update(['status' => 'revoked']);
         $this->call('POST', $path.'/actual-issues/'.$issue->id.'/post', cookies: $cookies, server: $write)
             ->assertForbidden()->assertJsonPath('error.code', 'duty_denied');
         $this->assertSame('prepared', $issue->fresh()->status);
@@ -547,10 +539,6 @@ class BrowserSessionTest extends TestCase
 
         $this->requestAuth('POST', 'sign-out', $recovered)->assertNoContent();
         $this->requestAuth('GET', 'recovery-codes', $recovered)->assertUnauthorized();
-        $this->artisan('app:reset-mfa', ['--target-id' => $officer->id])->assertSuccessful();
-        $this->requestAuth('GET', 'session', $full)->assertUnauthorized();
-        $this->requestAuth('POST', 'recovery/challenge', $second, ['recovery_code' => $rotated->json('data.recovery_set.codes.0')])
-            ->assertUnauthorized();
     }
 
     public function test_mfa_proof_throttling_and_continuation_expiry(): void

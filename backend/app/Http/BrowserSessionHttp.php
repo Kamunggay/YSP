@@ -89,12 +89,6 @@ final class BrowserSessionHttp
 
     public static function session(Request $request, bool $includeExpired = false): ?BrowserSession
     {
-        $token = $request->cookie('ysp_session');
-
-        return is_string($token) && preg_match('/\A[a-f0-9]{64}\z/', $token)
-            ? BrowserSession::where('token_hash', hash('sha256', $token))
-                ->when(! $includeExpired, fn ($query) => $query->where('expires_at', '>', now()))
-                ->lockForUpdate()->first()
-            : null;
+        return BrowserSession::forToken($request->cookie('ysp_session'), $includeExpired);
     }
 }

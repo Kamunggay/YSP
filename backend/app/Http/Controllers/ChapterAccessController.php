@@ -20,7 +20,7 @@ class ChapterAccessController extends Controller
         }
 
         $user = $request->user();
-        $items = $user->memberships()->where('membership_status', 'active')
+        $items = $user->memberships()->current()
             ->join('chapters', 'chapters.id', '=', 'chapter_memberships.chapter_id')
             ->whereIn('chapters.status', ChapterAuthority::AVAILABLE_CHAPTERS)
             ->orderBy('chapters.created_at')->orderBy('chapters.id')->select('chapter_memberships.*')->sharedLock()

@@ -14,6 +14,8 @@ class PolicyRecord extends Model
 
     protected $guarded = [];
 
+    protected $dateFormat = 'Y-m-d H:i:s.u';
+
     protected $casts = [
         'rules_json' => 'array',
         'effective_from' => 'datetime',
@@ -30,7 +32,7 @@ class PolicyRecord extends Model
         $digest = CanonicalJson::sha256($this->rules_json);
 
         return AuditLog::where('chapter_id', $this->chapter_id)
-            ->where('action', 'controlled:recordPolicy')->where('entity_id', $this->id)
+            ->where('action', 'controlled:recordPolicy')->where('entity_id', $this->aggregate_id ?? $this->id)
             ->orderByDesc('created_at')->orderByDesc('id')->sharedLock()->get()
             ->first(fn (AuditLog $audit) => ($audit->details['version'] ?? null) === (int) $this->policy_version
                 && ($audit->details['value_sha256'] ?? null) === $digest)?->details ?? [];

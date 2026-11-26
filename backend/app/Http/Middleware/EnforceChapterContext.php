@@ -57,7 +57,7 @@ class EnforceChapterContext
 
         $membership = ChapterMembership::where('chapter_id', $chapter->id)
             ->where('user_id', $user->id)
-            ->where('membership_status', 'active')
+            ->current()
             ->first();
 
         if (! $membership) {

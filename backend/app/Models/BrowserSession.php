@@ -57,6 +57,15 @@ class BrowserSession extends Model
         return $token;
     }
 
+    public static function forToken(#[\SensitiveParameter] mixed $token, bool $includeExpired = false): ?self
+    {
+        return is_string($token) && preg_match('/\A[a-f0-9]{64}\z/', $token)
+            ? self::where('token_hash', hash('sha256', $token))
+                ->when(! $includeExpired, fn ($query) => $query->where('expires_at', '>', now()))
+                ->lockForUpdate()->first()
+            : null;
+    }
+
     public function currentUser(bool $write = false): ?User
     {
         if (! $this->user_id) {
@@ -135,7 +144,7 @@ class BrowserSession extends Model
 
     private function requiresMfa(User $user): bool
     {
-        $now = now();
+        $now = now()->format('Y-m-d H:i:s.u');
 
         return DB::table('provider_role_grants')
             ->where('user_id', $user->id)
@@ -143,14 +152,18 @@ class BrowserSession extends Model
             ->where('starts_at', '<=', $now)
             ->whereNull('revoked_at')
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', $now))
-            ->sharedLock()->first(['id']) !== null || $user->dutyGrants()
-            ->whereIn('duty_code', ['CHAPTER_HEAD', 'FINANCE', 'RF_APPROVER', 'SALES_REVIEWER', 'BUDGET_APPROVER'])
-            ->where('status', 'active')
-            ->where(fn (Builder $query) => $query->whereNull('valid_from')->orWhere('valid_from', '<=', $now))
-            ->where(fn (Builder $query) => $query->whereNull('valid_until')->orWhere('valid_until', '>', $now))
-            ->whereIn('chapter_id', $user->memberships()->where('membership_status', 'active')
-                ->whereHas('chapter', fn (Builder $query) => $query->whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS))
-                ->select('chapter_id'))
-            ->sharedLock()->first(['id']) !== null;
+            ->sharedLock()->first(['id']) !== null
+            || ChapterAuthority::setupEntitlements($user->id)
+                ->whereIn('chapter_id', Chapter::whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS)->select('id'))
+                ->sharedLock()->first(['id']) !== null
+            || $user->dutyGrants()
+                ->whereIn('duty_code', ['CHAPTER_HEAD', 'FINANCE', 'RF_APPROVER', 'SALES_REVIEWER', 'BUDGET_APPROVER'])
+                ->where('status', 'active')
+                ->where(fn (Builder $query) => $query->whereNull('valid_from')->orWhere('valid_from', '<=', $now))
+                ->where(fn (Builder $query) => $query->whereNull('valid_until')->orWhere('valid_until', '>', $now))
+                ->whereIn('chapter_id', $user->memberships()->current()
+                    ->whereHas('chapter', fn (Builder $query) => $query->whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS))
+                    ->select('chapter_id'))
+                ->sharedLock()->first(['id']) !== null;
     }
 }

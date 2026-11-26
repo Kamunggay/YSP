@@ -9,7 +9,9 @@ use App\Models\DutyGrant;
 use App\Models\InternalRf;
 use App\Models\PolicyRecord;
 use App\Models\User;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 final class ChapterAuthority
 {
@@ -57,10 +59,19 @@ final class ChapterAuthority
         private readonly array $alternateScopes,
     ) {}
 
+    public static function setupEntitlements(string $userId): Builder
+    {
+        $now = now()->format('Y-m-d H:i:s.u');
+
+        return DB::table('chapter_setup_entitlements')->where('user_id', $userId)
+            ->where('starts_at', '<=', $now)->whereNull('revoked_at')
+            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', $now));
+    }
+
     public static function forChapter(User $user, string $chapterId): self
     {
         $membership = $user->memberships()->where('chapter_id', $chapterId)
-            ->where('membership_status', 'active')->sharedLock()->first();
+            ->current()->sharedLock()->first();
         $chapter = Chapter::whereKey($chapterId)->whereIn('status', self::AVAILABLE_CHAPTERS)->sharedLock()->first();
         if (! $membership || ! $chapter) {
             throw new ContractException(404, 'chapter_not_found', 'Chapter not found.');
@@ -91,7 +102,7 @@ final class ChapterAuthority
 
             if (! self::current($grant, $now) || ! $grant->valid_from || ! $grant->valid_until || ! $grant->scope
                 || ! $primary || ! in_array($primary->status, ['active', 'enabled'], true)
-                || $membership?->membership_status !== 'active'
+                || ! $membership?->isCurrent()
                 || ! $sources->contains(fn (DutyGrant $source) => self::current($source, $now)
                     && self::covers($source, $grant->scope['unit_id'] ?? null, $grant->scope['limit_php'] ?? null))) {
                 return false;
@@ -157,7 +168,7 @@ final class ChapterAuthority
             return null;
         }
 
-        $decision = "rf_approval_route:{$policy->id}:{$rf->requesting_unit_id}";
+        $decision = 'rf_approval_route:'.($policy->aggregate_id ?? $policy->id).':'.$rf->requesting_unit_id;
 
         return $this->grants->first(fn (DutyGrant $grant) => $grant->duty_code === 'RF_APPROVER'
             && self::covers($grant, $rf->requesting_unit_id)
