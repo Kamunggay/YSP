@@ -96,6 +96,10 @@ class DomainNotificationOutboxService
             'created_at' => $committedAt,
         ]);
 
+        if ($eventName === 'stage1.paper-evidence.changed.v1') {
+            return $outbox;
+        }
+
         $outboxId = $outbox->id;
         DB::afterCommit(function () use ($outboxId): void {
             DomainNotificationOutbox::where('id', $outboxId)

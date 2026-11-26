@@ -8,10 +8,12 @@ use App\Http\Middleware\EnforceDutyAuthority;
 use App\Http\Middleware\EnforceStageOneAction;
 use App\Http\Middleware\EnforceStageOneChapter;
 use App\Http\Middleware\IdempotentOperation;
+use App\Http\Requests\PaperEvidenceUpload;
 use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -34,6 +36,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontReport(ContractException::class);
+        $exceptions->render(function (PostTooLargeException $exception, Request $request) {
+            if ($request->isMethod('POST') && $request->is('api/v1/chapters/*/evidence')) {
+                return BrowserSessionHttp::noStore(EnforceBrowserAuthority::error(PaperEvidenceUpload::tooLarge()));
+            }
+        });
         $exceptions->render(function (ContractException $exception, Request $request) {
             if ($request->user() instanceof User) {
                 return BrowserSessionHttp::noStore(EnforceBrowserAuthority::error($exception));

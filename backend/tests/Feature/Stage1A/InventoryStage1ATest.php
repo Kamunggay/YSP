@@ -9,12 +9,17 @@ use App\Models\ChapterMembership;
 use App\Models\DutyGrant;
 use App\Models\OpeningCount;
 use App\Models\OpeningRm;
+use App\Models\StockHold;
 use App\Models\User;
 use App\Models\UserMfaCredential;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
+use Mockery;
 use Tests\TestCase;
 
 class InventoryStage1ATest extends TestCase
@@ -192,39 +197,73 @@ class InventoryStage1ATest extends TestCase
 
     public function test_evidence_upload_computing_authoritative_sha256_digest(): void
     {
-        $rawBytes = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF";
+        $rawBytes = $this->paperPdf();
         $expectedSha256 = hash('sha256', $rawBytes);
-
-        $uploadedFile = UploadedFile::fake()->createWithContent('receiving_receipt.pdf', $rawBytes);
-
-        $officer = User::findOrFail($this->userId);
-        $officer->dutyGrants()->create(['chapter_id' => $this->chapterId, 'duty_code' => 'RECEIVING']);
-        $ipc = OpeningCount::create(['chapter_id' => $this->chapterId, 'created_by' => $officer->id]);
-        $rm = OpeningRm::create(['chapter_id' => $this->chapterId, 'ipc_id' => $ipc->id]);
+        $rm = $this->evidenceDraft();
+        $key = (string) Str::uuid();
+        $image = imagecreatetruecolor(1, 1);
+        ob_start();
+        imagepng($image);
+        $png = ob_get_clean();
+        ob_start();
+        imagejpeg($image);
+        $jpeg = ob_get_clean();
+        $files = [['application/pdf', $rawBytes], ['image/png', $png], ['image/jpeg', $jpeg]];
+        $this->asOfficer($this->userId);
 
         // Upload
-        $response = $this->asOfficer($this->userId)
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence", [
-                'purpose' => 'opening_receipt',
-                'record_id' => $rm->id,
-                'attachments' => [$uploadedFile],
-            ]);
+        $response = $this->uploadPaper($rm, $key, $files);
 
-        $response->assertStatus(201)
+        $this->assertSame(201, $response->status(), $response->getContent());
+        $response->assertHeader('X-Action-Replayed', 'false')
+            ->assertHeader('Cache-Control', 'no-store')
             ->assertJsonPath('data.technical_state', 'ready')
             ->assertJsonPath('data.attachments.0.sha256', $expectedSha256)
-            ->assertJsonPath('data.attachments.0.media_type', 'application/pdf');
+            ->assertJsonPath('data.attachments.0.media_type', 'application/pdf')
+            ->assertJsonPath('data.attachments.1.media_type', 'image/png')
+            ->assertJsonPath('data.attachments.1.position', 2)
+            ->assertJsonPath('data.attachments.2.media_type', 'image/jpeg')
+            ->assertJsonPath('data.attachments.2.position', 3);
 
         $evidenceId = $response->json('data.evidence_id');
         $versionId = $response->json('data.version_id');
         $attachmentId = $response->json('data.attachments.0.attachment_id');
+        $this->assertMatchesRegularExpression('/\.\d{6}Z$/', $response->json('data.uploaded_at'));
+
+        $rm->update(['status' => 'POSTED']);
+        $this->uploadPaper($rm, $key, $files)->assertStatus(201)
+            ->assertHeader('X-Action-Replayed', 'true')->assertExactJson($response->json());
+        $this->uploadPaper($rm, $key, array_reverse($files))->assertConflict()
+            ->assertJsonPath('error.code', 'action_key_conflict');
+        $otherDraft = StockHold::create([
+            'chapter_id' => $this->chapterId, 'reason_code' => 'damaged', 'reason' => 'Synthetic hold.',
+            'placed_by_user_id' => $this->userId,
+        ]);
+        $this->uploadPaper($otherDraft, $key, $files)->assertConflict()
+            ->assertJsonPath('error.code', 'action_key_conflict');
+        $this->uploadPaper($rm, (string) Str::uuid(), $files)->assertConflict()
+            ->assertJsonPath('error.code', 'target_locked');
+        $rm->update(['status' => 'DRAFT']);
+        $this->assertDatabaseCount('evidence_records', 1);
+        $this->assertDatabaseHas('action_receipts', ['key' => $key, 'operation' => 'uploadPaperEvidence', 'user_id' => $this->userId]);
+        $this->assertDatabaseCount('domain_notification_outbox', 1);
+        $this->assertDatabaseHas('domain_notification_outbox', [
+            'event_name' => 'stage1.paper-evidence.changed.v1', 'resource_id' => $evidenceId, 'status' => 'pending',
+        ]);
 
         // Read single evidence
         $readResponse = $this->asOfficer($this->userId)
-            ->getJson("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}");
+            ->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}");
         $readResponse->assertStatus(200)
             ->assertJsonPath('data.evidence_id', $evidenceId)
-            ->assertJsonPath('data.current_version.version', 1);
+            ->assertJsonPath('data.current_version', $response->json('data'));
+        $versionUrl = "/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/{$versionId}";
+        $this->get($versionUrl)->assertOk()->assertExactJson($response->json());
+        $pngId = $response->json('data.attachments.1.attachment_id');
+        $content = $this->get("{$versionUrl}/attachments/{$pngId}/content", ['Range' => 'bytes=0-1']);
+        $content->assertOk()->assertHeader('Content-Disposition', "attachment; filename=\"{$pngId}.png\"")
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->assertSame($png, $content->getContent());
 
         // List versions
         $versionsResponse = $this->asOfficer($this->userId)
@@ -256,6 +295,147 @@ class InventoryStage1ATest extends TestCase
         $contentResponse->assertStatus(200)
             ->assertHeader('Content-Type', 'application/pdf');
         $this->assertEquals($rawBytes, $contentResponse->getContent());
+    }
+
+    public function test_evidence_rejects_invalid_sets_without_publishing(): void
+    {
+        $rm = $this->evidenceDraft();
+        $key = (string) Str::uuid();
+        $this->asOfficer($this->userId);
+        $valid = ['application/pdf', $this->paperPdf()];
+        foreach ([
+            [['image/png', $valid[1]], 'content_mismatch'],
+            [['application/pdf', "%PDF-1.4\n%%EOF\n"], 'malformed_content'],
+            [['application/pdf', $this->paperPdf(' /OpenAction << /S /JavaScript /JS (example) >>')], 'unsafe_content'],
+            [['application/pdf', ''], 'empty_file'],
+        ] as [$file, $code]) {
+            $this->uploadPaper($rm, $key, [$valid, $file])->assertUnprocessable()
+                ->assertJsonPath('error.fields.0.pointer', '/attachments/1')->assertJsonPath('error.fields.0.code', $code);
+        }
+        $this->uploadPaper($rm, $key, [$valid, ['application/pdf', str_repeat('x', 10485761)]])
+            ->assertStatus(413)->assertJsonPath('error.code', 'evidence_too_large');
+        $this->uploadPaper($rm, $key, [$valid], extra: 'purpose')->assertUnprocessable()
+            ->assertJsonPath('error.fields.0.pointer', '/purpose');
+        $this->uploadPaper($rm, $key, [$valid], finished: false)->assertBadRequest()
+            ->assertJsonPath('error.code', 'malformed_request');
+        $this->uploadPaper($rm, 'invalid-key', [$valid])->assertBadRequest()
+            ->assertJsonPath('error.code', 'malformed_request');
+        $this->postJson("/api/v1/chapters/{$this->chapterId}/evidence", [], ['X-Action-Key' => $key])
+            ->assertStatus(415)->assertJsonPath('error.code', 'unsupported_media_type');
+        $this->assertDatabaseCount('evidence_records', 0);
+        $this->assertDatabaseCount('action_receipts', 0);
+        $this->assertDatabaseCount('domain_notification_outbox', 0);
+    }
+
+    public function test_evidence_storage_failure_rolls_back_and_prunes_only_unpublished_bytes(): void
+    {
+        $rm = $this->evidenceDraft();
+        $file = ['application/pdf', $this->paperPdf()];
+        $this->asOfficer($this->userId);
+        $accepted = $this->uploadPaper($rm, (string) Str::uuid(), [$file])->assertCreated()->json('data');
+
+        $disk = Storage::disk('evidence');
+        $failingDisk = Mockery::mock(FilesystemAdapter::class);
+        $failingDisk->shouldReceive('put')->once()->ordered()->andReturnUsing($disk->put(...));
+        $failingDisk->shouldReceive('put')->once()->ordered()->andReturnFalse();
+        $failingDisk->shouldReceive('path')->andReturnUsing($disk->path(...));
+        Storage::set('evidence', $failingDisk);
+
+        $key = (string) Str::uuid();
+        $this->uploadPaper($rm, $key, [$file, $file])->assertServiceUnavailable()
+            ->assertJsonPath('error.code', 'evidence_unavailable');
+        Storage::set('evidence', $disk);
+        $this->assertDatabaseCount('evidence_records', 1);
+        $this->assertDatabaseCount('evidence_blobs', 1);
+        $this->assertDatabaseMissing('action_receipts', ['key' => $key]);
+        $this->assertDatabaseCount('domain_notification_outbox', 1);
+        $this->assertCount(2, $disk->allFiles());
+
+        $this->artisan('evidence:prune-unpublished')->assertExitCode(0);
+        $this->assertCount(1, $disk->allFiles());
+        $attachmentId = $accepted['attachments'][0]['attachment_id'];
+        $this->get("/api/v1/chapters/{$this->chapterId}/evidence/{$accepted['evidence_id']}/versions/{$accepted['version_id']}/attachments/{$attachmentId}/content")
+            ->assertOk()->assertContent($file[1]);
+        $this->uploadPaper($rm, $key, [$file, $file])->assertCreated();
+    }
+
+    public function test_evidence_rechecks_record_access_and_object_integrity(): void
+    {
+        $rm = $this->evidenceDraft();
+        $key = (string) Str::uuid();
+        $files = [['application/pdf', $this->paperPdf()]];
+        $result = $this->asOfficer($this->userId)->uploadPaper($rm, $key, $files)->assertCreated()->json('data');
+        $path = "/api/v1/chapters/{$this->chapterId}/evidence/{$result['evidence_id']}";
+        $attachmentId = $result['attachments'][0]['attachment_id'];
+        $download = "{$path}/versions/{$result['version_id']}/attachments/{$attachmentId}/content";
+        $this->get("{$path}?unexpected=1")->assertBadRequest()->assertJsonPath('error.code', 'malformed_request');
+
+        $disk = Storage::disk('evidence');
+        $objectPath = $disk->allFiles()[0];
+        $disk->put($objectPath, 'Changed object');
+        $this->get($path)->assertOk()->assertJsonPath('data.current_version.invalid_reason', 'integrity_failed');
+        $this->get($download)->assertServiceUnavailable()->assertJsonPath('error.code', 'evidence_unavailable');
+        $disk->delete($objectPath);
+        $this->get($path)->assertOk()->assertJsonPath('data.current_version.invalid_reason', 'object_missing');
+
+        $this->call('GET', $download)->assertUnauthorized()->assertJsonPath('error.code', 'unauthenticated');
+        DutyGrant::where('user_id', $this->userId)->where('duty_code', 'RECEIVING')->delete();
+        $this->uploadPaper($rm, $key, $files)->assertNotFound()->assertJsonPath('error.code', 'evidence_not_found');
+        DutyGrant::where('user_id', $this->userId)->where('duty_code', 'INVENTORY')->update([
+            'scope' => json_encode(['unit_id' => (string) Str::uuid()]),
+        ]);
+        $this->get($download)->assertNotFound()->assertJsonPath('error.code', 'evidence_not_found');
+
+        ChapterMembership::where('user_id', $this->userId)->update(['membership_status' => 'revoked']);
+        $this->get($download)->assertNotFound()->assertJsonPath('error.code', 'chapter_not_found');
+        $this->uploadPaper($rm, $key, $files)->assertNotFound()->assertJsonPath('error.code', 'chapter_not_found');
+    }
+
+    private function evidenceDraft(): OpeningRm
+    {
+        Storage::fake('evidence');
+        $officer = User::findOrFail($this->userId);
+        $officer->dutyGrants()->create(['chapter_id' => $this->chapterId, 'duty_code' => 'RECEIVING']);
+        $ipc = OpeningCount::create(['chapter_id' => $this->chapterId, 'created_by' => $officer->id]);
+
+        return OpeningRm::create(['chapter_id' => $this->chapterId, 'ipc_id' => $ipc->id]);
+    }
+
+    private function uploadPaper(OpeningRm|StockHold $target, string $key, array $files, ?string $extra = null, bool $finished = true): TestResponse
+    {
+        $boundary = (string) Str::uuid();
+        $part = fn (string $name, string $value, string $headers = '') => "--{$boundary}\r\nContent-Disposition: form-data; name=\"{$name}\"{$headers}\r\n\r\n{$value}\r\n";
+        $body = $part('purpose', $target instanceof OpeningRm ? 'opening_receipt' : 'hold_clearance').$part('record_id', $target->id);
+        if ($extra !== null) {
+            $body .= $part($extra, 'opening_receipt');
+        }
+        foreach ($files as [$mime, $bytes]) {
+            $body .= $part('attachments', $bytes, "; filename=\"scan-{$boundary}\"\r\nContent-Type: {$mime}");
+        }
+
+        return $this->call('POST', "/api/v1/chapters/{$this->chapterId}/evidence",
+            cookies: $this->prepareCookiesForRequest(),
+            server: $this->transformHeadersToServerVars(['X-Action-Key' => $key, 'Accept' => 'application/json'])
+                + ['CONTENT_TYPE' => "multipart/form-data; boundary={$boundary}"],
+            content: $body.($finished ? "--{$boundary}--\r\n" : ''),
+        );
+    }
+
+    private function paperPdf(string $catalog = ''): string
+    {
+        $pdf = "%PDF-1.4\n";
+        $offsets = [];
+        foreach ([
+            "<< /Type /Catalog /Pages 2 0 R{$catalog} >>",
+            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 72 72] >>',
+        ] as $i => $object) {
+            $offsets[] = sprintf("%010d 00000 n \n", strlen($pdf));
+            $pdf .= ($i + 1)." 0 obj\n{$object}\nendobj\n";
+        }
+        $xref = strlen($pdf);
+
+        return $pdf."xref\n0 4\n0000000000 65535 f \n".implode('', $offsets)."trailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n{$xref}\n%%EOF\n";
     }
 
     public function test_catalogue_crud_version_increments_and_history_capture(): void

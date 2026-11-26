@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Exceptions\ContractException;
+use App\Http\Requests\AuthInput;
+use App\Http\Requests\PaperEvidenceUpload;
 use App\Models\ActualIssue;
 use App\Models\EvidenceRecord;
 use App\Models\InternalRf;
@@ -29,7 +31,7 @@ class EnforceStageOneAction
         }
 
         if ($request->is('*/evidence', '*/evidence/*')) {
-            $this->authorizeEvidenceTarget($request, $authority);
+            $this->authorizeEvidenceTarget($request, $authority, $actions);
 
             return $this->response($request, $next);
         }
@@ -91,48 +93,65 @@ class EnforceStageOneAction
         return $this->response($request, $next);
     }
 
-    private function authorizeEvidenceTarget(Request $request, ChapterAuthority $authority): void
+    private function authorizeEvidenceTarget(Request $request, ChapterAuthority $authority, array $actions): void
     {
-        $chapterId = $authority->chapter->id;
-        $evidence = $request->route('evidence_id')
-            ? EvidenceRecord::where('chapter_id', $chapterId)->whereKey($request->route('evidence_id'))->sharedLock()->first()
-            : null;
-        $purpose = $evidence?->purpose ?? $request->input('purpose');
-        $target = $evidence?->record_id ?? $request->input('record_id');
-        $editing = ! $request->isMethodSafe();
-        if ($editing && ! $request->route('evidence_id') && (! is_string($target)
-            || ! in_array($purpose, ['opening_receipt', 'hold_clearance', 'actual_issue'], true))) {
-            $message = 'Select a valid evidence target.';
-            throw new ContractException(422, 'invalid_evidence', $message, [
-                'error' => ['code' => 'invalid_evidence', 'message' => $message, 'fields' => [
-                    ['pointer' => '/record_id', 'code' => 'invalid_target', 'message' => $message],
-                ]],
-            ]);
+        $method = $request->route()->getActionMethod();
+        foreach ($request->route()->parameters() as $id) {
+            if (! preg_match(AuthInput::UUID, $id)) {
+                throw PaperEvidenceUpload::malformed();
+            }
+        }
+        if (in_array($method, ['show', 'showVersion', 'retrieveAttachment'], true)
+            && ($request->getQueryString() !== null || $request->getContent() !== '')) {
+            throw PaperEvidenceUpload::malformed();
         }
 
-        $allowed = false;
+        $chapterId = $authority->chapter->id;
+        $upload = $method === 'upload' ? PaperEvidenceUpload::parse($request) : null;
+        $evidence = $upload ? null : EvidenceRecord::where('chapter_id', $chapterId)
+            ->whereKey($request->route('evidence_id'))->sharedLock()->first();
+        $purpose = $upload?->purpose ?? $evidence?->purpose;
+        $targetId = $upload?->recordId ?? $evidence?->record_id;
+        $editing = ! $request->isMethodSafe();
         $unit = null;
+        $target = null;
 
-        if (is_string($target) && (! $request->route('evidence_id') || $evidence)) {
+        if ($targetId !== null) {
+            $model = match ($purpose) {
+                'opening_receipt' => OpeningRm::class,
+                'hold_clearance' => StockHold::class,
+                'actual_issue' => ActualIssue::class,
+                default => null,
+            };
+            $query = $model === null ? null : $model::where('chapter_id', $chapterId)->whereKey($targetId);
             $allowed = match ($purpose) {
                 'opening_receipt' => $authority->allows($editing ? 'opening_rm.prepare' : 'opening_rm.read')
-                    && OpeningRm::where('chapter_id', $chapterId)->whereKey($target)->exists(),
+                    && $query !== null,
                 'hold_clearance' => $authority->allows($editing ? 'hold.clear' : 'stock.read')
-                    && StockHold::where('chapter_id', $chapterId)->whereKey($target)->exists(),
+                    && $query !== null,
                 default => false,
             };
             if ($purpose === 'actual_issue') {
-                $issue = ActualIssue::where('chapter_id', $chapterId)->whereKey($target)->first();
-                $rf = $issue?->rf()->where('chapter_id', $chapterId)->first();
+                $rfId = (clone $query)->value('requisition_id');
+                $rf = $rfId ? InternalRf::where('chapter_id', $chapterId)->whereKey($rfId)->sharedLock()->first() : null;
                 $unit = $rf?->requesting_unit_id;
-                $allowed = $rf && $authority->canReadRf($rf) && $authority->allows('issue.prepare', $unit);
+                $allowed = $rf && $authority->canReadRf($rf)
+                    && $authority->allows('issue.prepare', $unit) && $authority->allows('stock.read', $unit);
+                $query->where('requisition_id', $rfId);
+            }
+            if ($allowed) {
+                $target = ($upload ? $query->lockForUpdate() : $query->sharedLock())->first();
             }
         }
 
-        if (! $allowed || ! $authority->allows($editing ? 'evidence.prepare' : 'evidence.read', $unit)
-            || ($request->route('version_id') && ! $authority->allows('history.read', $unit))) {
+        if (! $target || ! $authority->allows($editing ? 'evidence.prepare' : 'evidence.read', $unit)
+            || (in_array('history.read', $actions, true) && ! $authority->allows('history.read', $unit))) {
             throw new ContractException(404, 'evidence_not_found', 'Evidence not found.');
         }
+
+        $request->attributes->set(EvidenceRecord::class, $evidence);
+        $request->attributes->set(PaperEvidenceUpload::class, $upload);
+        $request->attributes->set('paper_evidence_target', $target);
     }
 
     private function response(Request $request, Closure $next): Response

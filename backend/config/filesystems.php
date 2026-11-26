@@ -42,7 +42,7 @@ return [
             'driver' => 'local',
             'root' => storage_path('app/evidence'),
             'visibility' => 'private',
-            'throw' => false,
+            'throw' => true,
             'report' => false,
         ],
 

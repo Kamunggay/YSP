@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Exceptions\ContractException;
 use App\Http\Requests\AuthInput;
+use App\Http\Requests\PaperEvidenceUpload;
 use App\Services\Authority\ChapterAuthority;
 use Closure;
 use Illuminate\Http\Request;
@@ -15,6 +16,9 @@ class EnforceStageOneChapter
     {
         $chapterId = $request->route('chapter_id');
         if (! preg_match(AuthInput::UUID, $chapterId)) {
+            if ($request->is('*/evidence', '*/evidence/*')) {
+                throw PaperEvidenceUpload::malformed();
+            }
             throw new ContractException(400, 'invalid_selector', 'Invalid chapter selector.');
         }
 

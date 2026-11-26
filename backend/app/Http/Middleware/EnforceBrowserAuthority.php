@@ -18,12 +18,13 @@ class EnforceBrowserAuthority
     public function handle(Request $request, Closure $next, ?string $budget = null): Response
     {
         $ipDelay = null;
+        $namespace = $budget === 'evidence' ? 'paper-evidence' : 'chapter-authority';
         try {
             $ipDelay = $budget ? BrowserSessionHttp::attempt(
-                'ip:'.hash('sha256', (string) $request->ip()), 60, namespace: 'chapter-authority'
+                'ip:'.hash('sha256', (string) $request->ip()), 60, namespace: $namespace
             ) : null;
 
-            $response = DB::transaction(function () use ($request, $next, $budget, $ipDelay) {
+            $response = DB::transaction(function () use ($request, $next, $budget, $ipDelay, $namespace) {
                 $unsafe = ! $request->isMethodSafe();
 
                 if ($unsafe && (count($request->headers->all('Origin')) !== 1 || ! BrowserSessionHttp::originAllowed($request, true))) {
@@ -38,7 +39,7 @@ class EnforceBrowserAuthority
 
                 $user = $session?->expires_at?->isFuture() ? $session->currentUser() : null;
                 $accountDelay = $budget && $user ? BrowserSessionHttp::attempt(
-                    'account:'.$user->id, 60, namespace: 'chapter-authority'
+                    'account:'.$user->id, 60, namespace: $namespace
                 ) : null;
 
                 if ($retry = max($ipDelay, $accountDelay)) {
@@ -71,7 +72,7 @@ class EnforceBrowserAuthority
                 ? self::error(new ContractException(429, 'throttled', 'Try again after the indicated delay.'))->header('Retry-After', (string) $ipDelay)
                 : self::error($denied);
         } catch (PDOException|LockTimeoutException) {
-            $response = self::error(new ContractException(503, 'unavailable', 'Authority is temporarily unavailable.'));
+            $response = self::error(new ContractException(503, $budget === 'evidence' ? 'service_unavailable' : 'unavailable', 'Authority is temporarily unavailable.'));
         }
 
         return BrowserSessionHttp::noStore($response);

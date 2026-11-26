@@ -2,11 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ContractException;
+use App\Http\Requests\PaperEvidenceUpload;
+use App\Models\ActionReceipt;
+use App\Models\AuditLog;
 use App\Models\Chapter;
 use App\Models\EvidenceBinding;
 use App\Models\EvidenceBlob;
 use App\Models\EvidenceRecord;
+use App\Services\Evidence\PaperEvidenceContent;
+use App\Services\Evidence\PaperEvidenceStore;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
+use App\Services\Notifications\DomainNotificationOutboxService;
+use App\Services\Shared\CanonicalJson;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -97,230 +107,108 @@ class PaperEvidenceController extends Controller
         return null;
     }
 
-    public function upload(Request $request, string $chapter_id): JsonResponse
-    {
-        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
-        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
-
-        $purpose = $request->input('purpose');
-        $recordId = $request->input('record_id');
-
-        if (! $purpose || ! $recordId) {
-            return response()->json([
-                'error' => [
-                    'code' => 'invalid_input',
-                    'message' => 'Purpose and record_id are required.',
-                ],
-            ], 422);
-        }
-
-        $files = $request->file('attachments');
-        if (! $files) {
-            // Check if uploaded as single attachment or raw content
-            $file = $request->file('attachment');
-            $files = $file ? [$file] : [];
-        } elseif (! is_array($files)) {
-            $files = [$files];
-        }
-
-        if (empty($files)) {
-            return response()->json([
-                'error' => [
-                    'code' => 'invalid_input',
-                    'message' => 'At least one attachment file is required.',
-                ],
-            ], 422);
-        }
-
-        // Strict file validation across all attachments
-        foreach ($files as $file) {
-            if ($err = $this->validateFile($file)) {
-                return $err;
-            }
-        }
-
-        $userId = $request->user()->id;
-        $evidenceId = (string) Str::uuid();
-        $versionId = (string) Str::uuid();
-
-        $evidenceRecord = EvidenceRecord::create([
-            'id' => $evidenceId,
-            'chapter_id' => $targetChapterId,
+    public function upload(
+        Request $request,
+        string $chapter_id,
+        PaperEvidenceContent $content,
+        PaperEvidenceStore $store,
+        DomainNotificationOutboxService $outbox,
+    ): JsonResponse {
+        /** @var PaperEvidenceUpload $upload */
+        $upload = $request->attributes->get(PaperEvidenceUpload::class);
+        $actor = $request->user()->id;
+        $projectionTime = now('UTC')->startOfSecond();
+        $record = new EvidenceRecord([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $chapter_id,
             'evidence_type' => 'paper',
-            'purpose' => $purpose,
-            'record_id' => $recordId,
+            'purpose' => $upload->purpose,
+            'record_id' => $upload->recordId,
             'technical_state' => 'ready',
-            'created_by' => $userId,
+            'created_by' => $actor,
+            'created_at' => $projectionTime,
         ]);
-
-        $attachmentsData = [];
-        $position = 1;
-
-        foreach ($files as $file) {
-            $finfo = new \finfo(FILEINFO_MIME_TYPE);
-            $mimeType = $finfo->file($file->getRealPath()) ?: $file->getMimeType();
-
-            $rawContent = file_get_contents($file->getRealPath());
-            $sha256 = hash('sha256', $rawContent);
-            $fileSize = strlen($rawContent);
-            $attachmentId = (string) Str::uuid();
-
-            $path = "evidence/{$targetChapterId}/{$evidenceId}/{$versionId}/{$attachmentId}";
-            Storage::disk('evidence')->put($path, $rawContent);
-
-            EvidenceBlob::create([
-                'id' => $attachmentId,
-                'evidence_id' => $evidenceId,
-                'version' => 1,
-                'sha256_hash' => $sha256,
-                'mime_type' => $mimeType,
-                'file_size' => $fileSize,
-                'payload_path' => $path,
-                'raw_content' => $rawContent,
-                'created_by' => $userId,
-            ]);
-
-            $attachmentsData[] = [
-                'attachment_id' => $attachmentId,
-                'position' => $position++,
-                'media_type' => $mimeType,
-                'byte_length' => $fileSize,
-                'sha256' => $sha256,
-            ];
-        }
-
-        return response()->json([
-            'data' => [
-                'evidence_id' => $evidenceId,
-                'chapter_id' => $targetChapterId,
-                'target' => [
-                    'purpose' => $purpose,
-                    'record_id' => $recordId,
-                ],
+        $versionId = (string) Str::uuid();
+        $blobs = new Collection;
+        $attachmentIdentity = [];
+        foreach ($upload->files as $index => $file) {
+            $metadata = $content->validate($file['bytes'], $file['media_type'], $index);
+            $attachmentIdentity[] = $metadata;
+            $blobs->push(new EvidenceBlob([
+                'id' => (string) Str::uuid(),
                 'version_id' => $versionId,
                 'version' => 1,
-                'supersedes_version_id' => null,
-                'superseded_by_version_id' => null,
-                'technical_state' => 'ready',
-                'invalid_reason' => null,
-                'uploaded_by' => $userId,
-                'uploaded_at' => $evidenceRecord->created_at->toIso8601ZuluString(),
-                'replacement_reason' => null,
-                'attachments' => $attachmentsData,
-            ],
-        ], 201, ['Cache-Control' => 'no-store']);
-    }
-
-    public function show(string $chapter_id, string $evidence_id): JsonResponse
-    {
-        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
-        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
-
-        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)
-            ->where('chapter_id', $targetChapterId)
-            ->first();
-        if (! $evidenceRecord) {
-            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence not found.']], 404);
+                'position' => $index + 1,
+                'mime_type' => $metadata['media_type'],
+                'file_size' => $metadata['byte_length'],
+                'sha256_hash' => $metadata['sha256'],
+                'created_by' => $actor,
+                'created_at' => $projectionTime,
+            ]));
         }
 
-        $blobs = EvidenceBlob::where('evidence_id', $evidence_id)->orderBy('version', 'desc')->get();
-        if ($blobs->isEmpty()) {
-            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence version not found.']], 404);
-        }
-
-        $latestBlob = $blobs->first();
-        $latestVersionBlobs = $blobs->where('version', $latestBlob->version);
-
-        $attachments = [];
-        $pos = 1;
-        foreach ($latestVersionBlobs as $b) {
-            $attachments[] = [
-                'attachment_id' => $b->id,
-                'position' => $pos++,
-                'media_type' => $b->mime_type,
-                'byte_length' => (int) $b->file_size,
-                'sha256' => $b->sha256_hash,
-            ];
-        }
-
-        return response()->json([
-            'data' => [
-                'evidence_id' => $evidenceRecord->id,
-                'chapter_id' => $evidenceRecord->chapter_id,
-                'target' => [
-                    'purpose' => $evidenceRecord->purpose ?? 'actual_issue',
-                    'record_id' => $evidenceRecord->record_id,
-                ],
-                'current_version' => [
-                    'evidence_id' => $evidenceRecord->id,
-                    'chapter_id' => $evidenceRecord->chapter_id,
-                    'target' => [
-                        'purpose' => $evidenceRecord->purpose ?? 'actual_issue',
-                        'record_id' => $evidenceRecord->record_id,
-                    ],
-                    'version_id' => $latestBlob->id,
-                    'version' => (int) $latestBlob->version,
-                    'supersedes_version_id' => $latestBlob->supersedes_version_id,
-                    'superseded_by_version_id' => $latestBlob->superseded_by_version_id,
-                    'technical_state' => $evidenceRecord->technical_state,
-                    'invalid_reason' => $evidenceRecord->invalid_reason,
-                    'uploaded_by' => $latestBlob->created_by,
-                    'uploaded_at' => $latestBlob->created_at->toIso8601ZuluString(),
-                    'replacement_reason' => $latestBlob->replacement_reason,
-                    'attachments' => $attachments,
-                ],
-            ],
-        ]);
-    }
-
-    public function versions(string $chapter_id, string $evidence_id): JsonResponse
-    {
-        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
-        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
-
-        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)
-            ->where('chapter_id', $targetChapterId)
-            ->first();
-        if (! $evidenceRecord) {
-            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence not found.']], 404);
-        }
-
-        $blobs = EvidenceBlob::where('evidence_id', $evidence_id)->orderBy('version', 'asc')->get();
-        $versionsGrouped = $blobs->groupBy('version');
-
-        $data = [];
-        foreach ($versionsGrouped as $ver => $groupBlobs) {
-            $first = $groupBlobs->first();
-            $attachments = [];
-            $pos = 1;
-            foreach ($groupBlobs as $b) {
-                $attachments[] = [
-                    'attachment_id' => $b->id,
-                    'position' => $pos++,
-                    'media_type' => $b->mime_type,
-                    'byte_length' => (int) $b->file_size,
-                    'sha256' => $b->sha256_hash,
-                ];
+        $scope = ['chapter_id' => $chapter_id, 'user_id' => $actor, 'operation' => 'uploadPaperEvidence', 'key' => $upload->key];
+        $fingerprint = CanonicalJson::sha256(['target' => $this->target($record), 'attachments' => $attachmentIdentity]);
+        try {
+            $receipt = ActionReceipt::record($scope, $fingerprint, 201, ['data' => $this->version($record, $blobs)]);
+            if (! $receipt->wasRecentlyCreated) {
+                return response()->json($receipt->result, $receipt->status, ['X-Action-Replayed' => 'true']);
             }
 
-            $data[] = [
-                'evidence_id' => $evidenceRecord->id,
-                'chapter_id' => $evidenceRecord->chapter_id,
-                'target' => [
-                    'purpose' => $evidenceRecord->purpose ?? 'actual_issue',
-                    'record_id' => $evidenceRecord->record_id,
-                ],
-                'version_id' => $first->id,
-                'version' => (int) $ver,
-                'supersedes_version_id' => $first->supersedes_version_id,
-                'superseded_by_version_id' => $first->superseded_by_version_id,
-                'technical_state' => $evidenceRecord->technical_state,
-                'invalid_reason' => $evidenceRecord->invalid_reason,
-                'uploaded_by' => $first->created_by,
-                'uploaded_at' => $first->created_at->toIso8601ZuluString(),
-                'replacement_reason' => $first->replacement_reason,
-                'attachments' => $attachments,
-            ];
+            $target = $request->attributes->get('paper_evidence_target');
+            $editable = match ($upload->purpose) {
+                'opening_receipt' => in_array($target->status, ['DRAFT', 'INSPECTED', 'EVIDENCE_MATCHED'], true),
+                'hold_clearance' => $target->status === 'active',
+                'actual_issue' => in_array($target->status, ['prepared', 'acknowledged'], true),
+            };
+            if (! $editable) {
+                throw new ContractException(409, 'target_locked', 'The evidence target is no longer editable.');
+            }
+
+            foreach ($blobs as $index => $blob) {
+                $blob->payload_path = $store->store($actor, $blob->id, $upload->files[$index]['bytes'], $blob->sha256_hash);
+            }
+            $record->save();
+            $record->blobs()->saveMany($blobs);
+            AuditLog::create([
+                'chapter_id' => $chapter_id,
+                'user_id' => $actor,
+                'action' => 'uploadPaperEvidence',
+                'entity_type' => 'paper_evidence',
+                'entity_id' => $record->id,
+                'details' => ['version_id' => $versionId],
+            ]);
+            $outbox->recordIntent('stage1.paper-evidence.changed.v1', $chapter_id, $record->id, 1);
+        } catch (QueryException) {
+            throw PaperEvidenceContent::unavailable();
+        }
+
+        return response()->json($receipt->result, $receipt->status, ['X-Action-Replayed' => 'false']);
+    }
+
+    public function show(Request $request, PaperEvidenceStore $store): JsonResponse
+    {
+        $record = $request->attributes->get(EvidenceRecord::class);
+        $version = $record->blobs()->max('version');
+        $blobs = $this->versionBlobs($record, $version);
+        if ($blobs->isEmpty()) {
+            throw $this->notFound();
+        }
+
+        return response()->json(['data' => [
+            'evidence_id' => $record->id,
+            'chapter_id' => $record->chapter_id,
+            'target' => $this->target($record),
+            'current_version' => $this->version($record, $blobs, $this->checkVersion($blobs, $store)[1]),
+        ]]);
+    }
+
+    public function versions(Request $request, PaperEvidenceStore $store): JsonResponse
+    {
+        $record = $request->attributes->get(EvidenceRecord::class);
+        $data = [];
+        foreach ($record->blobs()->orderBy('version')->orderBy('position')->orderBy('id')->get()->groupBy('version') as $blobs) {
+            $data[] = $this->version($record, $blobs, $this->checkVersion($blobs, $store)[1]);
         }
 
         return response()->json(['data' => $data]);
@@ -360,7 +248,7 @@ class PaperEvidenceController extends Controller
 
         $latestBlob = EvidenceBlob::where('evidence_id', $evidence_id)->orderBy('version', 'desc')->first();
         $newVersion = $latestBlob ? $latestBlob->version + 1 : 1;
-        $prevVersionId = $latestBlob ? $latestBlob->id : null;
+        $prevVersionId = $latestBlob ? $this->versionId($evidenceRecord, $latestBlob) : null;
         $newVersionId = (string) Str::uuid();
 
         // Mark superseded
@@ -431,91 +319,125 @@ class PaperEvidenceController extends Controller
         ], 201, ['Cache-Control' => 'no-store']);
     }
 
-    public function showVersion(string $chapter_id, string $evidence_id, string $version_id): JsonResponse
+    public function showVersion(Request $request, string $chapter_id, string $evidence_id, string $version_id, PaperEvidenceStore $store): JsonResponse
     {
-        $chapter = Chapter::where('id', $chapter_id)->orWhere('code', $chapter_id)->first();
-        $targetChapterId = $chapter ? $chapter->id : $chapter_id;
+        $record = $request->attributes->get(EvidenceRecord::class);
+        $blobs = $this->findVersion($record, $version_id);
 
-        $evidenceRecord = EvidenceRecord::where('id', $evidence_id)
-            ->where('chapter_id', $targetChapterId)
-            ->first();
-        if (! $evidenceRecord) {
-            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence not found.']], 404);
+        return response()->json(['data' => $this->version($record, $blobs, $this->checkVersion($blobs, $store)[1])]);
+    }
+
+    public function retrieveAttachment(
+        Request $request,
+        string $chapter_id,
+        string $evidence_id,
+        string $version_id,
+        string $attachment_id,
+        PaperEvidenceStore $store,
+    ): Response {
+        $record = $request->attributes->get(EvidenceRecord::class);
+        $blobs = $this->findVersion($record, $version_id);
+        $attachment = $blobs->find($attachment_id);
+        if (! $attachment) {
+            throw $this->notFound();
+        }
+        [$bytes, $invalidReason] = $this->checkVersion($blobs, $store, $attachment_id);
+        if ($invalidReason !== null) {
+            throw PaperEvidenceContent::unavailable();
         }
 
-        $blob = EvidenceBlob::where('evidence_id', $evidence_id)
-            ->where(function ($q) use ($version_id) {
-                $q->where('id', $version_id)->orWhere('version', $version_id);
-            })
-            ->first();
+        $extension = PaperEvidenceContent::EXTENSIONS[$attachment->mime_type];
 
-        if (! $blob) {
-            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Evidence version not found.']], 404);
-        }
-
-        $allVersionBlobs = EvidenceBlob::where('evidence_id', $evidence_id)
-            ->where('version', $blob->version)
-            ->get();
-
-        $attachments = [];
-        $pos = 1;
-        foreach ($allVersionBlobs as $b) {
-            $attachments[] = [
-                'attachment_id' => $b->id,
-                'position' => $pos++,
-                'media_type' => $b->mime_type,
-                'byte_length' => (int) $b->file_size,
-                'sha256' => $b->sha256_hash,
-            ];
-        }
-
-        return response()->json([
-            'data' => [
-                'evidence_id' => $evidenceRecord->id,
-                'chapter_id' => $evidenceRecord->chapter_id,
-                'target' => [
-                    'purpose' => $evidenceRecord->purpose ?? 'actual_issue',
-                    'record_id' => $evidenceRecord->record_id,
-                ],
-                'version_id' => $blob->id,
-                'version' => (int) $blob->version,
-                'supersedes_version_id' => $blob->supersedes_version_id,
-                'superseded_by_version_id' => $blob->superseded_by_version_id,
-                'technical_state' => $evidenceRecord->technical_state,
-                'invalid_reason' => $evidenceRecord->invalid_reason,
-                'uploaded_by' => $blob->created_by,
-                'uploaded_at' => $blob->created_at->toIso8601ZuluString(),
-                'replacement_reason' => $blob->replacement_reason,
-                'attachments' => $attachments,
-            ],
+        return response($bytes, 200, [
+            'Content-Type' => $attachment->mime_type,
+            'Content-Disposition' => "attachment; filename=\"{$attachment_id}.{$extension}\"",
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 
-    public function retrieveAttachment(Request $request, string $chapter_id, string $evidence_id, string $version_id, string $attachment_id): Response|JsonResponse
+    /** @return Collection<int, EvidenceBlob> */
+    private function findVersion(EvidenceRecord $record, string $versionId): Collection
     {
-        $blob = EvidenceBlob::where('evidence_id', $evidence_id)->whereKey($attachment_id)->first();
-        if (! $blob || $blob->payload_path !== "evidence/{$chapter_id}/{$evidence_id}/{$version_id}/{$attachment_id}") {
-            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Attachment not found.']], 404);
+        $legacyDirectory = "evidence/{$record->chapter_id}/{$record->id}/{$versionId}/%";
+        $version = $record->blobs()->where(fn ($query) => $query->where('version_id', $versionId)
+            ->orWhere(fn ($query) => $query->whereNull('version_id')
+                ->where(fn ($query) => $query->where('payload_path', 'like', $legacyDirectory)->orWhere('id', $versionId))))
+            ->value('version');
+        $blobs = $this->versionBlobs($record, $version);
+        if ($blobs->isEmpty() || $this->versionId($record, $blobs->first()) !== $versionId) {
+            throw $this->notFound();
         }
 
-        $content = null;
-        if (Storage::disk('evidence')->exists($blob->payload_path)) {
-            $content = Storage::disk('evidence')->get($blob->payload_path);
-        } elseif ($blob->raw_content) {
-            $content = $blob->raw_content;
-        } elseif (Storage::disk('local')->exists($blob->payload_path)) {
-            $content = Storage::disk('local')->get($blob->payload_path);
+        return $blobs;
+    }
+
+    /** @return Collection<int, EvidenceBlob> */
+    private function versionBlobs(EvidenceRecord $record, ?int $version): Collection
+    {
+        return $record->blobs()->where('version', $version)->orderBy('position')->orderBy('id')->get();
+    }
+
+    /** @param Collection<int, EvidenceBlob> $blobs */
+    private function checkVersion(Collection $blobs, PaperEvidenceStore $store, ?string $attachmentId = null): array
+    {
+        $selected = null;
+        foreach ($blobs as $blob) {
+            [$bytes, $reason] = $store->check($blob);
+            if ($reason !== null) {
+                return [null, $reason];
+            }
+            if ($blob->id === $attachmentId) {
+                $selected = $bytes;
+            }
         }
 
-        if ($content === null) {
-            return response()->json(['error' => ['code' => 'not_found', 'message' => 'Attachment content not found.']], 404);
-        }
+        return [$selected, null];
+    }
 
-        return response($content, 200, [
-            'Content-Type' => $blob->mime_type,
-            'Content-Disposition' => "inline; filename=\"attachment-{$attachment_id}\"",
-            'Cache-Control' => 'no-store',
-        ]);
+    /** @param Collection<int, EvidenceBlob> $blobs */
+    private function version(EvidenceRecord $record, Collection $blobs, ?string $invalidReason = null): array
+    {
+        $first = $blobs->first();
+
+        return [
+            'evidence_id' => $record->id,
+            'chapter_id' => $record->chapter_id,
+            'target' => $this->target($record),
+            'version_id' => $this->versionId($record, $first),
+            'version' => (int) $first->version,
+            'supersedes_version_id' => $first->supersedes_version_id,
+            'superseded_by_version_id' => $first->superseded_by_version_id,
+            'technical_state' => $invalidReason === null ? 'ready' : 'invalid',
+            'invalid_reason' => $invalidReason,
+            'uploaded_by' => $first->created_by,
+            'uploaded_at' => $first->created_at->utc()->format('Y-m-d\TH:i:s.u\Z'),
+            'replacement_reason' => $first->replacement_reason,
+            'attachments' => $blobs->values()->map(fn (EvidenceBlob $blob, int $index) => [
+                'attachment_id' => $blob->id,
+                'position' => (int) ($blob->position ?? $index + 1),
+                'media_type' => $blob->mime_type,
+                'byte_length' => (int) $blob->file_size,
+                'sha256' => $blob->sha256_hash,
+            ])->all(),
+        ];
+    }
+
+    private function versionId(EvidenceRecord $record, EvidenceBlob $blob): string
+    {
+        $legacyPrefix = "evidence/{$record->chapter_id}/{$record->id}/";
+
+        return $blob->version_id
+            ?? (str_starts_with($blob->payload_path, $legacyPrefix) ? basename(dirname($blob->payload_path)) : $blob->id);
+    }
+
+    private function target(EvidenceRecord $record): array
+    {
+        return ['purpose' => $record->purpose, 'record_id' => $record->record_id];
+    }
+
+    private function notFound(): ContractException
+    {
+        return new ContractException(404, 'evidence_not_found', 'Evidence not found.');
     }
 
     public static function checkEvidenceBinding(

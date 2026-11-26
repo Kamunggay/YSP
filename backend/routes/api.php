@@ -41,16 +41,17 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads',
     Route::get('/access', [ChapterAccessController::class, 'access']);
 });
 
-Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stage-one.chapter')->group(function () {
-    Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeChapter']);
-
-    // Evidence
-    Route::post('/evidence', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare', 'idempotent');
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidence', 'stage-one.chapter')->group(function () {
+    Route::post('/evidence', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare');
     Route::get('/evidence/{evidence_id}', [PaperEvidenceController::class, 'show'])->middleware('stage-one.action:evidence.read');
     Route::get('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'versions'])->middleware('stage-one.action:evidence.read,history.read');
     Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'replace'])->middleware('stage-one.action:evidence.prepare', 'idempotent');
     Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion'])->middleware('stage-one.action:evidence.read,history.read');
     Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment'])->middleware('stage-one.action:evidence.read,history.read');
+});
+
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stage-one.chapter')->group(function () {
+    Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeChapter']);
 
     // Catalogue Operations (static paths before dynamic {operation_id})
     Route::get('/catalogue/operations/by-key', [CatalogueController::class, 'findOperationByKey'])->middleware('stage-one.action:catalogue.maintain');
