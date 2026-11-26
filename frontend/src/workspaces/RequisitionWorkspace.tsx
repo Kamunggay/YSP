@@ -445,15 +445,17 @@ export function RequisitionWorkspace({
             </div>
 
             <div className="p03-search-meta">
-              <span className="p03-version-pill">{filteredRfs.length} Matching</span>
               {searchText.trim().length > 0 && (
-                <button
-                  type="button"
-                  className="p03-search-clear-btn"
-                  onClick={() => setSearchText('')}
-                >
-                  Clear
-                </button>
+                <>
+                  <span className="p03-version-pill">{filteredRfs.length} Matching</span>
+                  <button
+                    type="button"
+                    className="p03-search-clear-btn"
+                    onClick={() => setSearchText('')}
+                  >
+                    Clear
+                  </button>
+                </>
               )}
               <button type="button" className="p03-search-action-btn" onClick={() => void loadRfs()}>
                 Reload

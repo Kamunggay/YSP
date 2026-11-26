@@ -214,7 +214,6 @@ export function StockWorkspace({
             </div>
 
             <div className="p03-search-meta">
-              <span className="p03-version-pill">{summaries.length} Tracked</span>
               {variantFilter.trim().length > 0 && (
                 <button
                   type="button"

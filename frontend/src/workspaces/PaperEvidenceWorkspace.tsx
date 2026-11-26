@@ -272,9 +272,6 @@ export function PaperEvidenceWorkspace({
             </div>
 
             <div className="p03-search-meta">
-              {readResult?.current_version && (
-                <span className="p03-version-pill">rev. {readResult.current_version.version}</span>
-              )}
               {evidenceIdInput.trim().length > 0 && (
                 <button
                   type="button"
@@ -346,6 +343,9 @@ export function PaperEvidenceWorkspace({
               </p>
             </div>
             <div className="p03-chip-wrap">
+              {readResult?.current_version && (
+                <span className="p03-version-pill">rev. {readResult.current_version.version}</span>
+              )}
               <span className="p03-version-pill">
                 {readResult?.current_version
                   ? `${readResult.current_version.attachments.length} attachment${readResult.current_version.attachments.length === 1 ? '' : 's'}`

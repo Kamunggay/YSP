@@ -339,26 +339,26 @@ export function S02Dashboard({
     [chapterAccess],
   );
 
-function actionToWorkspaceTab(action: string): { tab: WorkspaceTab; label: string } {
+function actionToWorkspaceTab(action: string): WorkspaceTab {
   if (action.startsWith('ipc.') || action.startsWith('opening')) {
-    return { tab: 'opening', label: 'Open Opening' };
+    return 'opening';
   }
   if (action.startsWith('rf.')) {
-    return { tab: 'requisitions', label: 'Open Requisitions' };
+    return 'requisitions';
   }
   if (action.startsWith('catalogue.')) {
-    return { tab: 'catalogue', label: 'Open Catalogue' };
+    return 'catalogue';
   }
   if (action.startsWith('evidence.')) {
-    return { tab: 'evidence', label: 'Open Documents' };
+    return 'evidence';
   }
   if (action.startsWith('hold.') || action.includes('reservation')) {
-    return { tab: 'reservations_holds', label: 'Open Reservations' };
+    return 'reservations_holds';
   }
   if (action.startsWith('issue.')) {
-    return { tab: 'actual_issues', label: 'Open Handovers' };
+    return 'actual_issues';
   }
-  return { tab: 'stock', label: 'Open Stock' };
+  return 'stock';
 }
 
 interface PriorityItem {
@@ -391,7 +391,7 @@ interface PriorityItem {
         ),
       );
       const reason = uniqueMessages.join('; ');
-      const target = actionToWorkspaceTab(blockerAct.action);
+      const targetTab = actionToWorkspaceTab(blockerAct.action);
       items.push({
         id: `blocker-${blockerAct.action}`,
         pill: 'Setup',
@@ -402,8 +402,8 @@ interface PriorityItem {
         meta: 'Chapter Setup',
         secondaryActionLabel: 'Inspect Setup',
         onSecondaryAction: () => setShowSecurityDrawer(true),
-        actionLabel: target.label,
-        onAction: () => onSelectTab(target.tab),
+        actionLabel: 'Open Workspace',
+        onAction: () => onSelectTab(targetTab),
       });
     }
 

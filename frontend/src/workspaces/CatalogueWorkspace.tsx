@@ -368,15 +368,17 @@ export function CatalogueWorkspace({
             </div>
 
             <div className="p03-search-meta">
-              <span className="p03-version-pill">{rows.length} Loaded</span>
               {queryText.trim().length > 0 && (
-                <button
-                  type="button"
-                  className="p03-search-clear-btn"
-                  onClick={() => setQueryText('')}
-                >
-                  Clear
-                </button>
+                <>
+                  <span className="p03-version-pill">{rows.length} Loaded</span>
+                  <button
+                    type="button"
+                    className="p03-search-clear-btn"
+                    onClick={() => setQueryText('')}
+                  >
+                    Clear
+                  </button>
+                </>
               )}
               <button
                 type="button"

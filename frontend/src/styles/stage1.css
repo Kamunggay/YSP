@@ -95,14 +95,46 @@ button.s02-kpi-card {
   white-space: nowrap;
 }
 
-.s02-queue-card.is-overdue {
-  border-color: rgba(245, 158, 11, 0.36);
+.p03-header-search-row .p03-search-meta {
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.p03-header-search-row .p03-search-action-btn,
+.p03-header-search-row .p03-search-clear-btn {
+  height: 38px;
+  min-height: 38px;
+  padding: 0 1rem;
+  font-size: 0.82rem;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.p03-header-search-row .p03-version-pill {
+  height: 38px;
+  min-height: 38px;
+  padding: 0 0.85rem;
+  box-sizing: border-box;
+}
+
+.s02-queue-card.is-overdue,
+html.dark .s02-queue-card.is-overdue {
+  border-color: var(--glass-field-border);
   border-left: 3px solid #d97706;
 }
 
-.s02-queue-card.is-uncertain {
-  border-color: rgba(220, 38, 38, 0.36);
+html.dark .s02-queue-card.is-overdue {
+  border-left-color: #f59e0b;
+}
+
+.s02-queue-card.is-uncertain,
+html.dark .s02-queue-card.is-uncertain {
+  border-color: var(--glass-field-border);
   border-left: 3px solid #dc2626;
+}
+
+html.dark .s02-queue-card.is-uncertain {
+  border-left-color: #f87171;
 }
 
 .s02-queue-footer {
@@ -111,8 +143,11 @@ button.s02-kpi-card {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--glass-divider);
+  margin-top: 0.15rem;
+}
+
+[data-testid="s02-dashboard-workspace"] .s02-queue-actions .btn-batcave-primary {
+  min-width: 136px;
 }
 
 .p04-line-top {

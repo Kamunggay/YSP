@@ -528,7 +528,6 @@ export function ReservationAndHoldWorkspace({
             </div>
 
             <div className="p03-search-meta">
-              <span className="p03-version-pill">{reservations.length + holds.length} Records</span>
               {rfId.trim().length > 0 && (
                 <button
                   type="button"
@@ -540,18 +539,18 @@ export function ReservationAndHoldWorkspace({
               )}
               <button
                 type="button"
+                className="p03-search-clear-btn"
+                onClick={() => void loadHolds()}
+              >
+                Reload Holds
+              </button>
+              <button
+                type="button"
                 className="p03-search-action-btn"
                 onClick={() => void loadRfAllocations()}
                 disabled={!rfId.trim()}
               >
                 Load Allocations
-              </button>
-              <button
-                type="button"
-                className="p03-search-action-btn"
-                onClick={() => void loadHolds()}
-              >
-                Reload Holds
               </button>
             </div>
           </div>

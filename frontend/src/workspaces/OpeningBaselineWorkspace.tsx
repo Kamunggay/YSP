@@ -668,8 +668,6 @@ export function OpeningBaselineWorkspace({
             </div>
 
             <div className="p03-search-meta">
-              <span className="p03-version-pill">{ipcs.length} Counts</span>
-              <span className="p03-version-pill">{rms.length} Receipts</span>
               {searchQuery.trim().length > 0 && (
                 <button
                   type="button"
