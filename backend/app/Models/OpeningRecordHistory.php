@@ -24,6 +24,8 @@ class OpeningRecordHistory extends Model
         'event_type',
         'actor_user_id',
         'snapshot_json',
+        'operation_json',
+        'reason',
         'created_at',
     ];
 
@@ -33,6 +35,7 @@ class OpeningRecordHistory extends Model
             'revision' => 'integer',
             'material_version' => 'integer',
             'snapshot_json' => 'array',
+            'operation_json' => 'array',
             'created_at' => 'datetime',
         ];
     }

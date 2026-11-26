@@ -46,7 +46,7 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidenc
     Route::post('/evidence', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare');
     Route::get('/evidence/{evidence_id}', [PaperEvidenceController::class, 'show'])->middleware('stage-one.action:evidence.read');
     Route::get('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'versions'])->middleware('stage-one.action:evidence.read,history.read');
-    Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'replace'])->middleware('stage-one.action:evidence.prepare', 'idempotent');
+    Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare')->name('paper-evidence.replace');
     Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion'])->middleware('stage-one.action:evidence.read,history.read');
     Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment'])
         ->middleware('stage-one.action:'.implode(',', PaperEvidenceDownload::ACTIONS));
@@ -109,10 +109,10 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stag
 
     // IPC
     Route::get('/ipcs', [OpeningInventoryController::class, 'listIpcs'])->middleware('stage-one.action:ipc.read');
-    Route::post('/ipcs', [OpeningInventoryController::class, 'createIpc'])->middleware('stage-one.action:ipc.draft', 'idempotent');
+    Route::post('/ipcs', [OpeningInventoryController::class, 'createIpc'])->middleware('stage-one.action:ipc.draft');
     Route::get('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'readIpc'])->middleware('stage-one.action:ipc.read');
-    Route::put('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'replaceIpc'])->middleware('stage-one.action:ipc.draft', 'idempotent');
-    Route::put('/ipcs/{ipc_id}/my-count', [OpeningInventoryController::class, 'saveMyIpcCount'])->middleware('stage-one.action:ipc.count', 'idempotent');
+    Route::put('/ipcs/{ipc_id}', [OpeningInventoryController::class, 'replaceIpc'])->middleware('stage-one.action:ipc.draft');
+    Route::put('/ipcs/{ipc_id}/my-count', [OpeningInventoryController::class, 'saveMyIpcCount'])->middleware('stage-one.action:ipc.count');
     Route::post('/ipcs/{ipc_id}/submit', [OpeningInventoryController::class, 'submitIpc'])->middleware('stage-one.action:ipc.draft', 'idempotent');
     Route::post('/ipcs/{ipc_id}/authorizations', [OpeningInventoryController::class, 'authorizeIpc'])->middleware('stage-one.action:ipc.authorize', 'idempotent');
     Route::get('/ipcs/{ipc_id}/history', [OpeningInventoryController::class, 'listIpcHistory'])->middleware('stage-one.action:ipc.read,history.read');
@@ -122,11 +122,11 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stag
 
     // Opening RM
     Route::get('/opening-rms', [OpeningInventoryController::class, 'listOpeningRms'])->middleware('stage-one.action:opening_rm.read');
-    Route::post('/opening-rms', [OpeningInventoryController::class, 'createOpeningRm'])->middleware('stage-one.action:opening_rm.prepare', 'idempotent');
+    Route::post('/opening-rms', [OpeningInventoryController::class, 'createOpeningRm'])->middleware('stage-one.action:opening_rm.prepare');
     Route::get('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'readOpeningRm'])->middleware('stage-one.action:opening_rm.read');
-    Route::put('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'replaceOpeningRm'])->middleware('stage-one.action:opening_rm.prepare', 'idempotent');
+    Route::put('/opening-rms/{rm_id}', [OpeningInventoryController::class, 'replaceOpeningRm'])->middleware('stage-one.action:opening_rm.prepare');
     Route::post('/opening-rms/{rm_id}/inspection', [OpeningInventoryController::class, 'inspectOpeningRm'])->middleware('stage-one.action:opening_rm.prepare', 'idempotent');
-    Route::post('/opening-rms/{rm_id}/evidence-match', [OpeningInventoryController::class, 'matchOpeningRmEvidence'])->middleware('stage-one.action:opening_rm.prepare', 'idempotent');
+    Route::post('/opening-rms/{rm_id}/evidence-match', [OpeningInventoryController::class, 'matchOpeningRmEvidence'])->middleware('stage-one.action:opening_rm.prepare,evidence.read', 'idempotent');
     Route::post('/opening-rms/{rm_id}/post', [OpeningInventoryController::class, 'postOpeningRm'])->middleware('stage-one.action:opening_rm.post', 'idempotent');
     Route::get('/opening-rms/{rm_id}/movements', [OpeningInventoryController::class, 'listOpeningRmMovements'])->middleware('stage-one.action:stock.read');
     Route::get('/opening-rms/{rm_id}/findings', [OpeningInventoryController::class, 'listOpeningRmFindings'])->middleware('stage-one.action:stock.read');

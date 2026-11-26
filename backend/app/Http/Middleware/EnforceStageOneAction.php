@@ -107,9 +107,10 @@ class EnforceStageOneAction
         }
 
         $chapterId = $authority->chapter->id;
-        $upload = $method === 'upload' ? PaperEvidenceUpload::parse($request) : null;
+        $replacing = $request->routeIs('paper-evidence.replace');
+        $upload = $method === 'upload' && ! $replacing ? PaperEvidenceUpload::parse($request) : null;
         $evidence = $upload ? null : EvidenceRecord::where('chapter_id', $chapterId)
-            ->whereKey($request->route('evidence_id'))->sharedLock()->first();
+            ->whereKey($request->route('evidence_id'))->first();
         $purpose = $upload?->purpose ?? $evidence?->purpose;
         $targetId = $upload?->recordId ?? $evidence?->record_id;
         $editing = ! $request->isMethodSafe();
@@ -140,13 +141,21 @@ class EnforceStageOneAction
                 $query->where('requisition_id', $rfId);
             }
             if ($allowed) {
-                $target = ($upload ? $query->lockForUpdate() : $query->sharedLock())->first();
+                $target = ($editing ? $query->lockForUpdate() : $query->sharedLock())->first();
             }
         }
 
         if (! $target || ! $authority->allows($editing ? 'evidence.prepare' : 'evidence.read', $unit)
             || (in_array('history.read', $actions, true) && ! $authority->allows('history.read', $unit))) {
             throw new ContractException(404, 'evidence_not_found', 'Evidence not found.');
+        }
+
+        if ($evidence) {
+            $query = EvidenceRecord::whereKey($evidence->id);
+            $evidence = ($editing ? $query->lockForUpdate() : $query->sharedLock())->firstOrFail();
+        }
+        if ($replacing) {
+            $upload = PaperEvidenceUpload::parse($request, replacement: true);
         }
 
         $request->attributes->set(EvidenceRecord::class, $evidence);

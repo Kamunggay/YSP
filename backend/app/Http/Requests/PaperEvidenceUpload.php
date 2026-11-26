@@ -16,12 +16,14 @@ final class PaperEvidenceUpload
     /** @param list<array{media_type: string, bytes: string}> $files */
     private function __construct(
         public readonly string $key,
-        public readonly string $purpose,
-        public readonly string $recordId,
+        public readonly ?string $purpose,
+        public readonly ?string $recordId,
         public readonly array $files,
+        public readonly ?int $expectedVersion,
+        public readonly ?string $reason,
     ) {}
 
-    public static function parse(Request $request): self
+    public static function parse(Request $request, bool $replacement = false): self
     {
         $keys = $request->headers->all('X-Action-Key');
         if (count($keys) !== 1 || ! preg_match(AuthInput::UUID, $keys[0]) || $request->server('QUERY_STRING', '') !== '') {
@@ -54,6 +56,7 @@ final class PaperEvidenceUpload
         if (! str_starts_with($body, $boundary)) {
             throw self::malformed();
         }
+        $textFields = $replacement ? ['expected_version' => 19, 'reason' => 2000] : ['purpose' => 36, 'record_id' => 36];
         $metadata = [];
         $files = [];
         $offset = strlen($boundary);
@@ -87,12 +90,12 @@ final class PaperEvidenceUpload
                 }
                 $files[] = ['media_type' => $mediaType, 'bytes' => substr($body, $start, $length)];
             } else {
-                if (! in_array($name, ['purpose', 'record_id'], true) || isset($metadata[$name])
+                if (! isset($textFields[$name]) || isset($metadata[$name])
                     || $filename !== null || ($mediaType !== null && ! preg_match('~\Atext/plain(?:\s*;\s*charset="?utf-8"?)?\z~i', $mediaType))) {
                     throw self::invalid($pointer, 'invalid_field', 'Supply this text field once using its contracted name.');
                 }
-                if ($length > 36) {
-                    throw self::invalid($pointer, 'invalid_target', 'Select a valid evidence target.');
+                if ($length > $textFields[$name]) {
+                    throw self::invalid($pointer, 'invalid_field', 'The field exceeds its size limit.');
                 }
                 $metadata[$name] = substr($body, $start, $length);
             }
@@ -100,10 +103,24 @@ final class PaperEvidenceUpload
         if (! in_array(substr($body, $offset), ['--', "--\r\n"], true)) {
             throw self::malformed();
         }
-        foreach (['purpose', 'record_id', 'attachments'] as $name) {
+        foreach ([...array_keys($textFields), 'attachments'] as $name) {
             if (! isset($metadata[$name]) && ($name !== 'attachments' || $files === [])) {
                 throw self::invalid('/'.$name, 'required', 'Supply the required field.');
             }
+        }
+        if ($replacement) {
+            $version = preg_match('/\A[0-9]+\z/', $metadata['expected_version'])
+                ? filter_var(ltrim($metadata['expected_version'], '0'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                : false;
+            if ($version === false) {
+                throw self::invalid('/expected_version', 'invalid_field', 'Supply a positive version integer.');
+            }
+            $reason = $metadata['reason'];
+            if (! mb_check_encoding($reason, 'UTF-8') || preg_match('/\A\s*\z/u', $reason) || mb_strlen($reason) > 500) {
+                throw self::invalid('/reason', 'invalid_field', 'Supply a replacement reason of 1 to 500 characters.');
+            }
+
+            return new self($keys[0], null, null, $files, $version, $reason);
         }
         if (! in_array($metadata['purpose'], ['opening_receipt', 'hold_clearance', 'actual_issue'], true)) {
             throw self::invalid('/purpose', 'invalid_target', 'Select a valid evidence purpose.');
@@ -112,7 +129,7 @@ final class PaperEvidenceUpload
             throw self::invalid('/record_id', 'invalid_target', 'Select a valid evidence target.');
         }
 
-        return new self($keys[0], $metadata['purpose'], $metadata['record_id'], $files);
+        return new self($keys[0], $metadata['purpose'], $metadata['record_id'], $files, null, null);
     }
 
     /** @return array{string, ?string, ?string} */
