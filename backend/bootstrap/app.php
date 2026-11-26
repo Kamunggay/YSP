@@ -11,6 +11,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         then: function (): void {
             require __DIR__.'/../routes/session.php';
             require __DIR__.'/../routes/inventory.php';
+            require __DIR__.'/../routes/requisitions.php';
         })
     ->withMiddleware(function (Middleware $middleware): void {})
     ->withExceptions(function (Exceptions $exceptions): void {})->create();

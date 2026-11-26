@@ -44,7 +44,9 @@ final class VerifyBaseline extends Command
                 'restriction_unit_scopes', 'restriction_category_scopes',
                 'stock_lots', 'stock_positions', 'stock_coverage_live', 'stock_coverage_reservation_links',
                 'inventory_operation_attempts', 'inventory_actor_attributions', 'inventory_operations', 'inventory_audit_events',
-                'stock_holds', 'stock_hold_cells', 'stock_hold_clearances'];
+                'stock_holds', 'stock_hold_cells', 'stock_hold_clearances',
+                'requisitions', 'requisition_lines', 'requisition_events',
+                'rf_reservation_preparations', 'rf_reservations', 'rf_reservation_cells', 'rf_reservation_events'];
             sort($expectedTables);
             $actualTables = array_map(fn (object $table): string => $table->name, $tables);
             sort($actualTables);

@@ -1,5 +1,3 @@
-# RequisitionsFulfillment
+# RequisitionsFulfillment Module
 
-Requisitions and fulfillment: RF review/revision, shortages, signed issue, release and closure.
-
-Reserved boundary under TR-02. No business operation, model, table or HTTP endpoint is implemented here by the P01 health baseline. Future callers consume application operations; they must not write another module's models directly.
+Phase 2 (`P07`) internal chapter requisition intake, draft save/discard, submission, officer review/revise/cancel, and two-step stock allocation (`rf.prepare_reservation` -> `rf.allocate_stock` / `rf.release_reservation` / `rf.reallocate_reservation`) backed by `InventoryLedgerParticipant`, `ChapterInventoryAuthority`, and `ChapterOutcomes`.
