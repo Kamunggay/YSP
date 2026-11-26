@@ -2,7 +2,7 @@
 
 import argparse
 import json
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from hashlib import sha256
 from importlib.metadata import version
 from pathlib import Path
@@ -23,6 +23,14 @@ STAGE2_EVIDENCE_PURPOSES = {
     "missing_source_hold",
 }
 STAGE1_EVIDENCE_PURPOSES = {"opening_receipt", "hold_clearance", "actual_issue"}
+REQUIRED_STAGE2_ACTIONS = {
+    "replenishment.read",
+    "repf.read",
+    "repf.draft",
+    "repf.submit",
+    "repf.budget_review",
+    "repf.cancel",
+}
 FORBIDDEN_PUBLIC_PATH_FRAGMENTS = (
     "/policies",
     "/settings",
@@ -56,10 +64,10 @@ def read_yaml(path):
     return yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueKeysLoader)
 
 
-def check_replenishment_math(item, label):
-    """Verify INV-10..INV-12 non-overlapping exact decimal math on worked examples."""
+def check_net_need_core(data, total_uncovered_field, label):
+    """Verify shared INV-10..INV-12 non-overlapping net-need arithmetic."""
     def qty(field):
-        return Decimal(item[field])
+        return Decimal(data[field])
 
     zero = Decimal("0")
     if qty("eligible_usable_stockroom_on_hand") > qty("usable_stockroom_on_hand"):
@@ -67,14 +75,35 @@ def check_replenishment_math(item, label):
     expected_avail = max(zero, qty("eligible_usable_stockroom_on_hand") - qty("active_rf_reservations"))
     if qty("eligible_available_to_allocate") != expected_avail:
         raise ValueError(f"{label}: eligible_available_to_allocate mismatch")
-    expected_rf_short = max(zero, qty("total_unreserved_approved_rf_demand") - expected_avail)
-    if qty("unreserved_approved_rf_shortage") != expected_rf_short:
-        raise ValueError(f"{label}: unreserved_approved_rf_shortage mismatch")
-    if qty("gross_rf_shortage_need") != expected_rf_short:
+    if qty("gross_rf_shortage_need") != qty("unreserved_approved_rf_shortage"):
         raise ValueError(f"{label}: gross_rf_shortage_need differs from unreserved_approved_rf_shortage")
     expected_inbound = qty("open_repf_quantity") + qty("open_po_inbound_quantity")
     if qty("total_open_inbound_coverage") != expected_inbound:
         raise ValueError(f"{label}: total_open_inbound_coverage mismatch")
+    if qty("gross_combined_need") != qty("gross_rf_shortage_need") + qty("gross_rop_replenishment_need"):
+        raise ValueError(f"{label}: gross_combined_need overlaps RF shortage and ROP")
+    expected_uncovered_rf = max(zero, qty("gross_rf_shortage_need") - expected_inbound)
+    remaining_inbound = max(zero, expected_inbound - qty("gross_rf_shortage_need"))
+    expected_uncovered_rop = max(zero, qty("gross_rop_replenishment_need") - remaining_inbound)
+    if qty("uncovered_rf_shortage_quantity") != expected_uncovered_rf:
+        raise ValueError(f"{label}: uncovered_rf_shortage_quantity mismatch")
+    if qty("uncovered_rop_replenishment_quantity") != expected_uncovered_rop:
+        raise ValueError(f"{label}: uncovered_rop_replenishment_quantity mismatch")
+    if qty(total_uncovered_field) != expected_uncovered_rf + expected_uncovered_rop:
+        raise ValueError(f"{label}: {total_uncovered_field} mismatch")
+    return expected_avail, expected_inbound
+
+
+def check_replenishment_math(item, label):
+    """Verify INV-10..INV-12 non-overlapping exact decimal math on worked examples."""
+    def qty(field):
+        return Decimal(item[field])
+
+    zero = Decimal("0")
+    expected_avail, expected_inbound = check_net_need_core(item, "proposed_uncovered_quantity", label)
+    expected_rf_short = max(zero, qty("total_unreserved_approved_rf_demand") - expected_avail)
+    if qty("unreserved_approved_rf_shortage") != expected_rf_short:
+        raise ValueError(f"{label}: unreserved_approved_rf_shortage mismatch")
     approved_rop = Decimal(item["approved_rop"]) if item["approved_rop"] is not None else None
     expected_breach = approved_rop is not None and qty("usable_stockroom_on_hand") <= approved_rop
     if item["low_stock_breach"] != expected_breach:
@@ -88,17 +117,6 @@ def check_replenishment_math(item, label):
     )
     if qty("gross_rop_replenishment_need") != expected_rop_gross:
         raise ValueError(f"{label}: gross_rop_replenishment_need mismatch")
-    if qty("gross_combined_need") != expected_rf_short + expected_rop_gross:
-        raise ValueError(f"{label}: gross_combined_need overlaps RF shortage and ROP")
-    expected_uncovered_rf = max(zero, expected_rf_short - expected_inbound)
-    remaining_inbound = max(zero, expected_inbound - expected_rf_short)
-    expected_uncovered_rop = max(zero, expected_rop_gross - remaining_inbound)
-    if qty("uncovered_rf_shortage_quantity") != expected_uncovered_rf:
-        raise ValueError(f"{label}: uncovered_rf_shortage_quantity mismatch")
-    if qty("uncovered_rop_replenishment_quantity") != expected_uncovered_rop:
-        raise ValueError(f"{label}: uncovered_rop_replenishment_quantity mismatch")
-    if qty("proposed_uncovered_quantity") != expected_uncovered_rf + expected_uncovered_rop:
-        raise ValueError(f"{label}: proposed_uncovered_quantity mismatch")
     counted_sources = sum(
         (Decimal(src["open_quantity"]) for src in item["inbound_sources"] if src["coverage_state"] == "counted"),
         zero,
@@ -154,6 +172,93 @@ def check_donation_evidence(check_value, case, receipt):
         or binding["signed_at"] != request["signed_at"]
     ):
         raise ValueError(f"{name}: evidence does not match signed DA material and manifest")
+
+
+def check_repf_invariants(repf, label):
+    """Verify RepF exact decimal totals, line quantity conservation, trigger uniqueness, and net-need math."""
+    two_dp = Decimal("0.01")
+    total_php = Decimal("0.00")
+    trigger_kinds = set()
+    any_override = False
+    any_demand_canceled = False
+    seen_rf_lines = set()
+    seen_rop_variants = set()
+    per_trigger_totals = {}
+    per_variant_totals = {}
+
+    for idx, line in enumerate(repf["lines"]):
+        line_label = f"{label}.lines[{idx}]"
+        req = Decimal(line["requested_quantity"])
+        ordered = Decimal(line["ordered_quantity"])
+        canceled = Decimal(line["canceled_quantity"])
+        remaining = Decimal(line["remaining_to_order_quantity"])
+        if ordered + canceled + remaining != req:
+            raise ValueError(f"{line_label}: ordered + canceled + remaining != requested_quantity")
+        expected_line_total = (req * Decimal(line["estimated_unit_cost_php"])).quantize(
+            two_dp, rounding=ROUND_HALF_UP
+        )
+        if Decimal(line["estimated_line_total_php"]) != expected_line_total:
+            raise ValueError(f"{line_label}: estimated_line_total_php mismatch")
+        total_php += expected_line_total
+        trigger_kinds.add(line["trigger_kind"])
+        if line["trigger_kind"] == "rf_shortage":
+            if line["rf_line_id"] in seen_rf_lines:
+                raise ValueError(f"{line_label}: duplicate rf_line_id within RepF")
+            seen_rf_lines.add(line["rf_line_id"])
+        else:
+            if line["variant_id"] in seen_rop_variants:
+                raise ValueError(f"{line_label}: duplicate rop_replenishment variant within RepF")
+            seen_rop_variants.add(line["variant_id"])
+        if line["additional_purchase_reason"] is not None:
+            any_override = True
+        if line["linked_demand_canceled"]:
+            any_demand_canceled = True
+
+        bd = line["net_need_breakdown"]
+        check_net_need_core(bd, "variant_proposed_uncovered_quantity", line_label)
+        expected_trigger_uncovered = (
+            Decimal(bd["uncovered_rf_shortage_quantity"])
+            if line["trigger_kind"] == "rf_shortage"
+            else Decimal(bd["uncovered_rop_replenishment_quantity"])
+        )
+        if Decimal(bd["uncovered_need"]) != expected_trigger_uncovered:
+            raise ValueError(f"{line_label}: breakdown uncovered_need does not match trigger_kind")
+        if bd["exceeds_uncovered_need"] != (req > expected_trigger_uncovered):
+            raise ValueError(f"{line_label}: breakdown exceeds_uncovered_need flag mismatch")
+
+        key = (line["variant_id"], line["trigger_kind"])
+        if line["additional_purchase_reason"] is None:
+            per_trigger_totals[key] = (
+                per_trigger_totals.get(key, (Decimal("0"), expected_trigger_uncovered))[0] + req,
+                expected_trigger_uncovered,
+            )
+            per_variant_totals[line["variant_id"]] = (
+                per_variant_totals.get(
+                    line["variant_id"], (Decimal("0"), Decimal(bd["variant_proposed_uncovered_quantity"]))
+                )[0]
+                + req,
+                Decimal(bd["variant_proposed_uncovered_quantity"]),
+            )
+
+    for (variant_id, trig), (req_sum, cap) in per_trigger_totals.items():
+        if req_sum > cap:
+            raise ValueError(f"{label}: unapproved {trig} sum exceeds uncovered cap for variant {variant_id}")
+    for variant_id, (req_sum, cap) in per_variant_totals.items():
+        if req_sum > cap:
+            raise ValueError(f"{label}: unapproved combined sum exceeds proposed uncovered cap for variant {variant_id}")
+
+    if Decimal(repf["estimated_total_php"]) != total_php:
+        raise ValueError(f"{label}: estimated_total_php does not equal sum of line totals")
+    if set(repf["trigger_kinds"]) != trigger_kinds:
+        raise ValueError(f"{label}: trigger_kinds does not match distinct line triggers")
+    if repf["has_additional_purchase_override"] != any_override:
+        raise ValueError(f"{label}: has_additional_purchase_override mismatch")
+    if repf["linked_demand_canceled"] != any_demand_canceled:
+        raise ValueError(f"{label}: linked_demand_canceled mismatch")
+    if repf["status"] in {"approved", "partially_ordered", "ordered"} and Decimal(
+        repf["approved_budget_php"]
+    ) != total_php:
+        raise ValueError(f"{label}: approved_budget_php does not match estimated_total_php")
 
 
 def main():
@@ -253,14 +358,18 @@ def main():
     if purposes != (STAGE1_EVIDENCE_PURPOSES | STAGE2_EVIDENCE_PURPOSES):
         raise ValueError("EvidencePurpose must equal Stage 1 plus additive Stage 2 values")
 
-    # Verify action duties use canonical 14-duty vocabulary
+    # Verify action duties use canonical 14-duty vocabulary and include all required Stage 2 actions
     valid_duties = set(document["components"]["schemas"]["Duty"]["enum"])
     action_duties = document.get("x-stage2-action-duties", {})
+    missing_actions = REQUIRED_STAGE2_ACTIONS - action_duties.keys()
+    if missing_actions:
+        raise ValueError(f"Missing required x-stage2-action-duties entries: {sorted(missing_actions)}")
     for action, duties in action_duties.items():
         if not duties or not set(duties) <= valid_duties:
             raise ValueError(f"Action {action} references invalid or empty duties")
 
     operations = {}
+    unsafe_operations = set()
     for path, path_item in document["paths"].items():
         lowered = path.lower()
         for fragment in FORBIDDEN_PUBLIC_PATH_FRAGMENTS:
@@ -286,11 +395,37 @@ def main():
                     check_inline_examples(body_pointer + "/content/" + pointer_part(media))
             for status in operation["responses"]:
                 response_pointer, response = dereference(pointer + "/responses/" + status)
+                if "Cache-Control" not in response.get("headers", {}):
+                    raise ValueError(f"Operation {operation_id} status {status} missing Cache-Control header")
                 for media in response.get("content", {}):
                     check_inline_examples(response_pointer + "/content/" + pointer_part(media))
                 for header in response.get("headers", {}):
                     header_pointer, _ = dereference(response_pointer + "/headers/" + pointer_part(header))
                     check_inline_examples(header_pointer)
+            if method in {"post", "put", "patch", "delete"}:
+                unsafe_operations.add(operation_id)
+                required_headers = {
+                    param["name"]
+                    for idx in range(len(operation.get("parameters", [])))
+                    for param in [dereference(pointer + f"/parameters/{idx}")[1]]
+                    if param.get("in") == "header" and param.get("required") is True
+                }
+                if not {"Origin", "X-Action-Key"} <= required_headers:
+                    raise ValueError(f"Unsafe operation {operation_id} must require Origin and X-Action-Key headers")
+                sec_list = operation.get("security", [])
+                if not sec_list or not all("browserSession" in sec and "csrfProof" in sec for sec in sec_list):
+                    raise ValueError(f"Unsafe operation {operation_id} must require browserSession and csrfProof on every security branch")
+                for status in operation["responses"]:
+                    if status.startswith("2"):
+                        _, resp = dereference(pointer + "/responses/" + status)
+                        if "X-Action-Replayed" not in resp.get("headers", {}):
+                            raise ValueError(f"Unsafe operation {operation_id} {status} missing X-Action-Replayed")
+
+    # Verify ProcurementOperationName enum values resolve to actual public unsafe operations
+    proc_ops = set(document["components"]["schemas"]["ProcurementOperationName"]["enum"])
+    unknown_proc_ops = proc_ops - unsafe_operations
+    if unknown_proc_ops:
+        raise ValueError(f"ProcurementOperationName references non-unsafe or unknown operations: {sorted(unknown_proc_ops)}")
 
     donation_transitions = document.get("x-stage2-donation-transitions", {})
     covered = set()
@@ -348,6 +483,16 @@ def main():
             if case["operationId"] == "listReplenishmentNeeds" and status == "200":
                 for idx, item in enumerate(response["body"]["data"]):
                     check_replenishment_math(item, f"{name}[{idx}]")
+            if status in {"200", "201"} and response_media == "application/json":
+                body_data = response["body"].get("data")
+                if case["operationId"] in {"readRepf", "readRepfVersion"}:
+                    check_repf_invariants(body_data, name)
+                elif case["operationId"] == "listRepfs":
+                    for idx, repf in enumerate(body_data):
+                        check_repf_invariants(repf, f"{name}[{idx}]")
+                elif case["operationId"] in proc_ops | {"findProcurementOperationByKey", "readProcurementOperation"}:
+                    if isinstance(body_data, dict) and body_data.get("resource_kind") == "repf":
+                        check_repf_invariants(body_data["result"], name)
         elif "body" in response:
             raise ValueError(f"{name}: bodyless status contains a body")
 
@@ -487,15 +632,48 @@ def main():
         f"{checked} schema/example checks"
     )
     if args.invalid_example:
-        check_value(
-            "#/components/schemas/ReplenishmentNeedList",
-            {
-                "data": [{"unexpected_field": True, "usable_stockroom_on_hand": "-5"}],
-                "page": {"next_cursor": None, "snapshot_version": 0},
-            },
-            "deliberately invalid replenishment response",
-        )
-        raise ValueError("Invalid-example probe unexpectedly passed")
+        probes = [
+            (
+                "#/components/schemas/CreateRepfRequest",
+                {
+                    "funding_source": "chapter_funds",
+                    "urgency": "urgent",
+                    "justification": "Attempted unpaid Sales Order shortage relabeling.",
+                    "lines": [
+                        {
+                            "trigger_kind": "so_shortage",
+                            "variant_id": "95000000-0000-4000-8000-000000000051",
+                            "unit_id": "95000000-0000-4000-8000-000000000052",
+                            "rf_id": None,
+                            "rf_line_id": None,
+                            "requested_quantity": "5",
+                            "estimated_unit_cost_php": "250.00",
+                            "needed_by": None,
+                            "additional_purchase_reason": None,
+                            "notes": None,
+                        }
+                    ],
+                },
+                "deliberately invalid so_shortage RepF trigger",
+            ),
+            (
+                "#/components/schemas/ReplenishmentNeedList",
+                {
+                    "data": [{"unexpected_field": True, "usable_stockroom_on_hand": "-5"}],
+                    "page": {"next_cursor": None, "snapshot_version": 0},
+                },
+                "deliberately invalid replenishment response",
+            ),
+        ]
+        rejections = []
+        for schema_ptr, payload, probe_label in probes:
+            try:
+                check_value(schema_ptr, payload, probe_label)
+            except ValueError as err:
+                rejections.append(str(err))
+            else:
+                raise ValueError(f"Invalid-example probe unexpectedly passed: {probe_label}")
+        raise ValueError("; ".join(rejections))
 
 
 if __name__ == "__main__":

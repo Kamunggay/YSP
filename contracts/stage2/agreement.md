@@ -1,8 +1,8 @@
 # Stage 2 canonical operation agreement
 
-Specification: [#27](https://github.com/Kamunggay/YSP/issues/27), ticket `stage2-contracts-01`. Candidate for Efren's consequential-boundary review and Glenn's UI/query consumer review; automated contract validation does not constitute their human sign-off. Source PRD, TRD, ADR 0001, ADR 0004, ADR 0005, `CONTEXT.md`, and `GLOSSARY.md` retain their existing authority. This slice delivers the canonical Stage 2 OpenAPI 3.1.1 baseline, controlled policy/evidence/reference extensions, live net-shortage query, internal shortage participant, worked examples, and validator only. It adds no Laravel runtime code, database migrations, React UI screens, or CI workflow changes.
+Specification: [#27](https://github.com/Kamunggay/YSP/issues/27), tickets `stage2-contracts-01`, `stage2-contracts-02`, and `stage2-contracts-04`. Candidate for Efren's consequential-boundary review and Glenn's UI/query consumer review; automated contract validation does not constitute their human sign-off. Source PRD, TRD, ADR 0001, ADR 0004, ADR 0005, `CONTEXT.md`, and `GLOSSARY.md` retain their existing authority. These slices deliver the canonical Stage 2 OpenAPI 3.1.1 baseline, controlled policy/evidence/reference extensions, live net-shortage query, internal shortage participant, RepF intake/duplicate-guard/budget-review lifecycle, procurement action-receipt recovery routes, Stage 1 `cancelInternalRf` compatibility rules, Donation Acknowledgment and donor-restriction resolution lifecycle, worked examples, and validator only. They add no Laravel runtime code, database migrations, React UI screens, or CI workflow changes.
 
-`openapi.yaml` is the single canonical Stage 2 HTTP and participant schema definition. `examples.yaml` binds every operation, controlled policy procedure, and internal participant to machine-validated payloads. Later tickets (`02`–`08`) extend these same files incrementally.
+`openapi.yaml` is the single canonical Stage 2 HTTP and participant schema definition. `examples.yaml` binds every operation, controlled policy procedure, and internal participant to machine-validated payloads. Later tickets (`03`–`08`) extend these same files incrementally.
 
 ## 1. Shared Stage 1 conventions reused verbatim
 
@@ -18,7 +18,7 @@ All Stage 2 routes live under `/api/v1/chapters/{chapter_id}/...` and inherit St
 | Error & blocker envelopes | Closed `Error`, `ValidationError` (RFC 6901 request-relative field pointers), `SetupBlocked` (`error.blockers: SetupBlocker[]`), and `Stage2Conflict` (`failed_intent_committed: false`, authorized `current` or `null`, `setup_blockers`). Uniform `404` (`chapter_not_found` / `resource_not_found`) after current chapter admission. |
 | Donor restrictions | Verbatim Stage 1 `BoundedRestriction` (`unrestricted`, `bounded`, `uninterpreted`) per ADR 0004. |
 
-## 2. Operation and participant ownership (Ticket 01)
+## 2. Operation and participant ownership (Tickets 01–02)
 
 | Canonical ID | Kind | Backend owner | UI / caller consumer | Reviewer | Requirements |
 | --- | --- | --- | --- | --- | --- |
@@ -26,6 +26,9 @@ All Stage 2 routes live under `/api/v1/chapters/{chapter_id}/...` and inherit St
 | `computeNetShortageSnapshot` (`x-stage2-shortage-participants`) | Internal synchronous participant (zero public HTTP routes) | Glenn | Glenn `listReplenishmentNeeds` (Ticket 01); Leader `createRepf`/`replaceRepf`/`submitRepf`/`reviewRepfBudget` (Ticket 02) | Leader (RepF commit fence), Efren (stock consistency) | `INV-10`, `INV-11`, `INV-12`, `PRC-02`, `DOC-01`–`03`, `GOV-08`–`09` |
 | `recordPolicy` (`x-controlled-procedures`) | Controlled CLI-only procedure (zero public HTTP routes) | Leader | Glenn consumes resulting `SetupBlocker`s only | Efren (consequential setup), Glenn (UI blockers) | `GOV-03`, `GOV-04`, `GOV-08`, `GOV-09`, `DOC-01`, `DOC-10`, `DOC-11`, `SEC-01`–`03` |
 | `checkEvidenceBinding` (`x-stage2-evidence-participants`) | Internal synchronous participant (reused verbatim from Stage 1; zero readiness-token routes) | Leader | Leader Stage 2 quotation/DA/receiving/discrepancy/hold commits (Tickets 03–05) | Efren (receiving & restriction commit fences), Glenn (upload/match UI) | `DOC-04`–`DOC-11`, `GOV-01`, `SEC-01`–`03` |
+| `listRepfs`, `readRepf`, `listRepfHistory`, `readRepfVersion`, `listRepfRelatedRecords`, `printRepf` | Public safe HTTP `GET` (`/repfs*`) | Leader | Glenn UI (RepF register, detail, history, print) | Efren (audit/security), Glenn (UI consumer) | `PRC-01`–`04`, `PRC-08`, `DOC-01`–`03`, `SEC-01`–`03` |
+| `createRepf`, `replaceRepf`, `submitRepf`, `reviewRepfBudget`, `resumeRepfReview`, `reviseRepf`, `cancelRepf` | Public unsafe HTTP mutations (`/repfs*`) | Leader | Glenn UI (RepF preparation, submission, budget review, cancellation) | Efren (locking/idempotency/independence), Glenn (net-need & UI) | `PRC-01`–`04`, `PRC-08`, `INV-11`, `INV-12`, `DOC-01`–`03`, `GOV-01`–`09`, `SEC-01`–`03` |
+| `findProcurementOperationByKey`, `readProcurementOperation` | Public safe HTTP `GET` (`/procurement-operations/*`) | Leader | Glenn UI (uncertain procurement retry recovery) | Efren (idempotency/receipt boundary), Glenn (retry UX) | `DOC-01`, `DOC-03`, `GOV-01`, `SEC-01`–`03` |
 
 ## 3. Controlled CLI-only Stage 2 policies and reference series
 
@@ -96,19 +99,71 @@ All arithmetic uses exact decimal math at the variant's approved `quantity_scale
 - Accepts `exclude_repf_id` so replacing, submitting, or budget-reviewing an existing RepF does not count that RepF's own open lines against itself.
 - Returns `ready`, `setup_blocked`, or `rejected`; Leader aborts the enclosing write transaction on any non-`ready` outcome.
 
-## 6. Requirement traceability (Ticket 01)
+## 6. RepF intake, net-need duplicate guard, budget review & recovery (Ticket 02)
 
-| Requirement | Ticket 01 contract coverage and downstream obligations |
+### 6.1 State machine, versions, references & mandatory reasons
+
+| From state | Operation | Allowed target state(s) | Version / reference / reason rules |
+| --- | --- | --- | --- |
+| *(none)* | `createRepf` (`POST /repfs`) | `draft` | `version = 1`, `material_version = 1`, `repf_reference = null`. Calls `computeNetShortageSnapshot`. |
+| `draft` | `replaceRepf` (`PUT /repfs/{repf_id}`) | `draft` | Checks `expected_version` & `expected_material_version`; increments both `version` and `material_version`; re-runs `computeNetShortageSnapshot(exclude_repf_id = repf_id)`. |
+| `draft` | `submitRepf` (`POST /repfs/{repf_id}/submit`) | `pending_budget_review` | Checks `expected_version` & `expected_material_version`; increments `version`; allocates `REPF` reference **once-only** on first submit (retained on subsequent revisions); re-runs `computeNetShortageSnapshot(exclude_repf_id = repf_id)`. Missing/expired `REPF` `reference_series` yields `409 setup_blocked`. |
+| `pending_budget_review` | `reviewRepfBudget` (`POST /repfs/{repf_id}/budget-review`) | `approved`, `held`, `returned_for_revision`, `rejected` | Independent `BUDGET_APPROVER`/`CHAPTER_HEAD` (`403 independence_required`). Mandatory non-blank `reason` on `hold`, `return`, `reject` (`422 invalid_input`). On `approve`, checks actor `DutyGrant.scope.limit_php` (`403 duty_limit_exceeded`), re-runs `computeNetShortageSnapshot(exclude_repf_id = repf_id)`, and freezes `approved_budget_php = estimated_total_php`. |
+| `held` | `resumeRepfReview` (`POST /repfs/{repf_id}/resume-review`) | `pending_budget_review` | Independent `BUDGET_APPROVER`/`CHAPTER_HEAD`; checks versions; increments `version`. |
+| `held` | `reviewRepfBudget` (`decision: return`) | `returned_for_revision` | Independent `BUDGET_APPROVER`/`CHAPTER_HEAD`; mandatory non-blank `reason`; increments `version`. (`approve`/`reject` require `resumeRepfReview` first, else `409 invalid_transition`.) |
+| `returned_for_revision` | `reviseRepf` (`POST /repfs/{repf_id}/revise`) | `draft` | Increments both `version` and `material_version`; retains allocated `repf_reference` and immutable prior snapshots. |
+| `approved` / `partially_ordered` | *(derived by Ticket 03 `approvePurchaseOrder`)* | `partially_ordered`, `ordered` | Updates line `ordered_quantity` / `remaining_to_order_quantity` and appends `po_ordered_progress` history entry (bumps `version`, not `material_version`). |
+| `draft`, `held`, `returned_for_revision`, `approved`, `partially_ordered` | `cancelRepf` (`POST /repfs/{repf_id}/cancel`) | `canceled` | Mandatory non-blank `reason` (`422`). Pre-approval states (`draft`, `held`, `returned_for_revision`) permit any `repf.cancel` holder; post-approval states (`approved`, `partially_ordered`) require `BUDGET_APPROVER` or `CHAPTER_HEAD` (`403 duty_denied`). Sets `canceled_quantity = remaining_to_order_quantity`, `remaining_to_order_quantity = 0`, preserving `ordered_quantity` and issued POs. `pending_budget_review` (must be reviewed/held/returned first), `ordered`, `rejected`, and `canceled` return `409 invalid_transition`. |
+
+### 6.2 Triggers, non-overlapping breakdown & duplicate-coverage guard (`PRC-01`–`PRC-03`, `INV-11`–`INV-12`)
+
+- **Strict Stage 2 triggers (`PRC-01`):** `RepfTriggerKind` accepts only `rf_shortage` and `rop_replenishment`. Any `so_shortage` payload fails request validation with `422 invalid_input` pointing to `/lines/{i}/trigger_kind` (and `GET /repfs?trigger_kind=so_shortage` fails with `400 invalid_selector`). `funding_source` is fixed to `chapter_funds`.
+- **RF linkage & line-uniqueness validation:** Every `rf_shortage` line requires non-null same-chapter `rf_id` and `rf_line_id` referencing a currently approved (non-canceled, non-fully-issued) internal RF line matching `variant_id` and `unit_id`; ineligible or closed RF lines fail with `409 source_not_eligible` (foreign/unknown IDs return `404 resource_not_found`). Every `rop_replenishment` line requires `rf_id: null`, `rf_line_id: null`, and effective `rop` + `target_level` policies (`require_rop_and_target_policies: true` → `409 setup_blocked` if missing/expired). Within a single RepF (capped at `maxItems: 100` lines to match `computeNetShortageSnapshot`'s `variant_ids: 1..100` bound), duplicate `rf_line_id`s across `rf_shortage` lines and duplicate `(variant_id, rop_replenishment)` lines are rejected with `422 invalid_input`.
+- **Multi-trigger RepFs & net-need breakdown:** One RepF may combine `rf_shortage` and `rop_replenishment` lines (even for the same variant). Each line persists its exact server-computed `RepfLineNeedBreakdown` from Glenn's `computeNetShortageSnapshot` without double-counting overlapping shortage and ROP quantities.
+- **Duplicate-supply-coverage protection (`INV-12`):** On `createRepf`, `replaceRepf`, `submitRepf`, and `reviewRepfBudget(approve)`, Leader enforces three non-overlapping bounds unless an explicit `additional_purchase_reason` (`category: late_supply | disputed_supply | ineligible_supply`, optional `referenced_source_ids`, non-blank `explanation`) is recorded on every excess line: (a) each `rf_shortage` line's `requested_quantity` cannot exceed its linked RF line's live `unreserved_outstanding_quantity` or `uncovered_rf_shortage_quantity`, and each `rop_replenishment` line's `requested_quantity` cannot exceed `uncovered_rop_replenishment_quantity`; (b) the sum of `requested_quantity` per `(variant_id, trigger_kind)` cannot exceed that trigger's live uncovered quantity (`uncovered_rf_shortage_quantity` / `uncovered_rop_replenishment_quantity`); and (c) the combined sum across both triggers for a `variant_id` cannot exceed `variant_proposed_uncovered_quantity`. Any unapproved excess aborts the transaction with `409 duplicate_supply_coverage`, `failed_intent_committed: false`, and line-level `coverage_conflicts[]` naming the blocking inbound RepF/PO sources.
+
+### 6.3 Authorization, transaction/lock boundaries & committed events
+
+- **`x-stage2-action-duties`:**
+  - `repf.read`: `INVENTORY`, `PURCHASING`, `BUDGET_APPROVER`, `CHAPTER_HEAD`, `FINANCE`, `INDEPENDENT_REVIEWER`
+  - `repf.draft`: `INVENTORY`, `PURCHASING`
+  - `repf.submit`: `INVENTORY`, `PURCHASING`
+  - `repf.budget_review`: `BUDGET_APPROVER`, `CHAPTER_HEAD` (strictly independent of `repf.preparer.user_id` → `403 independence_required`; `approve` additionally enforces `DutyGrant.scope.limit_php >= repf.estimated_total_php` → `403 duty_limit_exceeded`)
+  - `repf.cancel`: `INVENTORY`, `PURCHASING`, `BUDGET_APPROVER`, `CHAPTER_HEAD` (post-approval `approved`/`partially_ordered` narrowed to `BUDGET_APPROVER`/`CHAPTER_HEAD`)
+- **MySQL transaction & lock order (Leader owns outer transaction):**
+  1. Verify session/MFA, chapter membership, `Origin` + `X-XSRF-TOKEN`, current duty, and non-locking `ActionReceipt` pre-check.
+  2. Open MySQL transaction; acquire shared authority/policy locks (`chapter`, `duty_grants`, `reference_series` / `rop` / `target_level` / `quantity_scale`), then lock the target RepF row (`FOR UPDATE` on existing RepF) and sorted chapter variant guard rows (`FOR UPDATE`) to serialize concurrent RepF submissions against the same variant's live uncovered need.
+  3. Recheck `ActionReceipt` (`sharedLock`) inside the lock boundary: identical canonical fingerprint replays original `200`/`201` snapshot with `X-Action-Replayed: true`; changed payload aborts with `409 action_key_conflict`.
+  4. Verify `expected_version`, `expected_material_version`, status transition, independence, and monetary ceiling (`approve`).
+  5. Invoke Glenn's `computeNetShortageSnapshot` synchronously inside the transaction (`exclude_repf_id = repf_id` for existing RepFs); abort on `setup_blocked`, `rejected`, or `duplicate_supply_coverage`.
+  6. On first `submitRepf`, lock chapter `REPF` yearly sequence counter (`FOR UPDATE`) and allocate `repf_reference` once-only.
+  7. Persist RepF, lines, immutable version snapshot, history entry, `ActionReceipt`, and transactional outbox event `stage2.repf.changed.v1` (Ticket 07 8-field envelope on `private-stage1.chapter.{chapter_id}`), then commit.
+- **Action-receipt recovery (`/procurement-operations/by-key` & `/procurement-operations/{operation_id}`):** Strictly limited to the original immutable actor who still holds current chapter membership, `repf.read`, and the originating mutation's current required duty. Unknown, in-flight, foreign-chapter, or other-actor receipts return uniform `404 operation_not_found` (never proof of rollback). Never log query strings containing `action_key`.
+
+### 6.4 Stage 1 `cancelInternalRf` compatibility contract (`PRC-08`)
+
+Stage 1's `POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/cancel` (`cancelInternalRf`, owned by Glenn) retains its exact Stage 1 HTTP route, request schema, and response schema and **never blocks or deadlocks** on open Stage 2 RepFs or POs:
+- Inside `cancelInternalRf`'s MySQL transaction, after updating the RF's remaining unissued line quantity to canceled, lock affected open Stage 2 RepF rows (`status` in `draft`, `pending_budget_review`, `held`, `returned_for_revision`, `approved`, `partially_ordered` in sorted `id` order to prevent deadlocks) and linked open PO rows (Ticket 03).
+- Set `linked_demand_canceled = true` and `linked_demand_canceled_at = committed_at` on each affected RepF line and `linked_demand_canceled = true` on the parent RepF, append an immutable `linked_demand_canceled` history entry (incrementing `version` without changing `material_version`), and emit `stage2.repf.changed.v1` on commit.
+- Live officer alerts (`GET /alerts`, Ticket 06) immediately surface a derived `demand_changed` alert referencing the flagged RepF/PO so Purchasing and Budget officers can adjust or cancel un-ordered remainders deliberately.
+
+## 7. Requirement traceability (Tickets 01–02)
+
+| Requirement | Contract coverage and downstream obligations |
 | --- | --- |
 | `INV-10` | Exact `low_stock_breach` (`usable_stockroom_on_hand <= approved_rop`) in `ReplenishmentNeedItem`; demand shortage remains visible even above ROP or without ROP policy. |
-| `INV-11` | Complete non-overlapping breakdown (`approved_target_level`, `eligible_usable_stockroom_on_hand`, `active_rf_reservations`, `unreserved_approved_rf_shortage`, open RepF/PO inbound, `gross_rf_shortage_need`, `gross_rop_replenishment_need`, `proposed_uncovered_quantity`). |
-| `INV-12` | Counted open RepF/PO inbound deducts from proposed uncovered quantity; late/disputed/ineligible inbound is surfaced separately via `excluded_inbound_quantity` and `inbound_sources`; RepF duplicate-guard enforcement follows in Ticket 02. |
-| `PRC-02` | Synchronous `computeNetShortageSnapshot` supplies live server-reconfirmed net need to both UI reads and Leader RepF write guards. |
-| `DOC-01`–`DOC-11` | Canonical Stage 2 `reference_series` families (`REPF`, `PO`, `DA`), shared yearly `RM` sequence documentation, additive `EvidencePurpose` enum, `checkEvidenceBinding` reuse, and immutable audit/version/idempotency primitives. |
+| `INV-11` | Complete non-overlapping breakdown (`approved_target_level`, `eligible_usable_stockroom_on_hand`, `active_rf_reservations`, `unreserved_approved_rf_shortage`, open RepF/PO inbound, `gross_rf_shortage_need`, `gross_rop_replenishment_need`, `proposed_uncovered_quantity`) mirrored onto every `RepfLine.net_need_breakdown`. |
+| `INV-12` | Counted open RepF/PO inbound deducts from proposed uncovered quantity; late/disputed/ineligible inbound is surfaced separately via `excluded_inbound_quantity` and `inbound_sources`; RepF mutations enforce `409 duplicate_supply_coverage` unless explicit `additional_purchase_reason` is supplied for independent review. |
+| `PRC-01` | Strict Stage 2 `RepfTriggerKind` (`rf_shortage` requiring same-chapter approved `rf_id`/`rf_line_id`, or `rop_replenishment`), `funding_source: chapter_funds`, and `422 invalid_input` rejection of `so_shortage`. |
+| `PRC-02` | Synchronous `computeNetShortageSnapshot` supplies live server-reconfirmed net need to both UI reads and Leader RepF create/replace/submit/approve write guards. |
+| `PRC-03` | Multi-trigger `Repf` records `trigger_kinds`, `urgency`, `funding_source`, line `net_need_breakdown`, PHP estimates, and `additional_purchase_reason` without double-counting overlapping need. |
+| `PRC-04` | Independent `reviewRepfBudget` (`approve | hold | return | reject`), `resumeRepfReview`, `reviseRepf`, preparer/approver independence (`403 independence_required`), grant monetary limit (`403 duty_limit_exceeded`), mandatory non-blank hold/return/reject reasons, and non-closing of linked RF demand. |
+| `PRC-08` | `cancelRepf` cancels un-ordered RepFs or `partially_ordered` remainders with mandatory reason, authority gate, and full history; Stage 1 `cancelInternalRf` succeeds without deadlock while setting `linked_demand_canceled: true` and raising `demand_changed` alerts. |
+| `DOC-01`–`DOC-11` | Canonical Stage 2 `reference_series` families (`REPF`, `PO`, `DA`) with once-only `REPF` allocation on `submitRepf`, shared yearly `RM` sequence, additive `EvidencePurpose` enum, `checkEvidenceBinding` reuse, `/procurement-operations/*` recovery, printable escaped HTML `printRepf`, and immutable version/history snapshots. |
 | `GOV-01`–`GOV-09` | Chapter-scoped routes, 14 canonical duties (`x-stage2-action-duties`), CLI-only policy governance (`purchasing_quotation_policy`, `da_authorization`, `reference_series`), explicit `409 setup_blocked` blockers, and zero silent defaults. |
-| `SEC-01`–`SEC-03` | Verbatim Stage 1 `ysp_session` + MFA + `Origin` + `X-XSRF-TOKEN`, `Cache-Control: no-store`, uniform `404` anti-enumeration, and zero public routes for internal participants or CLI setup. |
+| `SEC-01`–`SEC-03` | Verbatim Stage 1 `ysp_session` + MFA + `Origin` + `X-XSRF-TOKEN`, `Cache-Control: no-store`, strict print CSP + `nosniff`, uniform `404` anti-enumeration (`chapter_not_found`/`resource_not_found`/`operation_not_found`), and zero public routes for internal participants or CLI setup. |
 
-## 7. Contract validation
+## 8. Contract validation
 
 Run from this worktree root in PowerShell using an ignored workspace-local Python 3.13+ virtual environment pinned to `contracts/stage2/validation-requirements.txt`:
 
@@ -116,13 +171,13 @@ Run from this worktree root in PowerShell using an ignored workspace-local Pytho
 python -m venv .runtime/contract-validation
 .runtime/contract-validation/Scripts/python.exe -m pip install -r contracts/stage2/validation-requirements.txt
 .runtime/contract-validation/Scripts/python.exe contracts/stage2/validate.py
-# Expected exit 1 (deliberately invalid replenishment response):
+# Expected exit 1 (deliberately invalid so_shortage RepF trigger):
 .runtime/contract-validation/Scripts/python.exe contracts/stage2/validate.py --invalid-example
 # Clean exit 0 rerun:
 .runtime/contract-validation/Scripts/python.exe contracts/stage2/validate.py
 ```
 
-## 8. Downstream runtime acceptance obligations (not executed here)
+## 9. Downstream runtime acceptance obligations (not executed here)
 
 Future Stage 2 implementation tickets (after `#27` contract sign-off by Efren and Glenn) must verify at the authenticated HTTP/MySQL boundary:
 
@@ -130,9 +185,10 @@ Future Stage 2 implementation tickets (after `#27` contract sign-off by Efren an
 2. Real MySQL fixtures verify exact decimal arithmetic (`Brick\Math\BigDecimal`) across normal ROP breach, combined RF shortage + ROP without double-counting, excluded `StockHold` / `uninterpreted` donated lots, fully covered open RepF/PO inbound yielding `0` uncovered need, separately surfaced late/disputed inbound, and `409 setup_blocked` when `rop`/`target_level`/`quantity_scale` is missing or expired.
 3. CLI `recordPolicy` persists and validates `purchasing_quotation_policy`, `da_authorization`, and Stage 2 `REPF`/`PO`/`DA` `reference_series` families with zero public HTTP policy-mutation routes, and confirms Stage 2 `PO-RM`/`DA-RM` share the chapter's existing `RM` sequence.
 4. Existing Stage 1 `/evidence*` routes accept all seven additive Stage 2 `EvidencePurpose` values while keeping `checkEvidenceBinding` strictly internal with zero readiness-token endpoints.
-5. Separate multi-laptop browser rehearsal (Stage 2 exit) verifies Glenn's replenishment screen refreshes live on committed stock/RF/RepF/PO events without duplicating mutations or losing unsaved draft edits.
+5. RepF HTTP/MySQL tests verify multi-trigger creation/replacement, `so_shortage` `422` rejection, concurrent variant lock serialization preventing duplicate RepF coverage (`409 duplicate_supply_coverage`), explicit `additional_purchase_reason` override approval, once-only `REPF` reference allocation across `submit` → `return` → `revise` → resubmit, preparer self-review denial (`403 independence_required`), actor grant ceiling denial (`403 duty_limit_exceeded`), post-approval remainder cancellation, `X-Action-Key` replay / `409 action_key_conflict` / `/procurement-operations/*` lost-response recovery, escaped `printRepf` HTML headers, and Stage 1 `cancelInternalRf` flagging linked open RepFs with `linked_demand_canceled: true` without deadlocking RF closure.
+6. Separate multi-laptop browser rehearsal (Stage 2 exit) verifies Glenn's replenishment and RepF screens refresh live on committed stock/RF/RepF/PO events without duplicating mutations or losing unsaved draft edits.
 
-## 9. Donation / Sponsorship Acknowledgment and donor restrictions (Ticket 04)
+## 10. Donation / Sponsorship Acknowledgment and donor restrictions (Ticket 04)
 
 Leader owns the public DA operations and Glenn consumes them in the UI. Glenn reviews transport, recovery and eligibility behavior. Efren reviews DA-RM source eligibility, restrictions and lot locking. Paths are relative to the admitted chapter.
 

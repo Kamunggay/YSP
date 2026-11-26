@@ -2,7 +2,7 @@ openapi: 3.1.1
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: YSP Stage 2 canonical HTTP agreement
-  version: 0.1.0
+  version: 0.2.0
   description: >-
     Ticket stage2-contracts-01 of specification #27. Canonical Stage 2 contract
     baseline reusing Stage 1 transport, cookie/CSRF security, X-Action-Key
@@ -22,6 +22,11 @@ tags:
     description: Live chapter-scoped net-shortage and Reorder Point (ROP) replenishment visibility owned by Glenn.
   - name: Donations
     description: In-kind Donation / Sponsorship Acknowledgment and donor-restriction controls owned by Leader.
+
+  - name: RepF
+    description: Chapter-funded Replenishment Form (RepF) intake, net-need duplicate guard, and independent budget review owned by Leader.
+  - name: Procurement Operations
+    description: Action-receipt recovery lookups for uncertain Stage 2 procurement mutations owned by Leader.
 
 paths:
   /api/v1/chapters/{chapter_id}/replenishment/needs:
@@ -684,6 +689,870 @@ paths:
         '429': {$ref: '#/components/responses/Throttled'}
         '503': {$ref: '#/components/responses/Unavailable'}
 
+
+  /api/v1/chapters/{chapter_id}/repfs:
+    get:
+      operationId: listRepfs
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.read
+      summary: List chapter Replenishment Forms (RepFs)
+      description: >-
+        Current full individual session/MFA, chapter membership, and repf.read duty are
+        required on every call. Safe GET accepts no request body and no X-Action-Key.
+        Deterministic ordering: updated_at descending, then id descending. Uses 5-minute
+        snapshot-bound cursor pagination; stale or mutated snapshots return 409
+        snapshot_stale; unknown, repeated, or malformed selectors (including so_shortage)
+        return 400 invalid_selector. All responses send Cache-Control: no-store.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/RepfStatusFilter'
+        - $ref: '#/components/parameters/RepfTriggerFilter'
+        - $ref: '#/components/parameters/RepfRfFilter'
+        - $ref: '#/components/parameters/RepfLinkedDemandCanceledFilter'
+        - $ref: '#/components/parameters/CatalogueSearch'
+      responses:
+        '200':
+          description: Current authorized snapshot of chapter RepFs.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: createRepf
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.draft
+      summary: Create a chapter-funded Replenishment Form (RepF) draft
+      description: >-
+        Creates a new chapter-funded RepF in draft status (repf_reference remains null
+        until submitRepf). Supports single-trigger and multi-trigger lines combining
+        approved same-chapter rf_shortage lines and rop_replenishment lines (so_shortage
+        is rejected with 422 invalid_input per PRC-01). Synchronously invokes Glenn's
+        internal computeNetShortageSnapshot under Leader's MySQL transaction to record
+        each line's non-overlapping net-need breakdown (PRC-02, PRC-03, INV-11) and
+        enforces the INV-12 duplicate-supply-coverage guard (409 duplicate_supply_coverage
+        when requested quantity exceeds live uncovered need without an explicit
+        additional_purchase_reason). Requires exact Origin, X-XSRF-TOKEN, and X-Action-Key.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRepfRequest'
+      responses:
+        '201':
+          description: RepF draft created (or replayed identically for the same X-Action-Key).
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ProcurementAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/RepfConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}:
+    get:
+      operationId: readRepf
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.read
+      summary: Read a single Replenishment Form (RepF)
+      description: >-
+        Returns the current authorized state of a chapter-owned RepF including all lines,
+        server-computed net-need breakdowns, additional-purchase justifications, budget
+        review state, and linked_demand_canceled indicators. Foreign or unknown RepF IDs
+        return uniform 404 resource_not_found after chapter admission.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+      responses:
+        '200':
+          description: Current authorized RepF snapshot.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    put:
+      operationId: replaceRepf
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.draft
+      summary: Replace a draft Replenishment Form (RepF) in full
+      description: >-
+        Full draft replacement allowed only while status is draft. Enforces optimistic
+        expected_version and expected_material_version checks (409 version_conflict),
+        recomputes each line's net-need breakdown via Glenn's computeNetShortageSnapshot
+        with exclude_repf_id set to repf_id, and enforces INV-12 duplicate-coverage
+        protection. Increments version and material_version atomically.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceRepfRequest'
+      responses:
+        '200':
+          description: Draft RepF replaced (or replayed identically).
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ProcurementAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/RepfConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}/submit:
+    post:
+      operationId: submitRepf
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.submit
+      summary: Submit a draft RepF for independent budget review
+      description: >-
+        Transitions RepF from draft to pending_budget_review. Allocates the chapter REPF
+        reference number once-only on first submission using the effective REPF
+        reference_series policy (missing/expired yields 409 setup_blocked); resubmissions
+        after return and revise retain the allocated repf_reference. Reconfirms live net
+        shortage via Glenn's computeNetShortageSnapshot (exclude_repf_id = repf_id) under
+        Leader's transaction locks and rejects duplicate supply coverage with 409
+        duplicate_supply_coverage unless explicit additional_purchase_reason is present.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitRepfRequest'
+      responses:
+        '200':
+          description: RepF submitted for budget review with REPF reference allocated/retained.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ProcurementAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/RepfConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}/budget-review:
+    post:
+      operationId: reviewRepfBudget
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.budget_review
+      summary: Approve, hold, return, or reject a submitted RepF
+      description: >-
+        Independent budget decision by BUDGET_APPROVER or CHAPTER_HEAD (PRC-04). Rejects
+        self-review by the RepF preparer with 403 independence_required and rejects
+        approvals whose estimated_total_php exceeds the actor's active DutyGrant limit_php
+        with 403 duty_limit_exceeded. From pending_budget_review allows approve, hold,
+        return, or reject; from held allows return (requiring resumeRepfReview before
+        approve or reject). Mandatory non-blank reason on hold, return, and reject. On
+        approve, re-evaluates computeNetShortageSnapshot (exclude_repf_id = repf_id),
+        enforces INV-12 duplicate-coverage protection, and freezes approved_budget_php.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRepfBudgetRequest'
+      responses:
+        '200':
+          description: Budget review decision committed (or replayed identically).
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ProcurementAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/RepfConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}/resume-review:
+    post:
+      operationId: resumeRepfReview
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.budget_review
+      summary: Resume budget review on a held RepF
+      description: >-
+        Transitions a RepF from held back to pending_budget_review. Requires independent
+        BUDGET_APPROVER or CHAPTER_HEAD (403 independence_required if actor is the RepF
+        preparer) and matching expected_version / expected_material_version.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResumeRepfReviewRequest'
+      responses:
+        '200':
+          description: Held RepF returned to pending_budget_review.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ProcurementAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/RepfConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}/revise:
+    post:
+      operationId: reviseRepf
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.draft
+      summary: Reopen a returned RepF into draft for controlled revision
+      description: >-
+        Transitions RepF from returned_for_revision back to draft, incrementing both
+        version and material_version while retaining the allocated repf_reference and
+        prior immutable snapshots in history. Subsequent edits use PUT /repfs/{repf_id}
+        and resubmit via POST /repfs/{repf_id}/submit.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviseRepfRequest'
+      responses:
+        '200':
+          description: Returned RepF reopened in draft with incremented material_version.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ProcurementAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/RepfConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}/cancel:
+    post:
+      operationId: cancelRepf
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.cancel
+      summary: Cancel an un-ordered RepF or un-ordered RepF remainder
+      description: >-
+        Cancels an un-ordered RepF (draft, held, returned_for_revision, approved) or
+        cancels the remaining un-ordered quantity of a partially_ordered RepF with a
+        mandatory non-blank reason while preserving full version history and
+        already-issued PO commitments (PRC-08). Pre-approval cancellation (draft, held,
+        returned_for_revision) is permitted for repf.cancel holders (INVENTORY,
+        PURCHASING, BUDGET_APPROVER, CHAPTER_HEAD); post-approval cancellation (approved
+        or partially_ordered) requires BUDGET_APPROVER or CHAPTER_HEAD (else 403
+        duty_denied). pending_budget_review (must be decided/held/returned via budget
+        review first), ordered, rejected, and canceled RepFs return 409 invalid_transition.
+      security:
+        - browserSession: []
+          csrfProof: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/ActionKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRepfRequest'
+      responses:
+        '200':
+          description: RepF (or un-ordered remainder) canceled with immutable history preserved.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            X-Action-Replayed:
+              $ref: '#/components/headers/ActionReplayed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfMutationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ProcurementAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/RepfConflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMedia'
+        '419':
+          $ref: '#/components/responses/CsrfMismatch'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}/history:
+    get:
+      operationId: listRepfHistory
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.read
+      summary: List immutable audit and revision history for a RepF
+      description: >-
+        Returns chronological immutable transition and revision history for a chapter
+        RepF using 5-minute snapshot-bound cursor pagination (ordered by version ascending,
+        then id ascending). Includes linked_demand_canceled events recorded when Stage 1
+        cancelInternalRf cancels a linked RF remainder.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Authorized RepF history page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfHistoryList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}/versions/{version}:
+    get:
+      operationId: readRepfVersion
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.read
+      summary: Read an immutable historical snapshot of a RepF at a specific version
+      description: >-
+        Returns the immutable RepF snapshot recorded at exact version (integer >= 1).
+        Unknown version or foreign RepF yields uniform 404 resource_not_found.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+        - $ref: '#/components/parameters/RepfVersion'
+      responses:
+        '200':
+          description: Authorized historical RepF version snapshot.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}/related:
+    get:
+      operationId: listRepfRelatedRecords
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.read
+      summary: List linked RF, quotation, and Purchase Order records for a RepF
+      description: >-
+        Returns snapshot-paginated references to linked internal RFs, nested quotations
+        (ticket 03), and Purchase Orders (ticket 03) associated with this RepF, including
+        linked_demand_canceled visibility for RF demand changes (PRC-08).
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Authorized related records snapshot.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepfRelatedList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/repfs/{repf_id}/print:
+    get:
+      operationId: printRepf
+      tags:
+        - RepF
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.read
+      summary: Render escaped non-executable printable HTML for a RepF
+      description: >-
+        Renders an escaped, non-executable printable HTML document showing chapter,
+        RepF reference (or DRAFT watermark), status, version/material_version, funding
+        source, urgency, line triggers, net-need calculation breakdown, additional-purchase
+        justifications, linked_demand_canceled notice, PHP totals, and preparer/reviewer
+        attribution. Printing is strictly read-only and never transitions state. Sends
+        Cache-Control: no-store, strict Content-Security-Policy, and X-Content-Type-Options: nosniff.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/RepfId'
+      responses:
+        '200':
+          description: Escaped non-executable printable HTML RepF view.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Content-Security-Policy:
+              $ref: '#/components/headers/PrintCsp'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+          content:
+            text/html:
+              schema:
+                type: string
+                minLength: 1
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/procurement-operations/by-key:
+    get:
+      operationId: findProcurementOperationByKey
+      tags:
+        - Procurement Operations
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.read
+      summary: Recover a committed procurement action receipt by operation name and action key
+      description: >-
+        Recovers the immutable committed action receipt for an uncertain procurement
+        mutation (RepF in ticket 02; extended additively with quotations and POs in
+        ticket 03). Strictly limited to the original immutable actor who still holds
+        current chapter membership, repf.read, and the originating mutation's current
+        required action duty. Unknown, in-flight, or other-actor receipts return uniform
+        404 operation_not_found (never proof of rollback). Never log query strings
+        containing action_key.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ProcurementOperationNameParam'
+        - $ref: '#/components/parameters/ProcurementActionKeyLookup'
+      responses:
+        '200':
+          description: Authorized immutable committed procurement action receipt.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcurementOperationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/OperationNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/procurement-operations/{operation_id}:
+    get:
+      operationId: readProcurementOperation
+      tags:
+        - Procurement Operations
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: repf.read
+      summary: Read a committed procurement action receipt by operation ID
+      description: >-
+        Reads the immutable committed procurement action receipt by its server-assigned
+        operation_id. Strictly limited to the original immutable actor who still holds
+        current chapter membership, repf.read, and the originating mutation's current
+        required action duty. Unknown, in-flight, foreign-chapter, or other-actor
+        operation IDs return uniform 404 operation_not_found.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ProcurementOperationId'
+      responses:
+        '200':
+          description: Authorized immutable committed procurement action receipt.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcurementOperationResult'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/OperationNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
 components:
   securitySchemes:
     browserSession:
@@ -724,6 +1593,19 @@ components:
         pattern: '^[1-9][0-9]*$'
       example: '60'
       description: Positive integer delta seconds until next allowed attempt.
+
+    PrintCsp:
+      required: true
+      schema:
+        const: "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+      example: "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+      description: Non-executable Content-Security-Policy inherited verbatim from Stage 1 printable HTML routes.
+    NoSniff:
+      required: true
+      schema:
+        const: nosniff
+      example: nosniff
+      description: Prevents MIME sniffing on printable HTML views.
 
   parameters:
     ChapterId:
@@ -852,6 +1734,77 @@ components:
       required: true
       schema: {$ref: '#/components/schemas/Uuid'}
       description: Sensitive original-actor selector. Exclude it from logs.
+
+    RepfId:
+      in: path
+      name: repf_id
+      required: true
+      description: Opaque chapter-scoped RepF UUID. Unknown or foreign RepF returns uniform 404 resource_not_found after chapter admission.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      example: 90000000-0000-4000-8000-000000000010
+    RepfVersion:
+      in: path
+      name: version
+      required: true
+      description: Exact historical RepF version integer (>= 1). Unknown version yields uniform 404 resource_not_found.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+      example: 1
+    RepfStatusFilter:
+      in: query
+      name: status
+      required: false
+      description: Optional RepF lifecycle status filter. Omit to return all statuses.
+      schema:
+        $ref: '#/components/schemas/RepfStatus'
+    RepfTriggerFilter:
+      in: query
+      name: trigger_kind
+      required: false
+      description: Optional Stage 2 RepF trigger filter (rf_shortage or rop_replenishment only; so_shortage returns 400 invalid_selector).
+      schema:
+        $ref: '#/components/schemas/RepfTriggerKind'
+    RepfRfFilter:
+      in: query
+      name: rf_id
+      required: false
+      description: Optional chapter-owned internal RF UUID filter matching RepFs linked to that RF.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RepfLinkedDemandCanceledFilter:
+      in: query
+      name: linked_demand_canceled
+      required: false
+      description: Optional boolean filter matching RepFs flagged by Stage 1 cancelInternalRf (PRC-08).
+      schema:
+        type: boolean
+    ProcurementOperationNameParam:
+      in: query
+      name: operation_name
+      required: true
+      description: Exact Stage 2 procurement mutation operationId whose committed receipt is being recovered.
+      schema:
+        $ref: '#/components/schemas/ProcurementOperationName'
+      example: submitRepf
+    ProcurementActionKeyLookup:
+      in: query
+      name: action_key
+      required: true
+      description: Original actor's X-Action-Key UUID for recovery lookup; sensitive selector, never log query strings.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      example: 40000000-0000-4000-8000-000000000210
+    ProcurementOperationId:
+      in: path
+      name: operation_id
+      required: true
+      description: Server-assigned immutable procurement operation receipt UUID.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      example: 49000000-0000-4000-8000-000000000001
 
   schemas:
     # --- Shared Stage 1 Scalar & Envelope Primitives (verbatim reuse) ---
@@ -3169,6 +4122,1129 @@ components:
           outcome: {const: rejected}
           reason: {const: target_locked}
 
+
+    # --- RepF Intake, Duplicate-Coverage Guard & Budget Review Schemas (Leader) ---
+    PositiveStockQuantity:
+      allOf:
+        - $ref: '#/components/schemas/StockQuantity'
+        - not:
+            pattern: '^0(\.0+)?$'
+      description: Strictly positive canonical decimal quantity string matching exact approved variant scale (0 to 6).
+    RepfStatus:
+      type: string
+      enum:
+        - draft
+        - pending_budget_review
+        - approved
+        - held
+        - returned_for_revision
+        - rejected
+        - partially_ordered
+        - ordered
+        - canceled
+    RepfTriggerKind:
+      type: string
+      enum:
+        - rf_shortage
+        - rop_replenishment
+      description: Stage 2 RepF trigger kinds strictly exclude Stage 3 so_shortage (PRC-01).
+    RepfUrgency:
+      type: string
+      enum:
+        - normal
+        - urgent
+        - critical
+    RepfBudgetDecision:
+      type: string
+      enum:
+        - approve
+        - hold
+        - return
+        - reject
+    RepfHistoryAction:
+      type: string
+      enum:
+        - createRepf
+        - replaceRepf
+        - submitRepf
+        - approveRepf
+        - holdRepf
+        - returnRepf
+        - rejectRepf
+        - resumeRepfReview
+        - reviseRepf
+        - cancelRepf
+        - po_ordered_progress
+        - linked_demand_canceled
+    ProcurementActor:
+      type: object
+      additionalProperties: false
+      required:
+        - user_id
+        - display_name
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: '\S'
+    AdditionalPurchaseReason:
+      type: object
+      additionalProperties: false
+      required:
+        - category
+        - referenced_source_ids
+        - explanation
+      properties:
+        category:
+          type: string
+          enum:
+            - late_supply
+            - disputed_supply
+            - ineligible_supply
+        referenced_source_ids:
+          type: array
+          minItems: 0
+          maxItems: 50
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+          description: Optional IDs of open RepF/PO sources that are late, disputed, or ineligible.
+        explanation:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+      description: Explicit INV-12 justification required whenever requested_quantity exceeds live uncovered_need.
+    RepfLineInput:
+      type: object
+      additionalProperties: false
+      required:
+        - trigger_kind
+        - variant_id
+        - unit_id
+        - rf_id
+        - rf_line_id
+        - requested_quantity
+        - estimated_unit_cost_php
+        - needed_by
+        - additional_purchase_reason
+        - notes
+      properties:
+        trigger_kind:
+          $ref: '#/components/schemas/RepfTriggerKind'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        rf_line_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        requested_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        estimated_unit_cost_php:
+          $ref: '#/components/schemas/PhpAmount'
+        needed_by:
+          oneOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        additional_purchase_reason:
+          oneOf:
+            - $ref: '#/components/schemas/AdditionalPurchaseReason'
+            - type: 'null'
+        notes:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+      allOf:
+        - if:
+            properties:
+              trigger_kind:
+                const: rf_shortage
+          then:
+            properties:
+              rf_id:
+                $ref: '#/components/schemas/Uuid'
+              rf_line_id:
+                $ref: '#/components/schemas/Uuid'
+          else:
+            properties:
+              rf_id:
+                type: 'null'
+              rf_line_id:
+                type: 'null'
+    RepfLineNeedBreakdown:
+      type: object
+      additionalProperties: false
+      required:
+        - snapshot_version
+        - observed_at
+        - approved_rop
+        - approved_target_level
+        - usable_stockroom_on_hand
+        - eligible_usable_stockroom_on_hand
+        - active_rf_reservations
+        - eligible_available_to_allocate
+        - unreserved_approved_rf_shortage
+        - open_repf_quantity
+        - open_po_inbound_quantity
+        - total_open_inbound_coverage
+        - excluded_inbound_quantity
+        - gross_rf_shortage_need
+        - gross_rop_replenishment_need
+        - gross_combined_need
+        - uncovered_rf_shortage_quantity
+        - uncovered_rop_replenishment_quantity
+        - variant_proposed_uncovered_quantity
+        - uncovered_need
+        - exceeds_uncovered_need
+      properties:
+        snapshot_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        observed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        approved_rop:
+          oneOf:
+            - $ref: '#/components/schemas/StockQuantity'
+            - type: 'null'
+        approved_target_level:
+          oneOf:
+            - $ref: '#/components/schemas/StockQuantity'
+            - type: 'null'
+        usable_stockroom_on_hand:
+          $ref: '#/components/schemas/StockQuantity'
+        eligible_usable_stockroom_on_hand:
+          $ref: '#/components/schemas/StockQuantity'
+        active_rf_reservations:
+          $ref: '#/components/schemas/StockQuantity'
+        eligible_available_to_allocate:
+          $ref: '#/components/schemas/StockQuantity'
+        unreserved_approved_rf_shortage:
+          $ref: '#/components/schemas/StockQuantity'
+        open_repf_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        open_po_inbound_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        total_open_inbound_coverage:
+          $ref: '#/components/schemas/StockQuantity'
+        excluded_inbound_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        gross_rf_shortage_need:
+          $ref: '#/components/schemas/StockQuantity'
+        gross_rop_replenishment_need:
+          $ref: '#/components/schemas/StockQuantity'
+        gross_combined_need:
+          $ref: '#/components/schemas/StockQuantity'
+        uncovered_rf_shortage_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        uncovered_rop_replenishment_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        variant_proposed_uncovered_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        uncovered_need:
+          $ref: '#/components/schemas/StockQuantity'
+          description: Live non-overlapping uncovered need for this line's trigger (uncovered_rf_shortage_quantity for rf_shortage; uncovered_rop_replenishment_quantity for rop_replenishment).
+        exceeds_uncovered_need:
+          type: boolean
+          description: True iff requested_quantity > uncovered_need; requires explicit additional_purchase_reason.
+      description: Server-computed net-need breakdown recorded from Glenn's computeNetShortageSnapshot (PRC-02, PRC-03, INV-11).
+    RepfLine:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - line_number
+        - trigger_kind
+        - item_id
+        - item_code
+        - variant_id
+        - variant_code
+        - display_name
+        - unit_id
+        - unit_code
+        - quantity_scale
+        - rf_id
+        - rf_reference
+        - rf_line_id
+        - rf_material_version
+        - linked_demand_canceled
+        - linked_demand_canceled_at
+        - requested_quantity
+        - ordered_quantity
+        - canceled_quantity
+        - remaining_to_order_quantity
+        - estimated_unit_cost_php
+        - estimated_line_total_php
+        - needed_by
+        - net_need_breakdown
+        - additional_purchase_reason
+        - notes
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        line_number:
+          type: integer
+          minimum: 1
+          maximum: 100
+        trigger_kind:
+          $ref: '#/components/schemas/RepfTriggerKind'
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        item_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        rf_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        rf_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        rf_line_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        rf_material_version:
+          oneOf:
+            - type: integer
+              minimum: 1
+              maximum: 2147483647
+            - type: 'null'
+        linked_demand_canceled:
+          type: boolean
+          description: Set true when Stage 1 cancelInternalRf cancels the linked RF's unissued remainder (PRC-08).
+        linked_demand_canceled_at:
+          oneOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        requested_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        ordered_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        canceled_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        remaining_to_order_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        estimated_unit_cost_php:
+          $ref: '#/components/schemas/PhpAmount'
+        estimated_line_total_php:
+          $ref: '#/components/schemas/PhpAmount'
+        needed_by:
+          oneOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        net_need_breakdown:
+          $ref: '#/components/schemas/RepfLineNeedBreakdown'
+        additional_purchase_reason:
+          oneOf:
+            - $ref: '#/components/schemas/AdditionalPurchaseReason'
+            - type: 'null'
+        notes:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+      allOf:
+        - if:
+            properties:
+              trigger_kind:
+                const: rf_shortage
+          then:
+            properties:
+              rf_id:
+                $ref: '#/components/schemas/Uuid'
+              rf_reference:
+                type: string
+              rf_line_id:
+                $ref: '#/components/schemas/Uuid'
+              rf_material_version:
+                type: integer
+          else:
+            properties:
+              rf_id:
+                type: 'null'
+              rf_reference:
+                type: 'null'
+              rf_line_id:
+                type: 'null'
+              rf_material_version:
+                type: 'null'
+              linked_demand_canceled:
+                const: false
+              linked_demand_canceled_at:
+                type: 'null'
+        - if:
+            properties:
+              linked_demand_canceled:
+                const: true
+          then:
+            properties:
+              linked_demand_canceled_at:
+                $ref: '#/components/schemas/UtcInstant'
+          else:
+            properties:
+              linked_demand_canceled_at:
+                type: 'null'
+        - if:
+            properties:
+              net_need_breakdown:
+                properties:
+                  exceeds_uncovered_need:
+                    const: true
+          then:
+            properties:
+              additional_purchase_reason:
+                $ref: '#/components/schemas/AdditionalPurchaseReason'
+    Repf:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - chapter_id
+        - repf_reference
+        - status
+        - version
+        - material_version
+        - funding_source
+        - urgency
+        - trigger_kinds
+        - justification
+        - estimated_total_php
+        - approved_budget_php
+        - has_additional_purchase_override
+        - linked_demand_canceled
+        - preparer
+        - submitted_by
+        - submitted_at
+        - budget_reviewer
+        - budget_reviewed_at
+        - budget_decision
+        - budget_decision_reason
+        - canceled_by
+        - canceled_at
+        - cancel_reason
+        - lines
+        - created_at
+        - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        repf_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+          description: Allocated once-only on first submitRepf and retained across return/revise/resubmit/cancel.
+        status:
+          $ref: '#/components/schemas/RepfStatus'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        funding_source:
+          const: chapter_funds
+        urgency:
+          $ref: '#/components/schemas/RepfUrgency'
+        trigger_kinds:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/RepfTriggerKind'
+        justification:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: '\S'
+        estimated_total_php:
+          $ref: '#/components/schemas/PhpAmount'
+        approved_budget_php:
+          oneOf:
+            - $ref: '#/components/schemas/PhpAmount'
+            - type: 'null'
+          description: Frozen approved PHP ceiling once budget_review approves; enforced by ticket 03 PO approval.
+        has_additional_purchase_override:
+          type: boolean
+        linked_demand_canceled:
+          type: boolean
+          description: True when any rf_shortage line was flagged by Stage 1 cancelInternalRf (PRC-08).
+        preparer:
+          $ref: '#/components/schemas/ProcurementActor'
+        submitted_by:
+          oneOf:
+            - $ref: '#/components/schemas/ProcurementActor'
+            - type: 'null'
+        submitted_at:
+          oneOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        budget_reviewer:
+          oneOf:
+            - $ref: '#/components/schemas/ProcurementActor'
+            - type: 'null'
+        budget_reviewed_at:
+          oneOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        budget_decision:
+          oneOf:
+            - $ref: '#/components/schemas/RepfBudgetDecision'
+            - type: 'null'
+        budget_decision_reason:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+        canceled_by:
+          oneOf:
+            - $ref: '#/components/schemas/ProcurementActor'
+            - type: 'null'
+        canceled_at:
+          oneOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        cancel_reason:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RepfLine'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+      allOf:
+        - if:
+            properties:
+              status:
+                enum:
+                  - pending_budget_review
+                  - approved
+                  - held
+                  - returned_for_revision
+                  - rejected
+                  - partially_ordered
+                  - ordered
+          then:
+            properties:
+              repf_reference:
+                type: string
+              submitted_by:
+                $ref: '#/components/schemas/ProcurementActor'
+              submitted_at:
+                $ref: '#/components/schemas/UtcInstant'
+        - if:
+            properties:
+              status:
+                enum:
+                  - approved
+                  - partially_ordered
+                  - ordered
+          then:
+            properties:
+              approved_budget_php:
+                $ref: '#/components/schemas/PhpAmount'
+              budget_reviewer:
+                $ref: '#/components/schemas/ProcurementActor'
+              budget_reviewed_at:
+                $ref: '#/components/schemas/UtcInstant'
+              budget_decision:
+                const: approve
+        - if:
+            properties:
+              status:
+                enum:
+                  - held
+                  - returned_for_revision
+                  - rejected
+          then:
+            properties:
+              budget_reviewer:
+                $ref: '#/components/schemas/ProcurementActor'
+              budget_reviewed_at:
+                $ref: '#/components/schemas/UtcInstant'
+              budget_decision:
+                enum:
+                  - hold
+                  - return
+                  - reject
+              budget_decision_reason:
+                type: string
+        - if:
+            properties:
+              status:
+                const: canceled
+          then:
+            properties:
+              canceled_by:
+                $ref: '#/components/schemas/ProcurementActor'
+              canceled_at:
+                $ref: '#/components/schemas/UtcInstant'
+              cancel_reason:
+                type: string
+    RepfResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Repf'
+    RepfList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Repf'
+        page:
+          $ref: '#/components/schemas/Page'
+    CreateRepfRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - funding_source
+        - urgency
+        - justification
+        - lines
+      properties:
+        funding_source:
+          const: chapter_funds
+        urgency:
+          $ref: '#/components/schemas/RepfUrgency'
+        justification:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: '\S'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RepfLineInput'
+    ReplaceRepfRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - funding_source
+        - urgency
+        - justification
+        - lines
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        funding_source:
+          const: chapter_funds
+        urgency:
+          $ref: '#/components/schemas/RepfUrgency'
+        justification:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: '\S'
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RepfLineInput'
+    SubmitRepfRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+    ReviewRepfBudgetRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - decision
+        - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        decision:
+          $ref: '#/components/schemas/RepfBudgetDecision'
+        reason:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+      allOf:
+        - if:
+            properties:
+              decision:
+                enum:
+                  - hold
+                  - return
+                  - reject
+          then:
+            properties:
+              reason:
+                type: string
+                minLength: 1
+                maxLength: 500
+                pattern: '\S'
+    ResumeRepfReviewRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+    ReviseRepfRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+    CancelRepfRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_version
+        - expected_material_version
+        - reason
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        expected_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+    RepfHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - version
+        - material_version
+        - action
+        - from_status
+        - to_status
+        - actor
+        - reason
+        - repf_reference
+        - occurred_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        action:
+          $ref: '#/components/schemas/RepfHistoryAction'
+        from_status:
+          oneOf:
+            - $ref: '#/components/schemas/RepfStatus'
+            - type: 'null'
+        to_status:
+          $ref: '#/components/schemas/RepfStatus'
+        actor:
+          $ref: '#/components/schemas/ProcurementActor'
+        reason:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+        repf_reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        occurred_at:
+          $ref: '#/components/schemas/UtcInstant'
+    RepfHistoryList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RepfHistoryEntry'
+        page:
+          $ref: '#/components/schemas/Page'
+    RepfRelatedRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - id
+        - repf_line_id
+        - reference
+        - material_version
+        - state
+        - linked_demand_canceled
+      properties:
+        kind:
+          type: string
+          enum:
+            - internal_rf
+            - quotation
+            - purchase_order
+        id:
+          $ref: '#/components/schemas/Uuid'
+        repf_line_id:
+          oneOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        reference:
+          oneOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        state:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        linked_demand_canceled:
+          type: boolean
+    RepfRelatedList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RepfRelatedRecord'
+        page:
+          $ref: '#/components/schemas/Page'
+    ProcurementOperationName:
+      type: string
+      enum:
+        - createRepf
+        - replaceRepf
+        - submitRepf
+        - reviewRepfBudget
+        - resumeRepfReview
+        - reviseRepf
+        - cancelRepf
+      description: Ticket 02 RepF mutation operation names; extended additively with quotation and PO operations in ticket 03.
+    RepfOperationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - operation_id
+        - chapter_id
+        - actor_id
+        - operation_name
+        - action_key
+        - resource_kind
+        - resource_id
+        - committed_version
+        - committed_material_version
+        - status_code
+        - committed_at
+        - outcome
+        - result
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        actor_id:
+          $ref: '#/components/schemas/Uuid'
+        operation_name:
+          $ref: '#/components/schemas/ProcurementOperationName'
+        action_key:
+          $ref: '#/components/schemas/Uuid'
+        resource_kind:
+          const: repf
+        resource_id:
+          $ref: '#/components/schemas/Uuid'
+        committed_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        committed_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        status_code:
+          type: integer
+          enum:
+            - 200
+            - 201
+        committed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        outcome:
+          const: committed
+        result:
+          $ref: '#/components/schemas/Repf'
+    RepfMutationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/RepfOperationReceipt'
+    ProcurementOperationReceipt:
+      oneOf:
+        - $ref: '#/components/schemas/RepfOperationReceipt'
+      description: Polymorphic committed procurement action receipt; ticket 03 adds quotation and PO receipt variants.
+    ProcurementOperationResult:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ProcurementOperationReceipt'
+    DuplicateSupplyCoverageDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - line_index
+        - trigger_kind
+        - variant_id
+        - requested_quantity
+        - live_uncovered_need
+        - variant_proposed_uncovered_quantity
+        - blocking_inbound_sources
+      properties:
+        line_index:
+          type: integer
+          minimum: 0
+          maximum: 99
+        trigger_kind:
+          $ref: '#/components/schemas/RepfTriggerKind'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        requested_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        live_uncovered_need:
+          $ref: '#/components/schemas/StockQuantity'
+        variant_proposed_uncovered_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        blocking_inbound_sources:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ReplenishmentInboundSource'
+    RepfConflict:
+      type: object
+      additionalProperties: false
+      required:
+        - request_id
+        - error
+        - failed_intent_committed
+        - current
+        - setup_blockers
+        - coverage_conflicts
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - version_conflict
+                - action_key_conflict
+                - invalid_transition
+                - duplicate_supply_coverage
+                - source_not_eligible
+                - target_locked
+                - setup_blocked
+            message:
+              type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+        failed_intent_committed:
+          const: false
+        current:
+          oneOf:
+            - $ref: '#/components/schemas/Repf'
+            - type: 'null'
+        setup_blockers:
+          type: array
+          minItems: 0
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SetupBlocker'
+        coverage_conflicts:
+          type: array
+          minItems: 0
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/DuplicateSupplyCoverageDetail'
+      allOf:
+        - if:
+            properties:
+              error:
+                properties:
+                  code:
+                    const: setup_blocked
+          then:
+            properties:
+              setup_blockers:
+                minItems: 1
+        - if:
+            properties:
+              error:
+                properties:
+                  code:
+                    const: duplicate_supply_coverage
+          then:
+            properties:
+              coverage_conflicts:
+                minItems: 1
+
   responses:
     InvalidSelector:
       description: Unknown, repeated, or malformed query selector, malformed chapter UUID after admission, or foreign/malformed cursor.
@@ -3449,6 +5525,120 @@ components:
             type: string
             minLength: 1
 
+    UnsupportedMedia:
+      description: Unsafe JSON operations require Content-Type application/json.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - properties:
+                  error:
+                    properties:
+                      code:
+                        const: unsupported_media_type
+    CsrfMismatch:
+      description: Missing, mismatched, or stale CSRF proof; refresh CSRF before retrying.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - properties:
+                  error:
+                    properties:
+                      code:
+                        const: csrf_mismatch
+    InvalidInput:
+      description: >-
+        Well-formed JSON fails the operation request schema (including unsupported
+        so_shortage trigger_kind, non-positive quantity, or missing mandatory reason).
+        Field pointers are RFC 6901 relative to the request body. No key is consumed.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+    ProcurementAccessDenied:
+      description: >-
+        origin_denied for missing/foreign Origin, mfa_incomplete for limited session,
+        duty_denied for insufficient chapter duty, independence_required when the
+        budget reviewer is the RepF preparer, or duty_limit_exceeded when RepF
+        estimated_total_php exceeds the actor's active DutyGrant limit_php.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - properties:
+                  error:
+                    properties:
+                      code:
+                        enum:
+                          - origin_denied
+                          - mfa_incomplete
+                          - duty_denied
+                          - independence_required
+                          - duty_limit_exceeded
+    OperationNotFound:
+      description: >-
+        Uniform chapter_not_found for unknown/foreign chapter or missing membership;
+        uniform operation_not_found for unknown, in-flight, foreign-chapter, or
+        other-actor procurement action receipts (not proof of rollback).
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - properties:
+                  error:
+                    properties:
+                      code:
+                        enum:
+                          - chapter_not_found
+                          - operation_not_found
+    SnapshotStaleConflict:
+      description: Five-minute snapshot cursor expired or underlying records/authority changed; restart from page 1.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - properties:
+                  error:
+                    properties:
+                      code:
+                        const: snapshot_stale
+    RepfConflict:
+      description: >-
+        Closed Stage 2 RepF mutation conflict (version_conflict, action_key_conflict,
+        invalid_transition, duplicate_supply_coverage, source_not_eligible,
+        target_locked, or setup_blocked). Failed intent never commits.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RepfConflict'
+
 x-controlled-procedures:
   recordPolicy:
     input:
@@ -3492,6 +5682,28 @@ x-stage2-action-duties:
   - RECEIVING
   - CHAPTER_HEAD
   - FINANCE
+
+  repf.read:
+    - INVENTORY
+    - PURCHASING
+    - BUDGET_APPROVER
+    - CHAPTER_HEAD
+    - FINANCE
+    - INDEPENDENT_REVIEWER
+  repf.draft:
+    - INVENTORY
+    - PURCHASING
+  repf.submit:
+    - INVENTORY
+    - PURCHASING
+  repf.budget_review:
+    - BUDGET_APPROVER
+    - CHAPTER_HEAD
+  repf.cancel:
+    - INVENTORY
+    - PURCHASING
+    - BUDGET_APPROVER
+    - CHAPTER_HEAD
 
 x-stage2-policy-values:
   purchasing_quotation_policy:
@@ -3751,3 +5963,20 @@ x-stage2-donation-policy-actions:
     policy: da_authorization
     duties_field: restriction_resolve_duties
     independence_field: require_preparer_independence
+
+x-stage1-compatibility:
+  cancelInternalRf:
+    stage1_operation: POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/cancel
+    owner: Glenn
+    procurement_consumer: Leader
+    requirement: PRC-08
+    contract: >-
+      Stage 1 cancelInternalRf HTTP path, request schema, and response schema remain
+      unchanged and never deadlock on open Stage 2 RepFs or POs. When cancelInternalRf
+      cancels an unissued RF remainder in the same MySQL transaction, every linked open
+      RepF line (status in draft, pending_budget_review, held, returned_for_revision,
+      approved, partially_ordered) and linked open PO (ticket 03) is flagged with
+      linked_demand_canceled: true and linked_demand_canceled_at: committed_at, appends a
+      linked_demand_canceled RepF history entry (incrementing version without bumping
+      material_version), emits stage2.repf.changed.v1 on commit, and surfaces a live
+      derived demand_changed officer alert in GET /alerts (ticket 06).
