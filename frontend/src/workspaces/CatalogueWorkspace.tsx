@@ -69,6 +69,8 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
 
   const [opName, setOpName] = useState('createCatalogueItem');
   const [lookupKey, setLookupKey] = useState('');
+  const [lookupOpId, setLookupOpId] = useState('');
+  const [lookupVersion, setLookupVersion] = useState('1');
   const [lookupResult, setLookupResult] = useState<unknown>(null);
 
   const [busy, setBusy] = useState(false);
@@ -249,14 +251,41 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
     }
   }
 
+  async function inspectVersion(id: string, version: number) {
+    setError(null);
+    try {
+      const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/catalogue/${entity}/${id}/versions/${version}`);
+      setHistoryJson(res.data);
+    } catch (err) {
+      setError(err);
+    }
+  }
+
   async function lookupOperation(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     try {
       const res = await apiGet<unknown>(
-        `/api/v1/chapters/${chapterId}/catalogue/operations/by-key${buildQuery({ operation_name: opName })}`,
+        `/api/v1/chapters/${chapterId}/catalogue/operations/by-key${buildQuery({
+          action_key: lookupKey.trim(),
+          operation_name: opName,
+        })}`,
         { 'X-Action-Key': lookupKey.trim() },
       );
+      setLookupResult(res.data);
+    } catch (err) {
+      setError(err);
+    }
+  }
+
+  async function lookupOperationById(e: React.FormEvent) {
+    e.preventDefault();
+    if (!lookupOpId.trim()) {
+      return;
+    }
+    setError(null);
+    try {
+      const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/catalogue/operations/${lookupOpId.trim()}`);
       setLookupResult(res.data);
     } catch (err) {
       setError(err);
@@ -338,6 +367,9 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
                         </button>
                         <button type="button" className="btn secondary" onClick={() => void inspectHistory(r.id)}>
                           History
+                        </button>
+                        <button type="button" className="btn secondary" onClick={() => void inspectVersion(r.id, r.material_version)}>
+                          Current Snapshot
                         </button>
                       </div>
                     </td>
@@ -448,17 +480,43 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
               <input id="op-name" required value={opName} onChange={(e) => setOpName(e.target.value)} />
             </div>
             <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="op-key">X-Action-Key UUID</label>
+              <label htmlFor="op-key">action_key (`X-Action-Key` UUID)</label>
               <input id="op-key" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
             </div>
             <button className="btn secondary" type="submit">
               Lookup by Key
             </button>
           </form>
+          <form onSubmit={lookupOperationById} style={{ marginTop: '0.65rem' }}>
+            <div className="row">
+              <div className="field">
+                <label htmlFor="op-id">operation_id UUID</label>
+                <input id="op-id" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
+              </div>
+              <button className="btn secondary" type="submit">
+                Lookup by Operation ID
+              </button>
+            </div>
+          </form>
+          {selected && (
+            <div className="row" style={{ marginTop: '0.65rem' }}>
+              <div className="field" style={{ maxWidth: '8rem' }}>
+                <label htmlFor="cat-ver-n">Material Ver</label>
+                <input id="cat-ver-n" type="number" min={1} value={lookupVersion} onChange={(e) => setLookupVersion(e.target.value)} />
+              </div>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => void inspectVersion(selected.id, Number.parseInt(lookupVersion, 10) || selected.material_version)}
+              >
+                Read Exact Version
+              </button>
+            </div>
+          )}
           {lookupResult !== null && <pre className="json-box">{JSON.stringify(lookupResult, null, 2)}</pre>}
           {historyJson !== null && (
             <>
-              <h4 style={{ marginBottom: '0.3rem' }}>Version History</h4>
+              <h4 style={{ marginBottom: '0.3rem' }}>Version History / Snapshot</h4>
               <pre className="json-box">{JSON.stringify(historyJson, null, 2)}</pre>
             </>
           )}

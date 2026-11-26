@@ -123,13 +123,23 @@ async function throwParsedError(response: Response): Promise<never> {
   }
 
   if (payload && typeof payload === 'object' && 'error' in payload) {
-    const errObj = payload as ApiErrorEnvelope;
-    if (errObj.error && typeof errObj.error.code === 'string') {
-      throw new ContractApiError(response.status, errObj.error.code, errObj.error.message || 'Request rejected.', {
-        fields: Array.isArray(errObj.error.fields) ? errObj.error.fields : [],
-        requestId: errObj.request_id,
+    const rawPayload = payload as { error?: unknown; message?: unknown; request_id?: string };
+    if (rawPayload.error && typeof rawPayload.error === 'object' && 'code' in rawPayload.error) {
+      const errObj = payload as ApiErrorEnvelope;
+      if (errObj.error && typeof errObj.error.code === 'string') {
+        throw new ContractApiError(response.status, errObj.error.code, errObj.error.message || 'Request rejected.', {
+          fields: Array.isArray(errObj.error.fields) ? errObj.error.fields : [],
+          requestId: errObj.request_id,
+          retryAfterSeconds,
+          extra: errObj,
+        });
+      }
+    }
+    if (typeof rawPayload.error === 'string') {
+      const message = typeof rawPayload.message === 'string' && rawPayload.message !== '' ? rawPayload.message : rawPayload.error;
+      throw new ContractApiError(response.status, rawPayload.error, message, {
+        requestId: rawPayload.request_id,
         retryAfterSeconds,
-        extra: errObj,
       });
     }
   }

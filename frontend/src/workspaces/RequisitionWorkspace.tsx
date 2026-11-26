@@ -7,7 +7,7 @@ interface RfLineRow {
   line_id: string | null;
   variant_id: string | null;
   unit_id: string | null;
-  quantity: string | null;
+  requested_quantity: string | null;
 }
 
 interface InternalRfRecord {
@@ -26,13 +26,62 @@ interface InternalRfRecord {
   lines?: RfLineRow[];
 }
 
+interface CatalogueVariantOption {
+  id: string;
+  code: string;
+  label: string;
+  unit_id: string;
+  quantity_scale: number;
+}
+
+interface CatalogueUnitOption {
+  id: string;
+  code: string;
+  name: string;
+  quantity_scale: number;
+}
+
 interface RequisitionWorkspaceProps {
   userId: string;
   chapterId: string;
   refreshSignal: number;
 }
 
+function emptyRfLine(): RfLineRow {
+  return { line_id: null, variant_id: null, unit_id: null, requested_quantity: null };
+}
+
 export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: RequisitionWorkspaceProps) {
+  const formKey = 'internal_rf_editor';
+
+  function readSavedRfDraft(): {
+    requestingUnitId?: string;
+    eventId?: string;
+    neededAt?: string;
+    justification?: string;
+    lines?: RfLineRow[];
+    reason?: string;
+  } {
+    const saved = memoryDraftStore.getDraft(userId, chapterId, formKey);
+    if (!saved) {
+      return {};
+    }
+    try {
+      return JSON.parse(saved.payloadJson) as {
+        requestingUnitId?: string;
+        eventId?: string;
+        neededAt?: string;
+        justification?: string;
+        lines?: RfLineRow[];
+        reason?: string;
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  const initialRf = readSavedRfDraft();
+
   const [statusFilter, setStatusFilter] = useState('');
   const [rfs, setRfs] = useState<InternalRfRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -40,28 +89,19 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
   const [activeSubTab, setActiveSubTab] = useState<'summary' | 'history' | 'related'>('summary');
   const [subData, setSubData] = useState<unknown>(null);
 
-  const formKey = 'internal_rf_editor';
+  const [variants, setVariants] = useState<CatalogueVariantOption[]>([]);
+  const [units, setUnits] = useState<CatalogueUnitOption[]>([]);
 
-  function readSavedRfDraft(): Record<string, string> {
-    const saved = memoryDraftStore.getDraft(userId, chapterId, formKey);
-    if (!saved) {
-      return {};
-    }
-    try {
-      return JSON.parse(saved.payloadJson) as Record<string, string>;
-    } catch {
-      return {};
-    }
-  }
-
-  const initialRf = readSavedRfDraft();
   const [requestingUnitId, setRequestingUnitId] = useState(initialRf.requestingUnitId ?? '');
   const [eventId, setEventId] = useState(initialRf.eventId ?? '');
   const [neededAt, setNeededAt] = useState(initialRf.neededAt ?? '');
   const [justification, setJustification] = useState(initialRf.justification ?? '');
-  const [linesJson, setLinesJson] = useState(initialRf.linesJson ?? '[{"line_id":null,"variant_id":null,"unit_id":null,"quantity":null}]');
+  const [lines, setLines] = useState<RfLineRow[]>(initialRf.lines && initialRf.lines.length > 0 ? initialRf.lines : [emptyRfLine()]);
   const [reason, setReason] = useState(initialRf.reason ?? '');
+
+  const [exactVersion, setExactVersion] = useState('1');
   const [lookupKey, setLookupKey] = useState('');
+  const [lookupOpId, setLookupOpId] = useState('');
   const [lookupResult, setLookupResult] = useState<unknown>(null);
 
   const [busy, setBusy] = useState(false);
@@ -98,6 +138,45 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
     };
   }, [loadRfs, refreshSignal]);
 
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const [varRes, unitRes] = await Promise.all([
+          apiGet<CatalogueVariantOption[]>(`/api/v1/chapters/${chapterId}/catalogue/variants?state=all&limit=100`),
+          apiGet<CatalogueUnitOption[]>(`/api/v1/chapters/${chapterId}/catalogue/units?state=all&limit=100`),
+        ]);
+        if (active) {
+          setVariants(varRes.data);
+          setUnits(unitRes.data);
+        }
+      } catch {
+        // user may have rf.draft without catalogue.read; manual UUID entry remains available
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [chapterId, refreshSignal]);
+
+  function updateLine(idx: number, patch: Partial<RfLineRow>) {
+    setLines((prev) =>
+      prev.map((row, i) => {
+        if (i !== idx) {
+          return row;
+        }
+        const next = { ...row, ...patch };
+        if (patch.variant_id !== undefined && patch.variant_id) {
+          const matched = variants.find((v) => v.id === patch.variant_id);
+          if (matched) {
+            next.unit_id = matched.unit_id;
+          }
+        }
+        return next;
+      }),
+    );
+  }
+
   function saveMemoryBuffer() {
     memoryDraftStore.saveDraft({
       userId,
@@ -106,7 +185,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
       label: selectedRf ? `RF ${selectedRf.reference ?? selectedRf.id}` : 'New Internal RF Draft',
       baseVersion: selectedRf?.version ?? null,
       pendingActionKey: null,
-      payloadJson: JSON.stringify({ requestingUnitId, eventId, neededAt, justification, linesJson, reason }),
+      payloadJson: JSON.stringify({ requestingUnitId, eventId, neededAt, justification, lines, reason }),
     });
     setStatusMessage('RF edits held in chapter-scoped memory only (quarantined per user + chapter).');
   }
@@ -121,7 +200,17 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
       setEventId(r.event_id ?? '');
       setNeededAt(r.needed_at ?? '');
       setJustification(r.justification ?? '');
-      setLinesJson(JSON.stringify(r.lines ?? [], null, 2));
+      setLines(
+        r.lines && r.lines.length > 0
+          ? r.lines.map((l) => ({
+              line_id: l.line_id ?? null,
+              variant_id: l.variant_id ?? null,
+              unit_id: l.unit_id ?? null,
+              requested_quantity: l.requested_quantity ?? null,
+            }))
+          : [emptyRfLine()],
+      );
+      setExactVersion(String(r.version));
       setActiveSubTab('summary');
       setSubData(r);
     } catch (err) {
@@ -147,18 +236,31 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
     }
   }
 
+  async function readExactRfVersion(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedRf) {
+      return;
+    }
+    setError(null);
+    try {
+      const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/internal-rfs/${selectedRf.id}/versions/${exactVersion.trim()}`);
+      setSubData(res.data);
+    } catch (err) {
+      setError(err);
+    }
+  }
+
   async function submitDraftOrReplace(mode: 'create' | 'replace' | 'revise') {
     setBusy(true);
     setError(null);
     setReplayed(false);
-    let parsedLines: unknown;
-    try {
-      parsedLines = JSON.parse(linesJson);
-    } catch {
-      setBusy(false);
-      setError(new Error('Lines JSON must be valid JSON array.'));
-      return;
-    }
+
+    const normalizedLines = lines.map((l) => ({
+      line_id: mode === 'create' ? null : l.line_id?.trim() || null,
+      variant_id: l.variant_id?.trim() || null,
+      unit_id: l.unit_id?.trim() || null,
+      requested_quantity: l.requested_quantity?.trim() || null,
+    }));
 
     const basePayload = {
       purpose: 'internal_use',
@@ -166,7 +268,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
       event_id: eventId.trim() || null,
       needed_at: neededAt.trim() || null,
       justification: justification.trim() || null,
-      lines: parsedLines,
+      lines: normalizedLines,
     };
 
     const key = newActionKey();
@@ -201,6 +303,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
       memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setReplayed(resp.result.replayed);
       setSelectedRf(resp.result.data);
+      setSubData(resp.result.data);
       setLookupKey(key);
       setStatusMessage(`RF ${resp.result.data.reference ?? resp.result.data.id} saved (v${resp.result.data.version}). Key: ${key}`);
       await loadRfs();
@@ -257,6 +360,20 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
       const res = await apiGet<unknown>(
         `/api/v1/chapters/${chapterId}/internal-rfs/operation-results${buildQuery({ action_key: lookupKey.trim() })}`,
       );
+      setLookupResult(res.data);
+    } catch (err) {
+      setError(err);
+    }
+  }
+
+  async function lookupByOpId(e: React.FormEvent) {
+    e.preventDefault();
+    if (!lookupOpId.trim()) {
+      return;
+    }
+    setError(null);
+    try {
+      const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/internal-rfs/operation-results/${lookupOpId.trim()}`);
       setLookupResult(res.data);
     } catch (err) {
       setError(err);
@@ -350,14 +467,79 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
               <input id="rf-needed" value={neededAt} onChange={(e) => setNeededAt(e.target.value)} placeholder="2026-12-01T08:00:00.000000Z" />
             </div>
           </div>
-          <div className="field" style={{ marginBottom: '0.45rem' }}>
+          <div className="field" style={{ marginBottom: '0.6rem' }}>
             <label htmlFor="rf-just">Justification</label>
             <input id="rf-just" value={justification} onChange={(e) => setJustification(e.target.value)} />
           </div>
-          <div className="field" style={{ marginBottom: '0.45rem' }}>
-            <label htmlFor="rf-lines">Lines JSON</label>
-            <textarea id="rf-lines" rows={4} className="mono" value={linesJson} onChange={(e) => setLinesJson(e.target.value)} />
+
+          <div style={{ marginBottom: '0.65rem' }}>
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <strong>Requested Lines (`requested_quantity`)</strong>
+              <button type="button" className="btn secondary" onClick={() => setLines((prev) => [...prev, emptyRfLine()])}>
+                + Add Line
+              </button>
+            </div>
+            {lines.map((line, idx) => (
+              <div
+                key={idx}
+                className="row"
+                style={{ marginBottom: '0.4rem', padding: '0.45rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem' }}
+              >
+                <div className="field">
+                  <label>Variant {line.line_id ? `(retained ${line.line_id.slice(0, 8)})` : '(new)'}</label>
+                  {variants.length > 0 ? (
+                    <select value={line.variant_id ?? ''} onChange={(e) => updateLine(idx, { variant_id: e.target.value || null })}>
+                      <option value="">(unset)</option>
+                      {variants.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.code} — {v.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={line.variant_id ?? ''}
+                      placeholder="variant_id UUID"
+                      onChange={(e) => updateLine(idx, { variant_id: e.target.value || null })}
+                    />
+                  )}
+                </div>
+                <div className="field">
+                  <label>Unit</label>
+                  {units.length > 0 ? (
+                    <select value={line.unit_id ?? ''} onChange={(e) => updateLine(idx, { unit_id: e.target.value || null })}>
+                      <option value="">(unset)</option>
+                      {units.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.code} (scale {u.quantity_scale})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={line.unit_id ?? ''}
+                      placeholder="unit_id UUID"
+                      onChange={(e) => updateLine(idx, { unit_id: e.target.value || null })}
+                    />
+                  )}
+                </div>
+                <div className="field" style={{ maxWidth: '8.5rem' }}>
+                  <label>requested_quantity</label>
+                  <input
+                    value={line.requested_quantity ?? ''}
+                    placeholder="e.g. 5"
+                    onChange={(e) => updateLine(idx, { requested_quantity: e.target.value || null })}
+                  />
+                </div>
+                {lines.length > 1 && (
+                  <button type="button" className="btn secondary" onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
+
           <div className="field" style={{ marginBottom: '0.65rem' }}>
             <label htmlFor="rf-reason">Reason (required for replace / return / revise / cancel)</label>
             <input id="rf-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -396,7 +578,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
         </div>
 
         <div className="card">
-          <h3>Connected RF Tabs &amp; Operation Lookup</h3>
+          <h3>Connected RF Tabs, Exact Version &amp; Operation Lookup</h3>
           <div className="tabs">
             {(['summary', 'history', 'related'] as const).map((t) => (
               <button key={t} type="button" className={`tab-btn ${activeSubTab === t ? 'active' : ''}`} onClick={() => void openSubTab(t)}>
@@ -404,16 +586,38 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
               </button>
             ))}
           </div>
+          {selectedRf && (
+            <form onSubmit={readExactRfVersion} className="row" style={{ marginBottom: '0.6rem' }}>
+              <div className="field" style={{ maxWidth: '8rem' }}>
+                <label htmlFor="rf-exact-ver">Exact Version</label>
+                <input id="rf-exact-ver" type="number" min={1} value={exactVersion} onChange={(e) => setExactVersion(e.target.value)} />
+              </div>
+              <button type="submit" className="btn secondary">
+                Read Version
+              </button>
+            </form>
+          )}
           {subData !== null && <pre className="json-box">{JSON.stringify(subData, null, 2)}</pre>}
 
           <form onSubmit={lookupByKey} style={{ marginTop: '0.75rem' }}>
             <div className="row">
               <div className="field">
-                <label htmlFor="rf-op-k">Lookup Operation by Key</label>
+                <label htmlFor="rf-op-k">Lookup Operation by Action Key</label>
                 <input id="rf-op-k" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
               </div>
               <button type="submit" className="btn secondary">
-                Find Receipt
+                Find by Key
+              </button>
+            </div>
+          </form>
+          <form onSubmit={lookupByOpId} style={{ marginTop: '0.5rem' }}>
+            <div className="row">
+              <div className="field">
+                <label htmlFor="rf-op-id">Lookup by operation_id UUID</label>
+                <input id="rf-op-id" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
+              </div>
+              <button type="submit" className="btn secondary">
+                Read Operation ID
               </button>
             </div>
           </form>
