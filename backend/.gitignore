@@ -22,3 +22,14 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/.ai
+/.claude
+/.codex
+/.cursor
+/.gemini
+/.github
+/.junie
+/.mcp.json
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md

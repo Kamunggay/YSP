@@ -1,5 +1,7 @@
-# InventoryCustody
+# InventoryCustody Module
 
-Inventory and custody: provenance, eligibility, reservations, receipts, counts, custody, physical postings and stock treatment. P05/P06 and later owning packages implement these operations.
+Internal domain boundary for Phase 1 (`P05`) chapter inventory catalog, units & precision (`0..6`), locations, custody assignments, item policy drafts & approvals, eligibility evaluation (`EligibilityQueryService`), disjoint interval reservations & holds (`StockHoldOperations` / `InventoryLedgerParticipant`), and strict JCS/ULID utilities (`InventoryFingerprint`).
 
-Reserved boundary under TR-02. No business operation, model, table or HTTP endpoint is implemented here by the P01 health baseline. Future callers consume application operations; they must not write another module's models directly.
+Notes:
+- Sibling modules (`RequisitionsFulfillment`, `SalesFinance`, `DocumentsReporting`) interact through `InventoryLedgerParticipant` rather than querying `stock_positions` or `item_variant_guards` directly.
+- Chapter outcome envelopes (`ActionResult`, `blocked`, `stale`, `forbidden`, `ChapterOutcomes::fingerprint`), key/id lookups (`/operations/by-key`, `/operations/by-id/{operation_id}`), and HMAC pagination live in `App\Modules\DocumentsReporting\ChapterOutcomes`.

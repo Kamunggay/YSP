@@ -36,7 +36,15 @@ final class VerifyBaseline extends Command
             $expectedTables = ['migrations', 'sessions', 'users', 'global_security_events', 'session_throttles',
                 'organizations', 'chapters', 'provider_role_grants', 'memberships', 'roles', 'requesting_units', 'duty_grants',
                 'authenticator_enrollments', 'user_recovery_codes', 'initial_provider_installations', 'chapter_provisionings',
-                'provider_operation_attempts', 'provider_actor_attributions', 'provider_operations', 'provider_audit_events', 'provider_follow_up_intents'];
+                'provider_operation_attempts', 'provider_actor_attributions', 'provider_operations', 'provider_audit_events', 'provider_follow_up_intents',
+                'events', 'policies', 'policy_versions', 'priority_categories',
+                'units', 'items', 'item_variants', 'item_variant_guards', 'item_policy_versions',
+                'stock_conditions', 'stock_locations', 'custody_assignments',
+                'restrictions', 'restriction_versions', 'restriction_item_scopes', 'restriction_event_scopes',
+                'restriction_unit_scopes', 'restriction_category_scopes',
+                'stock_lots', 'stock_positions', 'stock_coverage_live', 'stock_coverage_reservation_links',
+                'inventory_operation_attempts', 'inventory_actor_attributions', 'inventory_operations', 'inventory_audit_events',
+                'stock_holds', 'stock_hold_cells', 'stock_hold_clearances'];
             sort($expectedTables);
             $actualTables = array_map(fn (object $table): string => $table->name, $tables);
             sort($actualTables);

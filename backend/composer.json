@@ -10,10 +10,11 @@
         "spomky-labs/otphp": "^11.5"
     },
     "require-dev": {
+        "laravel/boost": "^2.10",
         "laravel/pint": "^1.27",
         "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^12.5.12",
-        "phpstan/phpstan": "^2.1"
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^12.5.12"
     },
     "autoload": {
         "psr-4": {
