@@ -464,28 +464,17 @@ final class OpeningDraftInput
 
     private static function checkString(mixed $val, bool $present, string $ptr, int $max, bool $nullable, bool $nonblank, array &$errors): ?string
     {
-        if (! $present) {
+        $str = self::checkRawString($val, $present, $ptr, $nullable, $errors);
+        if ($str === null) {
             return null;
         }
-        if ($val === null) {
-            if (! $nullable) {
-                $errors[] = self::field($ptr, 'invalid_type', 'String required.');
-            }
-
-            return null;
-        }
-        if (! is_string($val)) {
-            $errors[] = self::field($ptr, 'invalid_type', 'String required.');
-
-            return null;
-        }
-        if ($val === '' || ($nonblank && trim($val) === '')) {
+        if ($str === '' || ($nonblank && trim($str) === '')) {
             $errors[] = self::field($ptr, 'invalid_format', 'Nonempty string required.');
-        } elseif (mb_strlen($val) > $max) {
+        } elseif (mb_strlen($str) > $max) {
             $errors[] = self::field($ptr, 'too_long', "Must not exceed {$max} characters.");
         }
 
-        return $val;
+        return $str;
     }
 
     private static function checkUuid(mixed $val, bool $present, string $ptr, bool $nullable, array &$errors): ?string
@@ -512,30 +501,26 @@ final class OpeningDraftInput
 
     private static function checkPattern(mixed $val, bool $present, string $ptr, string $pattern, bool $nullable, array &$errors): ?string
     {
-        if (! $present) {
-            return null;
-        }
-        if ($val === null) {
-            if (! $nullable) {
-                $errors[] = self::field($ptr, 'invalid_type', 'String required.');
-            }
-
-            return null;
-        }
-        if (! is_string($val)) {
-            $errors[] = self::field($ptr, 'invalid_type', 'String required.');
-
-            return null;
-        }
-        if (! preg_match($pattern, $val)) {
+        $str = self::checkRawString($val, $present, $ptr, $nullable, $errors);
+        if ($str !== null && ! preg_match($pattern, $str)) {
             $errors[] = self::field($ptr, 'invalid_format', 'Invalid value format.');
         }
 
-        return $val;
+        return $str;
     }
 
     /** @param list<string> $allowed */
     private static function checkEnum(mixed $val, bool $present, string $ptr, array $allowed, bool $nullable, array &$errors): ?string
+    {
+        $str = self::checkRawString($val, $present, $ptr, $nullable, $errors);
+        if ($str !== null && ! in_array($str, $allowed, true)) {
+            $errors[] = self::field($ptr, 'invalid_format', 'Unsupported value.');
+        }
+
+        return $str;
+    }
+
+    private static function checkRawString(mixed $val, bool $present, string $ptr, bool $nullable, array &$errors): ?string
     {
         if (! $present) {
             return null;
@@ -551,9 +536,6 @@ final class OpeningDraftInput
             $errors[] = self::field($ptr, 'invalid_type', 'String required.');
 
             return null;
-        }
-        if (! in_array($val, $allowed, true)) {
-            $errors[] = self::field($ptr, 'invalid_format', 'Unsupported value.');
         }
 
         return $val;

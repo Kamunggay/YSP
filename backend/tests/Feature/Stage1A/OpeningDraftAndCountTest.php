@@ -529,6 +529,149 @@ class OpeningDraftAndCountTest extends TestCase
         $this->assertSame(0, InventoryLot::count());
     }
 
+    public function test_review_guards_active_catalogue_accounts_timestamps_replay_denial_and_print_context(): void
+    {
+        $policies = $this->seedEffectivePolicies();
+        $line1 = (string) Str::uuid();
+        $ipcId = $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs", ['material' => $this->emptyIpcMaterial()])
+            ->assertStatus(201)
+            ->json('data.record.id');
+
+        // 1. Retired catalogue item rejected with 409 invalid_source
+        CatalogueItem::whereKey($this->itemId)->update(['state' => 'retired']);
+        $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}", [
+                'expected_revision' => 1,
+                'reason' => 'Retired item',
+                'material' => $this->completeMaterial($policies, [$this->makeLine($line1, 'usable', '5', [$this->custodianId])]),
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'invalid_source');
+        CatalogueItem::whereKey($this->itemId)->update(['state' => 'active']);
+
+        // 2. Disabled user account in count_team rejected with 409 invalid_source
+        User::whereKey($this->observerId)->update(['status' => 'disabled']);
+        $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}", [
+                'expected_revision' => 1,
+                'reason' => 'Disabled observer',
+                'material' => $this->completeMaterial($policies, [$this->makeLine($line1, 'usable', '5', [$this->custodianId])]),
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'invalid_source');
+        User::whereKey($this->observerId)->update(['status' => 'active']);
+
+        // Populate valid material (revision 2, material_version 2)
+        $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}", [
+                'expected_revision' => 1,
+                'reason' => 'Valid material',
+                'material' => $this->completeMaterial($policies, [$this->makeLine($line1, 'usable', '5', [$this->custodianId])]),
+            ])
+            ->assertOk();
+
+        // 3. signed_at without counted_at rejected with 409 invalid_source
+        $nowStr = now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z');
+        $this->asOfficer($this->observerId, (string) Str::uuid())
+            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/my-count", [
+                'expected_revision' => 2,
+                'material_version' => 2,
+                'counted_at' => null,
+                'completed' => false,
+                'signed_at' => $nowStr,
+                'entries' => [],
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'invalid_source');
+
+        // 4. Observer records count with key K, then is removed from team -> reusing key K with different payload gets 403 (not 409)
+        $obsKey = (string) Str::uuid();
+        $this->asOfficer($this->observerId, $obsKey)
+            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/my-count", [
+                'expected_revision' => 2,
+                'material_version' => 2,
+                'counted_at' => $nowStr,
+                'completed' => true,
+                'signed_at' => $nowStr,
+                'entries' => [['ipc_line_id' => $line1, 'quantity' => '5', 'condition' => 'usable', 'notes' => null]],
+            ])
+            ->assertOk();
+
+        // Print IPC includes preparer, count team, and counter signatory
+        $ipcHtml = $this->asOfficer($this->custodianId)->get("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/print")
+            ->assertOk()
+            ->getContent();
+        $this->assertStringContainsString($this->custodianId, $ipcHtml);
+        $this->assertStringContainsString($this->observerId, $ipcHtml);
+        $this->assertStringContainsString($nowStr, $ipcHtml);
+
+        // Remove observer from count_team on IPC
+        $ipcModel = OpeningCount::findOrFail($ipcId);
+        $mat = $ipcModel->material_json;
+        $mat['count_team'] = [['user_id' => $this->custodianId, 'regular_custodian' => true]];
+        $ipcModel->update(['material_json' => $mat]);
+
+        $this->asOfficer($this->observerId, $obsKey)
+            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/my-count", [
+                'expected_revision' => 3,
+                'material_version' => 2,
+                'counted_at' => $nowStr,
+                'completed' => false,
+                'signed_at' => null,
+                'entries' => [],
+            ])
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'duty_denied');
+
+        // 5. Related read hides outcome_id and opening_receipt evidence when caller lacks opening_rm.read / stock.read
+        $rmId = $this->asOfficer($this->observerId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms", [
+                'ipc_id' => $ipcId,
+                'material' => [
+                    'ipc_material_version' => 2,
+                    'lines' => [[
+                        'ipc_line_id' => $line1,
+                        'accepted_quantity' => '4',
+                        'damaged_quantity' => '1',
+                        'rejected_quantity' => '0',
+                        'accepted_value' => '100.00',
+                        'finding_reason' => 'Corner tear',
+                    ]],
+                    'notes' => null,
+                ],
+            ])
+            ->assertStatus(201)
+            ->json('data.record.id');
+
+        $rmHtml = $this->asOfficer($this->observerId)->get("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/print")
+            ->assertOk()
+            ->getContent();
+        $this->assertStringContainsString($this->observerId, $rmHtml);
+        $this->assertStringContainsString('Corner tear', $rmHtml);
+
+        $this->uploadPaper($this->observerId, $rmId, (string) Str::uuid())->assertStatus(201);
+        OpeningRm::whereKey($rmId)->update(['status' => 'posted', 'outcome_id' => (string) Str::uuid(), 'posted_chapter_id' => $this->chapterId]);
+
+        // Outsider has INDEPENDENT_REVIEWER (ipc.read) + RF_APPROVER (evidence.read + history.read), NOT opening_rm.read or stock.read
+        DutyGrant::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $this->chapterId,
+            'user_id' => $this->outsiderCounterId,
+            'duty_code' => 'RF_APPROVER',
+            'status' => 'active',
+            'is_alternate' => false,
+            'valid_from' => now()->subDay(),
+            'version' => 1,
+        ]);
+
+        $this->asOfficer($this->outsiderCounterId)->get("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/related")
+            ->assertOk()
+            ->assertJsonPath('data.rm_ids', [])
+            ->assertJsonPath('data.evidence', [])
+            ->assertJsonPath('data.outcome_id', null);
+    }
+
     /** @return array<string, mixed> */
     private function emptyIpcMaterial(): array
     {
@@ -711,7 +854,7 @@ class OpeningDraftAndCountTest extends TestCase
         $session = new BrowserSession([
             'user_id' => $userId,
             'user_version' => User::findOrFail($userId)->version,
-            'authentication_method' => 'password',
+            'authentication_method' => 'authenticator',
             'authenticated_at' => now(),
             'expires_at' => now()->addHour(),
         ]);

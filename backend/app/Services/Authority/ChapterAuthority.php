@@ -184,10 +184,11 @@ final class ChapterAuthority
         return $grant ? ($this->alternateScopes[$grant->id] ?? null) : null;
     }
 
-    public function policyState(PolicyRecord $policy, string $owner, string $schema): ?string
+    public function policyState(PolicyRecord $policy, string $owner, string $schema, ?string $allowedSubjectId = null): ?string
     {
         $evidence = $policy->setupEvidence();
-        if (($evidence['subject_id'] ?? null) !== null
+        $subject = $evidence['subject_id'] ?? null;
+        if (($subject !== null && ($allowedSubjectId === null || $subject !== $allowedSubjectId))
             || (isset($evidence['value_schema_reference']) && $evidence['value_schema_reference'] !== '#/components/schemas/'.$schema)) {
             return null;
         }

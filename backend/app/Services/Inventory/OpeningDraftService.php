@@ -20,6 +20,7 @@ use App\Models\OpeningCount;
 use App\Models\OpeningRecordHistory;
 use App\Models\OpeningRm;
 use App\Models\PolicyRecord;
+use App\Models\User;
 use App\Services\Authority\ChapterAuthority;
 use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\CanonicalJson;
@@ -244,8 +245,11 @@ final class OpeningDraftService
                 if (($countedAt && $countedAt->gt($now)) || ($signedAt && $signedAt->gt($now))) {
                     throw new ContractException(409, 'invalid_source', 'Count and signature timestamps cannot be in the future.');
                 }
-                if ($cutoffAt && $countedAt && $countedAt->lt($cutoffAt)) {
-                    throw new ContractException(409, 'invalid_source', 'Count timestamp cannot precede cutoff.');
+                if ($signedAt && ! $countedAt) {
+                    throw new ContractException(409, 'invalid_source', 'Signature timestamp requires a count timestamp.');
+                }
+                if ($cutoffAt && (($countedAt && $countedAt->lt($cutoffAt)) || ($signedAt && $signedAt->lt($cutoffAt)))) {
+                    throw new ContractException(409, 'invalid_source', 'Count and signature timestamps cannot precede cutoff.');
                 }
                 if ($countedAt && $signedAt && $signedAt->lt($countedAt)) {
                     throw new ContractException(409, 'invalid_source', 'Signature timestamp cannot precede count timestamp.');
@@ -370,6 +374,7 @@ final class OpeningDraftService
 
         $ref = e($data['reference'] ?? 'UNSUBMITTED');
         $state = e($data['state']);
+        $preparedBy = e($data['prepared_by']);
         $cutoff = e($data['material']['cutoff_at'] ?? 'UNSET');
         $linesHtml = '';
         foreach ($data['material']['lines'] as $line) {
@@ -379,11 +384,33 @@ final class OpeningDraftService
             $val = e($line['unit_value'] ?? 'UNVALUED');
             $linesHtml .= "<tr><td>{$label}</td><td>{$cond}</td><td>{$qty}</td><td>{$val}</td></tr>";
         }
-        $countsCount = count($data['counts']);
+        $teamHtml = '';
+        foreach ($data['material']['count_team'] as $member) {
+            $uid = e($member['user_id']);
+            $role = $member['regular_custodian'] ? 'regular_custodian' : 'independent_observer';
+            $teamHtml .= "<li>{$uid} ({$role})</li>";
+        }
+        $countsHtml = '';
+        foreach ($data['counts'] as $count) {
+            $actor = e($count['actor_id']);
+            $completed = $count['completed'] ? 'completed' : 'draft';
+            $signed = e($count['signed_at'] ?? 'UNSIGNED');
+            $countsHtml .= "<li>{$actor} | {$completed} | signed_at: {$signed}</li>";
+        }
+        $authHtml = '';
+        foreach ($data['authorizations'] as $auth) {
+            $actor = e($auth['actor_id']);
+            $duty = e($auth['duty']);
+            $signed = e($auth['signed_at']);
+            $authHtml .= "<li>{$duty}: {$actor} (signed_at: {$signed})</li>";
+        }
         $html = '<!doctype html><html><body><h1>Inventory Physical Count</h1>'
-            ."<p>Reference: {$ref} | State: {$state} | Revision: {$data['revision']} | Material Version: {$data['material_version']}</p>"
-            ."<p>Cutoff: {$cutoff} | Recorded Counters: {$countsCount}</p>"
-            ."<table><thead><tr><th>Item</th><th>Condition</th><th>Quantity</th><th>Unit Value (PHP)</th></tr></thead><tbody>{$linesHtml}</tbody></table>"
+            ."<p>Reference: {$ref} | State: {$state} | Prepared By: {$preparedBy} | Revision: {$data['revision']} | Material Version: {$data['material_version']}</p>"
+            ."<p>Cutoff: {$cutoff}</p>"
+            ."<h2>Count Team</h2><ul>{$teamHtml}</ul>"
+            ."<h2>Lines</h2><table><thead><tr><th>Item</th><th>Condition</th><th>Quantity</th><th>Unit Value (PHP)</th></tr></thead><tbody>{$linesHtml}</tbody></table>"
+            ."<h2>Counters</h2><ul>{$countsHtml}</ul>"
+            ."<h2>Authorizations</h2><ul>{$authHtml}</ul>"
             .'<p>Printing does not post physical stock.</p></body></html>';
 
         return $this->printResponse($html);
@@ -602,11 +629,18 @@ final class OpeningDraftService
         OpeningDraftInput::selectors($request);
 
         $rm = $this->findRm($chapterId, $rmId, lock: false);
+        $ipc = $this->findIpc($chapterId, $rm->ipc_id, lock: false);
         $data = $this->formatRm($rm);
 
         $ref = e($data['reference'] ?? 'UNPOSTED');
         $state = e($data['state']);
+        $preparedBy = e((string) ($data['prepared_by'] ?? 'UNKNOWN'));
         $ipcId = e($data['ipc_id']);
+        $ipcRef = e($ipc->ipc_number ?? 'UNSUBMITTED');
+        $inspector = e($data['inspection']['inspector_id'] ?? 'UNINSPECTED');
+        $inspectedAt = e($data['inspection']['inspected_at'] ?? 'UNINSPECTED');
+        $matchedBy = e($data['acknowledgment']['matched_by'] ?? 'UNMATCHED');
+        $acknowledgedAt = e($data['acknowledgment']['acknowledged_at'] ?? 'UNACKNOWLEDGED');
         $linesHtml = '';
         foreach ($data['material']['lines'] as $line) {
             $lid = e($line['ipc_line_id']);
@@ -614,11 +648,14 @@ final class OpeningDraftService
             $dmg = e($line['damaged_quantity'] ?? 'UNSET');
             $rej = e($line['rejected_quantity'] ?? 'UNSET');
             $val = e($line['accepted_value'] ?? 'UNSET');
-            $linesHtml .= "<tr><td>{$lid}</td><td>{$acc}</td><td>{$dmg}</td><td>{$rej}</td><td>{$val}</td></tr>";
+            $reason = e($line['finding_reason'] ?? '');
+            $linesHtml .= "<tr><td>{$lid}</td><td>{$acc}</td><td>{$dmg}</td><td>{$rej}</td><td>{$val}</td><td>{$reason}</td></tr>";
         }
         $html = '<!doctype html><html><body><h1>Opening Receiving Manifest</h1>'
-            ."<p>Reference: {$ref} | State: {$state} | IPC: {$ipcId} | Revision: {$data['revision']} | Material Version: {$data['material_version']}</p>"
-            ."<table><thead><tr><th>IPC Line</th><th>Accepted</th><th>Damaged</th><th>Rejected</th><th>Accepted Value (PHP)</th></tr></thead><tbody>{$linesHtml}</tbody></table>"
+            ."<p>Reference: {$ref} | State: {$state} | Prepared By: {$preparedBy} | Revision: {$data['revision']} | Material Version: {$data['material_version']}</p>"
+            ."<p>Source IPC: {$ipcId} ({$ipcRef}) | IPC Material Version: {$data['material']['ipc_material_version']}</p>"
+            ."<p>Inspector: {$inspector} ({$inspectedAt}) | Matched By: {$matchedBy} ({$acknowledgedAt})</p>"
+            ."<table><thead><tr><th>IPC Line</th><th>Accepted</th><th>Damaged</th><th>Rejected</th><th>Accepted Value (PHP)</th><th>Finding Reason</th></tr></thead><tbody>{$linesHtml}</tbody></table>"
             .'<p>Printing does not post physical stock.</p></body></html>';
 
         return $this->printResponse($html);
@@ -669,11 +706,11 @@ final class OpeningDraftService
 
         $existing = ActionReceipt::where($scope)->sharedLock()->first();
         if ($existing) {
-            if (! hash_equals($existing->fingerprint, $fingerprint)) {
-                throw new ContractException(409, 'action_key_conflict', 'Use a new action key for changed input.');
-            }
             if ($verifyReplayTarget !== null) {
                 $verifyReplayTarget();
+            }
+            if (! hash_equals($existing->fingerprint, $fingerprint)) {
+                throw new ContractException(409, 'action_key_conflict', 'Use a new action key for changed input.');
             }
 
             return response()->json($existing->result, $existing->status, ['X-Action-Replayed' => 'true']);
@@ -730,7 +767,7 @@ final class OpeningDraftService
 
                 continue;
             }
-            $state = $this->openingPolicyState($policy, $owner, $schema, $key === 'ipc_authorization' ? $ipcId : null);
+            $state = $authority->policyState($policy, $owner, $schema, $key === 'ipc_authorization' ? $ipcId : null);
             if ($state !== 'effective') {
                 $blockers[] = ChapterAuthority::setupBlocker($key, $owner, $state ?? 'unapproved');
 
@@ -776,8 +813,12 @@ final class OpeningDraftService
             $location = CatalogueLocation::where('chapter_id', $chapterId)->whereKey($line['location_id'])->sharedLock()->first();
 
             if (! $item || ! $variant || ! $unit || ! $location
+                || $item->state !== 'active'
+                || $variant->state !== 'active'
+                || $unit->state !== 'active'
+                || $location->state !== 'active'
                 || $variant->item_id !== $item->id
-                || ($variant->unit_id !== null && $variant->unit_id !== $unit->id)
+                || (($variant->unit_id ?? $item->unit_id) !== null && ($variant->unit_id ?? $item->unit_id) !== $unit->id)
                 || (int) $variant->material_version !== $line['variant_material_version']
                 || (int) $unit->material_version !== $line['unit_material_version']
                 || (int) $location->material_version !== $line['location_material_version']
@@ -941,26 +982,6 @@ final class OpeningDraftService
         return array_keys($ids);
     }
 
-    private function openingPolicyState(PolicyRecord $policy, string $owner, string $schema, ?string $allowedSubjectId): ?string
-    {
-        $evidence = $policy->setupEvidence();
-        $subject = $evidence['subject_id'] ?? null;
-        if ($subject !== null && ($allowedSubjectId === null || $subject !== $allowedSubjectId)) {
-            return null;
-        }
-        if (isset($evidence['value_schema_reference']) && $evidence['value_schema_reference'] !== '#/components/schemas/'.$schema) {
-            return null;
-        }
-        if (! isset($evidence['value_schema_reference']) || ! collect($evidence['approvals'] ?? [])->contains('authority', $owner)) {
-            return 'unapproved';
-        }
-        if (! $policy->effective_from || $policy->effective_from->isFuture()) {
-            return 'not_effective';
-        }
-
-        return $policy->effective_until && ! $policy->effective_until->isFuture() ? 'expired' : 'effective';
-    }
-
     private function listHistory(
         Request $request,
         string $chapterId,
@@ -1003,7 +1024,9 @@ final class OpeningDraftService
             ->sharedLock()
             ->get();
 
-        $rmIds = $authority->allows('opening_rm.read') ? $rms->pluck('id')->all() : [];
+        $canReadRm = $authority->allows('opening_rm.read');
+        $canReadStock = $authority->allows('stock.read');
+        $rmIds = $canReadRm ? $rms->pluck('id')->all() : [];
         $evidence = [];
         if ($authority->allows('evidence.read')) {
             $seen = [];
@@ -1012,7 +1035,7 @@ final class OpeningDraftService
                 $seen[$k] = true;
                 $evidence[] = $ipc->signed_ipc_json;
             }
-            $targetRmIds = $rm ? [$rm->id] : $rms->pluck('id')->all();
+            $targetRmIds = $canReadRm ? ($rm ? [$rm->id] : $rms->pluck('id')->all()) : [];
             if ($targetRmIds !== []) {
                 $records = EvidenceRecord::where('chapter_id', $chapterId)
                     ->where('purpose', 'opening_receipt')
@@ -1021,16 +1044,15 @@ final class OpeningDraftService
                     ->sharedLock()
                     ->get();
                 foreach ($records as $ev) {
-                    $latestVersion = $ev->blobs()->max('version');
-                    if ($latestVersion === null) {
+                    $current = $ev->currentVersionBlob();
+                    if (! $current) {
                         continue;
                     }
-                    $blobs = $ev->blobs()->where('version', $latestVersion)
-                        ->orderByRaw('position IS NULL')->orderBy('position')->orderBy('id')->get();
+                    $versionId = $ev->versionId($current);
+                    $blobs = $ev->exactVersion($versionId, ['id', 'version_id', 'payload_path', 'sha256_hash']);
                     if ($blobs->isEmpty()) {
                         continue;
                     }
-                    $versionId = $blobs->first()->version_id ?? $blobs->first()->id;
                     $k = $ev->id.':'.$versionId;
                     if (isset($seen[$k])) {
                         continue;
@@ -1054,7 +1076,7 @@ final class OpeningDraftService
 
         $movementIds = [];
         $findingIds = [];
-        if ($postedRm && $authority->allows('stock.read')) {
+        if ($postedRm && $canReadStock) {
             $movementIds = InventoryMovement::where('chapter_id', $chapterId)
                 ->whereHas('posting', fn ($q) => $q->where('source_id', $postedRm->id))
                 ->orderBy('created_at')->orderBy('id')->pluck('id')->all();
@@ -1070,7 +1092,7 @@ final class OpeningDraftService
             'evidence' => $evidence,
             'movement_ids' => $movementIds,
             'finding_ids' => $findingIds,
-            'outcome_id' => $postedRm?->outcome_id,
+            'outcome_id' => $canReadStock ? $postedRm?->outcome_id : null,
         ];
     }
 
@@ -1349,6 +1371,11 @@ final class OpeningDraftService
 
     private function isChapterMember(string $chapterId, string $userId): bool
     {
+        $user = User::whereKey($userId)->whereIn('status', ['active', 'enabled'])->sharedLock()->first();
+        if (! $user) {
+            return false;
+        }
+
         return ChapterMembership::where('chapter_id', $chapterId)
             ->where('user_id', $userId)
             ->current()
