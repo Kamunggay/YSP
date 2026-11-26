@@ -98,7 +98,7 @@ class PaperEvidenceController extends Controller
 
             $target = $request->attributes->get('paper_evidence_target');
             $editable = match ($record->purpose) {
-                'opening_receipt' => in_array($target->status, ['DRAFT', 'INSPECTED', 'EVIDENCE_MATCHED'], true),
+                'opening_receipt' => in_array(strtolower((string) $target->status), ['draft', 'inspected', 'matched', 'evidence_matched'], true),
                 'hold_clearance' => $target->status === 'active',
                 'actual_issue' => in_array($target->status, ['prepared', 'acknowledged'], true),
             };

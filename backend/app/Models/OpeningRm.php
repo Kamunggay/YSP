@@ -29,6 +29,12 @@ class OpeningRm extends Model
         'lines_data',
         'snapshot_data',
         'posted_at',
+        'prepared_by',
+        'material_json',
+        'snapshot_sha256',
+        'acknowledgment_json',
+        'outcome_id',
+        'posted_chapter_id',
     ];
 
     protected function casts(): array
@@ -40,6 +46,8 @@ class OpeningRm extends Model
             'lines_data' => 'array',
             'snapshot_data' => 'array',
             'posted_at' => 'datetime',
+            'material_json' => 'array',
+            'acknowledgment_json' => 'array',
         ];
     }
 
