@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\ContractException;
+use App\Http\PaperEvidenceDownload;
 use App\Http\Requests\PaperEvidenceUpload;
 use App\Models\ActionReceipt;
 use App\Models\AuditLog;
@@ -25,6 +26,11 @@ use Illuminate\Support\Str;
 
 class PaperEvidenceController extends Controller
 {
+    private const MANIFEST_COLUMNS = [
+        'id', 'version_id', 'version', 'position', 'mime_type', 'file_size', 'sha256_hash', 'payload_path',
+        'supersedes_version_id', 'superseded_by_version_id', 'replacement_reason', 'created_by', 'created_at',
+    ];
+
     private const ALLOWED_MIME_TYPES = [
         'image/jpeg',
         'image/png',
@@ -194,6 +200,7 @@ class PaperEvidenceController extends Controller
         if ($blobs->isEmpty()) {
             throw $this->notFound();
         }
+        $blobs = $this->withVersionId($record, $blobs, $this->versionId($record, $blobs->first()));
 
         return response()->json(['data' => [
             'evidence_id' => $record->id,
@@ -203,12 +210,14 @@ class PaperEvidenceController extends Controller
         ]]);
     }
 
-    public function versions(Request $request, PaperEvidenceStore $store): JsonResponse
+    public function versions(Request $request): JsonResponse
     {
         $record = $request->attributes->get(EvidenceRecord::class);
         $data = [];
-        foreach ($record->blobs()->orderBy('version')->orderBy('position')->orderBy('id')->get()->groupBy('version') as $blobs) {
-            $data[] = $this->version($record, $blobs, $this->checkVersion($blobs, $store)[1]);
+        $versions = $record->blobs()->orderBy('version')->orderBy('position')->orderBy('id')->get(self::MANIFEST_COLUMNS)
+            ->groupBy(fn (EvidenceBlob $blob) => $this->versionId($record, $blob));
+        foreach ($versions as $blobs) {
+            $data[] = $this->version($record, $blobs, $record->invalid_reason);
         }
 
         return response()->json(['data' => $data]);
@@ -348,7 +357,7 @@ class PaperEvidenceController extends Controller
 
         $extension = PaperEvidenceContent::EXTENSIONS[$attachment->mime_type];
 
-        return response($bytes, 200, [
+        return new PaperEvidenceDownload($bytes, 200, [
             'Content-Type' => $attachment->mime_type,
             'Content-Disposition' => "attachment; filename=\"{$attachment_id}.{$extension}\"",
             'X-Content-Type-Options' => 'nosniff',
@@ -363,8 +372,8 @@ class PaperEvidenceController extends Controller
             ->orWhere(fn ($query) => $query->whereNull('version_id')
                 ->where(fn ($query) => $query->where('payload_path', 'like', $legacyDirectory)->orWhere('id', $versionId))))
             ->value('version');
-        $blobs = $this->versionBlobs($record, $version);
-        if ($blobs->isEmpty() || $this->versionId($record, $blobs->first()) !== $versionId) {
+        $blobs = $this->withVersionId($record, $this->versionBlobs($record, $version), $versionId);
+        if ($blobs->isEmpty()) {
             throw $this->notFound();
         }
 
@@ -374,7 +383,14 @@ class PaperEvidenceController extends Controller
     /** @return Collection<int, EvidenceBlob> */
     private function versionBlobs(EvidenceRecord $record, ?int $version): Collection
     {
-        return $record->blobs()->where('version', $version)->orderBy('position')->orderBy('id')->get();
+        return $record->blobs()->where('version', $version)
+            ->orderByRaw('position IS NULL')->orderBy('position')->orderBy('id')->get(self::MANIFEST_COLUMNS);
+    }
+
+    /** @param Collection<int, EvidenceBlob> $blobs */
+    private function withVersionId(EvidenceRecord $record, Collection $blobs, string $versionId): Collection
+    {
+        return $blobs->filter(fn (EvidenceBlob $blob) => $this->versionId($record, $blob) === $versionId);
     }
 
     /** @param Collection<int, EvidenceBlob> $blobs */

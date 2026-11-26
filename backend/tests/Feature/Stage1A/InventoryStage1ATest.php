@@ -7,13 +7,16 @@ use App\Models\CatalogueUnit;
 use App\Models\Chapter;
 use App\Models\ChapterMembership;
 use App\Models\DutyGrant;
+use App\Models\EvidenceBlob;
 use App\Models\OpeningCount;
 use App\Models\OpeningRm;
 use App\Models\StockHold;
 use App\Models\User;
 use App\Models\UserMfaCredential;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
@@ -264,12 +267,26 @@ class InventoryStage1ATest extends TestCase
         $content->assertOk()->assertHeader('Content-Disposition', "attachment; filename=\"{$pngId}.png\"")
             ->assertHeader('X-Content-Type-Options', 'nosniff');
         $this->assertSame($png, $content->getContent());
+        $legacyVersion = (string) Str::uuid();
+        $legacyAttachment = (string) Str::uuid();
+        $legacyPath = "evidence/{$this->chapterId}/{$evidenceId}/{$legacyVersion}/{$legacyAttachment}";
+        Storage::disk('evidence')->put($legacyPath, $rawBytes);
+        EvidenceBlob::create([
+            'id' => $legacyAttachment, 'evidence_id' => $evidenceId, 'version' => 1,
+            'sha256_hash' => $expectedSha256, 'file_size' => strlen($rawBytes), 'mime_type' => 'application/pdf',
+            'created_by' => $this->userId, 'payload_path' => $legacyPath,
+        ]);
+        $this->get("{$versionUrl}/attachments/{$legacyAttachment}/content")->assertNotFound()
+            ->assertJsonPath('error.code', 'evidence_not_found');
+        $this->get($versionUrl)->assertOk()->assertExactJson($response->json());
+        $this->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}")
+            ->assertOk()->assertJsonPath('data.current_version', $response->json('data'));
 
         // List versions
         $versionsResponse = $this->asOfficer($this->userId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions");
         $versionsResponse->assertStatus(200)
-            ->assertJsonCount(1, 'data');
+            ->assertJsonCount(2, 'data');
 
         // Replace version
         $newRawBytes = $rawBytes."\n% New Version Appended";
@@ -307,12 +324,15 @@ class InventoryStage1ATest extends TestCase
             [['image/png', $valid[1]], 'content_mismatch'],
             [['application/pdf', "%PDF-1.4\n%%EOF\n"], 'malformed_content'],
             [['application/pdf', $this->paperPdf(' /OpenAction << /S /JavaScript /JS (example) >>')], 'unsafe_content'],
+            [['application/pdf', $this->paperPdf(' /AF [3 0 R]')], 'unsafe_content'],
             [['application/pdf', ''], 'empty_file'],
         ] as [$file, $code]) {
             $this->uploadPaper($rm, $key, [$valid, $file])->assertUnprocessable()
                 ->assertJsonPath('error.fields.0.pointer', '/attachments/1')->assertJsonPath('error.fields.0.code', $code);
         }
         $this->uploadPaper($rm, $key, [$valid, ['application/pdf', str_repeat('x', 10485761)]])
+            ->assertStatus(413)->assertJsonPath('error.code', 'evidence_too_large');
+        $this->uploadPaper($rm, $key, array_fill(0, 257, $valid))
             ->assertStatus(413)->assertJsonPath('error.code', 'evidence_too_large');
         $this->uploadPaper($rm, $key, [$valid], extra: 'purpose')->assertUnprocessable()
             ->assertJsonPath('error.fields.0.pointer', '/purpose');
@@ -377,6 +397,11 @@ class InventoryStage1ATest extends TestCase
         $this->get($download)->assertServiceUnavailable()->assertJsonPath('error.code', 'evidence_unavailable');
         $disk->delete($objectPath);
         $this->get($path)->assertOk()->assertJsonPath('data.current_version.invalid_reason', 'object_missing');
+        $unavailableDisk = Mockery::mock(FilesystemAdapter::class);
+        $unavailableDisk->shouldReceive('path')->once()->with('')->andReturn($disk->path('unavailable'));
+        Storage::set('evidence', $unavailableDisk);
+        $this->get($path)->assertServiceUnavailable()->assertJsonPath('error.code', 'evidence_unavailable');
+        Storage::set('evidence', $disk);
 
         $this->call('GET', $download)->assertUnauthorized()->assertJsonPath('error.code', 'unauthenticated');
         DutyGrant::where('user_id', $this->userId)->where('duty_code', 'RECEIVING')->delete();
@@ -389,6 +414,33 @@ class InventoryStage1ATest extends TestCase
         ChapterMembership::where('user_id', $this->userId)->update(['membership_status' => 'revoked']);
         $this->get($download)->assertNotFound()->assertJsonPath('error.code', 'chapter_not_found');
         $this->uploadPaper($rm, $key, $files)->assertNotFound()->assertJsonPath('error.code', 'chapter_not_found');
+    }
+
+    public function test_evidence_download_rechecks_session_expiry_when_sending_bytes(): void
+    {
+        $rm = $this->evidenceDraft();
+        $this->asOfficer($this->userId);
+        $paper = $this->paperPdf();
+        $data = $this->uploadPaper($rm, (string) Str::uuid(), [['application/pdf', $paper]])->assertCreated()->json('data');
+        $prefix = config('app.url')."/api/v1/chapters/{$this->chapterId}/evidence/{$data['evidence_id']}/versions/{$data['version_id']}";
+        $attachmentId = $data['attachments'][0]['attachment_id'];
+        $request = Request::create("{$prefix}/attachments/{$attachmentId}/content", cookies: $this->prepareCookiesForRequest());
+        $kernel = app(Kernel::class);
+        $response = $kernel->handle($request);
+        $this->assertSame(200, $response->getStatusCode());
+
+        $this->travel(61)->minutes();
+        ob_start();
+        try {
+            $response->send(false);
+            $body = ob_get_contents();
+        } finally {
+            ob_end_clean();
+            $this->travelBack();
+            $kernel->terminate($request, $response);
+        }
+        $this->assertSame(401, $response->getStatusCode());
+        $this->assertSame('unauthenticated', json_decode($body, true)['error']['code']);
     }
 
     private function evidenceDraft(): OpeningRm

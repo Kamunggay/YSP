@@ -102,7 +102,7 @@ class EnforceStageOneAction
             }
         }
         if (in_array($method, ['show', 'showVersion', 'retrieveAttachment'], true)
-            && ($request->getQueryString() !== null || $request->getContent() !== '')) {
+            && ($request->server('QUERY_STRING', '') !== '' || $request->getContent() !== '')) {
             throw PaperEvidenceUpload::malformed();
         }
 

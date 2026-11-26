@@ -15,6 +15,7 @@ use App\Http\Controllers\ReservationAndHoldController;
 use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\StockQueryController;
+use App\Http\PaperEvidenceDownload;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -47,7 +48,8 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidenc
     Route::get('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'versions'])->middleware('stage-one.action:evidence.read,history.read');
     Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'replace'])->middleware('stage-one.action:evidence.prepare', 'idempotent');
     Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion'])->middleware('stage-one.action:evidence.read,history.read');
-    Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment'])->middleware('stage-one.action:evidence.read,history.read');
+    Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment'])
+        ->middleware('stage-one.action:'.implode(',', PaperEvidenceDownload::ACTIONS));
 });
 
 Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stage-one.chapter')->group(function () {

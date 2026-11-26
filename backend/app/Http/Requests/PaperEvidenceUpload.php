@@ -11,6 +11,8 @@ final class PaperEvidenceUpload
 
     private const BODY_LIMIT = 64 * 1024 * 1024;
 
+    private const MAX_ATTACHMENTS = 256;
+
     /** @param list<array{media_type: string, bytes: string}> $files */
     private function __construct(
         public readonly string $key,
@@ -22,7 +24,7 @@ final class PaperEvidenceUpload
     public static function parse(Request $request): self
     {
         $keys = $request->headers->all('X-Action-Key');
-        if (count($keys) !== 1 || ! preg_match(AuthInput::UUID, $keys[0]) || $request->getQueryString() !== null) {
+        if (count($keys) !== 1 || ! preg_match(AuthInput::UUID, $keys[0]) || $request->server('QUERY_STRING', '') !== '') {
             throw self::malformed();
         }
 
@@ -77,8 +79,11 @@ final class PaperEvidenceUpload
                 if ($filename === null || $filename === '' || $mediaType === null) {
                     throw self::invalid($pointer, 'invalid_field', 'Supply a file with a filename and media type.');
                 }
-                if ($length > self::FILE_LIMIT) {
+                if ($length > self::FILE_LIMIT || count($files) >= self::MAX_ATTACHMENTS) {
                     throw self::tooLarge();
+                }
+                if ($length === 0) {
+                    throw self::invalid($pointer, 'empty_file', 'Supply a nonempty file.');
                 }
                 $files[] = ['media_type' => $mediaType, 'bytes' => substr($body, $start, $length)];
             } else {

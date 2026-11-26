@@ -176,12 +176,13 @@ final class PaperEvidenceContent
     private function hasActiveContent(array $objects): bool
     {
         $blocked = [
-            '/AA', '/OpenAction', '/JS', '/JavaScript', '/Launch', '/EmbeddedFiles', '/EmbeddedFile',
+            '/AA', '/OpenAction', '/JS', '/JavaScript', '/Launch', '/EmbeddedFiles', '/EmbeddedFile', '/EF', '/AF',
             '/Filespec', '/FileAttachment', '/RichMedia', '/XFA', '/Movie', '/Sound', '/Screen', '/3D',
             '/SubmitForm', '/ImportData', '/GoToE', '/GoToR', '/Rendition', '/URI', '/Action',
         ];
         foreach ($objects as $key => $value) {
             if (in_array($key, $blocked, true) || in_array($value, $blocked, true)
+                || ($key === 'stream' && isset($value['dict']['/F']))
                 || (is_array($value) && $this->hasActiveContent($value))) {
                 return true;
             }

@@ -59,7 +59,19 @@ final class PaperEvidenceStore
     {
         $disk = Storage::disk('evidence');
         try {
+            $root = rtrim($disk->path(''), DIRECTORY_SEPARATOR);
+            if (! is_dir($root) || ! is_readable($root) || ! is_executable($root)) {
+                throw PaperEvidenceContent::unavailable();
+            }
             if (! $disk->fileExists($blob->payload_path)) {
+                $directory = dirname($disk->path($blob->payload_path));
+                while ($directory !== $root && ! is_dir($directory)) {
+                    $directory = dirname($directory);
+                }
+                if (! is_readable($directory) || ! is_executable($directory)) {
+                    throw PaperEvidenceContent::unavailable();
+                }
+
                 return [null, 'object_missing'];
             }
             $stream = $disk->readStream($blob->payload_path);
