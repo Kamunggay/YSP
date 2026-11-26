@@ -1,0 +1,382 @@
+.stage1-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: #102a43;
+  color: #f8fafc;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 3px solid #2b6cb0;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.topbar-brand h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
+}
+
+.topbar-sub {
+  font-size: 0.85rem;
+  color: #bcccdc;
+}
+
+.topbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.85rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #243b53;
+  color: #e2e8f0;
+}
+
+.status-pill.ok {
+  background: #14532d;
+  color: #dcfce7;
+}
+
+.status-pill.warn {
+  background: #7c2d12;
+  color: #ffedd5;
+}
+
+.status-pill.bad {
+  background: #7f1d1d;
+  color: #fee2e2;
+}
+
+.shell-grid {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .shell-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sidenav {
+  background: #ffffff;
+  border-right: 1px solid #d9e2ec;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.nav-section-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #627d98;
+  margin: 0.65rem 0 0.2rem;
+  font-weight: 700;
+}
+
+.nav-btn {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: #102a43;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.nav-btn:hover {
+  background: #f0f4f8;
+}
+
+.nav-btn.active {
+  background: #e6f2ff;
+  border-color: #2b6cb0;
+  color: #0b4f78;
+  font-weight: 700;
+}
+
+.nav-code {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  color: #486581;
+  font-family: ui-monospace, monospace;
+}
+
+.workspace-main {
+  padding: 1.25rem;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #d9e2ec;
+  border-radius: 0.5rem;
+  padding: 1.15rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgb(16 42 67 / 5%);
+}
+
+.card h2,
+.card h3 {
+  margin-top: 0;
+  color: #102a43;
+}
+
+.authority-banner {
+  background: #ffffff;
+  border-left: 4px solid #19567a;
+  border-radius: 0.4rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.seven-views-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.view-tile {
+  border: 1px solid #bcccdc;
+  border-radius: 0.4rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+}
+
+.view-tile .label {
+  font-size: 0.78rem;
+  color: #486581;
+  margin-bottom: 0.25rem;
+}
+
+.view-tile .qty {
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+  color: #102a43;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 170px;
+  flex: 1;
+}
+
+.field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334e68;
+}
+
+.field input,
+.field select,
+.field textarea {
+  border: 1px solid #bcccdc;
+  border-radius: 0.35rem;
+  padding: 0.48rem 0.6rem;
+  background: #ffffff;
+  color: #102a43;
+}
+
+.field-error {
+  font-size: 0.78rem;
+  color: #9b2929;
+}
+
+.btn {
+  border: 1px solid #19567a;
+  border-radius: 0.35rem;
+  padding: 0.5rem 0.9rem;
+  background: #19567a;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: #123f5b;
+}
+
+.btn.secondary {
+  background: #ffffff;
+  color: #19567a;
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background: #edf4f8;
+}
+
+.btn.danger {
+  background: #9b2929;
+  border-color: #9b2929;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 0.4rem;
+  margin-bottom: 0.85rem;
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+}
+
+.alert.info {
+  background: #e6f2ff;
+  border-color: #90cdf4;
+  color: #102a43;
+}
+
+.alert.success {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #064e3b;
+}
+
+.alert.warn {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #7c2d12;
+}
+
+.alert.error {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #7f1d1d;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid #d9e2ec;
+  padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334e68;
+  border-radius: 0.35rem;
+  padding: 0.38rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.tab-btn.active {
+  background: #19567a;
+  border-color: #19567a;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+table.data-table th,
+table.data-table td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+table.data-table th {
+  color: #486581;
+  font-weight: 700;
+  background: #f8fafc;
+}
+
+pre.json-box {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 0.75rem;
+  border-radius: 0.4rem;
+  overflow-x: auto;
+  font-size: 0.78rem;
+  max-height: 320px;
+}
+
+.muted {
+  color: #627d98;
+  font-size: 0.84rem;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.duty-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  background: #e2e8f0;
+  color: #1e293b;
+  font-size: 0.74rem;
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
