@@ -168,20 +168,6 @@ function formatDraftTab(formKey: string): { tab: WorkspaceTab; workspaceLabel: s
   return { tab: 'my_work', workspaceLabel: 'Workspace' };
 }
 
-function realtimeText(status: RealtimeStatus): { label: string; dotClass: string } {
-  switch (status) {
-    case 'connected':
-      return { label: 'Live updates active', dotClass: 'is-green' };
-    case 'connecting':
-    case 'stale_reconnect':
-      return { label: 'Reconnecting live stream', dotClass: 'is-amber' };
-    case 'denied':
-      return { label: 'Live stream denied', dotClass: 'is-red' };
-    default:
-      return { label: 'Live updates standby', dotClass: 'is-neutral' };
-  }
-}
-
 export interface S02DashboardProps {
   session: SessionProjection;
   connection: ConnectionState;
@@ -476,7 +462,6 @@ interface PriorityItem {
     );
   }, [activeHoldList, blockedActions, lowStockList, onSelectTab, openIpcList, openRfList, searchQuery]);
 
-  const liveStatus = realtimeText(realtimeStatus);
   const dutySummaryText =
     assignedDuties.length > 0 ? assignedDuties.map(formatDutyName).join(' · ') : 'Chapter Member';
 
@@ -676,6 +661,17 @@ interface PriorityItem {
         </header>
 
         <OperationBanner error={globalError} />
+
+        {(connection === 'unavailable' || realtimeStatus === 'denied') && (
+          <div className="callout-banner is-warning" role="status">
+            <span className="callout-dot dot-warning" aria-hidden="true" />
+            <span>
+              {connection === 'unavailable'
+                ? 'Chapter data is temporarily unavailable. Check your connection or retry.'
+                : `Live updates are restricted${realtimeDetail ? `: ${realtimeDetail}` : '.'}`}
+            </span>
+          </div>
+        )}
 
         <section className="s02-kpi-grid" aria-label="Chapter key metrics">
           <button
@@ -1044,26 +1040,9 @@ interface PriorityItem {
                 </div>
 
                 <div className="s02-readiness-row">
-                  <dt className="s02-readiness-key">Chapter Data</dt>
+                  <dt className="s02-readiness-key">Assigned Roles</dt>
                   <dd className="s02-readiness-val">
-                    <span
-                      className={`s02-status-dot ${
-                        connection === 'connected'
-                          ? 'is-green'
-                          : connection === 'checking'
-                            ? 'is-amber'
-                            : 'is-red'
-                      }`}
-                    />
-                    {connection === 'connected' ? 'Online' : connection === 'checking' ? 'Checking' : 'Unavailable'}
-                  </dd>
-                </div>
-
-                <div className="s02-readiness-row">
-                  <dt className="s02-readiness-key">Live Sync</dt>
-                  <dd className="s02-readiness-val" title={realtimeDetail ?? undefined}>
-                    <span className={`s02-status-dot ${liveStatus.dotClass}`} />
-                    {liveStatus.label}
+                    {assignedDuties.length} active role{assignedDuties.length === 1 ? '' : 's'}
                   </dd>
                 </div>
 
@@ -1073,7 +1052,7 @@ interface PriorityItem {
                     <span className={`s02-status-dot ${blockedActions.length === 0 ? 'is-green' : 'is-amber'}`} />
                     {blockedActions.length === 0
                       ? 'All actions ready'
-                      : `${blockedActions.length} restricted or setup needed`}
+                      : `${blockedActions.length} setup needed`}
                   </dd>
                 </div>
 
