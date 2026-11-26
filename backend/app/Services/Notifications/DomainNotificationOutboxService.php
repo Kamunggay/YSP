@@ -3,7 +3,6 @@
 namespace App\Services\Notifications;
 
 use App\Models\DomainNotificationOutbox;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -35,8 +34,7 @@ class DomainNotificationOutboxService
 
     /**
      * Record a committed-only notification intent inside the active database transaction.
-     * Payload strictly carries only public coordinates (no private details), and dispatch
-     * occurs exclusively after transaction commit via DB::afterCommit().
+     * The worker only reads committed intents. Payload carries only resource coordinates.
      */
     public function recordIntent(
         string $eventName,
@@ -80,7 +78,7 @@ class DomainNotificationOutboxService
             'material_version' => $materialVersion,
         ];
 
-        $outbox = DomainNotificationOutbox::create([
+        return DomainNotificationOutbox::create([
             'id' => $eventId,
             'chapter_id' => $effectiveChapterId,
             'event_name' => $eventName,
@@ -95,22 +93,6 @@ class DomainNotificationOutboxService
             'dispatched_at' => null,
             'created_at' => $committedAt,
         ]);
-
-        if ($eventName === 'stage1.paper-evidence.changed.v1') {
-            return $outbox;
-        }
-
-        $outboxId = $outbox->id;
-        DB::afterCommit(function () use ($outboxId): void {
-            DomainNotificationOutbox::where('id', $outboxId)
-                ->where('status', 'pending')
-                ->update([
-                    'status' => 'dispatched',
-                    'dispatched_at' => now('UTC'),
-                ]);
-        });
-
-        return $outbox;
     }
 
     /**

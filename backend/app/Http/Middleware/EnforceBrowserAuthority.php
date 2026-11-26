@@ -5,6 +5,9 @@ namespace App\Http\Middleware;
 use App\Exceptions\ContractException;
 use App\Http\BrowserSessionHttp;
 use App\Http\PaperEvidenceDownload;
+use App\Models\BrowserSession;
+use App\Models\User;
+use App\Services\Notifications\NotificationSubjectRead;
 use Closure;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -18,16 +21,34 @@ class EnforceBrowserAuthority
 {
     public function handle(Request $request, Closure $next, ?string $budget = null): Response
     {
-        $namespace = $budget === 'evidence' ? 'paper-evidence' : 'chapter-authority';
+        if ($request->isMethod('GET') && ($user = $request->attributes->get(NotificationSubjectRead::class)) instanceof User) {
+            $request->setUserResolver(fn () => $user);
+
+            return $next($request);
+        }
+
+        $namespace = match ($budget) {
+            'evidence' => 'paper-evidence',
+            'notifications' => 'notification-authorization',
+            default => 'chapter-authority',
+        };
         try {
             $ipDelay = $budget ? BrowserSessionHttp::attempt(
                 'ip:'.hash('sha256', (string) $request->ip()), 60, namespace: $namespace
             ) : null;
+            if ($budget === 'notifications') {
+                // Release the HTTP session lock before the broker takes a fresh lock for socket admission.
+                $admission = $this->authorize($request, fn () => new Response('', 204), $budget, $ipDelay, $namespace);
+
+                return $admission->getStatusCode() === 204 ? BrowserSessionHttp::noStore($next($request)) : $admission;
+            }
             if ($budget !== 'evidence' || $request->route()?->getActionMethod() !== 'retrieveAttachment') {
                 return $this->authorize($request, $next, $budget, $ipDelay, $namespace);
             }
 
             return $this->fencedDownload($request, $next, $ipDelay, $namespace);
+        } catch (ContractException $denied) {
+            return BrowserSessionHttp::noStore(self::error($denied));
         } catch (PDOException|LockTimeoutException) {
             return BrowserSessionHttp::noStore($this->unavailable($budget));
         }
@@ -115,6 +136,9 @@ class EnforceBrowserAuthority
                 }
 
                 $request->setUserResolver(fn () => $user);
+                if ($budget === 'notifications') {
+                    $request->attributes->set(BrowserSession::class, $session);
+                }
 
                 $response = $next($request);
                 if ($unsafe && $response->getStatusCode() >= 400) {
@@ -126,7 +150,7 @@ class EnforceBrowserAuthority
         } catch (HttpResponseException $exception) {
             $response = $exception->getResponse();
         } catch (ContractException $denied) {
-            $response = $ipDelay !== null
+            $response = $ipDelay !== null && $budget !== 'notifications'
                 ? self::error(new ContractException(429, 'throttled', 'Try again after the indicated delay.'))->header('Retry-After', (string) $ipDelay)
                 : self::error($denied);
         } catch (PDOException|LockTimeoutException) {

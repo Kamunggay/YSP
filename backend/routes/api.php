@@ -33,7 +33,7 @@ Route::prefix('v1/auth')->group(function () {
     Route::get('/recovery-codes', [BrowserSessionController::class, 'recoveryCodes']);
     Route::post('/recovery-codes/rotate', [BrowserSessionController::class, 'rotateRecoveryCodes']);
     Route::get('/memberships', [ChapterAccessController::class, 'memberships'])->middleware('browser.authority:reads');
-    Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeSession'])->middleware('browser.authority');
+    Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeSession'])->middleware('browser.authority:notifications');
 });
 
 // ================= SECURED CHAPTER CONTEXT =================
@@ -52,9 +52,10 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidenc
         ->middleware('stage-one.action:'.implode(',', PaperEvidenceDownload::ACTIONS));
 });
 
-Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stage-one.chapter')->group(function () {
-    Route::post('/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeChapter']);
+Route::post('/v1/chapters/{chapter_id}/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeChapter'])
+    ->middleware('browser.authority:notifications');
 
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stage-one.chapter')->group(function () {
     // Catalogue Operations (static paths before dynamic {operation_id})
     Route::get('/catalogue/operations/by-key', [CatalogueController::class, 'findOperationByKey'])->middleware('stage-one.action:catalogue.maintain');
     Route::get('/catalogue/operations/{operation_id}', [CatalogueController::class, 'readOperation'])->middleware('stage-one.action:catalogue.maintain');
