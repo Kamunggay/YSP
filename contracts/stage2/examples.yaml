@@ -1,4 +1,4 @@
-# Schema-checked Stage 2 contract examples (Ticket 01).
+# Schema-checked Stage 2 contract examples (Tickets 01-02).
 # Synthetic fixtures only; IDs, values, and approvals are illustrative, never approved setup.
 context:
   chapter_id: 60000000-0000-4000-8000-000000000001
@@ -330,6 +330,2724 @@ cases:
         error:
           code: chapter_not_found
           message: Chapter is unavailable.
+
+  # --- Ticket 02: RepF intake, net-need duplicate guard, budget review & recovery ---
+  - name: stage2-02-repf-create-multi-trigger-draft
+    operationId: createRepf
+    before: >-
+      Inventory officer creates a multi-trigger chapter-funded RepF draft combining
+      rf_shortage (5 units) and rop_replenishment (50 units) for SHIRT-M without
+      double-counting (INV-11, PRC-01..PRC-03). repf_reference stays null in draft.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000210
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      body:
+        funding_source: chapter_funds
+        urgency: urgent
+        justification: Cover unreserved RF-000001 shortage and restore SHIRT-M to target stock level.
+        lines:
+          - trigger_kind: rf_shortage
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            rf_id: 81000000-0000-4000-8000-000000000001
+            rf_line_id: 82000000-0000-4000-8000-000000000001
+            requested_quantity: '5'
+            estimated_unit_cost_php: '250.00'
+            needed_by: '2026-12-01T01:00:00.000000Z'
+            additional_purchase_reason: null
+            notes: Uncovered portion of RF-000001 after counted PO-000004 inbound.
+          - trigger_kind: rop_replenishment
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            rf_id: null
+            rf_line_id: null
+            requested_quantity: '50'
+            estimated_unit_cost_php: '250.00'
+            needed_by: '2026-12-05T01:00:00.000000Z'
+            additional_purchase_reason: null
+            notes: Non-overlapping ROP top-up to target level 50.
+    response:
+      status: '201'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000001
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000002
+          operation_name: createRepf
+          action_key: 40000000-0000-4000-8000-000000000210
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 1
+          committed_material_version: 1
+          status_code: 201
+          committed_at: '2026-11-26T02:10:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: null
+            status: draft
+            version: 1
+            material_version: 1
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover unreserved RF-000001 shortage and restore SHIRT-M to target stock level.
+            estimated_total_php: '13750.00'
+            approved_budget_php: null
+            has_additional_purchase_override: false
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by: null
+            submitted_at: null
+            budget_reviewer: null
+            budget_reviewed_at: null
+            budget_decision: null
+            budget_decision_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000001
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '5'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '5'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '1250.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 15
+                  observed_at: '2026-11-26T02:10:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Uncovered portion of RF-000001 after counted PO-000004 inbound.
+              - id: 90100000-0000-4000-8000-000000000002
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 15
+                  observed_at: '2026-11-26T02:10:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:10:00.000000Z'
+
+  - name: stage2-02-repf-replace-draft-with-additional-purchase-reason
+    operationId: replaceRepf
+    before: >-
+      Full draft replacement increases RF shortage line to 10 (exceeding live
+      uncovered_need of 5) with an explicit disputed_supply additional_purchase_reason
+      for independent budget review (INV-12).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000211
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        funding_source: chapter_funds
+        urgency: urgent
+        justification: Cover RF-000001 shortage including 5 disputed units on PO-000003 plus ROP top-up.
+        lines:
+          - trigger_kind: rf_shortage
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            rf_id: 81000000-0000-4000-8000-000000000001
+            rf_line_id: 82000000-0000-4000-8000-000000000001
+            requested_quantity: '10'
+            estimated_unit_cost_php: '250.00'
+            needed_by: '2026-12-01T01:00:00.000000Z'
+            additional_purchase_reason:
+              category: disputed_supply
+              referenced_source_ids:
+                - 91000000-0000-4000-8000-000000000011
+              explanation: PO-000003 has 5 damaged units under unresolved supplier dispute and will miss RF event date.
+            notes: Includes 5 replacement units above uncovered_need due to disputed PO-000003.
+          - trigger_kind: rop_replenishment
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            rf_id: null
+            rf_line_id: null
+            requested_quantity: '50'
+            estimated_unit_cost_php: '250.00'
+            needed_by: '2026-12-05T01:00:00.000000Z'
+            additional_purchase_reason: null
+            notes: Non-overlapping ROP top-up to target level 50.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000002
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000002
+          operation_name: replaceRepf
+          action_key: 40000000-0000-4000-8000-000000000211
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 2
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T02:15:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: null
+            status: draft
+            version: 2
+            material_version: 2
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover RF-000001 shortage including 5 disputed units on PO-000003 plus ROP top-up.
+            estimated_total_php: '15000.00'
+            approved_budget_php: null
+            has_additional_purchase_override: true
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by: null
+            submitted_at: null
+            budget_reviewer: null
+            budget_reviewed_at: null
+            budget_decision: null
+            budget_decision_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000003
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '10'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '10'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '2500.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 15
+                  observed_at: '2026-11-26T02:15:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: true
+                additional_purchase_reason:
+                  category: disputed_supply
+                  referenced_source_ids:
+                    - 91000000-0000-4000-8000-000000000011
+                  explanation: PO-000003 has 5 damaged units under unresolved supplier dispute and will miss RF event date.
+                notes: Includes 5 replacement units above uncovered_need due to disputed PO-000003.
+              - id: 90100000-0000-4000-8000-000000000004
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 15
+                  observed_at: '2026-11-26T02:15:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:15:00.000000Z'
+
+  - name: stage2-02-repf-submit-allocates-reference
+    operationId: submitRepf
+    before: >-
+      Submitting draft RepF transitions to pending_budget_review and allocates
+      CEBREPF-2026-000001 once-only from the chapter REPF reference series.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000212
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 2
+        expected_material_version: 2
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000002
+          operation_name: submitRepf
+          action_key: 40000000-0000-4000-8000-000000000212
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 3
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T02:20:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000001
+            status: pending_budget_review
+            version: 3
+            material_version: 2
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover RF-000001 shortage including 5 disputed units on PO-000003 plus ROP top-up.
+            estimated_total_php: '15000.00'
+            approved_budget_php: null
+            has_additional_purchase_override: true
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:20:00.000000Z'
+            budget_reviewer: null
+            budget_reviewed_at: null
+            budget_decision: null
+            budget_decision_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000003
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '10'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '10'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '2500.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: true
+                additional_purchase_reason:
+                  category: disputed_supply
+                  referenced_source_ids:
+                    - 91000000-0000-4000-8000-000000000011
+                  explanation: PO-000003 has 5 damaged units under unresolved supplier dispute and will miss RF event date.
+                notes: Includes 5 replacement units above uncovered_need due to disputed PO-000003.
+              - id: 90100000-0000-4000-8000-000000000004
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:20:00.000000Z'
+
+  - name: stage2-02-repf-budget-review-hold
+    operationId: reviewRepfBudget
+    before: Independent Budget Approver places RepF on hold with mandatory reason awaiting chapter fund confirmation.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000213
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        decision: hold
+        reason: Awaiting monthly chapter budget cash-flow confirmation before committing PHP 15,000.00.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000004
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000008
+          operation_name: reviewRepfBudget
+          action_key: 40000000-0000-4000-8000-000000000213
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 4
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T02:25:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000001
+            status: held
+            version: 4
+            material_version: 2
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover RF-000001 shortage including 5 disputed units on PO-000003 plus ROP top-up.
+            estimated_total_php: '15000.00'
+            approved_budget_php: null
+            has_additional_purchase_override: true
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:20:00.000000Z'
+            budget_reviewer:
+              user_id: 10000000-0000-4000-8000-000000000008
+              display_name: Budget Approver B
+            budget_reviewed_at: '2026-11-26T02:25:00.000000Z'
+            budget_decision: hold
+            budget_decision_reason: Awaiting monthly chapter budget cash-flow confirmation before committing PHP 15,000.00.
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000003
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '10'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '10'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '2500.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: true
+                additional_purchase_reason:
+                  category: disputed_supply
+                  referenced_source_ids:
+                    - 91000000-0000-4000-8000-000000000011
+                  explanation: PO-000003 has 5 damaged units under unresolved supplier dispute and will miss RF event date.
+                notes: Includes 5 replacement units above uncovered_need due to disputed PO-000003.
+              - id: 90100000-0000-4000-8000-000000000004
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:25:00.000000Z'
+
+  - name: stage2-02-repf-resume-review
+    operationId: resumeRepfReview
+    before: Independent Budget Approver resumes review of held RepF back to pending_budget_review.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000214
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 4
+        expected_material_version: 2
+        reason: Chapter treasury balance confirmed; resuming review.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000005
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000008
+          operation_name: resumeRepfReview
+          action_key: 40000000-0000-4000-8000-000000000214
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 5
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T02:30:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000001
+            status: pending_budget_review
+            version: 5
+            material_version: 2
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover RF-000001 shortage including 5 disputed units on PO-000003 plus ROP top-up.
+            estimated_total_php: '15000.00'
+            approved_budget_php: null
+            has_additional_purchase_override: true
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:20:00.000000Z'
+            budget_reviewer:
+              user_id: 10000000-0000-4000-8000-000000000008
+              display_name: Budget Approver B
+            budget_reviewed_at: '2026-11-26T02:25:00.000000Z'
+            budget_decision: null
+            budget_decision_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000003
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '10'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '10'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '2500.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: true
+                additional_purchase_reason:
+                  category: disputed_supply
+                  referenced_source_ids:
+                    - 91000000-0000-4000-8000-000000000011
+                  explanation: PO-000003 has 5 damaged units under unresolved supplier dispute and will miss RF event date.
+                notes: Includes 5 replacement units above uncovered_need due to disputed PO-000003.
+              - id: 90100000-0000-4000-8000-000000000004
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:30:00.000000Z'
+
+  - name: stage2-02-repf-budget-review-return
+    operationId: reviewRepfBudget
+    before: Independent Budget Approver returns RepF for revision with mandatory reason.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000215
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        decision: return
+        reason: Reduce RF shortage line back to 5 uncovered units; supplier confirmed PO-000003 replacement arrives tomorrow.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000006
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000008
+          operation_name: reviewRepfBudget
+          action_key: 40000000-0000-4000-8000-000000000215
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 6
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T02:35:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000001
+            status: returned_for_revision
+            version: 6
+            material_version: 2
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover RF-000001 shortage including 5 disputed units on PO-000003 plus ROP top-up.
+            estimated_total_php: '15000.00'
+            approved_budget_php: null
+            has_additional_purchase_override: true
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:20:00.000000Z'
+            budget_reviewer:
+              user_id: 10000000-0000-4000-8000-000000000008
+              display_name: Budget Approver B
+            budget_reviewed_at: '2026-11-26T02:35:00.000000Z'
+            budget_decision: return
+            budget_decision_reason: Reduce RF shortage line back to 5 uncovered units; supplier confirmed PO-000003 replacement arrives tomorrow.
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000003
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '10'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '10'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '2500.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: true
+                additional_purchase_reason:
+                  category: disputed_supply
+                  referenced_source_ids:
+                    - 91000000-0000-4000-8000-000000000011
+                  explanation: PO-000003 has 5 damaged units under unresolved supplier dispute and will miss RF event date.
+                notes: Includes 5 replacement units above uncovered_need due to disputed PO-000003.
+              - id: 90100000-0000-4000-8000-000000000004
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:35:00.000000Z'
+
+  - name: stage2-02-repf-revise-bumps-material-version
+    operationId: reviseRepf
+    before: >-
+      Preparer reopens returned_for_revision RepF into draft, bumping material_version
+      from 2 to 3 while retaining once-only allocated CEBREPF-2026-000001.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000216
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 6
+        expected_material_version: 2
+        reason: Reopening draft to remove additional-purchase override per budget feedback.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000007
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000002
+          operation_name: reviseRepf
+          action_key: 40000000-0000-4000-8000-000000000216
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 7
+          committed_material_version: 3
+          status_code: 200
+          committed_at: '2026-11-26T02:40:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000001
+            status: draft
+            version: 7
+            material_version: 3
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover RF-000001 shortage including 5 disputed units on PO-000003 plus ROP top-up.
+            estimated_total_php: '15000.00'
+            approved_budget_php: null
+            has_additional_purchase_override: true
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:20:00.000000Z'
+            budget_reviewer: null
+            budget_reviewed_at: null
+            budget_decision: null
+            budget_decision_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000003
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '10'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '10'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '2500.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: true
+                additional_purchase_reason:
+                  category: disputed_supply
+                  referenced_source_ids:
+                    - 91000000-0000-4000-8000-000000000011
+                  explanation: PO-000003 has 5 damaged units under unresolved supplier dispute and will miss RF event date.
+                notes: Includes 5 replacement units above uncovered_need due to disputed PO-000003.
+              - id: 90100000-0000-4000-8000-000000000004
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:40:00.000000Z'
+
+  - name: stage2-02-repf-budget-review-approve
+    operationId: reviewRepfBudget
+    before: >-
+      Independent Chapter Head approves resubmitted RepF within duty grant PHP limit,
+      freezing approved_budget_php at 13750.00 for downstream quotation and PO controls.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000217
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 9
+        expected_material_version: 4
+        decision: approve
+        reason: Verified net-need calculation and chapter budget allocation.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000008
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000009
+          operation_name: reviewRepfBudget
+          action_key: 40000000-0000-4000-8000-000000000217
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 10
+          committed_material_version: 4
+          status_code: 200
+          committed_at: '2026-11-26T02:50:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000001
+            status: approved
+            version: 10
+            material_version: 4
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover unreserved RF-000001 shortage and restore SHIRT-M to target stock level.
+            estimated_total_php: '13750.00'
+            approved_budget_php: '13750.00'
+            has_additional_purchase_override: false
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:45:00.000000Z'
+            budget_reviewer:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head C
+            budget_reviewed_at: '2026-11-26T02:50:00.000000Z'
+            budget_decision: approve
+            budget_decision_reason: Verified net-need calculation and chapter budget allocation.
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000005
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '5'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '5'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '1250.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 17
+                  observed_at: '2026-11-26T02:50:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Uncovered portion of RF-000001 after counted PO-000004 inbound.
+              - id: 90100000-0000-4000-8000-000000000006
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 17
+                  observed_at: '2026-11-26T02:50:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:50:00.000000Z'
+
+  - name: stage2-02-repf-budget-review-reject
+    operationId: reviewRepfBudget
+    before: Independent Budget Approver rejects a submitted RepF with mandatory reason; linked RF stays open.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000218
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000011
+      body:
+        expected_version: 2
+        expected_material_version: 1
+        decision: reject
+        reason: Chapter discretionary budget frozen for Q4; defer non-urgent ROP replenishment.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000009
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000008
+          operation_name: reviewRepfBudget
+          action_key: 40000000-0000-4000-8000-000000000218
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000011
+          committed_version: 3
+          committed_material_version: 1
+          status_code: 200
+          committed_at: '2026-11-26T02:55:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000011
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000002
+            status: rejected
+            version: 3
+            material_version: 1
+            funding_source: chapter_funds
+            urgency: normal
+            trigger_kinds:
+              - rop_replenishment
+            justification: Routine ROP replenishment for SHIRT-M.
+            estimated_total_php: '8750.00'
+            approved_budget_php: null
+            has_additional_purchase_override: false
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:52:00.000000Z'
+            budget_reviewer:
+              user_id: 10000000-0000-4000-8000-000000000008
+              display_name: Budget Approver B
+            budget_reviewed_at: '2026-11-26T02:55:00.000000Z'
+            budget_decision: reject
+            budget_decision_reason: Chapter discretionary budget frozen for Q4; defer non-urgent ROP replenishment.
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000007
+                line_number: 1
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '35'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '35'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '8750.00'
+                needed_by: null
+                net_need_breakdown:
+                  snapshot_version: 14
+                  observed_at: '2026-11-26T02:52:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '15'
+                  eligible_usable_stockroom_on_hand: '15'
+                  active_rf_reservations: '0'
+                  eligible_available_to_allocate: '15'
+                  unreserved_approved_rf_shortage: '0'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '0'
+                  total_open_inbound_coverage: '0'
+                  excluded_inbound_quantity: '0'
+                  gross_rf_shortage_need: '0'
+                  gross_rop_replenishment_need: '35'
+                  gross_combined_need: '35'
+                  uncovered_rf_shortage_quantity: '0'
+                  uncovered_rop_replenishment_quantity: '35'
+                  variant_proposed_uncovered_quantity: '35'
+                  uncovered_need: '35'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: null
+            created_at: '2026-11-26T02:51:00.000000Z'
+            updated_at: '2026-11-26T02:55:00.000000Z'
+
+  - name: stage2-02-repf-cancel-unordered-remainder
+    operationId: cancelRepf
+    before: >-
+      Chapter Head cancels the un-ordered remainder (30 of 50 units) on a
+      partially_ordered RepF with mandatory reason while preserving 20 ordered units
+      and immutable version history (PRC-08).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000219
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000012
+      body:
+        expected_version: 5
+        expected_material_version: 2
+        reason: Event scaled down; cancel un-ordered 30-unit remainder while keeping issued PO-000006 for 20 units.
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000010
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000009
+          operation_name: cancelRepf
+          action_key: 40000000-0000-4000-8000-000000000219
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000012
+          committed_version: 6
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T03:10:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000012
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000003
+            status: canceled
+            version: 6
+            material_version: 2
+            funding_source: chapter_funds
+            urgency: normal
+            trigger_kinds:
+              - rop_replenishment
+            justification: Seasonal ROP restock for SHIRT-M.
+            estimated_total_php: '12500.00'
+            approved_budget_php: '12500.00'
+            has_additional_purchase_override: false
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T01:30:00.000000Z'
+            budget_reviewer:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head C
+            budget_reviewed_at: '2026-11-26T01:40:00.000000Z'
+            budget_decision: approve
+            budget_decision_reason: Approved within chapter budget.
+            canceled_by:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head C
+            canceled_at: '2026-11-26T03:10:00.000000Z'
+            cancel_reason: Event scaled down; cancel un-ordered 30-unit remainder while keeping issued PO-000006 for 20 units.
+            lines:
+              - id: 90100000-0000-4000-8000-000000000008
+                line_number: 1
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '20'
+                canceled_quantity: '30'
+                remaining_to_order_quantity: '0'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: null
+                net_need_breakdown:
+                  snapshot_version: 10
+                  observed_at: '2026-11-26T01:30:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '0'
+                  eligible_usable_stockroom_on_hand: '0'
+                  active_rf_reservations: '0'
+                  eligible_available_to_allocate: '0'
+                  unreserved_approved_rf_shortage: '0'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '0'
+                  total_open_inbound_coverage: '0'
+                  excluded_inbound_quantity: '0'
+                  gross_rf_shortage_need: '0'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '50'
+                  uncovered_rf_shortage_quantity: '0'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '50'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: null
+            created_at: '2026-11-26T01:25:00.000000Z'
+            updated_at: '2026-11-26T03:10:00.000000Z'
+
+  - name: stage2-02-repf-read-linked-demand-canceled
+    operationId: readRepf
+    before: >-
+      Reading an approved RepF after Stage 1 cancelInternalRf canceled RF-000001's
+      remaining unissued quantity without blocking RF closure: linked_demand_canceled
+      is true on both RepF and line 1 (PRC-08).
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+    response:
+      status: '200'
+      body:
+        data:
+          id: 90000000-0000-4000-8000-000000000010
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          repf_reference: CEBREPF-2026-000001
+          status: approved
+          version: 11
+          material_version: 4
+          funding_source: chapter_funds
+          urgency: urgent
+          trigger_kinds:
+            - rf_shortage
+            - rop_replenishment
+          justification: Cover unreserved RF-000001 shortage and restore SHIRT-M to target stock level.
+          estimated_total_php: '13750.00'
+          approved_budget_php: '13750.00'
+          has_additional_purchase_override: false
+          linked_demand_canceled: true
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000002
+            display_name: Inventory Officer A
+          submitted_by:
+            user_id: 10000000-0000-4000-8000-000000000002
+            display_name: Inventory Officer A
+          submitted_at: '2026-11-26T02:45:00.000000Z'
+          budget_reviewer:
+            user_id: 10000000-0000-4000-8000-000000000009
+            display_name: Chapter Head C
+          budget_reviewed_at: '2026-11-26T02:50:00.000000Z'
+          budget_decision: approve
+          budget_decision_reason: Verified net-need calculation and chapter budget allocation.
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+            - id: 90100000-0000-4000-8000-000000000005
+              line_number: 1
+              trigger_kind: rf_shortage
+              item_id: 95000000-0000-4000-8000-000000000050
+              item_code: SHIRT
+              variant_id: 95000000-0000-4000-8000-000000000051
+              variant_code: SHIRT-M
+              display_name: Chapter Shirt / Medium
+              unit_id: 95000000-0000-4000-8000-000000000052
+              unit_code: EA
+              quantity_scale: 0
+              rf_id: 81000000-0000-4000-8000-000000000001
+              rf_reference: CEB-RF-2026-000001
+              rf_line_id: 82000000-0000-4000-8000-000000000001
+              rf_material_version: 2
+              linked_demand_canceled: true
+              linked_demand_canceled_at: '2026-11-26T03:00:00.000000Z'
+              requested_quantity: '5'
+              ordered_quantity: '0'
+              canceled_quantity: '0'
+              remaining_to_order_quantity: '5'
+              estimated_unit_cost_php: '250.00'
+              estimated_line_total_php: '1250.00'
+              needed_by: '2026-12-01T01:00:00.000000Z'
+              net_need_breakdown:
+                snapshot_version: 17
+                observed_at: '2026-11-26T02:50:00.000000Z'
+                approved_rop: '20'
+                approved_target_level: '50'
+                usable_stockroom_on_hand: '18'
+                eligible_usable_stockroom_on_hand: '18'
+                active_rf_reservations: '8'
+                eligible_available_to_allocate: '10'
+                unreserved_approved_rf_shortage: '15'
+                open_repf_quantity: '0'
+                open_po_inbound_quantity: '10'
+                total_open_inbound_coverage: '10'
+                excluded_inbound_quantity: '5'
+                gross_rf_shortage_need: '15'
+                gross_rop_replenishment_need: '50'
+                gross_combined_need: '65'
+                uncovered_rf_shortage_quantity: '5'
+                uncovered_rop_replenishment_quantity: '50'
+                variant_proposed_uncovered_quantity: '55'
+                uncovered_need: '5'
+                exceeds_uncovered_need: false
+              additional_purchase_reason: null
+              notes: Uncovered portion of RF-000001 after counted PO-000004 inbound.
+            - id: 90100000-0000-4000-8000-000000000006
+              line_number: 2
+              trigger_kind: rop_replenishment
+              item_id: 95000000-0000-4000-8000-000000000050
+              item_code: SHIRT
+              variant_id: 95000000-0000-4000-8000-000000000051
+              variant_code: SHIRT-M
+              display_name: Chapter Shirt / Medium
+              unit_id: 95000000-0000-4000-8000-000000000052
+              unit_code: EA
+              quantity_scale: 0
+              rf_id: null
+              rf_reference: null
+              rf_line_id: null
+              rf_material_version: null
+              linked_demand_canceled: false
+              linked_demand_canceled_at: null
+              requested_quantity: '50'
+              ordered_quantity: '0'
+              canceled_quantity: '0'
+              remaining_to_order_quantity: '50'
+              estimated_unit_cost_php: '250.00'
+              estimated_line_total_php: '12500.00'
+              needed_by: '2026-12-05T01:00:00.000000Z'
+              net_need_breakdown:
+                snapshot_version: 17
+                observed_at: '2026-11-26T02:50:00.000000Z'
+                approved_rop: '20'
+                approved_target_level: '50'
+                usable_stockroom_on_hand: '18'
+                eligible_usable_stockroom_on_hand: '18'
+                active_rf_reservations: '8'
+                eligible_available_to_allocate: '10'
+                unreserved_approved_rf_shortage: '15'
+                open_repf_quantity: '0'
+                open_po_inbound_quantity: '10'
+                total_open_inbound_coverage: '10'
+                excluded_inbound_quantity: '5'
+                gross_rf_shortage_need: '15'
+                gross_rop_replenishment_need: '50'
+                gross_combined_need: '65'
+                uncovered_rf_shortage_quantity: '5'
+                uncovered_rop_replenishment_quantity: '50'
+                variant_proposed_uncovered_quantity: '55'
+                uncovered_need: '50'
+                exceeds_uncovered_need: false
+              additional_purchase_reason: null
+              notes: Non-overlapping ROP top-up to target level 50.
+          created_at: '2026-11-26T02:10:00.000000Z'
+          updated_at: '2026-11-26T03:00:00.000000Z'
+
+  - name: stage2-02-repf-list-demand-changed
+    operationId: listRepfs
+    before: Purchasing officer lists chapter RepFs filtered by linked_demand_canceled=true.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        status: approved
+        linked_demand_canceled: true
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000001
+            status: approved
+            version: 11
+            material_version: 4
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover unreserved RF-000001 shortage and restore SHIRT-M to target stock level.
+            estimated_total_php: '13750.00'
+            approved_budget_php: '13750.00'
+            has_additional_purchase_override: false
+            linked_demand_canceled: true
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:45:00.000000Z'
+            budget_reviewer:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head C
+            budget_reviewed_at: '2026-11-26T02:50:00.000000Z'
+            budget_decision: approve
+            budget_decision_reason: Verified net-need calculation and chapter budget allocation.
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000005
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: true
+                linked_demand_canceled_at: '2026-11-26T03:00:00.000000Z'
+                requested_quantity: '5'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '5'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '1250.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 17
+                  observed_at: '2026-11-26T02:50:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Uncovered portion of RF-000001 after counted PO-000004 inbound.
+              - id: 90100000-0000-4000-8000-000000000006
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 17
+                  observed_at: '2026-11-26T02:50:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T03:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 20
+
+  - name: stage2-02-repf-history
+    operationId: listRepfHistory
+    before: Immutable audit history shows draft creation, submit reference allocation, approval, and linked_demand_canceled event.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - id: 90200000-0000-4000-8000-000000000001
+            version: 1
+            material_version: 1
+            action: createRepf
+            from_status: null
+            to_status: draft
+            actor:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            reason: null
+            repf_reference: null
+            occurred_at: '2026-11-26T02:10:00.000000Z'
+          - id: 90200000-0000-4000-8000-000000000002
+            version: 3
+            material_version: 2
+            action: submitRepf
+            from_status: draft
+            to_status: pending_budget_review
+            actor:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            reason: null
+            repf_reference: CEBREPF-2026-000001
+            occurred_at: '2026-11-26T02:20:00.000000Z'
+          - id: 90200000-0000-4000-8000-000000000003
+            version: 10
+            material_version: 4
+            action: approveRepf
+            from_status: pending_budget_review
+            to_status: approved
+            actor:
+              user_id: 10000000-0000-4000-8000-000000000009
+              display_name: Chapter Head C
+            reason: Verified net-need calculation and chapter budget allocation.
+            repf_reference: CEBREPF-2026-000001
+            occurred_at: '2026-11-26T02:50:00.000000Z'
+          - id: 90200000-0000-4000-8000-000000000004
+            version: 11
+            material_version: 4
+            action: linked_demand_canceled
+            from_status: approved
+            to_status: approved
+            actor:
+              user_id: 10000000-0000-4000-8000-000000000004
+              display_name: Committee Requester D
+            reason: Linked RF CEB-RF-2026-000001 remaining unissued quantity canceled via cancelInternalRf.
+            repf_reference: CEBREPF-2026-000001
+            occurred_at: '2026-11-26T03:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 20
+
+  - name: stage2-02-repf-read-version
+    operationId: readRepfVersion
+    before: Reading immutable historical RepF version 1 snapshot.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+        version: 1
+    response:
+      status: '200'
+      body:
+        data:
+          id: 90000000-0000-4000-8000-000000000010
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          repf_reference: null
+          status: draft
+          version: 1
+          material_version: 1
+          funding_source: chapter_funds
+          urgency: urgent
+          trigger_kinds:
+            - rf_shortage
+            - rop_replenishment
+          justification: Cover unreserved RF-000001 shortage and restore SHIRT-M to target stock level.
+          estimated_total_php: '13750.00'
+          approved_budget_php: null
+          has_additional_purchase_override: false
+          linked_demand_canceled: false
+          preparer:
+            user_id: 10000000-0000-4000-8000-000000000002
+            display_name: Inventory Officer A
+          submitted_by: null
+          submitted_at: null
+          budget_reviewer: null
+          budget_reviewed_at: null
+          budget_decision: null
+          budget_decision_reason: null
+          canceled_by: null
+          canceled_at: null
+          cancel_reason: null
+          lines:
+            - id: 90100000-0000-4000-8000-000000000001
+              line_number: 1
+              trigger_kind: rf_shortage
+              item_id: 95000000-0000-4000-8000-000000000050
+              item_code: SHIRT
+              variant_id: 95000000-0000-4000-8000-000000000051
+              variant_code: SHIRT-M
+              display_name: Chapter Shirt / Medium
+              unit_id: 95000000-0000-4000-8000-000000000052
+              unit_code: EA
+              quantity_scale: 0
+              rf_id: 81000000-0000-4000-8000-000000000001
+              rf_reference: CEB-RF-2026-000001
+              rf_line_id: 82000000-0000-4000-8000-000000000001
+              rf_material_version: 2
+              linked_demand_canceled: false
+              linked_demand_canceled_at: null
+              requested_quantity: '5'
+              ordered_quantity: '0'
+              canceled_quantity: '0'
+              remaining_to_order_quantity: '5'
+              estimated_unit_cost_php: '250.00'
+              estimated_line_total_php: '1250.00'
+              needed_by: '2026-12-01T01:00:00.000000Z'
+              net_need_breakdown:
+                snapshot_version: 15
+                observed_at: '2026-11-26T02:10:00.000000Z'
+                approved_rop: '20'
+                approved_target_level: '50'
+                usable_stockroom_on_hand: '18'
+                eligible_usable_stockroom_on_hand: '18'
+                active_rf_reservations: '8'
+                eligible_available_to_allocate: '10'
+                unreserved_approved_rf_shortage: '15'
+                open_repf_quantity: '0'
+                open_po_inbound_quantity: '10'
+                total_open_inbound_coverage: '10'
+                excluded_inbound_quantity: '5'
+                gross_rf_shortage_need: '15'
+                gross_rop_replenishment_need: '50'
+                gross_combined_need: '65'
+                uncovered_rf_shortage_quantity: '5'
+                uncovered_rop_replenishment_quantity: '50'
+                variant_proposed_uncovered_quantity: '55'
+                uncovered_need: '5'
+                exceeds_uncovered_need: false
+              additional_purchase_reason: null
+              notes: Uncovered portion of RF-000001 after counted PO-000004 inbound.
+            - id: 90100000-0000-4000-8000-000000000002
+              line_number: 2
+              trigger_kind: rop_replenishment
+              item_id: 95000000-0000-4000-8000-000000000050
+              item_code: SHIRT
+              variant_id: 95000000-0000-4000-8000-000000000051
+              variant_code: SHIRT-M
+              display_name: Chapter Shirt / Medium
+              unit_id: 95000000-0000-4000-8000-000000000052
+              unit_code: EA
+              quantity_scale: 0
+              rf_id: null
+              rf_reference: null
+              rf_line_id: null
+              rf_material_version: null
+              linked_demand_canceled: false
+              linked_demand_canceled_at: null
+              requested_quantity: '50'
+              ordered_quantity: '0'
+              canceled_quantity: '0'
+              remaining_to_order_quantity: '50'
+              estimated_unit_cost_php: '250.00'
+              estimated_line_total_php: '12500.00'
+              needed_by: '2026-12-05T01:00:00.000000Z'
+              net_need_breakdown:
+                snapshot_version: 15
+                observed_at: '2026-11-26T02:10:00.000000Z'
+                approved_rop: '20'
+                approved_target_level: '50'
+                usable_stockroom_on_hand: '18'
+                eligible_usable_stockroom_on_hand: '18'
+                active_rf_reservations: '8'
+                eligible_available_to_allocate: '10'
+                unreserved_approved_rf_shortage: '15'
+                open_repf_quantity: '0'
+                open_po_inbound_quantity: '10'
+                total_open_inbound_coverage: '10'
+                excluded_inbound_quantity: '5'
+                gross_rf_shortage_need: '15'
+                gross_rop_replenishment_need: '50'
+                gross_combined_need: '65'
+                uncovered_rf_shortage_quantity: '5'
+                uncovered_rop_replenishment_quantity: '50'
+                variant_proposed_uncovered_quantity: '55'
+                uncovered_need: '50'
+                exceeds_uncovered_need: false
+              additional_purchase_reason: null
+              notes: Non-overlapping ROP top-up to target level 50.
+          created_at: '2026-11-26T02:10:00.000000Z'
+          updated_at: '2026-11-26T02:10:00.000000Z'
+
+  - name: stage2-02-repf-related-records
+    operationId: listRepfRelatedRecords
+    before: Related records list links internal RF (with linked_demand_canceled=true) and downstream PO.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - kind: internal_rf
+            id: 81000000-0000-4000-8000-000000000001
+            repf_line_id: 90100000-0000-4000-8000-000000000005
+            reference: CEB-RF-2026-000001
+            material_version: 2
+            state: canceled
+            linked_demand_canceled: true
+        page:
+          next_cursor: null
+          snapshot_version: 20
+
+  - name: stage2-02-repf-print-html
+    operationId: printRepf
+    before: Printable HTML view emits escaped non-executable markup with strict CSP and no-store headers.
+    request:
+      headers:
+        Accept: text/html
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+    response:
+      status: '200'
+      media_type: text/html
+      headers:
+        Content-Security-Policy: "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+        X-Content-Type-Options: nosniff
+      body: '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>RepF CEBREPF-2026-000001</title></head><body><h1>Replenishment Form CEBREPF-2026-000001</h1><p>Status: approved | Version: 11 (material 4) | Funding: chapter_funds | Total: PHP 13750.00</p></body></html>'
+
+  - name: stage2-02-procurement-operation-recover-by-key
+    operationId: findProcurementOperationByKey
+    before: Original actor recovers uncertain submitRepf outcome by operation_name and action_key without duplicating REPF allocation.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        operation_name: submitRepf
+        action_key: 40000000-0000-4000-8000-000000000212
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000002
+          operation_name: submitRepf
+          action_key: 40000000-0000-4000-8000-000000000212
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 3
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T02:20:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000001
+            status: pending_budget_review
+            version: 3
+            material_version: 2
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover RF-000001 shortage including 5 disputed units on PO-000003 plus ROP top-up.
+            estimated_total_php: '15000.00'
+            approved_budget_php: null
+            has_additional_purchase_override: true
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:20:00.000000Z'
+            budget_reviewer: null
+            budget_reviewed_at: null
+            budget_decision: null
+            budget_decision_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000003
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '10'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '10'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '2500.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: true
+                additional_purchase_reason:
+                  category: disputed_supply
+                  referenced_source_ids:
+                    - 91000000-0000-4000-8000-000000000011
+                  explanation: PO-000003 has 5 damaged units under unresolved supplier dispute and will miss RF event date.
+                notes: Includes 5 replacement units above uncovered_need due to disputed PO-000003.
+              - id: 90100000-0000-4000-8000-000000000004
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:20:00.000000Z'
+
+  - name: stage2-02-procurement-operation-read-by-id
+    operationId: readProcurementOperation
+    before: Original actor reads committed submitRepf action receipt by operation_id.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        operation_id: 49000000-0000-4000-8000-000000000003
+    response:
+      status: '200'
+      body:
+        data:
+          operation_id: 49000000-0000-4000-8000-000000000003
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          actor_id: 10000000-0000-4000-8000-000000000002
+          operation_name: submitRepf
+          action_key: 40000000-0000-4000-8000-000000000212
+          resource_kind: repf
+          resource_id: 90000000-0000-4000-8000-000000000010
+          committed_version: 3
+          committed_material_version: 2
+          status_code: 200
+          committed_at: '2026-11-26T02:20:00.000000Z'
+          outcome: committed
+          result:
+            id: 90000000-0000-4000-8000-000000000010
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            repf_reference: CEBREPF-2026-000001
+            status: pending_budget_review
+            version: 3
+            material_version: 2
+            funding_source: chapter_funds
+            urgency: urgent
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
+            justification: Cover RF-000001 shortage including 5 disputed units on PO-000003 plus ROP top-up.
+            estimated_total_php: '15000.00'
+            approved_budget_php: null
+            has_additional_purchase_override: true
+            linked_demand_canceled: false
+            preparer:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_by:
+              user_id: 10000000-0000-4000-8000-000000000002
+              display_name: Inventory Officer A
+            submitted_at: '2026-11-26T02:20:00.000000Z'
+            budget_reviewer: null
+            budget_reviewed_at: null
+            budget_decision: null
+            budget_decision_reason: null
+            canceled_by: null
+            canceled_at: null
+            cancel_reason: null
+            lines:
+              - id: 90100000-0000-4000-8000-000000000003
+                line_number: 1
+                trigger_kind: rf_shortage
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: 81000000-0000-4000-8000-000000000001
+                rf_reference: CEB-RF-2026-000001
+                rf_line_id: 82000000-0000-4000-8000-000000000001
+                rf_material_version: 2
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '10'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '10'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '2500.00'
+                needed_by: '2026-12-01T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '5'
+                  exceeds_uncovered_need: true
+                additional_purchase_reason:
+                  category: disputed_supply
+                  referenced_source_ids:
+                    - 91000000-0000-4000-8000-000000000011
+                  explanation: PO-000003 has 5 damaged units under unresolved supplier dispute and will miss RF event date.
+                notes: Includes 5 replacement units above uncovered_need due to disputed PO-000003.
+              - id: 90100000-0000-4000-8000-000000000004
+                line_number: 2
+                trigger_kind: rop_replenishment
+                item_id: 95000000-0000-4000-8000-000000000050
+                item_code: SHIRT
+                variant_id: 95000000-0000-4000-8000-000000000051
+                variant_code: SHIRT-M
+                display_name: Chapter Shirt / Medium
+                unit_id: 95000000-0000-4000-8000-000000000052
+                unit_code: EA
+                quantity_scale: 0
+                rf_id: null
+                rf_reference: null
+                rf_line_id: null
+                rf_material_version: null
+                linked_demand_canceled: false
+                linked_demand_canceled_at: null
+                requested_quantity: '50'
+                ordered_quantity: '0'
+                canceled_quantity: '0'
+                remaining_to_order_quantity: '50'
+                estimated_unit_cost_php: '250.00'
+                estimated_line_total_php: '12500.00'
+                needed_by: '2026-12-05T01:00:00.000000Z'
+                net_need_breakdown:
+                  snapshot_version: 16
+                  observed_at: '2026-11-26T02:20:00.000000Z'
+                  approved_rop: '20'
+                  approved_target_level: '50'
+                  usable_stockroom_on_hand: '18'
+                  eligible_usable_stockroom_on_hand: '18'
+                  active_rf_reservations: '8'
+                  eligible_available_to_allocate: '10'
+                  unreserved_approved_rf_shortage: '15'
+                  open_repf_quantity: '0'
+                  open_po_inbound_quantity: '10'
+                  total_open_inbound_coverage: '10'
+                  excluded_inbound_quantity: '5'
+                  gross_rf_shortage_need: '15'
+                  gross_rop_replenishment_need: '50'
+                  gross_combined_need: '65'
+                  uncovered_rf_shortage_quantity: '5'
+                  uncovered_rop_replenishment_quantity: '50'
+                  variant_proposed_uncovered_quantity: '55'
+                  uncovered_need: '50'
+                  exceeds_uncovered_need: false
+                additional_purchase_reason: null
+                notes: Non-overlapping ROP top-up to target level 50.
+            created_at: '2026-11-26T02:10:00.000000Z'
+            updated_at: '2026-11-26T02:20:00.000000Z'
+
+  # --- Ticket 02: Denial, conflict, and deliberately invalid cases ---
+  - name: stage2-02-repf-so-shortage-rejected
+    operationId: createRepf
+    request_valid: false
+    before: Stage 2 strictly rejects so_shortage RepF triggers so unpaid Sales Orders cannot bypass Stage 3 OR funding (PRC-01).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000220
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      body:
+        funding_source: chapter_funds
+        urgency: urgent
+        justification: Attempted Stage 3 Sales Order shortage trigger in Stage 2.
+        lines:
+          - trigger_kind: so_shortage
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            rf_id: null
+            rf_line_id: null
+            requested_quantity: '5'
+            estimated_unit_cost_php: '250.00'
+            needed_by: null
+            additional_purchase_reason: null
+            notes: null
+    response:
+      status: '422'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000220
+        error:
+          code: invalid_input
+          message: Correct the indicated RepF fields.
+          fields:
+            - pointer: /lines/0/trigger_kind
+              code: invalid_format
+              message: Stage 2 RepF lines accept only rf_shortage or rop_replenishment triggers.
+
+  - name: stage2-02-repf-hold-missing-reason-invalid
+    operationId: reviewRepfBudget
+    request_valid: false
+    before: Budget review hold decision with null reason fails schema validation with 422 invalid_input.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000221
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        decision: hold
+        reason: null
+    response:
+      status: '422'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000221
+        error:
+          code: invalid_input
+          message: Correct the indicated budget review fields.
+          fields:
+            - pointer: /reason
+              code: required
+              message: A non-blank reason is mandatory for hold, return, and reject decisions.
+
+  - name: stage2-02-repf-duplicate-supply-coverage-conflict
+    operationId: submitRepf
+    before: >-
+      Submitting a line requesting 10 units when live uncovered_need is 5 without
+      additional_purchase_reason returns 409 duplicate_supply_coverage naming covering
+      inbound sources (INV-12).
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000222
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 1
+        expected_material_version: 1
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000222
+        error:
+          code: duplicate_supply_coverage
+          message: Requested quantity exceeds live uncovered need; supply an explicit additional_purchase_reason or reduce quantity.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+        coverage_conflicts:
+          - line_index: 0
+            trigger_kind: rf_shortage
+            variant_id: 95000000-0000-4000-8000-000000000051
+            requested_quantity: '10'
+            live_uncovered_need: '5'
+            variant_proposed_uncovered_quantity: '55'
+            blocking_inbound_sources:
+              - source_kind: po
+                source_id: 91000000-0000-4000-8000-000000000010
+                source_reference: CEB-PO-2026-000004
+                status: partially_received
+                open_quantity: '10'
+                coverage_state: counted
+                exclusion_reason: null
+
+  - name: stage2-02-repf-version-conflict
+    operationId: replaceRepf
+    before: Stale expected_version returns 409 version_conflict without committing failed intent.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000223
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 1
+        expected_material_version: 1
+        funding_source: chapter_funds
+        urgency: normal
+        justification: Stale update attempt.
+        lines:
+          - trigger_kind: rop_replenishment
+            variant_id: 95000000-0000-4000-8000-000000000051
+            unit_id: 95000000-0000-4000-8000-000000000052
+            rf_id: null
+            rf_line_id: null
+            requested_quantity: '20'
+            estimated_unit_cost_php: '250.00'
+            needed_by: null
+            additional_purchase_reason: null
+            notes: null
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000223
+        error:
+          code: version_conflict
+          message: RepF version or material_version changed; reload current state before editing.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+        coverage_conflicts: []
+
+  - name: stage2-02-repf-action-key-conflict
+    operationId: submitRepf
+    before: Reusing an already-committed X-Action-Key with a different payload returns 409 action_key_conflict.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000212
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 9
+        expected_material_version: 4
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000224
+        error:
+          code: action_key_conflict
+          message: X-Action-Key was already committed with a different request payload.
+        failed_intent_committed: false
+        current: null
+        setup_blockers: []
+        coverage_conflicts: []
+
+  - name: stage2-02-repf-setup-blocked-missing-ref-series
+    operationId: submitRepf
+    before: Missing effective REPF reference_series policy blocks first submitRepf with 409 setup_blocked.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000225
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 2
+        expected_material_version: 2
+    response:
+      status: '409'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000225
+        error:
+          code: setup_blocked
+          message: Required REPF reference_series policy is not configured for this chapter.
+        failed_intent_committed: false
+        current: null
+        setup_blockers:
+          - setting_key: reference_series
+            subject_id: null
+            state: missing
+            approval_owner: CHAPTER_HEAD
+            message: Effective approved REPF reference_series policy is required before RepF submission.
+        coverage_conflicts: []
+
+  - name: stage2-02-repf-budget-review-independence-required
+    operationId: reviewRepfBudget
+    before: RepF preparer attempting to review their own RepF is denied with 403 independence_required.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000226
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        decision: approve
+        reason: null
+    response:
+      status: '403'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000226
+        error:
+          code: independence_required
+          message: Budget reviewer must be independent of the RepF preparer.
+
+  - name: stage2-02-repf-budget-review-duty-limit-exceeded
+    operationId: reviewRepfBudget
+    before: Independent Budget Approver whose DutyGrant limit_php is 10000.00 is denied approving a 15000.00 RepF with 403 duty_limit_exceeded.
+    request:
+      headers:
+        X-Action-Key: 40000000-0000-4000-8000-000000000227
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+        repf_id: 90000000-0000-4000-8000-000000000010
+      body:
+        expected_version: 3
+        expected_material_version: 2
+        decision: approve
+        reason: null
+    response:
+      status: '403'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000227
+        error:
+          code: duty_limit_exceeded
+          message: RepF estimated_total_php exceeds the actor's active duty grant monetary limit.
+
+  - name: stage2-02-procurement-operation-not-found
+    operationId: findProcurementOperationByKey
+    before: Unknown, in-flight, or other-actor procurement action key returns uniform 404 operation_not_found.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        operation_name: submitRepf
+        action_key: 40000000-0000-4000-8000-000000000999
+    response:
+      status: '404'
+      body:
+        request_id: 50000000-0000-4000-8000-000000000228
+        error:
+          code: operation_not_found
+          message: Procurement operation receipt is unavailable.
 
 procedure_cases:
   - name: stage2-01-policy-purchasing-quotation-committed

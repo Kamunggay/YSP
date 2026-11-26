@@ -2,7 +2,7 @@
 
 import argparse
 import json
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from importlib.metadata import version
 from pathlib import Path
 
@@ -22,6 +22,14 @@ STAGE2_EVIDENCE_PURPOSES = {
     "missing_source_hold",
 }
 STAGE1_EVIDENCE_PURPOSES = {"opening_receipt", "hold_clearance", "actual_issue"}
+REQUIRED_STAGE2_ACTIONS = {
+    "replenishment.read",
+    "repf.read",
+    "repf.draft",
+    "repf.submit",
+    "repf.budget_review",
+    "repf.cancel",
+}
 FORBIDDEN_PUBLIC_PATH_FRAGMENTS = (
     "/policies",
     "/settings",
@@ -108,6 +116,77 @@ def check_replenishment_math(item, label):
     )
     if counted_sources != expected_inbound or excluded_sources != qty("excluded_inbound_quantity"):
         raise ValueError(f"{label}: inbound_sources breakdown does not sum to totals")
+
+
+def check_repf_invariants(repf, label):
+    """Verify RepF exact decimal totals, line quantity conservation, trigger tags, and net-need math."""
+    zero = Decimal("0")
+    two_dp = Decimal("0.01")
+    total_php = Decimal("0.00")
+    trigger_kinds = set()
+    any_override = False
+    any_demand_canceled = False
+
+    for idx, line in enumerate(repf["lines"]):
+        line_label = f"{label}.lines[{idx}]"
+        req = Decimal(line["requested_quantity"])
+        ordered = Decimal(line["ordered_quantity"])
+        canceled = Decimal(line["canceled_quantity"])
+        remaining = Decimal(line["remaining_to_order_quantity"])
+        if ordered + canceled + remaining != req:
+            raise ValueError(f"{line_label}: ordered + canceled + remaining != requested_quantity")
+        expected_line_total = (req * Decimal(line["estimated_unit_cost_php"])).quantize(
+            two_dp, rounding=ROUND_HALF_UP
+        )
+        if Decimal(line["estimated_line_total_php"]) != expected_line_total:
+            raise ValueError(f"{line_label}: estimated_line_total_php mismatch")
+        total_php += expected_line_total
+        trigger_kinds.add(line["trigger_kind"])
+        if line["additional_purchase_reason"] is not None:
+            any_override = True
+        if line["linked_demand_canceled"]:
+            any_demand_canceled = True
+
+        bd = line["net_need_breakdown"]
+        expected_avail = max(
+            zero, Decimal(bd["eligible_usable_stockroom_on_hand"]) - Decimal(bd["active_rf_reservations"])
+        )
+        if Decimal(bd["eligible_available_to_allocate"]) != expected_avail:
+            raise ValueError(f"{line_label}: breakdown eligible_available_to_allocate mismatch")
+        if Decimal(bd["total_open_inbound_coverage"]) != Decimal(bd["open_repf_quantity"]) + Decimal(
+            bd["open_po_inbound_quantity"]
+        ):
+            raise ValueError(f"{line_label}: breakdown total_open_inbound_coverage mismatch")
+        if Decimal(bd["gross_combined_need"]) != Decimal(bd["gross_rf_shortage_need"]) + Decimal(
+            bd["gross_rop_replenishment_need"]
+        ):
+            raise ValueError(f"{line_label}: breakdown gross_combined_need overlaps RF and ROP")
+        if Decimal(bd["variant_proposed_uncovered_quantity"]) != Decimal(
+            bd["uncovered_rf_shortage_quantity"]
+        ) + Decimal(bd["uncovered_rop_replenishment_quantity"]):
+            raise ValueError(f"{line_label}: breakdown variant_proposed_uncovered_quantity mismatch")
+        expected_trigger_uncovered = (
+            Decimal(bd["uncovered_rf_shortage_quantity"])
+            if line["trigger_kind"] == "rf_shortage"
+            else Decimal(bd["uncovered_rop_replenishment_quantity"])
+        )
+        if Decimal(bd["uncovered_need"]) != expected_trigger_uncovered:
+            raise ValueError(f"{line_label}: breakdown uncovered_need does not match trigger_kind")
+        if bd["exceeds_uncovered_need"] != (req > expected_trigger_uncovered):
+            raise ValueError(f"{line_label}: breakdown exceeds_uncovered_need flag mismatch")
+
+    if Decimal(repf["estimated_total_php"]) != total_php:
+        raise ValueError(f"{label}: estimated_total_php does not equal sum of line totals")
+    if set(repf["trigger_kinds"]) != trigger_kinds:
+        raise ValueError(f"{label}: trigger_kinds does not match distinct line triggers")
+    if repf["has_additional_purchase_override"] != any_override:
+        raise ValueError(f"{label}: has_additional_purchase_override mismatch")
+    if repf["linked_demand_canceled"] != any_demand_canceled:
+        raise ValueError(f"{label}: linked_demand_canceled mismatch")
+    if repf["status"] in {"approved", "partially_ordered", "ordered"} and Decimal(
+        repf["approved_budget_php"]
+    ) != total_php:
+        raise ValueError(f"{label}: approved_budget_php does not match estimated_total_php")
 
 
 def main():
@@ -207,9 +286,12 @@ def main():
     if purposes != (STAGE1_EVIDENCE_PURPOSES | STAGE2_EVIDENCE_PURPOSES):
         raise ValueError("EvidencePurpose must equal Stage 1 plus additive Stage 2 values")
 
-    # Verify action duties use canonical 14-duty vocabulary
+    # Verify action duties use canonical 14-duty vocabulary and include all required Stage 2 actions
     valid_duties = set(document["components"]["schemas"]["Duty"]["enum"])
     action_duties = document.get("x-stage2-action-duties", {})
+    missing_actions = REQUIRED_STAGE2_ACTIONS - action_duties.keys()
+    if missing_actions:
+        raise ValueError(f"Missing required x-stage2-action-duties entries: {sorted(missing_actions)}")
     for action, duties in action_duties.items():
         if not duties or not set(duties) <= valid_duties:
             raise ValueError(f"Action {action} references invalid or empty duties")
@@ -240,11 +322,33 @@ def main():
                     check_inline_examples(body_pointer + "/content/" + pointer_part(media))
             for status in operation["responses"]:
                 response_pointer, response = dereference(pointer + "/responses/" + status)
+                if "Cache-Control" not in response.get("headers", {}):
+                    raise ValueError(f"Operation {operation_id} status {status} missing Cache-Control header")
                 for media in response.get("content", {}):
                     check_inline_examples(response_pointer + "/content/" + pointer_part(media))
                 for header in response.get("headers", {}):
                     header_pointer, _ = dereference(response_pointer + "/headers/" + pointer_part(header))
                     check_inline_examples(header_pointer)
+            if method in {"post", "put", "patch", "delete"}:
+                param_names = {
+                    dereference(pointer + f"/parameters/{idx}")[1]["name"]
+                    for idx in range(len(operation.get("parameters", [])))
+                }
+                if not {"Origin", "X-Action-Key"} <= param_names:
+                    raise ValueError(f"Unsafe operation {operation_id} must require Origin and X-Action-Key")
+                if not any("csrfProof" in sec for sec in operation.get("security", [])):
+                    raise ValueError(f"Unsafe operation {operation_id} must require csrfProof security")
+                for status in operation["responses"]:
+                    if status.startswith("2"):
+                        _, resp = dereference(pointer + "/responses/" + status)
+                        if "X-Action-Replayed" not in resp.get("headers", {}):
+                            raise ValueError(f"Unsafe operation {operation_id} {status} missing X-Action-Replayed")
+
+    # Verify ProcurementOperationName enum values resolve to actual public unsafe operations
+    proc_ops = set(document["components"]["schemas"]["ProcurementOperationName"]["enum"])
+    unknown_proc_ops = proc_ops - operations.keys()
+    if unknown_proc_ops:
+        raise ValueError(f"ProcurementOperationName references unknown operations: {sorted(unknown_proc_ops)}")
 
     covered = set()
     names = set()
@@ -296,6 +400,16 @@ def main():
             if case["operationId"] == "listReplenishmentNeeds" and status == "200":
                 for idx, item in enumerate(response["body"]["data"]):
                     check_replenishment_math(item, f"{name}[{idx}]")
+            if status in {"200", "201"} and response_media == "application/json":
+                body_data = response["body"].get("data")
+                if case["operationId"] in {"readRepf", "readRepfVersion"}:
+                    check_repf_invariants(body_data, name)
+                elif case["operationId"] == "listRepfs":
+                    for idx, repf in enumerate(body_data):
+                        check_repf_invariants(repf, f"{name}[{idx}]")
+                elif case["operationId"] in proc_ops | {"findProcurementOperationByKey", "readProcurementOperation"}:
+                    if isinstance(body_data, dict) and body_data.get("resource_kind") == "repf":
+                        check_repf_invariants(body_data["result"], name)
         elif "body" in response:
             raise ValueError(f"{name}: bodyless status contains a body")
         response_headers = examples["response_defaults"]["headers"] | response.get("headers", {})
@@ -412,6 +526,29 @@ def main():
         f"{checked} schema/example checks"
     )
     if args.invalid_example:
+        check_value(
+            "#/components/schemas/CreateRepfRequest",
+            {
+                "funding_source": "chapter_funds",
+                "urgency": "urgent",
+                "justification": "Attempted unpaid Sales Order shortage relabeling.",
+                "lines": [
+                    {
+                        "trigger_kind": "so_shortage",
+                        "variant_id": "95000000-0000-4000-8000-000000000051",
+                        "unit_id": "95000000-0000-4000-8000-000000000052",
+                        "rf_id": None,
+                        "rf_line_id": None,
+                        "requested_quantity": "5",
+                        "estimated_unit_cost_php": "250.00",
+                        "needed_by": None,
+                        "additional_purchase_reason": None,
+                        "notes": None,
+                    }
+                ],
+            },
+            "deliberately invalid so_shortage RepF trigger",
+        )
         check_value(
             "#/components/schemas/ReplenishmentNeedList",
             {
