@@ -21,16 +21,19 @@ use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
 use App\Models\StockReservation;
 use App\Models\User;
-use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Inventory\Participants\PrepareActualIssueInventoryParticipant;
+use App\Services\Inventory\PhysicalPostingService;
 use App\Services\Inventory\StockViewQueryService;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Tests\Feature\Concerns\AuthenticatesBrowserOfficer;
 use Tests\TestCase;
 
 class ActualIssueTest extends TestCase
 {
+    use AuthenticatesBrowserOfficer;
     use RefreshDatabase;
 
     private string $chapterId;
@@ -40,6 +43,10 @@ class ActualIssueTest extends TestCase
     private string $requesterId;
 
     private string $approverId;
+
+    private string $approverGrantId;
+
+    private string $requestingUnitId;
 
     private string $custodianId;
 
@@ -62,11 +69,13 @@ class ActualIssueTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Storage::fake('evidence');
 
         $this->chapterId = (string) Str::uuid();
         $this->foreignChapterId = (string) Str::uuid();
         $this->requesterId = (string) Str::uuid();
         $this->approverId = (string) Str::uuid();
+        $this->requestingUnitId = (string) Str::uuid();
         $this->custodianId = (string) Str::uuid();
         $this->otherCustodianId = (string) Str::uuid();
         $this->headUserId = (string) Str::uuid();
@@ -129,8 +138,19 @@ class ActualIssueTest extends TestCase
                 if ($uid === $this->custodianId && $duty === 'INVENTORY_CUSTODIAN') {
                     $this->custodianGrantId = $grant->id;
                 }
+                if ($uid === $this->approverId && $duty === 'RF_APPROVER') {
+                    $this->approverGrantId = $grant->id;
+                }
             }
         }
+
+        $this->seedEffectiveStage1Policies(
+            $this->chapterId,
+            $this->headUserId,
+            $this->financeUserId,
+            $this->requestingUnitId,
+            $this->approverGrantId,
+        );
 
         $this->unitId = (string) Str::uuid();
         CatalogueUnit::create([
@@ -183,57 +203,44 @@ class ActualIssueTest extends TestCase
 
     private function postOpeningBaseline15To12Usable(): InventoryLot
     {
-        $ipcId = $this->withHeaders(['X-User-Id' => $this->custodianId])
-            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs", ['notes' => 'Fixture A opening'])
-            ->assertStatus(201)->json('data.id');
-
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
-            ->putJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/my-count", [
-                'lines' => [[
+        app(PhysicalPostingService::class)->createPosting(
+            $this->chapterId,
+            'IPC',
+            (string) Str::uuid(),
+            $this->custodianId,
+            [
+                [
                     'variant_id' => $this->variantId,
                     'unit_id' => $this->unitId,
                     'location_id' => $this->locationId,
                     'condition' => 'USABLE',
-                    'counted_quantity' => 15,
-                ]],
-            ])->assertStatus(200);
-
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
-            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/submit")
-            ->assertStatus(200);
-
-        $this->withHeaders(['X-User-Id' => $this->headUserId])
-            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/authorizations", ['role' => 'HEAD'])
-            ->assertStatus(200);
-
-        $this->withHeaders(['X-User-Id' => $this->financeUserId])
-            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/authorizations", ['role' => 'FINANCE'])
-            ->assertStatus(200);
-
-        $rmId = $this->withHeaders(['X-User-Id' => $this->custodianId])
-            ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms", ['ipc_id' => $ipcId])
-            ->assertStatus(201)->json('data.id');
-
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
-            ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/inspection", [
-                'lines' => [[
+                    'custody' => 'STOCKROOM',
+                    'lot_code' => 'OPEN-USABLE-12',
+                    'quantity' => 12,
+                    'quantity_scale' => 0,
+                ],
+                [
                     'variant_id' => $this->variantId,
                     'unit_id' => $this->unitId,
                     'location_id' => $this->locationId,
-                    'accepted_quantity' => 12,
-                    'damaged_quantity' => 2,
-                    'rejected_quantity' => 1,
-                ]],
-            ])->assertStatus(200);
-
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
-            ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/evidence-match", [
-                'evidence_binding_id' => (string) Str::uuid(),
-            ])->assertStatus(200);
-
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
-            ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/post")
-            ->assertStatus(200);
+                    'condition' => 'QUARANTINE',
+                    'custody' => 'STOCKROOM',
+                    'lot_code' => 'OPEN-QUAR-2',
+                    'quantity' => 2,
+                    'quantity_scale' => 0,
+                ],
+                [
+                    'variant_id' => $this->variantId,
+                    'unit_id' => $this->unitId,
+                    'location_id' => $this->locationId,
+                    'condition' => 'REJECTED',
+                    'custody' => 'STOCKROOM',
+                    'lot_code' => 'OPEN-REJ-1',
+                    'quantity' => 1,
+                    'quantity_scale' => 0,
+                ],
+            ]
+        );
 
         return InventoryLot::where('chapter_id', $this->chapterId)
             ->where('condition', 'USABLE')
@@ -242,47 +249,38 @@ class ActualIssueTest extends TestCase
 
     private function createApprovedRf10(): array
     {
-        $rf = $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs", [
-            'purpose' => 'internal_use',
-            'requesting_unit_id' => (string) Str::uuid(),
-            'event_id' => null,
-            'needed_at' => '2026-11-25T09:00:00Z',
-            'justification' => 'Fixture A medical outreach',
-            'lines' => [[
-                'line_id' => null,
-                'variant_id' => $this->variantId,
-                'unit_id' => $this->unitId,
-                'requested_quantity' => '10',
-            ]],
-        ])->assertStatus(201)->json('data.result');
+        $rf = $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs", [
+                'purpose' => 'internal_use',
+                'requesting_unit_id' => $this->requestingUnitId,
+                'event_id' => null,
+                'needed_at' => '2026-11-25T09:00:00Z',
+                'justification' => 'Fixture A medical outreach',
+                'lines' => [[
+                    'line_id' => null,
+                    'variant_id' => $this->variantId,
+                    'unit_id' => $this->unitId,
+                    'requested_quantity' => '10',
+                ]],
+            ])->assertStatus(201)->json('data.result');
 
-        $this->withHeaders([
-            'X-User-Id' => $this->requesterId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/submit", [
-            'expected_version' => 1,
-            'expected_material_version' => 1,
-        ])->assertStatus(200);
+        $this->asBrowserOfficer($this->requesterId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/submit", [
+                'expected_version' => 1,
+                'expected_material_version' => 1,
+            ])->assertStatus(200);
 
-        return $this->withHeaders([
-            'X-User-Id' => $this->approverId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/approve", [
-            'expected_version' => 2,
-            'expected_material_version' => 1,
-        ])->assertStatus(200)->json('data.result');
+        return $this->asBrowserOfficer($this->approverId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/approve", [
+                'expected_version' => 2,
+                'expected_material_version' => 1,
+            ])->assertStatus(200)->json('data.result');
     }
 
     private function reserveQty(string $rfId, string $rfLineId, InventoryLot $lot, string $offset, string $qty): array
     {
         $rf = InternalRf::findOrFail($rfId);
-        $prep = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations", [
+        $prep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations", [
             'expected_rf_version' => $rf->version,
             'expected_rf_material_version' => $rf->material_version,
             'expected_rf_progress_version' => $rf->progress_version,
@@ -299,10 +297,7 @@ class ActualIssueTest extends TestCase
             'reason' => "Reserve {$qty}",
         ])->assertStatus(201);
 
-        return $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations/{$prep->json('data.resource_id')}/commit", [
+        return $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservation-preparations/{$prep->json('data.resource_id')}/commit", [
             'expected_preparation_version' => 1,
             'expected_rf_version' => $rf->version,
             'expected_rf_material_version' => $rf->material_version,
@@ -310,38 +305,16 @@ class ActualIssueTest extends TestCase
         ])->assertStatus(201)->json('data.result');
     }
 
-    private function createEvidenceBindingForIssue(string $issueId, string $recipientName, string $qty): array
+    /** @return array{0: EvidenceRecord, 1: EvidenceBlob, 2: array<string, mixed>} */
+    private function createEvidenceForIssue(string $issueId): array
     {
-        $ev = EvidenceRecord::create([
-            'id' => (string) Str::uuid(),
-            'chapter_id' => $this->chapterId,
-            'evidence_type' => 'actual_issue',
-            'purpose' => 'actual_issue',
-            'record_id' => $issueId,
-            'technical_state' => 'ready',
-            'created_by' => $this->custodianId,
-        ]);
-        $blob = EvidenceBlob::create([
-            'id' => (string) Str::uuid(),
-            'evidence_id' => $ev->id,
-            'version' => 1,
-            'sha256_hash' => str_repeat('b', 64),
-            'mime_type' => 'application/pdf',
-            'file_size' => 256,
-            'payload_path' => 'evidence/issue.pdf',
-            'created_by' => $this->custodianId,
-        ]);
-        $binding = app(CheckEvidenceBindingParticipant::class)->createOrUpdateBinding(
+        return $this->storeReadyPaperEvidence(
             $this->chapterId,
-            $ev->id,
-            $blob->id,
+            $this->custodianId,
             'actual_issue',
             $issueId,
-            $recipientName,
-            [['variant_id' => $this->variantId, 'unit_id' => $this->unitId, 'quantity' => $qty]]
+            "Actual Issue {$issueId}",
         );
-
-        return [$ev, $blob, $binding];
     }
 
     private function prepareMatchAndPost(
@@ -355,11 +328,10 @@ class ActualIssueTest extends TestCase
     ): array {
         $rf = InternalRf::findOrFail($rfId);
         $lot->refresh();
+        $handedOverAt = now('UTC')->subMinutes(2)->format('Y-m-d\TH:i:s.u\Z');
+        $acknowledgedAt = now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z');
 
-        $prepResp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/actual-issues", [
+        $prepResp = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/actual-issues", [
             'expected_rf_version' => $rf->version,
             'expected_rf_material_version' => $rf->material_version,
             'expected_rf_progress_version' => $rf->progress_version,
@@ -379,54 +351,43 @@ class ActualIssueTest extends TestCase
                     'expected_stock_version' => $lot->stock_version,
                 ]],
             ]],
-            'handed_over_at' => null,
-            'acknowledged_at' => null,
+            'handed_over_at' => $handedOverAt,
+            'acknowledged_at' => $acknowledgedAt,
             'recipient_accepts_partial' => true,
         ])->assertStatus(201);
 
         $issue = $prepResp->json('data');
-        $this->assertNull($issue['actual_handover_at']);
 
         // Print-only check causes zero stock movement
         $movBeforePrint = InventoryMovement::count();
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
-            ->getJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue['id']}/print")
+        $this->asBrowserOfficer($this->custodianId)
+            ->get("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue['id']}/print")
             ->assertStatus(200)
             ->assertJsonPath('data.status_watermark', 'PREPARED');
         $this->assertSame($movBeforePrint, InventoryMovement::count());
 
-        [$ev, $blob, $binding] = $this->createEvidenceBindingForIssue($issue['id'], 'Requester Team', $qty);
+        [, , $byteBinding] = $this->createEvidenceForIssue($issue['id']);
 
-        $matchResp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue['id']}/acknowledgments", [
+        $matchResp = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue['id']}/acknowledgments", [
             'expected_version' => $issue['version'],
             'expected_material_version' => $issue['material_version'],
             'expected_snapshot' => $issue['snapshot'],
-            'evidence' => [
-                'evidence_id' => $ev->id,
-                'version_id' => $blob->id,
-                'binding_id' => $binding->id,
-                'attachments' => [['attachment_id' => $blob->id, 'sha256' => str_repeat('b', 64)]],
-            ],
+            'evidence' => $byteBinding,
             'matches_paper' => true,
         ])->assertStatus(200)
-            ->assertJsonPath('data.status', 'acknowledged')
-            ->assertJsonPath('data.handover_fence', 'unresolved');
+            ->assertJsonPath('data.result.status', 'acknowledged')
+            ->assertJsonPath('data.result.handover_fence', 'unresolved');
 
-        $matchedIssue = $matchResp->json('data');
+        $matchedIssue = $matchResp->json('data.result');
+        $acknowledgmentId = $matchedIssue['acknowledgment']['acknowledgment_id'];
 
-        $postResp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => $postActionKey,
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue['id']}/post", [
+        $postResp = $this->asBrowserOfficer($this->custodianId, $postActionKey)->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue['id']}/post", [
             'expected_version' => $matchedIssue['version'],
             'expected_material_version' => $matchedIssue['material_version'],
             'expected_rf_version' => $rf->version,
             'expected_rf_material_version' => $rf->material_version,
             'expected_rf_progress_version' => $rf->progress_version,
-            'acknowledgment_id' => $binding->id,
+            'acknowledgment_id' => $acknowledgmentId,
             'current_sources' => [[
                 'reservation_id' => $reservation['id'],
                 'expected_version' => $reservation['version'],
@@ -471,7 +432,7 @@ class ActualIssueTest extends TestCase
         $this->assertSame('6', $views1['available_to_allocate']['quantity']);
 
         // Batch 2: Partial 2 -> [4, 6) from remaining res1
-        $res1Updated = $this->withHeaders(['X-User-Id' => $this->custodianId])
+        $res1Updated = $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservations/{$res1['id']}")
             ->assertStatus(200)->json('data');
 
@@ -493,7 +454,7 @@ class ActualIssueTest extends TestCase
         $this->assertSame('0', $views3['rf_reserved']['quantity']);
         $this->assertSame('2', $views3['available_to_allocate']['quantity']);
 
-        $finalRf = $this->withHeaders(['X-User-Id' => $this->requesterId])
+        $finalRf = $this->asBrowserOfficer($this->requesterId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}")
             ->assertStatus(200)->json('data');
         $this->assertSame('fulfilled', $finalRf['fulfillment']);
@@ -502,36 +463,36 @@ class ActualIssueTest extends TestCase
 
         // Verify movements, history, related
         $issue3Id = $b3['issue']['id'];
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
+        $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue3Id}/movements")
             ->assertStatus(200)
             ->assertJsonCount(1, 'data');
 
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
+        $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue3Id}/history")
             ->assertStatus(200)
             ->assertJsonCount(3, 'data');
 
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
+        $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue3Id}/related")
             ->assertStatus(200)
             ->assertJsonPath('data.rf.id', $rfId)
             ->assertJsonCount(1, 'data.movements');
 
         // Verify uncertain-outcome recovery via both action_key and key, and actor scoping
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
+        $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/actual-issue-operations/by-key?action_key={$key3}")
             ->assertStatus(200)
             ->assertHeader('X-Action-Replayed', 'true')
             ->assertJsonPath('actual_issue_id', $issue3Id);
 
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
+        $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/actual-issue-operations/by-key?key={$key3}")
             ->assertStatus(200)
             ->assertJsonPath('actual_issue_id', $issue3Id);
 
         // Different actor cannot recover another actor's operation key
-        $this->withHeaders(['X-User-Id' => $this->otherCustodianId])
+        $this->asBrowserOfficer($this->otherCustodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/actual-issue-operations/by-key?action_key={$key3}")
             ->assertStatus(404);
     }
@@ -542,10 +503,9 @@ class ActualIssueTest extends TestCase
         $rf = $this->createApprovedRf10();
         $res = $this->reserveQty($rf['id'], $rf['lines'][0]['id'], $lot, '0', '6');
 
-        $prep = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
+        $handedOverAt = now('UTC')->subMinutes(2)->format('Y-m-d\TH:i:s.u\Z');
+        $acknowledgedAt = now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z');
+        $prep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
             'expected_rf_version' => InternalRf::find($rf['id'])->version,
             'expected_rf_material_version' => $rf['material_version'],
             'expected_rf_progress_version' => InternalRf::find($rf['id'])->progress_version,
@@ -565,40 +525,32 @@ class ActualIssueTest extends TestCase
                     'expected_stock_version' => $lot->stock_version,
                 ]],
             ]],
-            'handed_over_at' => null,
-            'acknowledged_at' => null,
+            'handed_over_at' => $handedOverAt,
+            'acknowledged_at' => $acknowledgedAt,
             'recipient_accepts_partial' => true,
         ])->assertStatus(201)->json('data');
 
-        [$ev, $blob, $binding] = $this->createEvidenceBindingForIssue($prep['id'], 'Requester Team', '4');
+        [, , $byteBinding] = $this->createEvidenceForIssue($prep['id']);
 
         // Match first -> sets status=acknowledged, handover_fence=unresolved
-        $matched = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/acknowledgments", [
+        $matched = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/acknowledgments", [
             'expected_version' => 1,
             'expected_material_version' => 1,
             'expected_snapshot' => $prep['snapshot'],
-            'evidence' => ['evidence_id' => $ev->id, 'version_id' => $blob->id, 'binding_id' => $binding->id],
+            'evidence' => $byteBinding,
             'matches_paper' => true,
-        ])->assertStatus(200)->json('data');
+        ])->assertStatus(200)->json('data.result');
+        $ackId = $matched['acknowledgment']['acknowledgment_id'];
 
         // Reconcile no_handover to clear unresolved fence so batch can be revised
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/reconciliations", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/reconciliations", [
             'expected_version' => $matched['version'],
             'finding' => 'no_handover',
             'notes' => 'Batch needs revision before handover',
         ])->assertStatus(201);
 
         // Revise batch -> must atomically invalidate old EvidenceBinding
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->putJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->putJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}", [
             'expected_version' => 3,
             'expected_material_version' => 1,
             'recipient_name' => 'Requester Team Revised',
@@ -608,18 +560,15 @@ class ActualIssueTest extends TestCase
             ->assertJsonPath('data.acknowledgment', null);
 
         $this->assertDatabaseHas('evidence_bindings', [
-            'id' => $binding->id,
+            'id' => $ackId,
             'status' => 'invalidated',
         ]);
 
         // Posting with invalidated acknowledgment fails 409 evidence_mismatch
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/post", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/post", [
             'expected_version' => 4,
             'expected_material_version' => 2,
-            'acknowledgment_id' => $binding->id,
+            'acknowledgment_id' => $ackId,
         ])->assertStatus(409)
             ->assertJsonPath('error.code', 'evidence_mismatch');
     }
@@ -630,10 +579,9 @@ class ActualIssueTest extends TestCase
         $rf = $this->createApprovedRf10();
         $res = $this->reserveQty($rf['id'], $rf['lines'][0]['id'], $lot, '0', '4');
 
-        $prep = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
+        $handedOverAt = now('UTC')->subMinutes(2)->format('Y-m-d\TH:i:s.u\Z');
+        $acknowledgedAt = now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z');
+        $prep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
             'expected_rf_version' => InternalRf::find($rf['id'])->version,
             'expected_rf_material_version' => $rf['material_version'],
             'expected_rf_progress_version' => InternalRf::find($rf['id'])->progress_version,
@@ -653,22 +601,20 @@ class ActualIssueTest extends TestCase
                     'expected_stock_version' => $lot->stock_version,
                 ]],
             ]],
-            'handed_over_at' => null,
-            'acknowledged_at' => null,
+            'handed_over_at' => $handedOverAt,
+            'acknowledged_at' => $acknowledgedAt,
             'recipient_accepts_partial' => true,
         ])->assertStatus(201)->json('data');
 
-        [$ev, $blob, $binding] = $this->createEvidenceBindingForIssue($prep['id'], 'Requester Team', '4');
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/acknowledgments", [
+        [, , $byteBinding] = $this->createEvidenceForIssue($prep['id']);
+        $matched = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/acknowledgments", [
             'expected_version' => 1,
             'expected_material_version' => 1,
             'expected_snapshot' => $prep['snapshot'],
-            'evidence' => ['evidence_id' => $ev->id, 'version_id' => $blob->id, 'binding_id' => $binding->id],
+            'evidence' => $byteBinding,
             'matches_paper' => true,
-        ])->assertStatus(200);
+        ])->assertStatus(200)->json('data.result');
+        $ackId = $matched['acknowledgment']['acknowledgment_id'];
 
         $movCountBefore = InventoryMovement::count();
         $outboxCountBefore = DomainNotificationOutbox::count();
@@ -680,13 +626,10 @@ class ActualIssueTest extends TestCase
         $this->app->instance(PrepareActualIssueInventoryParticipant::class, $stubInv);
 
         try {
-            $this->withHeaders([
-                'X-User-Id' => $this->custodianId,
-                'X-Action-Key' => (string) Str::uuid(),
-            ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/post", [
+            $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}/post", [
                 'expected_version' => 2,
                 'expected_material_version' => 1,
-                'acknowledgment_id' => $binding->id,
+                'acknowledgment_id' => $ackId,
             ]);
         } catch (Exception) {
             // Expected rollback
@@ -709,10 +652,9 @@ class ActualIssueTest extends TestCase
         // Prepare two competing batches on the same 4 reserved units (CONC-06)
         $rfModel = InternalRf::findOrFail($rf['id']);
         $makeBatch = function () use ($rfModel, $rf, $res, $lot): array {
-            $p = $this->withHeaders([
-                'X-User-Id' => $this->custodianId,
-                'X-Action-Key' => (string) Str::uuid(),
-            ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
+            $handedOverAt = now('UTC')->subMinutes(2)->format('Y-m-d\TH:i:s.u\Z');
+            $acknowledgedAt = now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z');
+            $p = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
                 'expected_rf_version' => $rfModel->version,
                 'expected_rf_material_version' => $rfModel->material_version,
                 'expected_rf_progress_version' => $rfModel->progress_version,
@@ -732,34 +674,30 @@ class ActualIssueTest extends TestCase
                         'expected_stock_version' => $lot->stock_version,
                     ]],
                 ]],
-                'handed_over_at' => null,
-                'acknowledged_at' => null,
+                'handed_over_at' => $handedOverAt,
+                'acknowledged_at' => $acknowledgedAt,
                 'recipient_accepts_partial' => true,
             ])->assertStatus(201)->json('data');
 
-            [$ev, $blob, $binding] = $this->createEvidenceBindingForIssue($p['id'], 'Requester Team', '4');
-            $this->withHeaders([
-                'X-User-Id' => $this->custodianId,
-                'X-Action-Key' => (string) Str::uuid(),
-            ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$p['id']}/acknowledgments", [
+            [, , $byteBinding] = $this->createEvidenceForIssue($p['id']);
+            $matched = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$p['id']}/acknowledgments", [
                 'expected_version' => 1,
                 'expected_material_version' => 1,
                 'expected_snapshot' => $p['snapshot'],
-                'evidence' => ['evidence_id' => $ev->id, 'version_id' => $blob->id, 'binding_id' => $binding->id],
+                'evidence' => $byteBinding,
                 'matches_paper' => true,
-            ])->assertStatus(200);
+            ])->assertStatus(200)->json('data.result');
 
-            return ['issue' => $p, 'binding' => $binding];
+            $binding = EvidenceBinding::findOrFail($matched['acknowledgment']['acknowledgment_id']);
+
+            return ['issue' => $p, 'binding' => $binding, 'byteBinding' => $byteBinding];
         };
 
         $batchA = $makeBatch();
         $batchB = $makeBatch();
 
         // False 'committed' reconciliation on unposted issue rejected (409 handover_unresolved)
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchA['issue']['id']}/reconciliations", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchA['issue']['id']}/reconciliations", [
             'expected_version' => 2,
             'finding' => 'committed',
             'notes' => 'Premature committed claim',
@@ -767,10 +705,7 @@ class ActualIssueTest extends TestCase
             ->assertJsonPath('error.code', 'handover_unresolved');
 
         // Hold-First (CONC-02): Place hold after match -> post fails 409 stock_held!
-        $holdResp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
+        $holdResp = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
             'targets' => [[
                 'stock_lot_id' => $lot->id,
                 'basis_segment_id' => $lot->basis_segment_id,
@@ -784,10 +719,7 @@ class ActualIssueTest extends TestCase
         ])->assertStatus(201);
         $holdId = $holdResp->json('data.resource_id');
 
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchA['issue']['id']}/post", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchA['issue']['id']}/post", [
             'expected_version' => 2,
             'expected_material_version' => 1,
             'acknowledgment_id' => $batchA['binding']->id,
@@ -796,48 +728,25 @@ class ActualIssueTest extends TestCase
             ->assertJsonPath('failed_intent_committed', false);
 
         // Clear the hold so Batch A can post
-        $propResp = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->putJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$holdId}/clearance-proposal", [
+        $propResp = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->putJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$holdId}/clearance-proposal", [
             'expected_version' => 1,
             'expected_material_version' => 1,
             'resolution' => 'Cleared',
             'condition_treatment_source_id' => null,
-            'signatories' => [['user_id' => $this->headUserId, 'role' => 'CHAPTER_HEAD']],
+            'signatories' => [[
+                'user_id' => $this->headUserId,
+                'role' => 'CHAPTER_HEAD',
+                'signed_at' => now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z'),
+            ]],
         ])->assertStatus(200);
-        $evClear = EvidenceRecord::create([
-            'id' => (string) Str::uuid(),
-            'chapter_id' => $this->chapterId,
-            'evidence_type' => 'hold_clearance',
-            'purpose' => 'hold_clearance',
-            'record_id' => $holdId,
-            'technical_state' => 'ready',
-            'created_by' => $this->custodianId,
-        ]);
-        $blobClear = EvidenceBlob::create([
-            'id' => (string) Str::uuid(),
-            'evidence_id' => $evClear->id,
-            'version' => 1,
-            'sha256_hash' => str_repeat('c', 64),
-            'mime_type' => 'application/pdf',
-            'file_size' => 128,
-            'payload_path' => 'evidence/clear.pdf',
-            'created_by' => $this->custodianId,
-        ]);
-        $bindClear = app(CheckEvidenceBindingParticipant::class)->createOrUpdateBinding(
+        [, , $byteClear] = $this->storeReadyPaperEvidence(
             $this->chapterId,
-            $evClear->id,
-            $blobClear->id,
+            $this->custodianId,
             'hold_clearance',
             $holdId,
-            $this->custodianId,
-            [['variant_id' => $lot->id, 'unit_id' => $lot->basis_segment_id, 'quantity' => '4']]
+            'Clear Hold',
         );
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$holdId}/clear", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$holdId}/clear", [
             'expected_version' => 2,
             'expected_material_version' => 2,
             'expected_snapshot' => [
@@ -845,15 +754,12 @@ class ActualIssueTest extends TestCase
                 'material_version' => 2,
                 'sha256' => $propResp->json('data.result.clearance_proposal.material_sha256'),
             ],
-            'evidence' => ['evidence_id' => $evClear->id, 'version_id' => $blobClear->id, 'binding_id' => $bindClear->id],
+            'evidence' => $byteClear,
             'matches_paper' => true,
         ])->assertStatus(200);
 
         // Batch A posts!
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchA['issue']['id']}/post", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchA['issue']['id']}/post", [
             'expected_version' => 2,
             'expected_material_version' => 1,
             'acknowledgment_id' => $batchA['binding']->id,
@@ -861,10 +767,7 @@ class ActualIssueTest extends TestCase
             ->assertJsonPath('outcome', 'committed');
 
         // CONC-06: Batch B fails 409 reservation_conflict
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/post", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/post", [
             'expected_version' => 2,
             'expected_material_version' => 1,
             'acknowledgment_id' => $batchB['binding']->id,
@@ -873,10 +776,7 @@ class ActualIssueTest extends TestCase
 
         // Issue-First (CONC-05): Place hold on already-consumed basis coordinates [0, 4) -> 409 already_consumed
         $lot->refresh();
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
             'targets' => [[
                 'stock_lot_id' => $lot->id,
                 'basis_segment_id' => $lot->basis_segment_id,
@@ -891,10 +791,7 @@ class ActualIssueTest extends TestCase
             ->assertJsonPath('error.code', 'already_consumed');
 
         // Placing hold on unconsumed basis coordinates [4, 8) within [0, 12) succeeds
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
             'targets' => [[
                 'stock_lot_id' => $lot->id,
                 'basis_segment_id' => $lot->basis_segment_id,
@@ -908,28 +805,19 @@ class ActualIssueTest extends TestCase
         ])->assertStatus(201);
 
         // Remaining reconciliation findings: committed (on posted A), handed_over_unposted, no_handover & disputed (on unposted B)
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchA['issue']['id']}/reconciliations", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchA['issue']['id']}/reconciliations", [
             'finding' => 'committed',
             'notes' => 'Confirmed posted',
         ])->assertStatus(201);
 
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/reconciliations", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/reconciliations", [
             'finding' => 'handed_over_unposted',
             'notes' => 'Paper handed over before crash',
         ])->assertStatus(201)
             ->assertJsonPath('issue.handover_fence', 'retry_authorized');
 
         // no_handover invalidates match & resets handover_fence to 'none'
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/reconciliations", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/reconciliations", [
             'finding' => 'no_handover',
             'notes' => 'Confirmed no physical handover occurred',
         ])->assertStatus(201)
@@ -938,31 +826,22 @@ class ActualIssueTest extends TestCase
             ->assertJsonPath('issue.acknowledgment', null);
 
         // disputed sets fence='disputed' and blocks both matching and posting
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/reconciliations", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/reconciliations", [
             'finding' => 'disputed',
             'notes' => 'Quantity discrepancy under investigation',
         ])->assertStatus(201)
             ->assertJsonPath('issue.handover_fence', 'disputed');
 
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/acknowledgments", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/acknowledgments", [
             'expected_version' => 5,
             'expected_material_version' => 1,
             'expected_snapshot' => $batchB['issue']['snapshot'],
-            'evidence' => ['evidence_id' => $batchB['binding']->evidence_id, 'binding_id' => $batchB['binding']->id],
+            'evidence' => $batchB['byteBinding'],
             'matches_paper' => true,
         ])->assertStatus(409)
             ->assertJsonPath('error.code', 'handover_unresolved');
 
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/post", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$batchB['issue']['id']}/post", [
             'expected_version' => 5,
             'expected_material_version' => 1,
             'acknowledgment_id' => $batchB['binding']->id,
@@ -977,13 +856,14 @@ class ActualIssueTest extends TestCase
             'chapter_id' => $this->chapterId,
             'user_id' => $this->custodianId,
             'operation_name' => 'postActualIssue',
+            'resource_id' => $batchB['issue']['id'],
             'state' => 'in_flight',
             'payload_hash' => str_repeat('0', 64),
             'response_code' => 200,
             'response_body' => '{}',
         ]);
 
-        $this->withHeaders(['X-User-Id' => $this->custodianId])
+        $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/actual-issue-operations/by-key?action_key={$inFlightKey}")
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'OPERATION_IN_FLIGHT');
@@ -993,10 +873,7 @@ class ActualIssueTest extends TestCase
             ->where('user_id', $this->custodianId)
             ->update(['status' => 'revoked']);
 
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
             'targets' => [[
                 'stock_lot_id' => $lot->id,
                 'basis_segment_id' => $lot->basis_segment_id,
@@ -1008,7 +885,7 @@ class ActualIssueTest extends TestCase
             'reason_code' => 'damage_review',
             'reason' => 'Should fail after revocation',
         ])->assertStatus(403)
-            ->assertJsonPath('error', 'FORBIDDEN_DUTY');
+            ->assertJsonPath('error.code', 'duty_denied');
     }
 
     public function test_cross_line_and_revise_overlapping_targets_rejected_with_422_without_mutation(): void
@@ -1021,10 +898,7 @@ class ActualIssueTest extends TestCase
         $rfModel = InternalRf::findOrFail($rf['id']);
 
         // 1. Cross-line overlapping targets in prepareActualIssue -> 422 invalid_input with 0 issues created
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
             'expected_rf_version' => $rfModel->version,
             'expected_rf_material_version' => $rfModel->material_version,
             'expected_rf_progress_version' => $rfModel->progress_version,
@@ -1069,10 +943,7 @@ class ActualIssueTest extends TestCase
         $this->assertSame(0, ActualIssue::where('chapter_id', $this->chapterId)->count());
 
         // 2. Prepare valid issue first, then revise with overlapping targets -> 422 invalid_input without mutating lines/version
-        $prep = $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
+        $prep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}/actual-issues", [
             'expected_rf_version' => $rfModel->version,
             'expected_rf_material_version' => $rfModel->material_version,
             'expected_rf_progress_version' => $rfModel->progress_version,
@@ -1097,10 +968,7 @@ class ActualIssueTest extends TestCase
             'recipient_accepts_partial' => true,
         ])->assertStatus(201)->json('data');
 
-        $this->withHeaders([
-            'X-User-Id' => $this->custodianId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->putJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}", [
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->putJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$prep['id']}", [
             'expected_version' => 1,
             'expected_material_version' => 1,
             'lines' => [[

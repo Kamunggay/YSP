@@ -72,4 +72,26 @@ repeat_state=$(schema_state)
   exit 1
 }
 echo 'Repeat migration preserved schema and migration state.'
-"${compose[@]}" exec -T backend php artisan test --stop-on-failure --filter=ConnectivityTest
+"${compose[@]}" exec -T backend php artisan test --stop-on-failure --do-not-cache-result --filter=ConnectivityTest
+
+# Run Stage 1A, Stage 1B, and Stage 3 suites against real MySQL 8.4 as unprivileged `ysp`.
+# OpeningBaselineMysqlConcurrencyTest runs separately below with root MySQL privileges for InnoDB lock-wait inspection.
+"${compose[@]}" exec -T backend php artisan test --stop-on-failure --do-not-cache-result \
+  tests/Feature/Stage1A/BrowserSessionTest.php \
+  tests/Feature/Stage1A/CombinedBackendMergeVerificationTest.php \
+  tests/Feature/Stage1A/ControlledSetupTest.php \
+  tests/Feature/Stage1A/HandoverInfrastructureTest.php \
+  tests/Feature/Stage1A/InventoryStage1ATest.php \
+  tests/Feature/Stage1A/OpeningAuthorizeAndMatchTest.php \
+  tests/Feature/Stage1A/OpeningBaselinePostAndRecoveryTest.php \
+  tests/Feature/Stage1A/OpeningDraftAndCountTest.php \
+  tests/Feature/Stage1A/SalesOrderIntakeTest.php \
+  tests/Feature/Stage1B \
+  tests/Feature/Stage3
+
+# Run real InnoDB LOCK WAIT opening-baseline concurrency verification with root observer privileges.
+"${compose[@]}" exec -T \
+  -e DB_USERNAME=root \
+  -e "DB_PASSWORD=${MYSQL_ROOT_PASSWORD}" \
+  backend php artisan test --stop-on-failure --do-not-cache-result \
+  tests/Feature/Stage1A/OpeningBaselineMysqlConcurrencyTest.php

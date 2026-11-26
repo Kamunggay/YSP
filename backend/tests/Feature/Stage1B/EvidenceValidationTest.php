@@ -2,28 +2,33 @@
 
 namespace Tests\Feature\Stage1B;
 
+use App\Models\ActualIssue;
 use App\Models\Chapter;
 use App\Models\ChapterMembership;
 use App\Models\DutyGrant;
 use App\Models\EvidenceBlob;
 use App\Models\EvidenceRecord;
+use App\Models\InternalRf;
 use App\Models\User;
 use App\Services\Delivery\HandoverCoordinatorService;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Tests\Feature\Concerns\AuthenticatesBrowserOfficer;
 use Tests\TestCase;
 
 class EvidenceValidationTest extends TestCase
 {
+    use AuthenticatesBrowserOfficer;
     use RefreshDatabase;
 
     private string $chapterId;
 
     private string $userId;
+
+    private string $issueId;
 
     protected function setUp(): void
     {
@@ -61,13 +66,42 @@ class EvidenceValidationTest extends TestCase
             'version' => 1,
         ]);
 
-        DutyGrant::create([
-            'id' => (string) Str::uuid(),
+        foreach (['INVENTORY_CUSTODIAN', 'INVENTORY', 'DISPATCH'] as $duty) {
+            DutyGrant::create([
+                'id' => (string) Str::uuid(),
+                'chapter_id' => $this->chapterId,
+                'user_id' => $this->userId,
+                'duty_code' => $duty,
+                'status' => 'active',
+                'valid_from' => now()->subDay(),
+                'version' => 1,
+            ]);
+        }
+
+        $rfId = (string) Str::uuid();
+        InternalRf::create([
+            'id' => $rfId,
             'chapter_id' => $this->chapterId,
-            'user_id' => $this->userId,
-            'duty_code' => 'INVENTORY_CUSTODIAN',
-            'status' => 'active',
+            'rf_number' => 'SYN-RF-EVID01',
+            'status' => 'approved',
+            'purpose' => 'internal_use',
+            'requester_user_id' => $this->userId,
             'version' => 1,
+            'material_version' => 1,
+            'progress_version' => 1,
+        ]);
+
+        $this->issueId = (string) Str::uuid();
+        ActualIssue::create([
+            'id' => $this->issueId,
+            'chapter_id' => $this->chapterId,
+            'requisition_id' => $rfId,
+            'issue_number' => 'SYN-ISAR-EVID01',
+            'status' => 'prepared',
+            'version' => 1,
+            'material_version' => 1,
+            'recipient_name' => 'Test Recipient',
+            'prepared_by_user_id' => $this->userId,
         ]);
     }
 
@@ -77,17 +111,16 @@ class EvidenceValidationTest extends TestCase
      */
     public function test_valid_paper_evidence_upload(): void
     {
-        $rawBytes = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF";
+        $rawBytes = $this->validPaperPdf('Paper Voucher');
         $expectedSha256 = hash('sha256', $rawBytes);
 
-        $uploadedFile = UploadedFile::fake()->createWithContent('paper_voucher.pdf', $rawBytes);
-
-        $response = $this->withHeaders(['X-User-Id' => $this->userId])
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence", [
-                'purpose' => 'actual_issue',
-                'record_id' => (string) Str::uuid(),
-                'attachments' => [$uploadedFile],
-            ]);
+        $response = $this->sendRawMultipartPaper(
+            "/api/v1/chapters/{$this->chapterId}/evidence",
+            $this->userId,
+            (string) Str::uuid(),
+            ['purpose' => 'actual_issue', 'record_id' => $this->issueId],
+            [['filename' => 'paper_voucher.pdf', 'media_type' => 'application/pdf', 'bytes' => $rawBytes]],
+        );
 
         $response->assertStatus(201)
             ->assertJsonPath('data.technical_state', 'ready')
@@ -115,69 +148,42 @@ class EvidenceValidationTest extends TestCase
 
     /**
      * Test 2: MIME & Size Validation.
-     * Upload of .exe or .txt disguised as JPEG returns 422.
-     * Upload of empty file (0 bytes) returns 422.
-     * Upload of file exceeding 10MB returns 422.
+     * Disguised .exe/.txt return 422 content_mismatch; empty returns 422 empty_file; >10MiB returns 413 evidence_too_large.
      */
     public function test_mime_and_size_validation(): void
     {
-        $headers = ['X-User-Id' => $this->userId];
-        $recordId = (string) Str::uuid();
+        $fields = ['purpose' => 'actual_issue', 'record_id' => $this->issueId];
+        $uri = "/api/v1/chapters/{$this->chapterId}/evidence";
 
         // 1. Upload of .exe disguised as JPEG
         $exeBytes = "MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xFF\xFF\x00\x00".str_repeat('X', 64);
-        $disguisedExe = UploadedFile::fake()->createWithContent('voucher.jpg', $exeBytes);
-
-        $responseExe = $this->withHeaders($headers)
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence", [
-                'purpose' => 'actual_issue',
-                'record_id' => $recordId,
-                'attachments' => [$disguisedExe],
-            ]);
-
-        $responseExe->assertStatus(422)
-            ->assertJsonPath('error.code', 'unsupported_media_type');
+        $this->sendRawMultipartPaper($uri, $this->userId, (string) Str::uuid(), $fields, [
+            ['filename' => 'voucher.jpg', 'media_type' => 'image/jpeg', 'bytes' => $exeBytes],
+        ])->assertStatus(422)
+            ->assertJsonPath('error.code', 'invalid_evidence')
+            ->assertJsonPath('error.fields.0.code', 'content_mismatch');
 
         // 2. Upload of .txt disguised as PDF
         $txtBytes = 'This is plain text disguised as a PDF file.';
-        $disguisedTxt = UploadedFile::fake()->createWithContent('signed_issue.pdf', $txtBytes);
-
-        $responseTxt = $this->withHeaders($headers)
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence", [
-                'purpose' => 'actual_issue',
-                'record_id' => $recordId,
-                'attachments' => [$disguisedTxt],
-            ]);
-
-        $responseTxt->assertStatus(422)
-            ->assertJsonPath('error.code', 'unsupported_media_type');
+        $this->sendRawMultipartPaper($uri, $this->userId, (string) Str::uuid(), $fields, [
+            ['filename' => 'signed_issue.pdf', 'media_type' => 'application/pdf', 'bytes' => $txtBytes],
+        ])->assertStatus(422)
+            ->assertJsonPath('error.code', 'invalid_evidence')
+            ->assertJsonPath('error.fields.0.code', 'content_mismatch');
 
         // 3. Upload of empty file (0 bytes)
-        $emptyFile = UploadedFile::fake()->createWithContent('empty.pdf', '');
+        $this->sendRawMultipartPaper($uri, $this->userId, (string) Str::uuid(), $fields, [
+            ['filename' => 'empty.pdf', 'media_type' => 'application/pdf', 'bytes' => ''],
+        ])->assertStatus(422)
+            ->assertJsonPath('error.code', 'invalid_evidence')
+            ->assertJsonPath('error.fields.0.code', 'empty_file');
 
-        $responseEmpty = $this->withHeaders($headers)
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence", [
-                'purpose' => 'actual_issue',
-                'record_id' => $recordId,
-                'attachments' => [$emptyFile],
-            ]);
-
-        $responseEmpty->assertStatus(422)
-            ->assertJsonPath('error.code', 'file_empty');
-
-        // 4. Upload of file exceeding 10MB (10MB + 1KB)
+        // 4. Upload of file exceeding 10MiB -> 413 evidence_too_large
         $largeBytes = '%PDF-1.4'.str_repeat('A', 10 * 1024 * 1024 + 1024);
-        $largeFile = UploadedFile::fake()->createWithContent('oversized.pdf', $largeBytes);
-
-        $responseLarge = $this->withHeaders($headers)
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence", [
-                'purpose' => 'actual_issue',
-                'record_id' => $recordId,
-                'attachments' => [$largeFile],
-            ]);
-
-        $responseLarge->assertStatus(422)
-            ->assertJsonPath('error.code', 'file_too_large');
+        $this->sendRawMultipartPaper($uri, $this->userId, (string) Str::uuid(), $fields, [
+            ['filename' => 'oversized.pdf', 'media_type' => 'application/pdf', 'bytes' => $largeBytes],
+        ])->assertStatus(413)
+            ->assertJsonPath('error.code', 'evidence_too_large');
     }
 
     /**
@@ -186,55 +192,54 @@ class EvidenceValidationTest extends TestCase
      */
     public function test_versioning_and_authenticated_retrieval(): void
     {
-        $headers = ['X-User-Id' => $this->userId];
-
         // 1. Upload v1
-        $v1Bytes = "%PDF-1.4\n1 0 obj\n<< /Title (Version 1) >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF";
-        $v1File = UploadedFile::fake()->createWithContent('voucher_v1.pdf', $v1Bytes);
-
-        $uploadResp = $this->withHeaders($headers)
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence", [
-                'purpose' => 'actual_issue',
-                'record_id' => (string) Str::uuid(),
-                'attachments' => [$v1File],
-            ]);
+        $v1Bytes = $this->validPaperPdf('Version 1');
+        $uploadResp = $this->sendRawMultipartPaper(
+            "/api/v1/chapters/{$this->chapterId}/evidence",
+            $this->userId,
+            (string) Str::uuid(),
+            ['purpose' => 'actual_issue', 'record_id' => $this->issueId],
+            [['filename' => 'voucher_v1.pdf', 'media_type' => 'application/pdf', 'bytes' => $v1Bytes]],
+        );
 
         $uploadResp->assertStatus(201);
         $evidenceId = $uploadResp->json('data.evidence_id');
+        $v1VersionId = $uploadResp->json('data.version_id');
         $v1AttachmentId = $uploadResp->json('data.attachments.0.attachment_id');
 
         // 2. Replace with v2
-        $v2Bytes = "%PDF-1.4\n1 0 obj\n<< /Title (Version 2 - Clearer Scan) >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF";
-        $v2File = UploadedFile::fake()->createWithContent('voucher_v2.pdf', $v2Bytes);
-
-        $replaceResp = $this->withHeaders($headers)
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions", [
-                'replacement_reason' => 'Clearer scan attached.',
-                'attachments' => [$v2File],
-            ]);
+        $v2Bytes = $this->validPaperPdf('Version 2 - Clearer Scan');
+        $replaceResp = $this->sendRawMultipartPaper(
+            "/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions",
+            $this->userId,
+            (string) Str::uuid(),
+            ['expected_version' => '1', 'reason' => 'Clearer scan attached.'],
+            [['filename' => 'voucher_v2.pdf', 'media_type' => 'application/pdf', 'bytes' => $v2Bytes]],
+        );
 
         $replaceResp->assertStatus(201)
             ->assertJsonPath('data.version', 2)
             ->assertJsonPath('data.replacement_reason', 'Clearer scan attached.');
 
+        $v2VersionId = $replaceResp->json('data.version_id');
         $v2AttachmentId = $replaceResp->json('data.attachments.0.attachment_id');
 
         // 3. List versions
-        $listResp = $this->withHeaders($headers)
-            ->getJson("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions");
+        $listResp = $this->asBrowserOfficer($this->userId)
+            ->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions");
         $listResp->assertStatus(200)
-            ->assertJsonCount(2, 'data');
+            ->assertJsonCount(2, 'data.versions');
 
         // 4. Stream v1 attachment content
-        $streamV1 = $this->withHeaders($headers)
-            ->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/1/attachments/{$v1AttachmentId}/content");
+        $streamV1 = $this->asBrowserOfficer($this->userId)
+            ->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/{$v1VersionId}/attachments/{$v1AttachmentId}/content");
         $streamV1->assertStatus(200)
             ->assertHeader('Content-Type', 'application/pdf');
         $this->assertEquals($v1Bytes, $streamV1->getContent());
 
         // 5. Stream v2 attachment content
-        $streamV2 = $this->withHeaders($headers)
-            ->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/2/attachments/{$v2AttachmentId}/content");
+        $streamV2 = $this->asBrowserOfficer($this->userId)
+            ->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/{$v2VersionId}/attachments/{$v2AttachmentId}/content");
         $streamV2->assertStatus(200)
             ->assertHeader('Content-Type', 'application/pdf');
         $this->assertEquals($v2Bytes, $streamV2->getContent());
@@ -452,18 +457,18 @@ class EvidenceValidationTest extends TestCase
      */
     public function test_private_storage_security(): void
     {
-        $rawBytes = "%PDF-1.4\n1 0 obj\n<< /Title (Secure Attachment) >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF";
-        $uploadedFile = UploadedFile::fake()->createWithContent('secure_doc.pdf', $rawBytes);
-
-        $uploadResp = $this->withHeaders(['X-User-Id' => $this->userId])
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence", [
-                'purpose' => 'actual_issue',
-                'record_id' => (string) Str::uuid(),
-                'attachments' => [$uploadedFile],
-            ]);
+        $rawBytes = $this->validPaperPdf('Secure Attachment');
+        $uploadResp = $this->sendRawMultipartPaper(
+            "/api/v1/chapters/{$this->chapterId}/evidence",
+            $this->userId,
+            (string) Str::uuid(),
+            ['purpose' => 'actual_issue', 'record_id' => $this->issueId],
+            [['filename' => 'secure_doc.pdf', 'media_type' => 'application/pdf', 'bytes' => $rawBytes]],
+        );
 
         $uploadResp->assertStatus(201);
         $evidenceId = $uploadResp->json('data.evidence_id');
+        $versionId = $uploadResp->json('data.version_id');
         $attachmentId = $uploadResp->json('data.attachments.0.attachment_id');
 
         $blob = EvidenceBlob::where('id', $attachmentId)->first();
@@ -474,17 +479,17 @@ class EvidenceValidationTest extends TestCase
         $this->assertFalse(Storage::disk('public')->exists($blob->payload_path));
 
         // 2. Unauthenticated GET denied with 401
-        $this->flushHeaders();
-        $unauthenticatedResp = $this->getJson(
-            "/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/1/attachments/{$attachmentId}/content"
+        $unauthenticatedResp = $this->asGuest()->get(
+            "/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/{$versionId}/attachments/{$attachmentId}/content",
+            ['Accept' => 'application/json']
         );
         $unauthenticatedResp->assertStatus(401)
-            ->assertJsonPath('error', 'AUTHENTICATION_REQUIRED');
+            ->assertJsonPath('error.code', 'unauthenticated');
     }
 
     /**
      * Test 7: Multitenancy & Chapter Isolation.
-     * Cross-chapter access returns 404/403.
+     * Cross-chapter access returns 404.
      */
     public function test_multitenancy_and_chapter_isolation(): void
     {
@@ -518,35 +523,45 @@ class EvidenceValidationTest extends TestCase
             'version' => 1,
         ]);
 
-        // Upload evidence in Chapter A by User A
-        $rawBytes = "%PDF-1.4\n1 0 obj\n<< /Title (Chapter A Paper) >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF";
-        $uploadedFile = UploadedFile::fake()->createWithContent('chap_a.pdf', $rawBytes);
+        DutyGrant::create([
+            'id' => (string) Str::uuid(),
+            'chapter_id' => $chapterBId,
+            'user_id' => $userBId,
+            'duty_code' => 'INVENTORY',
+            'status' => 'active',
+            'valid_from' => now()->subDay(),
+            'version' => 1,
+        ]);
 
-        $uploadResp = $this->withHeaders(['X-User-Id' => $this->userId])
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence", [
-                'purpose' => 'actual_issue',
-                'record_id' => (string) Str::uuid(),
-                'attachments' => [$uploadedFile],
-            ]);
+        // Upload evidence in Chapter A by User A
+        $rawBytes = $this->validPaperPdf('Chapter A Paper');
+        $uploadResp = $this->sendRawMultipartPaper(
+            "/api/v1/chapters/{$this->chapterId}/evidence",
+            $this->userId,
+            (string) Str::uuid(),
+            ['purpose' => 'actual_issue', 'record_id' => $this->issueId],
+            [['filename' => 'chap_a.pdf', 'media_type' => 'application/pdf', 'bytes' => $rawBytes]],
+        );
 
         $uploadResp->assertStatus(201);
         $chapterAEvidenceId = $uploadResp->json('data.evidence_id');
+        $chapterAVersionId = $uploadResp->json('data.version_id');
         $chapterAAttachmentId = $uploadResp->json('data.attachments.0.attachment_id');
 
         // 1. User B (member of Chapter B) querying Chapter A's evidence under Chapter B route -> returns 404
-        $crossChapterResp = $this->withHeaders(['X-User-Id' => $userBId])
-            ->getJson("/api/v1/chapters/{$chapterBId}/evidence/{$chapterAEvidenceId}");
-        $crossChapterResp->assertStatus(404);
+        $this->asBrowserOfficer($userBId)
+            ->get("/api/v1/chapters/{$chapterBId}/evidence/{$chapterAEvidenceId}")
+            ->assertStatus(404);
 
         // 2. User B trying to access attachment content of Chapter A's evidence under Chapter B route -> returns 404
-        $crossContentResp = $this->withHeaders(['X-User-Id' => $userBId])
-            ->get("/api/v1/chapters/{$chapterBId}/evidence/{$chapterAEvidenceId}/versions/1/attachments/{$chapterAAttachmentId}/content");
-        $crossContentResp->assertStatus(404);
+        $this->asBrowserOfficer($userBId)
+            ->get("/api/v1/chapters/{$chapterBId}/evidence/{$chapterAEvidenceId}/versions/{$chapterAVersionId}/attachments/{$chapterAAttachmentId}/content")
+            ->assertStatus(404);
 
-        // 3. User B attempting to access Chapter A route directly -> returns 403 MEMBERSHIP_REQUIRED
-        $foreignAccessResp = $this->withHeaders(['X-User-Id' => $userBId])
-            ->getJson("/api/v1/chapters/{$this->chapterId}/evidence/{$chapterAEvidenceId}");
-        $foreignAccessResp->assertStatus(403)
-            ->assertJsonPath('error', 'MEMBERSHIP_REQUIRED');
+        // 3. User B attempting to access Chapter A route directly (no membership in Chapter A) -> returns 404 chapter_not_found
+        $this->asBrowserOfficer($userBId)
+            ->get("/api/v1/chapters/{$this->chapterId}/evidence/{$chapterAEvidenceId}")
+            ->assertStatus(404)
+            ->assertJsonPath('error.code', 'chapter_not_found');
     }
 }

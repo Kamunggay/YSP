@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { actionBlockReason } from '../api/access.ts';
 import { apiGet, apiMutate, buildQuery, newActionKey } from '../api/client.ts';
+import type { ChapterAccessSnapshot } from '../api/types.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
 import { memoryDraftStore } from '../state/memoryDraftStore.ts';
 
@@ -30,9 +32,12 @@ interface CatalogueWorkspaceProps {
   userId: string;
   chapterId: string;
   refreshSignal: number;
+  chapterAccess: ChapterAccessSnapshot | null;
 }
 
-export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: CatalogueWorkspaceProps) {
+export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: CatalogueWorkspaceProps) {
+  const maintainReason = actionBlockReason(chapterAccess, 'catalogue.maintain');
+  const historyReason = actionBlockReason(chapterAccess, 'history.read');
   const [entity, setEntity] = useState<CatalogueEntity>('items');
   const [stateFilter, setStateFilter] = useState<'active' | 'retired' | 'all'>('active');
   const [queryText, setQueryText] = useState('');
@@ -388,13 +393,31 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
                         <button type="button" className="btn secondary" onClick={() => void inspectRecord(r.id)}>
                           Read Record
                         </button>
-                        <button type="button" className="btn secondary" onClick={() => startEdit(r)}>
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          disabled={maintainReason !== null}
+                          title={maintainReason ?? undefined}
+                          onClick={() => startEdit(r)}
+                        >
                           Replace (`PUT`)
                         </button>
-                        <button type="button" className="btn secondary" onClick={() => void inspectHistory(r.id)}>
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          disabled={historyReason !== null}
+                          title={historyReason ?? undefined}
+                          onClick={() => void inspectHistory(r.id)}
+                        >
                           History
                         </button>
-                        <button type="button" className="btn secondary" onClick={() => void inspectVersion(r.id, r.material_version)}>
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          disabled={historyReason !== null}
+                          title={historyReason ?? undefined}
+                          onClick={() => void inspectVersion(r.id, r.material_version)}
+                        >
                           Current Snapshot
                         </button>
                       </div>
@@ -482,8 +505,9 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
               <label htmlFor="cat-reason">Audit Reason</label>
               <input id="cat-reason" required value={reason} onChange={(e) => setReason(e.target.value)} />
             </div>
+            {maintainReason && <div className="alert info">{maintainReason}</div>}
             <div className="row">
-              <button className="btn" type="submit" disabled={busy}>
+              <button className="btn" type="submit" disabled={busy || maintainReason !== null} title={maintainReason ?? undefined}>
                 {selected ? 'Submit PUT Replace' : 'Create (POST)'}
               </button>
               <button className="btn secondary" type="button" onClick={parkDraftInMemory}>

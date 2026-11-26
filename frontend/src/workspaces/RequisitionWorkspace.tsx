@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { actionBlockReason, unwrapMutationData } from '../api/access.ts';
 import { apiGet, apiMutate, buildQuery, formatManilaTime, newActionKey } from '../api/client.ts';
+import type { ChapterAccessSnapshot } from '../api/types.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
 import { memoryDraftStore } from '../state/memoryDraftStore.ts';
 
@@ -45,14 +47,18 @@ interface RequisitionWorkspaceProps {
   userId: string;
   chapterId: string;
   refreshSignal: number;
+  chapterAccess: ChapterAccessSnapshot | null;
 }
 
 function emptyRfLine(): RfLineRow {
   return { line_id: null, variant_id: null, unit_id: null, requested_quantity: null };
 }
 
-export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: RequisitionWorkspaceProps) {
+export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: RequisitionWorkspaceProps) {
   const formKey = 'internal_rf_editor';
+  const draftReason = actionBlockReason(chapterAccess, 'rf.draft');
+  const submitReason = actionBlockReason(chapterAccess, 'rf.submit');
+  const approveReason = actionBlockReason(chapterAccess, 'rf.approve');
 
   function readSavedRfDraft(): {
     requestingUnitId?: string;
@@ -273,18 +279,18 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
 
     const key = newActionKey();
     try {
-      let resp: { result: { data: InternalRfRecord; replayed: boolean } };
+      let resp: { result: { data: unknown; replayed: boolean } };
       if (mode === 'create') {
-        resp = await apiMutate<InternalRfRecord>('POST', `/api/v1/chapters/${chapterId}/internal-rfs`, basePayload, key);
+        resp = await apiMutate<unknown>('POST', `/api/v1/chapters/${chapterId}/internal-rfs`, basePayload, key);
       } else if (mode === 'replace' && selectedRf) {
-        resp = await apiMutate<InternalRfRecord>(
+        resp = await apiMutate<unknown>(
           'PUT',
           `/api/v1/chapters/${chapterId}/internal-rfs/${selectedRf.id}`,
           { ...basePayload, expected_version: selectedRf.version, expected_material_version: selectedRf.material_version, reason },
           key,
         );
       } else if (mode === 'revise' && selectedRf) {
-        resp = await apiMutate<InternalRfRecord>(
+        resp = await apiMutate<unknown>(
           'POST',
           `/api/v1/chapters/${chapterId}/internal-rfs/${selectedRf.id}/revise`,
           {
@@ -300,12 +306,16 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
         throw new Error('Select an RF first.');
       }
 
+      const { record, operationId } = unwrapMutationData<InternalRfRecord & Record<string, unknown>>(resp.result.data);
       memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setReplayed(resp.result.replayed);
-      setSelectedRf(resp.result.data);
-      setSubData(resp.result.data);
+      setSelectedRf(record);
+      setSubData(record);
       setLookupKey(key);
-      setStatusMessage(`RF ${resp.result.data.reference ?? resp.result.data.id} saved (v${resp.result.data.version}). Key: ${key}`);
+      if (operationId) {
+        setLookupOpId(operationId);
+      }
+      setStatusMessage(`RF ${record.reference ?? record.id} saved (v${record.version}). Key: ${key}`);
       await loadRfs();
     } catch (err) {
       setError(err);
@@ -334,17 +344,21 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
     }
 
     try {
-      const { result } = await apiMutate<InternalRfRecord>(
+      const { result } = await apiMutate<unknown>(
         'POST',
         `/api/v1/chapters/${chapterId}/internal-rfs/${selectedRf.id}/${kind}`,
         payload,
         key,
       );
+      const { record, operationId } = unwrapMutationData<InternalRfRecord & Record<string, unknown>>(result.data);
       setReplayed(result.replayed);
-      setSelectedRf(result.data);
-      setSubData(result.data);
+      setSelectedRf(record);
+      setSubData(record);
       setLookupKey(key);
-      setStatusMessage(`RF transition '${kind}' completed. Status: ${result.data.status}. Key: ${key}`);
+      if (operationId) {
+        setLookupOpId(operationId);
+      }
+      setStatusMessage(`RF transition '${kind}' completed. Status: ${record.status}. Key: ${key}`);
       await loadRfs();
     } catch (err) {
       setError(err);
@@ -546,10 +560,22 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
           </div>
 
           <div className="row">
-            <button type="button" className="btn" disabled={busy} onClick={() => void submitDraftOrReplace('create')}>
+            <button
+              type="button"
+              className="btn"
+              disabled={busy || draftReason !== null}
+              title={draftReason ?? undefined}
+              onClick={() => void submitDraftOrReplace('create')}
+            >
               Create Draft
             </button>
-            <button type="button" className="btn secondary" disabled={busy || !selectedRf} onClick={() => void submitDraftOrReplace('replace')}>
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={busy || !selectedRf || draftReason !== null}
+              title={draftReason ?? undefined}
+              onClick={() => void submitDraftOrReplace('replace')}
+            >
               Save Draft (`PUT`)
             </button>
             <button type="button" className="btn secondary" onClick={saveMemoryBuffer}>
@@ -557,19 +583,49 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal }: Requi
             </button>
             {selectedRf && (
               <>
-                <button type="button" className="btn" disabled={busy} onClick={() => void runTransition('submit')}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy || submitReason !== null}
+                  title={submitReason ?? undefined}
+                  onClick={() => void runTransition('submit')}
+                >
                   Submit
                 </button>
-                <button type="button" className="btn" disabled={busy} onClick={() => void runTransition('approve')}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy || approveReason !== null}
+                  title={approveReason ?? undefined}
+                  onClick={() => void runTransition('approve')}
+                >
                   Approve (Independent)
                 </button>
-                <button type="button" className="btn secondary" disabled={busy} onClick={() => void runTransition('return')}>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  disabled={busy || approveReason !== null}
+                  title={approveReason ?? undefined}
+                  onClick={() => void runTransition('return')}
+                >
                   Return
                 </button>
-                <button type="button" className="btn secondary" disabled={busy} onClick={() => void submitDraftOrReplace('revise')}>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  disabled={busy || draftReason !== null}
+                  title={draftReason ?? undefined}
+                  onClick={() => void submitDraftOrReplace('revise')}
+                >
                   Revise to Draft
                 </button>
-                <button type="button" className="btn danger" disabled={busy} onClick={() => void runTransition('cancel')}>
+                <button
+                  type="button"
+                  className="btn danger"
+                  disabled={busy || draftReason !== null}
+                  title={draftReason ?? undefined}
+                  onClick={() => void runTransition('cancel')}
+                >
                   Cancel Remainder
                 </button>
               </>

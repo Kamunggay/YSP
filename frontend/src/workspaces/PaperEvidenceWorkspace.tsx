@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { actionBlockReason } from '../api/access.ts';
 import { apiGet, apiGetBlob, apiMutate, formatManilaTime, newActionKey } from '../api/client.ts';
-import type { EvidencePurpose } from '../api/types.ts';
+import type { ChapterAccessSnapshot, EvidencePurpose } from '../api/types.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
+import { memoryDraftStore } from '../state/memoryDraftStore.ts';
 
 interface EvidenceAttachment {
   attachment_id: string;
   media_type: string;
-  byte_size: number;
+  byte_length: number;
   sha256: string;
 }
 
@@ -22,17 +24,47 @@ interface EvidenceVersion {
 }
 
 interface PaperEvidenceWorkspaceProps {
+  userId: string;
   chapterId: string;
+  refreshSignal: number;
+  chapterAccess: ChapterAccessSnapshot | null;
 }
 
-export function PaperEvidenceWorkspace({ chapterId }: PaperEvidenceWorkspaceProps) {
-  const [purpose, setPurpose] = useState<EvidencePurpose>('opening_receipt');
-  const [recordId, setRecordId] = useState('');
+export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: PaperEvidenceWorkspaceProps) {
+  const formKey = 'paper_evidence_editor';
+
+  function readSavedDraft(): {
+    purpose?: EvidencePurpose;
+    recordId?: string;
+    evidenceIdInput?: string;
+    expectedVersion?: string;
+    replaceReason?: string;
+  } {
+    const saved = memoryDraftStore.getDraft(userId, chapterId, formKey);
+    if (!saved) {
+      return {};
+    }
+    try {
+      return JSON.parse(saved.payloadJson) as {
+        purpose?: EvidencePurpose;
+        recordId?: string;
+        evidenceIdInput?: string;
+        expectedVersion?: string;
+        replaceReason?: string;
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  const initialDraft = readSavedDraft();
+  const [purpose, setPurpose] = useState<EvidencePurpose>(initialDraft.purpose ?? 'opening_receipt');
+  const [recordId, setRecordId] = useState(initialDraft.recordId ?? '');
   const [files, setFiles] = useState<FileList | null>(null);
 
-  const [evidenceIdInput, setEvidenceIdInput] = useState('');
-  const [expectedVersion, setExpectedVersion] = useState('1');
-  const [replaceReason, setReplaceReason] = useState('');
+  const [evidenceIdInput, setEvidenceIdInput] = useState(initialDraft.evidenceIdInput ?? '');
+  const [expectedVersion, setExpectedVersion] = useState(initialDraft.expectedVersion ?? '1');
+  const [replaceReason, setReplaceReason] = useState(initialDraft.replaceReason ?? '');
 
   const [readResult, setReadResult] = useState<{ current_version?: EvidenceVersion } | null>(null);
   const [versionsJson, setVersionsJson] = useState<unknown>(null);
@@ -42,6 +74,22 @@ export function PaperEvidenceWorkspace({ chapterId }: PaperEvidenceWorkspaceProp
   const [error, setError] = useState<unknown>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [replayed, setReplayed] = useState(false);
+
+  const prepareReason = actionBlockReason(chapterAccess, 'evidence.prepare');
+  const readReason = actionBlockReason(chapterAccess, 'evidence.read');
+
+  function parkDraftInMemory() {
+    memoryDraftStore.saveDraft({
+      userId,
+      chapterId,
+      formKey,
+      label: evidenceIdInput.trim() ? `Evidence ${evidenceIdInput.trim().slice(0, 8)}` : `Evidence (${purpose})`,
+      baseVersion: Number.parseInt(expectedVersion, 10) || null,
+      pendingActionKey: null,
+      payloadJson: JSON.stringify({ purpose, recordId, evidenceIdInput, expectedVersion, replaceReason }),
+    });
+    setStatusMessage('Evidence metadata held in chapter-scoped RAM only (selected files must still be reattached if switched).');
+  }
 
   function buildFormData(isReplace: boolean): FormData {
     const fd = new FormData();
@@ -77,6 +125,7 @@ export function PaperEvidenceWorkspace({ chapterId }: PaperEvidenceWorkspaceProp
         buildFormData(false),
         key,
       );
+      memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setEvidenceIdInput(result.data.evidence_id);
       setExpectedVersion(String(result.data.version));
       setReplayed(result.replayed);
@@ -103,6 +152,7 @@ export function PaperEvidenceWorkspace({ chapterId }: PaperEvidenceWorkspaceProp
         `/api/v1/chapters/${chapterId}/evidence/${evidenceIdInput.trim()}/versions`,
         buildFormData(true),
       );
+      memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setExpectedVersion(String(result.data.version));
       setReplayed(result.replayed);
       setStatusMessage(`Replaced evidence -> v${result.data.version}.`);
@@ -114,25 +164,60 @@ export function PaperEvidenceWorkspace({ chapterId }: PaperEvidenceWorkspaceProp
     }
   }
 
-  async function inspectEvidence(targetEid = evidenceIdInput.trim()) {
-    if (!targetEid) {
+  const inspectEvidence = useCallback(
+    async (targetEid = evidenceIdInput.trim()) => {
+      if (!targetEid) {
+        return;
+      }
+      setError(null);
+      try {
+        const [detail, vers] = await Promise.all([
+          apiGet<{ current_version?: EvidenceVersion }>(`/api/v1/chapters/${chapterId}/evidence/${targetEid}`),
+          apiGet<unknown>(`/api/v1/chapters/${chapterId}/evidence/${targetEid}/versions?limit=25`),
+        ]);
+        setReadResult(detail.data);
+        setVersionsJson(vers.data);
+        if (detail.data.current_version) {
+          setExpectedVersion(String(detail.data.current_version.version));
+        }
+      } catch (err) {
+        setError(err);
+      }
+    },
+    [chapterId, evidenceIdInput],
+  );
+
+  useEffect(() => {
+    if (refreshSignal === 0 || !evidenceIdInput.trim() || readReason !== null) {
       return;
     }
-    setError(null);
-    try {
-      const [detail, vers] = await Promise.all([
-        apiGet<{ current_version?: EvidenceVersion }>(`/api/v1/chapters/${chapterId}/evidence/${targetEid}`),
-        apiGet<unknown>(`/api/v1/chapters/${chapterId}/evidence/${targetEid}/versions?limit=25`),
-      ]);
-      setReadResult(detail.data);
-      setVersionsJson(vers.data);
-      if (detail.data.current_version) {
-        setExpectedVersion(String(detail.data.current_version.version));
+    let active = true;
+    const targetEid = evidenceIdInput.trim();
+    void (async () => {
+      try {
+        const [detail, vers] = await Promise.all([
+          apiGet<{ current_version?: EvidenceVersion }>(`/api/v1/chapters/${chapterId}/evidence/${targetEid}`),
+          apiGet<unknown>(`/api/v1/chapters/${chapterId}/evidence/${targetEid}/versions?limit=25`),
+        ]);
+        if (!active) {
+          return;
+        }
+        setReadResult(detail.data);
+        setVersionsJson(vers.data);
+        setError(null);
+        if (detail.data.current_version) {
+          setExpectedVersion(String(detail.data.current_version.version));
+        }
+      } catch (err) {
+        if (active) {
+          setError(err);
+        }
       }
-    } catch (err) {
-      setError(err);
-    }
-  }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [chapterId, evidenceIdInput, readReason, refreshSignal]);
 
   async function downloadAttachment(versionId: string, attachmentId: string) {
     setError(null);
@@ -157,6 +242,7 @@ export function PaperEvidenceWorkspace({ chapterId }: PaperEvidenceWorkspaceProp
           Stage 1 enforces real JPEG/PNG/PDF file uploads validated on Laravel (`purpose` + `record_id` + `attachments`). No Canvas signature or browser storage is accepted.
         </p>
         <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
+        {prepareReason && <div className="alert info">{prepareReason}</div>}
 
         <div className="grid-2">
           <form onSubmit={handleUpload}>
@@ -177,9 +263,14 @@ export function PaperEvidenceWorkspace({ chapterId }: PaperEvidenceWorkspaceProp
               <label htmlFor="ev-files">Signed Paper Files (JPEG/PNG/PDF, max 10 MiB each)</label>
               <input id="ev-files" type="file" multiple accept="image/jpeg,image/png,application/pdf" onChange={(e) => setFiles(e.target.files)} />
             </div>
-            <button className="btn" type="submit" disabled={busy}>
-              Upload Multipart Evidence
-            </button>
+            <div className="row">
+              <button className="btn" type="submit" disabled={busy || prepareReason !== null} title={prepareReason ?? undefined}>
+                Upload Multipart Evidence
+              </button>
+              <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
+                Hold Draft in RAM
+              </button>
+            </div>
           </form>
 
           <form onSubmit={handleReplace}>
@@ -199,10 +290,16 @@ export function PaperEvidenceWorkspace({ chapterId }: PaperEvidenceWorkspaceProp
               </div>
             </div>
             <div className="row">
-              <button className="btn secondary" type="button" onClick={() => void inspectEvidence()}>
+              <button
+                className="btn secondary"
+                type="button"
+                disabled={readReason !== null}
+                title={readReason ?? undefined}
+                onClick={() => void inspectEvidence()}
+              >
                 Inspect Current &amp; Versions
               </button>
-              <button className="btn" type="submit" disabled={busy}>
+              <button className="btn" type="submit" disabled={busy || prepareReason !== null} title={prepareReason ?? undefined}>
                 Upload Replacement Version
               </button>
             </div>
@@ -232,7 +329,7 @@ export function PaperEvidenceWorkspace({ chapterId }: PaperEvidenceWorkspaceProp
                   <tr key={att.attachment_id}>
                     <td className="mono">{att.attachment_id}</td>
                     <td>{att.media_type}</td>
-                    <td>{att.byte_size}</td>
+                    <td>{att.byte_length}</td>
                     <td className="mono">{att.sha256}</td>
                     <td>
                       <button

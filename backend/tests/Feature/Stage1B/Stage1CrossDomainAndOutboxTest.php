@@ -22,11 +22,14 @@ use App\Services\Notifications\DomainNotificationOutboxService;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Tests\Feature\Concerns\AuthenticatesBrowserOfficer;
 use Tests\TestCase;
 
 class Stage1CrossDomainAndOutboxTest extends TestCase
 {
+    use AuthenticatesBrowserOfficer;
     use RefreshDatabase;
 
     private string $chapterId;
@@ -173,21 +176,19 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
         $lot = InventoryLot::where('chapter_id', $this->chapterId)->firstOrFail();
 
         // Place an active hold on 2 units [0, 2) -> available_to_allocate becomes 6
-        $this->withHeaders([
-            'X-User-Id' => $this->userId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
-            'targets' => [[
-                'stock_lot_id' => $lot->id,
-                'basis_segment_id' => $lot->basis_segment_id,
-                'offset_quantity' => '0',
-                'quantity' => '2',
-                'expected_lot_material_version' => $lot->material_version,
-                'expected_stock_version' => $lot->stock_version,
-            ]],
-            'reason_code' => 'damage_review',
-            'reason' => '2 units held',
-        ])->assertStatus(201);
+        $this->asBrowserOfficer($this->userId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds", [
+                'targets' => [[
+                    'stock_lot_id' => $lot->id,
+                    'basis_segment_id' => $lot->basis_segment_id,
+                    'offset_quantity' => '0',
+                    'quantity' => '2',
+                    'expected_lot_material_version' => $lot->material_version,
+                    'expected_stock_version' => $lot->stock_version,
+                ]],
+                'reason_code' => 'damage_review',
+                'reason' => '2 units held',
+            ])->assertStatus(201);
 
         // Create buyer with XSS payload in name to verify print escaping
         $buyer = Buyer::create([
@@ -279,42 +280,73 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
 
         $this->assertTrue($unit->fresh()->quantity_identity_locked);
 
-        $this->withHeaders([
-            'X-User-Id' => $this->userId,
-            'X-Action-Key' => (string) Str::uuid(),
-        ])->putJson("/api/v1/chapters/{$this->chapterId}/catalogue/units/{$this->unitId}", [
-            'expected_material_version' => 1,
-            'quantity_kind' => 'measured',
-            'quantity_scale' => 2,
-            'reason' => 'Attempt illegal scale mutation',
-        ])->assertStatus(422)
+        $this->asBrowserOfficer($this->userId, (string) Str::uuid())
+            ->putJson("/api/v1/chapters/{$this->chapterId}/catalogue/units/{$this->unitId}", [
+                'expected_material_version' => 1,
+                'quantity_kind' => 'measured',
+                'quantity_scale' => 2,
+                'reason' => 'Attempt illegal scale mutation',
+            ])->assertStatus(422)
             ->assertJsonPath('error.code', 'quantity_identity_locked');
     }
 
     public function test_notification_subscription_auth_and_channel_fences(): void
     {
-        // Unauthenticated -> 401
-        $this->postJson('/api/v1/auth/notification-subscriptions/authorize', [
-            'socket_id' => '123.456',
-            'channel_name' => "private-stage1.user.{$this->userId}",
-        ])->assertStatus(401);
+        config(['app.url' => $this->browserOrigin]);
+        app('url')->useOrigin($this->browserOrigin);
+        app('url')->forceScheme('https');
+
+        Http::fake([
+            '*/internal/notifications/authorize' => function ($request) {
+                $body = json_decode((string) $request->body(), true) ?: [];
+                if (($body['chapter_id'] ?? null) === $this->foreignChapterId) {
+                    return Http::response([], 403);
+                }
+
+                return Http::response([
+                    'auth' => 'ysp-stage1:'.str_repeat('a', 64),
+                ], 200);
+            },
+        ]);
+
+        // Unauthenticated (with valid pre-auth CSRF cookie) -> 401
+        $csrfResp = $this->withHeaders(['Origin' => $this->browserOrigin, 'Accept' => 'application/json'])
+            ->get('/api/v1/auth/csrf');
+        $csrfResp->assertNoContent();
+        $sessionCookie = collect($csrfResp->headers->getCookies())->firstWhere(fn ($c) => $c->getName() === 'ysp_session');
+        $xsrfCookie = collect($csrfResp->headers->getCookies())->firstWhere(fn ($c) => $c->getName() === 'XSRF-TOKEN');
+
+        $this->flushHeaders()
+            ->withCredentials()
+            ->withUnencryptedCookie('ysp_session', (string) $sessionCookie?->getValue())
+            ->withHeaders([
+                'Origin' => $this->browserOrigin,
+                'Accept' => 'application/json',
+                'X-XSRF-TOKEN' => (string) $xsrfCookie?->getValue(),
+            ])
+            ->postJson('/api/v1/auth/notification-subscriptions/authorize', [
+                'socket_id' => '123.456',
+                'channel_name' => "private-stage1.user.{$this->userId}",
+            ])->assertStatus(401)
+            ->assertJsonPath('error.code', 'unauthenticated');
 
         // Foreign user channel -> 403
-        $this->withHeaders(['X-User-Id' => $this->userId])
+        $this->asBrowserOfficer($this->userId)
             ->postJson('/api/v1/auth/notification-subscriptions/authorize', [
                 'socket_id' => '123.456',
                 'channel_name' => "private-stage1.user.{$this->otherUserId}",
             ])->assertStatus(403);
 
-        // Wildcard channel -> 403
-        $this->withHeaders(['X-User-Id' => $this->userId])
+        // Wildcard channel -> 422 invalid_input
+        $this->asBrowserOfficer($this->userId)
             ->postJson('/api/v1/auth/notification-subscriptions/authorize', [
                 'socket_id' => '123.456',
                 'channel_name' => 'private-stage1.user.*',
-            ])->assertStatus(403);
+            ])->assertStatus(422)
+            ->assertJsonPath('error.code', 'invalid_input');
 
         // Valid session channel -> 200 with Cache-Control: no-store
-        $sessResp = $this->withHeaders(['X-User-Id' => $this->userId])
+        $sessResp = $this->asBrowserOfficer($this->userId)
             ->postJson('/api/v1/auth/notification-subscriptions/authorize', [
                 'socket_id' => '123.456',
                 'channel_name' => "private-stage1.user.{$this->userId}",
@@ -323,7 +355,7 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
         $this->assertStringContainsString('no-store', (string) $sessResp->headers->get('Cache-Control'));
 
         // Valid chapter channel -> 200
-        $chapResp = $this->withHeaders(['X-User-Id' => $this->userId])
+        $chapResp = $this->asBrowserOfficer($this->userId)
             ->postJson("/api/v1/chapters/{$this->chapterId}/notification-subscriptions/authorize", [
                 'socket_id' => '123.456',
                 'channel_name' => "private-stage1.chapter.{$this->chapterId}.user.{$this->userId}",
@@ -332,14 +364,14 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
         $this->assertStringContainsString('no-store', (string) $chapResp->headers->get('Cache-Control'));
 
         // Non-member chapter channel -> 403
-        $this->withHeaders(['X-User-Id' => $this->userId])
+        $this->asBrowserOfficer($this->userId)
             ->postJson("/api/v1/chapters/{$this->foreignChapterId}/notification-subscriptions/authorize", [
                 'socket_id' => '123.456',
                 'channel_name' => "private-stage1.chapter.{$this->foreignChapterId}.user.{$this->userId}",
             ])->assertStatus(403);
 
         // Foreign chapter channel name inside authorized chapter -> 403
-        $this->withHeaders(['X-User-Id' => $this->userId])
+        $this->asBrowserOfficer($this->userId)
             ->postJson("/api/v1/chapters/{$this->chapterId}/notification-subscriptions/authorize", [
                 'socket_id' => '123.456',
                 'channel_name' => "private-stage1.chapter.{$this->foreignChapterId}.user.{$this->userId}",
@@ -398,8 +430,8 @@ class Stage1CrossDomainAndOutboxTest extends TestCase
             ->assertStatus(401)
             ->assertJsonPath('error', 'AUTHENTICATION_REQUIRED');
 
-        $this->getJson("/api/v1/chapters/{$this->chapterId}/stock")
+        $this->get("/api/v1/chapters/{$this->chapterId}/stock", ['Accept' => 'application/json'])
             ->assertStatus(401)
-            ->assertJsonPath('error', 'AUTHENTICATION_REQUIRED');
+            ->assertJsonPath('error.code', 'unauthenticated');
     }
 }

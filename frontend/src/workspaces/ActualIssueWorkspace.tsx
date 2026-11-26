@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { actionBlockReason, unwrapMutationData } from '../api/access.ts';
 import { apiGet, apiGetText, apiMutate, buildQuery, newActionKey } from '../api/client.ts';
+import type { ChapterAccessSnapshot } from '../api/types.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
 import {
   emptyEvidenceBinding,
@@ -9,6 +11,7 @@ import {
   type StockRangeInput,
 } from '../components/structuredInputHelpers.ts';
 import { EvidenceBindingFields, StockRangeRows } from '../components/StructuredInputRows.tsx';
+import { memoryDraftStore } from '../state/memoryDraftStore.ts';
 
 interface IssueLineSelectionInput {
   rf_line_id: string;
@@ -27,8 +30,19 @@ interface SourcePinInput {
 type IssueOpKind = 'prepare' | 'revise' | 'ack' | 'post' | 'reconcile';
 
 interface ActualIssueWorkspaceProps {
+  userId: string;
   chapterId: string;
+  refreshSignal: number;
+  chapterAccess: ChapterAccessSnapshot | null;
 }
+
+const ISSUE_REQUIRED_ACTIONS: Record<IssueOpKind, string[]> = {
+  prepare: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read'],
+  revise: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read'],
+  ack: ['issue.prepare', 'rf.read', 'stock.read', 'evidence.read', 'issue.post'],
+  post: ['issue.post', 'rf.read', 'stock.read', 'evidence.read'],
+  reconcile: ['issue.post', 'rf.read', 'stock.read', 'evidence.read'],
+};
 
 function nowUtcMicro(): string {
   return new Date().toISOString().replace(/\.\d+Z$/, '.000000Z');
@@ -44,10 +58,45 @@ function emptyIssueLine(): IssueLineSelectionInput {
   };
 }
 
-export function ActualIssueWorkspace({ chapterId }: ActualIssueWorkspaceProps) {
-  const [rfId, setRfId] = useState('');
-  const [issueId, setIssueId] = useState('');
-  const [opKind, setOpKind] = useState<IssueOpKind>('prepare');
+export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: ActualIssueWorkspaceProps) {
+  const formKey = 'actual_issue_editor';
+
+  function readSavedDraft(): {
+    rfId?: string;
+    issueId?: string;
+    opKind?: IssueOpKind;
+    recipientId?: string;
+    reviseReason?: string;
+    reconcileReason?: string;
+    finding?: 'no_handover' | 'handed_over_unposted' | 'committed' | 'disputed';
+    acknowledgmentId?: string;
+    snapshotSha?: string;
+  } {
+    const saved = memoryDraftStore.getDraft(userId, chapterId, formKey);
+    if (!saved) {
+      return {};
+    }
+    try {
+      return JSON.parse(saved.payloadJson) as {
+        rfId?: string;
+        issueId?: string;
+        opKind?: IssueOpKind;
+        recipientId?: string;
+        reviseReason?: string;
+        reconcileReason?: string;
+        finding?: 'no_handover' | 'handed_over_unposted' | 'committed' | 'disputed';
+        acknowledgmentId?: string;
+        snapshotSha?: string;
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  const initialDraft = readSavedDraft();
+  const [rfId, setRfId] = useState(initialDraft.rfId ?? '');
+  const [issueId, setIssueId] = useState(initialDraft.issueId ?? '');
+  const [opKind, setOpKind] = useState<IssueOpKind>(initialDraft.opKind ?? 'prepare');
 
   const [expectedRfVersion, setExpectedRfVersion] = useState('1');
   const [expectedRfMatVersion, setExpectedRfMatVersion] = useState('1');
@@ -55,23 +104,25 @@ export function ActualIssueWorkspace({ chapterId }: ActualIssueWorkspaceProps) {
   const [expectedVersion, setExpectedVersion] = useState('1');
   const [expectedMatVersion, setExpectedMatVersion] = useState('1');
 
-  const [recipientId, setRecipientId] = useState('');
+  const [recipientId, setRecipientId] = useState(initialDraft.recipientId ?? '');
   const [handedOverAt, setHandedOverAt] = useState(nowUtcMicro);
   const [acknowledgedAt, setAcknowledgedAt] = useState(nowUtcMicro);
   const [acceptsPartial, setAcceptsPartial] = useState(false);
-  const [reviseReason, setReviseReason] = useState('');
+  const [reviseReason, setReviseReason] = useState(initialDraft.reviseReason ?? '');
   const [issueLines, setIssueLines] = useState<IssueLineSelectionInput[]>([emptyIssueLine()]);
 
   const [snapshotMatVer, setSnapshotMatVer] = useState('1');
-  const [snapshotSha, setSnapshotSha] = useState('');
+  const [snapshotSha, setSnapshotSha] = useState(initialDraft.snapshotSha ?? '');
   const [matchesPaper, setMatchesPaper] = useState(true);
-  const [acknowledgmentId, setAcknowledgmentId] = useState('');
+  const [acknowledgmentId, setAcknowledgmentId] = useState(initialDraft.acknowledgmentId ?? '');
   const [currentSources, setCurrentSources] = useState<SourcePinInput[]>([
     { stock_lot_id: '', expected_lot_material_version: '1', expected_stock_version: '1' },
   ]);
 
-  const [finding, setFinding] = useState<'no_handover' | 'handed_over_unposted' | 'committed' | 'disputed'>('no_handover');
-  const [reconcileReason, setReconcileReason] = useState('');
+  const [finding, setFinding] = useState<'no_handover' | 'handed_over_unposted' | 'committed' | 'disputed'>(
+    initialDraft.finding ?? 'no_handover',
+  );
+  const [reconcileReason, setReconcileReason] = useState(initialDraft.reconcileReason ?? '');
   const [attachReconcileEvidence, setAttachReconcileEvidence] = useState(false);
   const [evidenceBinding, setEvidenceBinding] = useState(emptyEvidenceBinding);
 
@@ -86,7 +137,32 @@ export function ActualIssueWorkspace({ chapterId }: ActualIssueWorkspaceProps) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [replayed, setReplayed] = useState(false);
 
-  async function listRfIssues() {
+  const opBlockReason = actionBlockReason(chapterAccess, ...ISSUE_REQUIRED_ACTIONS[opKind]);
+
+  function parkDraftInMemory() {
+    memoryDraftStore.saveDraft({
+      userId,
+      chapterId,
+      formKey,
+      label: issueId.trim() ? `Issue ${issueId.trim().slice(0, 8)} (${opKind})` : `Actual Issue (${opKind})`,
+      baseVersion: Number.parseInt(expectedVersion, 10) || null,
+      pendingActionKey: null,
+      payloadJson: JSON.stringify({
+        rfId,
+        issueId,
+        opKind,
+        recipientId,
+        reviseReason,
+        reconcileReason,
+        finding,
+        acknowledgmentId,
+        snapshotSha,
+      }),
+    });
+    setStatusMessage('Actual issue inputs held in chapter-scoped RAM only.');
+  }
+
+  const listRfIssues = useCallback(async () => {
     if (!rfId.trim()) {
       return;
     }
@@ -97,7 +173,30 @@ export function ActualIssueWorkspace({ chapterId }: ActualIssueWorkspaceProps) {
     } catch (err) {
       setError(err);
     }
-  }
+  }, [chapterId, rfId]);
+
+  useEffect(() => {
+    if (refreshSignal === 0 || !rfId.trim()) {
+      return;
+    }
+    let active = true;
+    void (async () => {
+      try {
+        const res = await apiGet<unknown>(`/api/v1/chapters/${chapterId}/internal-rfs/${rfId.trim()}/actual-issues?limit=25`);
+        if (active) {
+          setIssuesJson(res.data);
+          setError(null);
+        }
+      } catch (err) {
+        if (active) {
+          setError(err);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [chapterId, rfId, refreshSignal]);
 
   async function readIssuePart(part: 'detail' | 'history' | 'movements' | 'related' | 'reconciliation' | 'print') {
     if (!issueId.trim()) {
@@ -208,11 +307,46 @@ export function ActualIssueWorkspace({ chapterId }: ActualIssueWorkspaceProps) {
     const key = newActionKey();
     try {
       const { result } = await apiMutate<Record<string, unknown>>(target.method, target.path, buildBody(), key);
+      const { record, operationId } = unwrapMutationData<Record<string, unknown>>(result.data);
+      memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setReplayed(result.replayed);
       setDetailJson(result.data);
       setLookupKey(key);
-      if (opKind === 'prepare' && typeof result.data.issue_id === 'string') {
-        setIssueId(result.data.issue_id);
+      if (operationId) {
+        setLookupOpId(operationId);
+      }
+      const nextIssueId =
+        typeof record.id === 'string'
+          ? record.id
+          : typeof record.issue_id === 'string'
+            ? record.issue_id
+            : undefined;
+      if (opKind === 'prepare' && nextIssueId) {
+        setIssueId(nextIssueId);
+      }
+      if (typeof record.version === 'number') {
+        setExpectedVersion(String(record.version));
+      }
+      if (typeof record.material_version === 'number') {
+        setExpectedMatVersion(String(record.material_version));
+        setSnapshotMatVer(String(record.material_version));
+      }
+      const snap = record.snapshot && typeof record.snapshot === 'object' ? (record.snapshot as Record<string, unknown>) : null;
+      if (snap && typeof snap.sha256 === 'string') {
+        setSnapshotSha(snap.sha256);
+      }
+      const ack =
+        record.acknowledgment && typeof record.acknowledgment === 'object'
+          ? (record.acknowledgment as Record<string, unknown>)
+          : null;
+      const ackId =
+        ack && typeof ack.acknowledgment_id === 'string'
+          ? ack.acknowledgment_id
+          : ack && typeof ack.id === 'string'
+            ? ack.id
+            : undefined;
+      if (ackId) {
+        setAcknowledgmentId(ackId);
       }
       setStatusMessage(`Actual Issue '${opKind}' completed. Key: ${key}`);
       if (rfId.trim()) {
@@ -542,9 +676,15 @@ export function ActualIssueWorkspace({ chapterId }: ActualIssueWorkspaceProps) {
               </>
             )}
 
-            <button className="btn" type="submit" disabled={busy}>
-              Run Issue Operation
-            </button>
+            {opBlockReason && <div className="alert info">{opBlockReason}</div>}
+            <div className="row">
+              <button className="btn" type="submit" disabled={busy || opBlockReason !== null} title={opBlockReason ?? undefined}>
+                Run Issue Operation
+              </button>
+              <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
+                Hold Draft in RAM
+              </button>
+            </div>
           </form>
         </div>
 

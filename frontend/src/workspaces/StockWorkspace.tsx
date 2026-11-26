@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { actionBlockReason } from '../api/access.ts';
 import { apiGet, buildQuery, formatManilaTime } from '../api/client.ts';
-import type { IntendedUse, SevenStockViews } from '../api/types.ts';
+import type { ChapterAccessSnapshot, IntendedUse, SevenStockViews } from '../api/types.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
 
 interface StockSummaryItem {
@@ -30,9 +31,12 @@ interface StockLotItem {
 interface StockWorkspaceProps {
   chapterId: string;
   refreshSignal: number;
+  chapterAccess: ChapterAccessSnapshot | null;
 }
 
-export function StockWorkspace({ chapterId, refreshSignal }: StockWorkspaceProps) {
+export function StockWorkspace({ chapterId, refreshSignal, chapterAccess }: StockWorkspaceProps) {
+  const stockReason = actionBlockReason(chapterAccess, 'stock.read');
+  const historyReason = actionBlockReason(chapterAccess, 'history.read', 'stock.read');
   const [intendedUse, setIntendedUse] = useState<IntendedUse>('internal_use');
   const [neededAt, setNeededAt] = useState(() => new Date().toISOString().replace(/\.\d+Z$/, '.000000Z'));
   const [requestingUnitId, setRequestingUnitId] = useState('');
@@ -182,6 +186,7 @@ export function StockWorkspace({ chapterId, refreshSignal }: StockWorkspaceProps
         </p>
 
         <OperationBanner error={error} />
+        {stockReason && <div className="alert info">{stockReason}</div>}
 
         <div className="row" style={{ marginBottom: '0.85rem' }}>
           <div className="field">
@@ -289,13 +294,25 @@ export function StockWorkspace({ chapterId, refreshSignal }: StockWorkspaceProps
               <input id="el-line" value={eligRfLineId} onChange={(e) => setEligRfLineId(e.target.value)} />
             </div>
             <div className="row">
-              <button className="btn secondary" type="submit">
+              <button className="btn secondary" type="submit" disabled={stockReason !== null} title={stockReason ?? undefined}>
                 Evaluate Eligibility
               </button>
-              <button type="button" className="btn secondary" onClick={() => void inspectLotDetail(selectedLotId)}>
+              <button
+                type="button"
+                className="btn secondary"
+                disabled={stockReason !== null}
+                title={stockReason ?? undefined}
+                onClick={() => void inspectLotDetail(selectedLotId)}
+              >
                 Read Lot Detail
               </button>
-              <button type="button" className="btn secondary" onClick={() => void inspectLotHistory(selectedLotId)}>
+              <button
+                type="button"
+                className="btn secondary"
+                disabled={historyReason !== null}
+                title={historyReason ?? undefined}
+                onClick={() => void inspectLotHistory(selectedLotId)}
+              >
                 Lot History
               </button>
             </div>

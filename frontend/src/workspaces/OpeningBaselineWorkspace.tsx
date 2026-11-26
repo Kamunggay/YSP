@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
+import { actionBlockReason, unwrapMutationData } from '../api/access.ts';
 import { apiGet, apiGetText, apiMutate, buildQuery, newActionKey } from '../api/client.ts';
+import type { ChapterAccessSnapshot } from '../api/types.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
 import {
   emptyEvidenceBinding,
   toWireEvidenceBinding,
 } from '../components/structuredInputHelpers.ts';
 import { EvidenceBindingFields } from '../components/StructuredInputRows.tsx';
+import { memoryDraftStore } from '../state/memoryDraftStore.ts';
 
 interface OpeningRecord {
   id: string;
   reference?: string | null;
+  state?: string;
   status?: string;
   revision?: number;
   material_version?: number;
@@ -88,9 +92,24 @@ type OpeningEndpoint =
   | 'postRm';
 
 interface OpeningBaselineWorkspaceProps {
+  userId: string;
   chapterId: string;
   refreshSignal: number;
+  chapterAccess: ChapterAccessSnapshot | null;
 }
+
+const OPENING_REQUIRED_ACTIONS: Record<OpeningEndpoint, string[]> = {
+  createIpc: ['ipc.draft'],
+  replaceIpc: ['ipc.draft'],
+  saveCount: ['ipc.count'],
+  submitIpc: ['ipc.draft'],
+  authorizeIpc: ['ipc.authorize'],
+  createRm: ['opening_rm.prepare'],
+  replaceRm: ['opening_rm.prepare'],
+  inspectRm: ['opening_rm.prepare'],
+  matchRm: ['opening_rm.prepare', 'evidence.read'],
+  postRm: ['opening_rm.post'],
+};
 
 function nowUtcMicro(): string {
   return new Date().toISOString().replace(/\.\d+Z$/, '.000000Z');
@@ -118,31 +137,66 @@ function emptyIpcLine(): IpcLineInput {
   };
 }
 
-export function OpeningBaselineWorkspace({ chapterId, refreshSignal }: OpeningBaselineWorkspaceProps) {
+export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: OpeningBaselineWorkspaceProps) {
+  const formKey = 'opening_baseline_editor';
+
+  function readSavedDraft(): {
+    selectedIpcId?: string;
+    selectedRmId?: string;
+    actionEndpoint?: OpeningEndpoint;
+    cutoffAt?: string;
+    notes?: string;
+    reason?: string;
+    inspectionNotes?: string;
+    snapshotSha256?: string;
+    acknowledgmentId?: string;
+  } {
+    const saved = memoryDraftStore.getDraft(userId, chapterId, formKey);
+    if (!saved) {
+      return {};
+    }
+    try {
+      return JSON.parse(saved.payloadJson) as {
+        selectedIpcId?: string;
+        selectedRmId?: string;
+        actionEndpoint?: OpeningEndpoint;
+        cutoffAt?: string;
+        notes?: string;
+        reason?: string;
+        inspectionNotes?: string;
+        snapshotSha256?: string;
+        acknowledgmentId?: string;
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  const initialDraft = readSavedDraft();
   const [baseline, setBaseline] = useState<unknown>(null);
   const [ipcs, setIpcs] = useState<OpeningRecord[]>([]);
   const [rms, setRms] = useState<OpeningRecord[]>([]);
-  const [selectedIpcId, setSelectedIpcId] = useState('');
-  const [selectedRmId, setSelectedRmId] = useState('');
+  const [selectedIpcId, setSelectedIpcId] = useState(initialDraft.selectedIpcId ?? '');
+  const [selectedRmId, setSelectedRmId] = useState(initialDraft.selectedRmId ?? '');
 
   const [catItems, setCatItems] = useState<CatOption[]>([]);
   const [catVariants, setCatVariants] = useState<CatOption[]>([]);
   const [catUnits, setCatUnits] = useState<CatOption[]>([]);
   const [catLocations, setCatLocations] = useState<CatOption[]>([]);
 
-  const [actionEndpoint, setActionEndpoint] = useState<OpeningEndpoint>('createIpc');
+  const [actionEndpoint, setActionEndpoint] = useState<OpeningEndpoint>(initialDraft.actionEndpoint ?? 'createIpc');
   const [expectedRevision, setExpectedRevision] = useState('1');
   const [materialVersion, setMaterialVersion] = useState('1');
   const [ipcMaterialVersion, setIpcMaterialVersion] = useState('1');
-  const [reason, setReason] = useState('');
+  const [reason, setReason] = useState(initialDraft.reason ?? '');
 
   // IPC material fields
-  const [cutoffAt, setCutoffAt] = useState('');
+  const [cutoffAt, setCutoffAt] = useState(initialDraft.cutoffAt ?? '');
   const [suspended, setSuspended] = useState(true);
   const [team, setTeam] = useState<IpcTeamMemberInput[]>([{ user_id: '', regular_custodian: false }]);
   const [policies, setPolicies] = useState<IpcPolicyBindingInput[]>([]);
   const [ipcLines, setIpcLines] = useState<IpcLineInput[]>([emptyIpcLine()]);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(initialDraft.notes ?? '');
 
   // Count / Submit / Authorize
   const [countedAt, setCountedAt] = useState(nowUtcMicro);
@@ -159,10 +213,10 @@ export function OpeningBaselineWorkspace({ chapterId, refreshSignal }: OpeningBa
   ]);
   const [inspectedAt, setInspectedAt] = useState(nowUtcMicro);
   const [techRepId, setTechRepId] = useState('');
-  const [inspectionNotes, setInspectionNotes] = useState('');
-  const [snapshotSha256, setSnapshotSha256] = useState('');
+  const [inspectionNotes, setInspectionNotes] = useState(initialDraft.inspectionNotes ?? '');
+  const [snapshotSha256, setSnapshotSha256] = useState(initialDraft.snapshotSha256 ?? '');
   const [acknowledgedAt, setAcknowledgedAt] = useState(nowUtcMicro);
-  const [acknowledgmentId, setAcknowledgmentId] = useState('');
+  const [acknowledgmentId, setAcknowledgmentId] = useState(initialDraft.acknowledgmentId ?? '');
   const [evidenceBinding, setEvidenceBinding] = useState(emptyEvidenceBinding);
 
   const [exactRev, setExactRev] = useState('1');
@@ -176,6 +230,31 @@ export function OpeningBaselineWorkspace({ chapterId, refreshSignal }: OpeningBa
   const [error, setError] = useState<unknown>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [replayed, setReplayed] = useState(false);
+
+  const opBlockReason = actionBlockReason(chapterAccess, ...OPENING_REQUIRED_ACTIONS[actionEndpoint]);
+
+  function parkDraftInMemory() {
+    memoryDraftStore.saveDraft({
+      userId,
+      chapterId,
+      formKey,
+      label: `Opening (${actionEndpoint})`,
+      baseVersion: Number.parseInt(expectedRevision, 10) || null,
+      pendingActionKey: null,
+      payloadJson: JSON.stringify({
+        selectedIpcId,
+        selectedRmId,
+        actionEndpoint,
+        cutoffAt,
+        notes,
+        reason,
+        inspectionNotes,
+        snapshotSha256,
+        acknowledgmentId,
+      }),
+    });
+    setStatusMessage('Opening draft inputs held in chapter-scoped RAM only.');
+  }
 
   const loadAll = useCallback(async () => {
     const [baseRes, ipcRes, rmRes] = await Promise.all([
@@ -419,20 +498,41 @@ export function OpeningBaselineWorkspace({ chapterId, refreshSignal }: OpeningBa
     const key = newActionKey();
     try {
       const { result } = await apiMutate<Record<string, unknown>>(target.method, target.path, buildOpeningBody(), key);
+      const { record, operationId } = unwrapMutationData<Record<string, unknown>>(result.data);
+      memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setReplayed(result.replayed);
       setDetailJson(result.data);
       setLookupKey(key);
-      if (typeof result.data.id === 'string' && actionEndpoint === 'createIpc') {
-        setSelectedIpcId(result.data.id);
+      if (operationId) {
+        setLookupOpId(operationId);
       }
-      if (typeof result.data.id === 'string' && actionEndpoint === 'createRm') {
-        setSelectedRmId(result.data.id);
+      if (typeof record.id === 'string' && actionEndpoint === 'createIpc') {
+        setSelectedIpcId(record.id);
       }
-      if (typeof result.data.revision === 'number') {
-        setExpectedRevision(String(result.data.revision));
+      if (typeof record.id === 'string' && actionEndpoint === 'createRm') {
+        setSelectedRmId(record.id);
       }
-      if (typeof result.data.material_version === 'number') {
-        setMaterialVersion(String(result.data.material_version));
+      if (typeof record.revision === 'number') {
+        setExpectedRevision(String(record.revision));
+      }
+      if (typeof record.material_version === 'number') {
+        setMaterialVersion(String(record.material_version));
+      }
+      if (typeof record.snapshot_sha256 === 'string') {
+        setSnapshotSha256(record.snapshot_sha256);
+      }
+      const ack =
+        record.acknowledgment && typeof record.acknowledgment === 'object'
+          ? (record.acknowledgment as Record<string, unknown>)
+          : null;
+      const ackId =
+        ack && typeof ack.acknowledgment_id === 'string'
+          ? ack.acknowledgment_id
+          : ack && typeof ack.id === 'string'
+            ? ack.id
+            : undefined;
+      if (ackId) {
+        setAcknowledgmentId(ackId);
       }
       setStatusMessage(`${actionEndpoint} succeeded. Action key: ${key}`);
       await loadAll();
@@ -522,7 +622,7 @@ export function OpeningBaselineWorkspace({ chapterId, refreshSignal }: OpeningBa
                 <option value="">-- select IPC --</option>
                 {ipcs.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {i.reference ?? i.id} ({i.status ?? '?'} r{i.revision ?? '?'} m{i.material_version ?? '?'})
+                    {i.reference ?? i.id} ({i.state ?? i.status ?? '?'} r{i.revision ?? '?'} m{i.material_version ?? '?'})
                   </option>
                 ))}
               </select>
@@ -554,7 +654,7 @@ export function OpeningBaselineWorkspace({ chapterId, refreshSignal }: OpeningBa
                 <option value="">-- select RM --</option>
                 {rms.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.reference ?? r.id} ({r.status ?? '?'} r{r.revision ?? '?'} m{r.material_version ?? '?'})
+                    {r.reference ?? r.id} ({r.state ?? r.status ?? '?'} r{r.revision ?? '?'} m{r.material_version ?? '?'})
                   </option>
                 ))}
               </select>
@@ -1021,9 +1121,15 @@ export function OpeningBaselineWorkspace({ chapterId, refreshSignal }: OpeningBa
               </div>
             )}
 
-            <button className="btn" type="submit" disabled={busy}>
-              Execute Opening Action
-            </button>
+            {opBlockReason && <div className="alert info">{opBlockReason}</div>}
+            <div className="row">
+              <button className="btn" type="submit" disabled={busy || opBlockReason !== null} title={opBlockReason ?? undefined}>
+                Execute Opening Action
+              </button>
+              <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
+                Hold Draft in RAM
+              </button>
+            </div>
           </form>
         </div>
 
