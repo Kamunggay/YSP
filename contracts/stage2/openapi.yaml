@@ -2352,11 +2352,14 @@ paths:
         Proposes a controlled material amendment (ordered quantity, unit price,
         variant/unit substitution on unreceived lines, delivery location/date, or terms)
         on an issued or partially_received PO with a mandatory non-blank reason (PRC-08,
-        RCV-07). Rejects quantity reductions below accepted_quantity or variant/unit
-        changes on lines with accepted_quantity > 0 with 409 po_has_accepted_receipts,
-        rejects totals exceeding approved RepF budget with 409 budget_limit_exceeded,
-        and allows at most one pending amendment per PO (409 invalid_transition). Does
-        not alter active PO lines, material_version, or inbound_open_po until
+        RCV-07). Re-validates effective purchasing_quotation_policy (409 setup_blocked /
+        quotation_policy_unmet if the amended total crosses into a higher tier without
+        sufficient comparable quotes or a permitted waiver), rejects quantity reductions
+        below accepted_quantity or variant/unit changes on lines with
+        accepted_quantity > 0 with 409 po_has_accepted_receipts, rejects totals
+        exceeding approved RepF budget with 409 budget_limit_exceeded, and allows at
+        most one pending amendment per PO (409 invalid_transition). Does not alter
+        active PO lines, material_version, or inbound_open_po until
         approvePurchaseOrderAmendment commits.
       security:
         - browserSession: []
@@ -2420,14 +2423,18 @@ paths:
       summary: Independently approve and apply a pending Purchase Order amendment
       description: >-
         Independently approves and atomically applies a pending PO amendment (PRC-08,
-        RCV-07). Requires BUDGET_APPROVER or CHAPTER_HEAD distinct from amendment
-        proposer, PO preparer, and originating Inventory RepF preparer (403
+        RCV-07). Requires BUDGET_APPROVER or CHAPTER_HEAD (intersected with
+        purchasing_quotation_policy.emergency_waiver.approving_duties when
+        emergency_waiver_used is true, else 403 duty_denied), strictly distinct from
+        amendment proposer, PO preparer, and originating Inventory RepF preparer (403
         independence_required), within actor grant limit_php (403 duty_limit_exceeded),
-        within approved RepF budget ceiling (409 budget_limit_exceeded), and rechecked
-        under PO lock against live accepted_quantity (409 po_has_accepted_receipts).
-        Bumps both version and material_version, preserves prior immutable snapshots,
-        and updates inbound_open_po and RepF ordered progress without changing usable
-        stockroom on-hand.
+        compliant with effective purchasing_quotation_policy for the amended total (409
+        setup_blocked / quotation_policy_unmet), within approved RepF budget ceiling
+        (409 budget_limit_exceeded), and rechecked under PO lock against live
+        accepted_quantity (409 po_has_accepted_receipts). Bumps both version and
+        material_version, preserves prior immutable snapshots, and updates
+        inbound_open_po and RepF ordered progress without changing usable stockroom
+        on-hand.
       security:
         - browserSession: []
           csrfProof: []
@@ -2493,10 +2500,11 @@ paths:
         Transitions an issued or partially_received PO to closed_short with a mandatory
         non-blank reason (PRC-08). Requires independent BUDGET_APPROVER or CHAPTER_HEAD
         distinct from both PO preparer and originating Inventory RepF preparer (403
-        independence_required). Sets closed_short_quantity = outstanding_quantity and
-        outstanding_quantity = 0, reducing inbound_open_po to 0 while preserving
-        accepted receipts, rejected/disputed counts, quarantined lots, and open
-        receiving discrepancies (RCV-06).
+        independence_required) and within actor grant DutyGrant.scope.limit_php >=
+        po.total_amount_php (403 duty_limit_exceeded). Sets closed_short_quantity =
+        outstanding_quantity and outstanding_quantity = 0, reducing inbound_open_po to 0
+        while preserving accepted receipts, rejected/disputed counts, quarantined lots,
+        and open receiving discrepancies (RCV-06).
       security:
         - browserSession: []
           csrfProof: []
@@ -8024,6 +8032,14 @@ components:
             properties:
               review_decision_reason:
                 type: string
+        - if:
+            properties:
+              status:
+                const: receiving_complete
+          then:
+            properties:
+              pending_amendment:
+                type: 'null'
         - if:
             properties:
               status:

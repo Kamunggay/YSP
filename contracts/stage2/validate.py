@@ -187,9 +187,13 @@ def check_donation_evidence(check_value, case, receipt):
         raise ValueError(f"{name}: evidence does not match signed DA material and manifest")
 
 
+def php_line_total(quantity_str, unit_price_str):
+    """Multiply exact quantity by PHP unit price and round half-up to scale 2."""
+    return (Decimal(quantity_str) * Decimal(unit_price_str)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 def check_repf_invariants(repf, label):
     """Verify RepF exact decimal totals, line quantity conservation, trigger uniqueness, and net-need math."""
-    two_dp = Decimal("0.01")
     total_php = Decimal("0.00")
     trigger_kinds = set()
     any_override = False
@@ -207,9 +211,7 @@ def check_repf_invariants(repf, label):
         remaining = Decimal(line["remaining_to_order_quantity"])
         if ordered + canceled + remaining != req:
             raise ValueError(f"{line_label}: ordered + canceled + remaining != requested_quantity")
-        expected_line_total = (req * Decimal(line["estimated_unit_cost_php"])).quantize(
-            two_dp, rounding=ROUND_HALF_UP
-        )
+        expected_line_total = php_line_total(line["requested_quantity"], line["estimated_unit_cost_php"])
         if Decimal(line["estimated_line_total_php"]) != expected_line_total:
             raise ValueError(f"{line_label}: estimated_line_total_php mismatch")
         total_php += expected_line_total
@@ -276,7 +278,6 @@ def check_repf_invariants(repf, label):
 
 def check_quotation_invariants(quotation, label):
     """Verify quotation line totals, grand total, and unique repf_line_id per quotation."""
-    two_dp = Decimal("0.01")
     total_php = Decimal("0.00")
     seen_repf_lines = set()
     for idx, line in enumerate(quotation["lines"]):
@@ -284,9 +285,7 @@ def check_quotation_invariants(quotation, label):
         if line["repf_line_id"] in seen_repf_lines:
             raise ValueError(f"{line_label}: duplicate repf_line_id within quotation")
         seen_repf_lines.add(line["repf_line_id"])
-        expected_line_total = (Decimal(line["quoted_quantity"]) * Decimal(line["unit_price_php"])).quantize(
-            two_dp, rounding=ROUND_HALF_UP
-        )
+        expected_line_total = php_line_total(line["quoted_quantity"], line["unit_price_php"])
         if Decimal(line["line_total_php"]) != expected_line_total:
             raise ValueError(f"{line_label}: line_total_php mismatch")
         total_php += expected_line_total
@@ -316,9 +315,26 @@ def check_supplier_selection_invariants(selection, label):
             raise ValueError(f"{label}: comparable quotes below tier required_minimum_quotes without waiver")
 
 
+def check_po_amendment_invariants(amend, po, label):
+    """Verify PO amendment PHP totals and approver independence."""
+    amend_total = sum(
+        (php_line_total(ln["ordered_quantity"], ln["unit_price_php"]) for ln in amend["lines"]),
+        Decimal("0.00"),
+    )
+    if Decimal(amend["proposed_total_php"]) != amend_total:
+        raise ValueError(f"{label}: amendment proposed_total_php mismatch")
+    if amend["status"] == "approved":
+        approver = amend["approved_by"]["user_id"]
+        if approver in {
+            amend["proposed_by"]["user_id"],
+            po["preparer"]["user_id"],
+            po["originating_repf_preparer"]["user_id"],
+        }:
+            raise ValueError(f"{label}: amendment approver violates independence")
+
+
 def check_po_invariants(po, label):
     """Verify PRC-06..PRC-09 PO quantity conservation, PHP totals, independence, and state invariants."""
-    two_dp = Decimal("0.01")
     zero = Decimal("0")
     total_php = Decimal("0.00")
     any_demand_canceled = False
@@ -337,9 +353,7 @@ def check_po_invariants(po, label):
             raise ValueError(
                 f"{line_label}: accepted + closed_short + canceled + outstanding != ordered_quantity"
             )
-        expected_line_total = (ordered * Decimal(line["unit_price_php"])).quantize(
-            two_dp, rounding=ROUND_HALF_UP
-        )
+        expected_line_total = php_line_total(line["ordered_quantity"], line["unit_price_php"])
         if Decimal(line["line_total_php"]) != expected_line_total:
             raise ValueError(f"{line_label}: line_total_php mismatch")
         total_php += expected_line_total
@@ -365,22 +379,17 @@ def check_po_invariants(po, label):
         raise ValueError(f"{label}: receiving_complete PO cannot have closed_short or canceled quantities")
     if status == "canceled" and any_accepted:
         raise ValueError(f"{label}: canceled PO cannot have accepted receipts")
-    if po["approved_by"] is not None:
-        approver_id = po["approved_by"]["user_id"]
-        if approver_id in {po["preparer"]["user_id"], po["originating_repf_preparer"]["user_id"]}:
-            raise ValueError(f"{label}: PO approver violates independence from PO or originating RepF preparer")
+    preparers = {po["preparer"]["user_id"], po["originating_repf_preparer"]["user_id"]}
+    if po["approved_by"] is not None and po["approved_by"]["user_id"] in preparers:
+        raise ValueError(f"{label}: PO approver violates independence from PO or originating RepF preparer")
+    if po["closed_short_by"] is not None and po["closed_short_by"]["user_id"] in preparers:
+        raise ValueError(f"{label}: PO close-short actor violates independence from PO or originating RepF preparer")
+    if po["canceled_by"] is not None and po["po_reference"] is not None and po["canceled_by"]["user_id"] in preparers:
+        raise ValueError(f"{label}: post-issuance PO cancel actor violates independence")
     if po["pending_amendment"] is not None:
-        amend = po["pending_amendment"]
-        if amend["status"] != "pending_approval":
+        if po["pending_amendment"]["status"] != "pending_approval":
             raise ValueError(f"{label}: pending_amendment must have status pending_approval")
-        amend_total = sum(
-            (Decimal(ln["ordered_quantity"]) * Decimal(ln["unit_price_php"])).quantize(
-                two_dp, rounding=ROUND_HALF_UP
-            )
-            for ln in amend["lines"]
-        )
-        if Decimal(amend["proposed_total_php"]) != amend_total:
-            raise ValueError(f"{label}: pending_amendment proposed_total_php mismatch")
+        check_po_amendment_invariants(po["pending_amendment"], po, label)
 
 
 def main():
@@ -633,22 +642,14 @@ def main():
                         elif rk == "purchase_order":
                             check_po_invariants(body_data["result"], name)
                         elif rk == "purchase_order_amendment":
-                            check_po_invariants(body_data["result"]["purchase_order"], name)
-                            amend = body_data["result"]["amendment"]
-                            if amend["status"] == "approved":
-                                approver = amend["approved_by"]["user_id"]
-                                po_obj = body_data["result"]["purchase_order"]
-                                if approver in {
-                                    amend["proposed_by"]["user_id"],
-                                    po_obj["preparer"]["user_id"],
-                                    po_obj["originating_repf_preparer"]["user_id"],
-                                }:
-                                    raise ValueError(f"{name}: amendment approver violates independence")
+                            po_obj = body_data["result"]["purchase_order"]
+                            check_po_invariants(po_obj, name)
+                            check_po_amendment_invariants(body_data["result"]["amendment"], po_obj, name)
         elif "body" in response:
             raise ValueError(f"{name}: bodyless status contains a body")
 
         operation_id = case["operationId"]
-        if operation_id in po_transitions and status.startswith("2") and "before_status" in case:
+        if operation_id in po_transitions and status.startswith("2"):
             receipt = response["body"]["data"]
             po_obj = (
                 receipt["result"]["purchase_order"]
@@ -660,6 +661,12 @@ def main():
                 raise ValueError(f"{name}: PO receipt has the wrong operation or status")
             if po_obj["status"] not in allowed:
                 raise ValueError(f"{name}: invalid PO state transition")
+        if operation_id in po_transitions and status == "409" and "before_status" in case:
+            if (
+                response["body"]["error"]["code"] != "invalid_transition"
+                or case["before_status"] in po_transitions[operation_id]
+            ):
+                raise ValueError(f"{name}: fixture does not show a disallowed PO transition")
         if operation_id in donation_transitions and status.startswith("2"):
             receipt = response["body"]["data"]
             allowed = donation_transitions[operation_id].get(case["before_status"], [])
