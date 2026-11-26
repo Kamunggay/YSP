@@ -99,6 +99,7 @@
 }
 
 .nav-btn {
+  width: 100%;
   text-align: left;
   background: transparent;
   color: #102a43;
@@ -109,6 +110,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   font-size: 0.9rem;
 }
 
@@ -124,6 +126,8 @@
 }
 
 .nav-code {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 0.72rem;
   color: #486581;
   font-family: ui-monospace, monospace;

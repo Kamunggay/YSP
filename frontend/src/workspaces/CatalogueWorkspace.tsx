@@ -224,11 +224,24 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
       : `/api/v1/chapters/${chapterId}/catalogue/${entity}`;
 
     try {
-      const { result } = await apiMutate<CatalogueRecord>(isReplace ? 'PUT' : 'POST', url, body, key);
+      const { result } = await apiMutate<{ operation_id?: string; resource?: CatalogueRecord } | CatalogueRecord>(
+        isReplace ? 'PUT' : 'POST',
+        url,
+        body,
+        key,
+      );
+      const payload = result.data as { operation_id?: string; resource?: CatalogueRecord } & Partial<CatalogueRecord>;
+      const record = payload.resource ?? (payload as CatalogueRecord);
+      const opPrefix = isReplace ? 'replaceCatalogue' : 'createCatalogue';
+      const opEntity = entity === 'items' ? 'Item' : entity === 'variants' ? 'Variant' : entity === 'units' ? 'Unit' : 'Location';
       memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setReplayed(result.replayed);
-      setStatusMessage(`${isReplace ? 'Replaced' : 'Created'} ${entity} ${result.data.code} (v${result.data.material_version}). Key: ${key}`);
+      setStatusMessage(`${isReplace ? 'Replaced' : 'Created'} ${entity} ${record.code} (v${record.material_version}). Key: ${key}`);
+      setOpName(`${opPrefix}${opEntity}`);
       setLookupKey(key);
+      if (payload.operation_id) {
+        setLookupOpId(payload.operation_id);
+      }
       setSelected(null);
       setCode('');
       setTitleField('');
@@ -305,7 +318,7 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
   return (
     <div>
       <div className="card">
-        <h2>Stage 1 Catalogue (`PUT` Versioned + Sticky Precision)</h2>
+        <h2>Stage 1 Catalogue (PUT Versioned + Sticky Precision)</h2>
         <div className="tabs">
           {(['items', 'variants', 'units', 'locations'] as const).map((tab) => (
             <button
@@ -486,14 +499,14 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal }: Catalog
         </div>
 
         <div className="card">
-          <h3>Operation Outcome Lookup (`Ticket 03`)</h3>
+          <h3>Operation Outcome Lookup (Ticket 03)</h3>
           <form onSubmit={lookupOperation}>
             <div className="field" style={{ marginBottom: '0.6rem' }}>
               <label htmlFor="op-name">operation_name</label>
               <input id="op-name" required value={opName} onChange={(e) => setOpName(e.target.value)} />
             </div>
             <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="op-key">action_key (`X-Action-Key` UUID)</label>
+              <label htmlFor="op-key">action_key (X-Action-Key UUID)</label>
               <input id="op-key" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
             </div>
             <button className="btn secondary" type="submit">

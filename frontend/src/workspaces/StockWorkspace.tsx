@@ -176,9 +176,9 @@ export function StockWorkspace({ chapterId, refreshSignal }: StockWorkspaceProps
   return (
     <div>
       <div className="card">
-        <h2>Seven Non-Additive Stock Views &amp; Eligibility (`INV-03`)</h2>
+        <h2>Seven Non-Additive Stock Views &amp; Eligibility (INV-03)</h2>
         <p className="muted">
-          Advisory snapshots only (`views_are_additive: false`). Never sum Usable On-Hand, Available, RF/SO Reserved, Booth Custody, Quarantined, and Inbound PO together.
+          Advisory snapshots only (views_are_additive: false). Never sum Usable On-Hand, Available, RF/SO Reserved, Booth Custody, Quarantined, and Inbound PO together.
         </p>
 
         <OperationBanner error={error} />
