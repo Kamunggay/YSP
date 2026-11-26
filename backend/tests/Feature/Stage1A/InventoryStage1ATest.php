@@ -3,8 +3,12 @@
 namespace Tests\Feature\Stage1A;
 
 use App\Models\ActualIssue;
+use App\Models\AuditLog;
 use App\Models\BrowserSession;
+use App\Models\CatalogueItem;
+use App\Models\CatalogueLocation;
 use App\Models\CatalogueUnit;
+use App\Models\CatalogueVariant;
 use App\Models\Chapter;
 use App\Models\ChapterMembership;
 use App\Models\DutyGrant;
@@ -14,6 +18,7 @@ use App\Models\InternalRf;
 use App\Models\OpeningCount;
 use App\Models\OpeningRecordHistory;
 use App\Models\OpeningRm;
+use App\Models\PolicyRecord;
 use App\Models\StockHold;
 use App\Models\User;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
@@ -447,25 +452,90 @@ class InventoryStage1ATest extends TestCase
     public function test_opening_evidence_match_and_post_use_the_approved_snapshot_and_current_paper(): void
     {
         $rm = $this->evidenceDraft();
-        $rm->ipc->update(['status' => 'AUTHORIZED']);
-        $material = [
-            'ipc_id' => $rm->ipc_id, 'ipc_material_version' => 1,
-            'rm_material_version' => 1, 'rm_material' => ['ipc_id' => $rm->ipc_id],
-            'inspection' => ['inspected_at' => now('UTC')->subMinute()->toISOString()],
+        $observer = User::create([
+            'public_id' => 'observer@example.invalid', 'name' => 'Observer', 'email' => 'observer@example.invalid',
+            'password_hash' => hash('sha256', 'test credential'), 'status' => 'active',
+        ]);
+        ChapterMembership::create(['id' => (string) Str::uuid(), 'chapter_id' => $this->chapterId, 'user_id' => $observer->id, 'membership_status' => 'active', 'version' => 1]);
+        foreach (['INDEPENDENT_REVIEWER', 'CHAPTER_HEAD', 'FINANCE'] as $duty) {
+            DutyGrant::create(['id' => (string) Str::uuid(), 'chapter_id' => $this->chapterId, 'user_id' => $observer->id, 'duty_code' => $duty, 'status' => 'active', 'is_alternate' => false, 'valid_from' => now()->subDay(), 'version' => 1]);
+        }
+        $unit = CatalogueUnit::create(['chapter_id' => $this->chapterId, 'code' => 'PCS', 'name' => 'Pieces', 'quantity_kind' => 'piece', 'quantity_scale' => 0, 'state' => 'active', 'material_version' => 1]);
+        $item = CatalogueItem::create(['chapter_id' => $this->chapterId, 'code' => 'SHIRT', 'name' => 'Shirt', 'unit_id' => $unit->id, 'state' => 'active', 'material_version' => 1]);
+        $variant = CatalogueVariant::create(['chapter_id' => $this->chapterId, 'item_id' => $item->id, 'sku' => 'SHIRT-M', 'name' => 'Shirt M', 'unit_id' => $unit->id, 'quantity_scale' => 0, 'state' => 'active', 'material_version' => 1]);
+        $location = CatalogueLocation::create(['chapter_id' => $this->chapterId, 'code' => 'MAIN', 'name' => 'Main', 'kind' => 'stockroom', 'custodian_id' => $this->userId, 'state' => 'active', 'material_version' => 1]);
+
+        $cutoff = now('UTC')->subMinutes(10)->format('Y-m-d\TH:i:s.u\Z');
+        $countedAt = now('UTC')->subMinutes(5)->format('Y-m-d\TH:i:s.u\Z');
+        $signedAt = now('UTC')->subMinutes(3)->format('Y-m-d\TH:i:s.u\Z');
+        $authorizedAt = now('UTC')->subMinutes(2)->format('Y-m-d\TH:i:s.u\Z');
+        $inspectedAt = now('UTC')->subMinute()->format('Y-m-d\TH:i:s.u\Z');
+
+        $policyBindings = [];
+        foreach ([
+            'ipc_authorization' => ['CHAPTER_HEAD', 'IpcAuthorizationPolicyValue', ['cutoff_at' => $cutoff, 'count_team_ids' => [$this->userId, $observer->id], 'suspension_record_reference' => 'SUSP-1']],
+            'reference_series' => ['CHAPTER_HEAD', 'OpeningReferencePolicyValue', ['ipc_prefix' => 'CEB-IPC', 'rm_prefix' => 'CEB-RM', 'minimum_digits' => 6]],
+            'valuation_rounding' => ['FINANCE', 'OpeningValuationPolicyValue', ['currency' => 'PHP', 'unit_value_scale' => 2, 'rounding_mode' => 'half_up', 'round_at' => 'accepted_line', 'valuation_basis_reference' => 'VAL-1']],
+        ] as $k => [$owner, $schema, $val]) {
+            $pid = (string) Str::uuid();
+            PolicyRecord::create(['id' => $pid, 'aggregate_id' => $pid, 'chapter_id' => $this->chapterId, 'policy_code' => $k, 'policy_version' => 1, 'rules_json' => $val, 'effective_from' => now()->subHour()]);
+            AuditLog::create(['chapter_id' => $this->chapterId, 'user_id' => $observer->id, 'action' => 'controlled:recordPolicy', 'entity_type' => 'policy', 'entity_id' => $pid, 'details' => ['version' => 1, 'subject_id' => null, 'value_schema_reference' => '#/components/schemas/'.$schema, 'value_sha256' => CanonicalJson::sha256($val), 'approvals' => [['authority' => $owner, 'approver_id' => $observer->id]]]]);
+            $policyBindings[] = ['setting_key' => $k, 'policy_id' => $pid, 'version' => 1];
+        }
+
+        $files = [['application/pdf', $this->paperPdf()]];
+        $paper = $this->asOfficer($this->userId)->uploadPaper($rm, (string) Str::uuid(), $files)->assertCreated()->json('data');
+        $bytes = $this->byteBinding($paper);
+        $lineId = (string) Str::uuid();
+        $ipcMaterial = [
+            'cutoff_at' => $cutoff, 'informal_movements_suspended' => true,
+            'count_team' => [['user_id' => $this->userId, 'regular_custodian' => true], ['user_id' => $observer->id, 'regular_custodian' => false]],
+            'policies' => $policyBindings,
+            'lines' => [[
+                'line_id' => $lineId, 'item_id' => $item->id, 'variant_id' => $variant->id, 'variant_material_version' => 1,
+                'unit_id' => $unit->id, 'unit_material_version' => 1, 'quantity_scale' => 0, 'historical_variant_label' => 'Shirt M',
+                'location_id' => $location->id, 'location_material_version' => 1, 'regular_custodian_ids' => [$this->userId],
+                'condition' => 'usable', 'counted_quantity' => '10', 'unit_value' => '25.00', 'valuation_basis' => 'Cost', 'provenance_reference' => 'S-1',
+                'restrictions' => ['state' => 'unrestricted', 'allowed_uses' => ['internal_use'], 'event_ids' => [], 'requesting_unit_ids' => [], 'effective_from' => null, 'effective_until' => null, 'interpretation_id' => null, 'source_condition_reference' => null],
+            ]],
+            'notes' => null,
         ];
-        $rm->update(['status' => 'INSPECTED', 'snapshot_data' => $material]);
+        $counts = [
+            ['actor_id' => $this->userId, 'material_version' => 1, 'counted_at' => $countedAt, 'completed' => true, 'signed_at' => $countedAt, 'entries' => [['ipc_line_id' => $lineId, 'quantity' => '10', 'condition' => 'usable', 'notes' => null]]],
+            ['actor_id' => $observer->id, 'material_version' => 1, 'counted_at' => $countedAt, 'completed' => true, 'signed_at' => $countedAt, 'entries' => [['ipc_line_id' => $lineId, 'quantity' => '10', 'condition' => 'usable', 'notes' => null]]],
+        ];
+        $auths = [
+            ['id' => (string) Str::uuid(), 'actor_id' => $observer->id, 'duty' => 'CHAPTER_HEAD', 'material_version' => 1, 'authorized_at' => $authorizedAt, 'signed_at' => $signedAt, 'signed_ipc' => $bytes],
+            ['id' => (string) Str::uuid(), 'actor_id' => $observer->id, 'duty' => 'FINANCE', 'material_version' => 1, 'authorized_at' => $authorizedAt, 'signed_at' => $signedAt, 'signed_ipc' => $bytes],
+        ];
+        $rm->ipc->update([
+            'status' => 'AUTHORIZED', 'ipc_number' => 'CEB-IPC-2026-000001',
+            'material_json' => $ipcMaterial, 'counts_json' => $counts, 'signed_ipc_json' => $bytes, 'authorizations_json' => $auths,
+        ]);
+
+        $rmMaterial = [
+            'ipc_material_version' => 1,
+            'lines' => [['ipc_line_id' => $lineId, 'accepted_quantity' => '10', 'damaged_quantity' => '0', 'rejected_quantity' => '0', 'accepted_value' => '250.00', 'finding_reason' => null]],
+            'notes' => null,
+        ];
+        $material = [
+            'chapter_id' => $this->chapterId, 'rm_id' => $rm->id, 'rm_material_version' => 1,
+            'ipc_id' => $rm->ipc_id, 'ipc_material_version' => 1, 'ipc_reference' => 'CEB-IPC-2026-000001',
+            'material' => $ipcMaterial, 'counts' => $counts, 'signed_ipc' => $bytes, 'authorizations' => $auths,
+            'rm_material' => $rmMaterial,
+            'inspection' => ['inspector_id' => $this->userId, 'inspected_at' => $inspectedAt, 'material_version' => 1, 'technical_representative_id' => null, 'inspection_notes' => 'Checked'],
+        ];
+        $rm->update(['status' => 'INSPECTED', 'prepared_by' => $this->userId, 'material_json' => $rmMaterial, 'snapshot_data' => $material, 'snapshot_sha256' => CanonicalJson::sha256($material)]);
         OpeningRecordHistory::create([
             'chapter_id' => $this->chapterId, 'record_type' => 'OPENING_RM', 'record_id' => $rm->id,
             'revision' => 1, 'material_version' => 1, 'event_type' => 'created', 'actor_user_id' => $this->userId,
             'snapshot_json' => $rm->toArray(), 'created_at' => now(),
         ]);
 
-        $files = [['application/pdf', $this->paperPdf()]];
-        $paper = $this->asOfficer($this->userId)->uploadPaper($rm, (string) Str::uuid(), $files)->assertCreated()->json('data');
         $path = "/api/v1/chapters/{$this->chapterId}/opening-rms/{$rm->id}";
         $request = [
             'expected_revision' => 1, 'material_version' => 1, 'snapshot_sha256' => CanonicalJson::sha256($material),
-            'bytes' => $this->byteBinding($paper), 'acknowledged_at' => now('UTC')->toISOString(),
+            'bytes' => $bytes, 'acknowledged_at' => now('UTC')->toISOString(),
         ];
         $key = (string) Str::uuid();
         $this->postJson("{$path}/evidence-match", ['snapshot_sha256' => hash('sha256', 'wrong paper')] + $request, ['X-Action-Key' => $key])

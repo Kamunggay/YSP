@@ -79,6 +79,72 @@ class CheckEvidenceBindingParticipant
         return ['outcome' => 'ready', 'binding' => $binding, 'snapshot' => $snapshot, 'acknowledgment_id' => $acknowledgment['acknowledgment_id']];
     }
 
+    /**
+     * Verify that a supplied EvidenceByteBinding matches the current, intact version of an EvidenceRecord.
+     *
+     * @param  callable(EvidenceRecord): bool  $targetMatches
+     * @return array<string, mixed>
+     */
+    public function verifyCurrentBytes(string $chapterId, array $binding, string $expectedPurpose, callable $targetMatches): array
+    {
+        $record = EvidenceRecord::where('chapter_id', $chapterId)
+            ->whereKey($binding['evidence_id'] ?? '')
+            ->sharedLock()
+            ->first();
+        if (! $record) {
+            throw new ContractException(409, 'evidence_missing', 'Signed paper evidence was not found.');
+        }
+        if ($record->purpose !== $expectedPurpose || ! $targetMatches($record)) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence does not match the required target.');
+        }
+
+        $versionId = (string) ($binding['version_id'] ?? '');
+        $blobs = $record->exactVersion($versionId);
+        if ($blobs->isEmpty()) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence version was not found.');
+        }
+
+        try {
+            [, $invalidReason] = $this->store->checkVersion($blobs);
+        } catch (ContractException $exception) {
+            if ($exception->statusCode === 503) {
+                throw new ContractException(503, 'unavailable', 'Signed paper verification is temporarily unavailable.');
+            }
+            throw $exception;
+        }
+        if ($invalidReason !== null) {
+            throw new ContractException(409, 'evidence_invalid', 'Signed paper evidence failed integrity or safety verification.');
+        }
+
+        $current = $record->currentVersionBlob();
+        if (! $current || $record->versionId($current) !== $versionId) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence version has been superseded.');
+        }
+
+        $actual = [
+            'evidence_id' => $record->id,
+            'version_id' => $versionId,
+            'attachments' => $blobs->map(fn (EvidenceBlob $b) => [
+                'attachment_id' => $b->id,
+                'sha256' => $b->sha256_hash,
+            ])->values()->all(),
+        ];
+        if (CanonicalJson::encode($actual) !== CanonicalJson::encode($binding)) {
+            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence attachments do not match the current version.');
+        }
+
+        return $actual;
+    }
+
+    public function invalidateActiveForTarget(string $chapterId, string $sourceType, string $sourceId): void
+    {
+        EvidenceBinding::where('chapter_id', $chapterId)
+            ->where('source_type', $sourceType)
+            ->where('source_id', $sourceId)
+            ->where('status', 'active')
+            ->update(['status' => 'invalidated']);
+    }
+
     public function recordMatch(string $chapterId, string $actorId, array $snapshot, array $bytes, ?string $recipientId, string $recipientName, string $acknowledgedAt, ?array $current): EvidenceBinding
     {
         $id = $bytes['evidence_id'] ?? null;

@@ -10,6 +10,7 @@ use App\Models\CatalogueItem;
 use App\Models\CatalogueLocation;
 use App\Models\CatalogueUnit;
 use App\Models\CatalogueVariant;
+use App\Models\Chapter;
 use App\Models\ChapterMembership;
 use App\Models\EvidenceBinding;
 use App\Models\EvidenceBlob;
@@ -22,11 +23,12 @@ use App\Models\OpeningRm;
 use App\Models\PolicyRecord;
 use App\Models\User;
 use App\Services\Authority\ChapterAuthority;
-use App\Services\Evidence\PaperEvidenceStore;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\CanonicalJson;
 use App\Services\Shared\ReferenceSequenceService;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -51,22 +53,13 @@ final class OpeningDraftService
 
     private const PRINT_CSP = "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
-    private readonly CheckEvidenceBindingParticipant $checkEvidenceBinding;
-
-    private readonly PaperEvidenceStore $paperStore;
-
-    private readonly ReferenceSequenceService $referenceSequences;
+    private const MAX_PHP_VALUE = '999999999999.99';
 
     public function __construct(
         private readonly DomainNotificationOutboxService $outbox,
-        ?CheckEvidenceBindingParticipant $checkEvidenceBinding = null,
-        ?PaperEvidenceStore $paperStore = null,
-        ?ReferenceSequenceService $referenceSequences = null,
-    ) {
-        $this->checkEvidenceBinding = $checkEvidenceBinding ?? app(CheckEvidenceBindingParticipant::class);
-        $this->paperStore = $paperStore ?? app(PaperEvidenceStore::class);
-        $this->referenceSequences = $referenceSequences ?? app(ReferenceSequenceService::class);
-    }
+        private readonly CheckEvidenceBindingParticipant $checkEvidenceBinding,
+        private readonly ReferenceSequenceService $referenceSequences,
+    ) {}
 
     public function listIpcs(Request $request, string $chapterId): JsonResponse
     {
@@ -372,7 +365,7 @@ final class OpeningDraftService
                 }
 
                 $material = $this->normalizedIpcMaterial($ipc);
-                $policies = $this->requireEffectiveOpeningPolicies($authority, $chapterId, $ipc->id, $material);
+                $policies = $this->resolvePolicies($authority, $chapterId, $ipc->id, $material, requireAll: true);
                 $custodians = $this->assertCompleteIpcMaterial($chapterId, $material);
                 $now = now('UTC');
                 $this->assertIndependentAgreedCounts($chapterId, $ipc, $material, $custodians, $now);
@@ -457,8 +450,14 @@ final class OpeningDraftService
                 }
 
                 $material = $this->normalizedIpcMaterial($ipc);
-                $this->requireEffectiveOpeningPolicies($authority, $chapterId, $ipc->id, $material);
+                $policies = $this->resolvePolicies($authority, $chapterId, $ipc->id, $material, requireAll: true);
                 $custodians = $this->assertCompleteIpcMaterial($chapterId, $material);
+                $roundingMode = (string) ($policies['valuation_rounding']->rules_json['rounding_mode'] ?? '');
+                $ipcTotalPhp = $this->ipcTotalValuation($material['lines'], $roundingMode);
+                if (! $authority->allowsDuty($payload['duty'], decisionScope: 'ipc_authorization:'.$ipcId, amount: $ipcTotalPhp)) {
+                    throw new ContractException(403, 'duty_denied', 'Current duty monetary limit does not permit this authorization.');
+                }
+
                 $now = now('UTC');
                 $completedCounts = $this->assertIndependentAgreedCounts($chapterId, $ipc, $material, $custodians, $now);
 
@@ -740,7 +739,7 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $rmId, $actor, $key, $payload): array {
-                $rm = $this->findRm($chapterId, $rmId, lock: true);
+                [$ipc, $rm] = $this->lockIpcThenRm($chapterId, $rmId);
                 if (self::rmState($rm) === 'posted') {
                     throw new ContractException(409, 'target_locked', 'Posted Opening RM cannot be replaced.');
                 }
@@ -749,7 +748,6 @@ final class OpeningDraftService
                     throw new ContractException(409, 'version_conflict', 'Opening RM revision is stale.');
                 }
 
-                $ipc = $this->findIpc($chapterId, $rm->ipc_id, lock: false);
                 $material = $this->validateRmMaterial($ipc, $payload['material']);
                 $now = now('UTC')->startOfSecond();
 
@@ -767,11 +765,7 @@ final class OpeningDraftService
                 $rm->acknowledgment_json = null;
                 $rm->updated_at = $now;
                 $rm->save();
-                EvidenceBinding::where('chapter_id', $chapterId)
-                    ->where('source_type', 'opening_receipt')
-                    ->where('source_id', $rm->id)
-                    ->where('status', 'active')
-                    ->update(['status' => 'invalidated']);
+                $this->checkEvidenceBinding->invalidateActiveForTarget($chapterId, 'opening_receipt', $rm->id);
 
                 $record = $this->formatRm($rm);
                 $operation = $this->operationReceipt($operationId, 'replaceOpeningRm', $key, $actor, $chapterId, 'opening_rm', $rm->id, (int) $rm->revision, (int) $rm->material_version, 200, $now);
@@ -799,7 +793,7 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $rmId, $actor, $authority, $key, $payload): array {
-                $rm = $this->findRm($chapterId, $rmId, lock: true);
+                [$ipc, $rm] = $this->lockIpcThenRm($chapterId, $rmId);
                 $state = self::rmState($rm);
                 if ($state === 'posted') {
                     throw new ContractException(409, 'target_locked', 'Posted Opening RM cannot be inspected.');
@@ -812,7 +806,6 @@ final class OpeningDraftService
                     throw new ContractException(409, 'version_conflict', 'Opening RM revision is stale.');
                 }
 
-                $ipc = $this->findIpc($chapterId, $rm->ipc_id, lock: false);
                 $ipcState = self::ipcState($ipc);
                 if ($ipcState === 'posted') {
                     throw new ContractException(409, 'target_locked', 'Source IPC is already posted.');
@@ -828,7 +821,7 @@ final class OpeningDraftService
                 }
 
                 $ipcMaterial = $this->normalizedIpcMaterial($ipc);
-                $policies = $this->requireEffectiveOpeningPolicies($authority, $chapterId, $ipc->id, $ipcMaterial);
+                $policies = $this->resolvePolicies($authority, $chapterId, $ipc->id, $ipcMaterial, requireAll: true);
                 $custodians = $this->assertCompleteIpcMaterial($chapterId, $ipcMaterial);
                 $now = now('UTC');
                 $completedCounts = $this->assertIndependentAgreedCounts($chapterId, $ipc, $ipcMaterial, $custodians, $now);
@@ -837,7 +830,9 @@ final class OpeningDraftService
                     throw new ContractException(409, 'evidence_missing', 'Source IPC is missing its signed paper binding.');
                 }
                 $signedIpc = $this->verifyOpeningEvidenceBytes($chapterId, $ipc->signed_ipc_json, $ipc->id, $rm->id);
-                $authorizations = $this->assertAuthorizationsCurrent($ipc, $signedIpc);
+                $roundingMode = (string) ($policies['valuation_rounding']->rules_json['rounding_mode'] ?? '');
+                $ipcTotalPhp = $this->ipcTotalValuation($ipcMaterial['lines'], $roundingMode);
+                $authorizations = $this->assertAuthorizationsCurrent($chapterId, $ipc, $signedIpc, $ipcTotalPhp);
 
                 $inspectedAt = CarbonImmutable::parse($payload['inspected_at'], 'UTC');
                 if ($inspectedAt->gt($now)) {
@@ -855,7 +850,6 @@ final class OpeningDraftService
                     throw new ContractException(409, 'invalid_source', 'Technical representative must be an active chapter member.');
                 }
 
-                $roundingMode = (string) ($policies['valuation_rounding']->rules_json['rounding_mode'] ?? '');
                 $this->validateInspectedRmLines($ipcMaterial['lines'], $rmMaterial, $roundingMode);
 
                 $inspection = [
@@ -918,18 +912,27 @@ final class OpeningDraftService
             $payload,
             200,
             function (string $operationId) use ($chapterId, $rmId, $actor, $authority, $key, $payload): array {
-                $rm = $this->findRm($chapterId, $rmId, lock: true);
+                [$ipc, $rm] = $this->lockIpcThenRm($chapterId, $rmId);
                 $state = self::rmState($rm);
                 if ($state === 'posted') {
                     throw new ContractException(409, 'target_locked', 'Posted Opening RM cannot be matched.');
                 }
-                if (! in_array($state, ['inspected', 'matched'], true)) {
-                    throw new ContractException(409, 'invalid_transition', 'Inspect the Opening RM before matching.');
+                $existingBinding = $rm->evidence_binding_id
+                    ? EvidenceBinding::where('chapter_id', $chapterId)->whereKey($rm->evidence_binding_id)->sharedLock()->first()
+                    : null;
+                $effectiveState = $state === 'matched' && $existingBinding && $existingBinding->status !== 'active'
+                    ? 'inspected'
+                    : $state;
+                if ($effectiveState !== 'inspected') {
+                    throw new ContractException(409, 'invalid_transition', 'Opening RM must be inspected and awaiting evidence matching.');
                 }
                 $this->assertBaselineNotPosted($chapterId);
 
+                if (self::ipcState($ipc) !== 'authorized') {
+                    throw new ContractException(409, 'source_not_authorized', 'The authorized source IPC is required before matching.');
+                }
+
                 $snapshotData = $rm->snapshot_data;
-                $ipc = OpeningCount::where('chapter_id', $chapterId)->whereKey($rm->ipc_id)->sharedLock()->first();
                 $preparer = $rm->prepared_by ?? OpeningRecordHistory::where('chapter_id', $chapterId)
                     ->where('record_type', 'OPENING_RM')
                     ->where('record_id', $rm->id)
@@ -937,9 +940,6 @@ final class OpeningDraftService
                     ->sharedLock()
                     ->value('actor_user_id');
 
-                if (! $ipc || self::ipcState($ipc) !== 'authorized') {
-                    throw new ContractException(409, 'source_not_authorized', 'The authorized source IPC is required before matching.');
-                }
                 if (! is_array($snapshotData) || ($snapshotData['ipc_id'] ?? null) !== $ipc->id
                     || ($snapshotData['ipc_material_version'] ?? null) !== (int) $ipc->material_version) {
                     throw new ContractException(409, 'snapshot_stale', 'The inspected Opening RM snapshot no longer matches the authorized IPC.');
@@ -949,17 +949,24 @@ final class OpeningDraftService
                     throw new ContractException(409, 'invalid_source', 'The approved inspection snapshot is required.');
                 }
 
-                if (is_array($ipc->material_json) && ($ipc->material_json['policies'] ?? []) !== []) {
-                    $this->requireEffectiveOpeningPolicies($authority, $chapterId, $ipc->id, $this->normalizedIpcMaterial($ipc));
+                $ipcMaterial = $this->normalizedIpcMaterial($ipc);
+                $policies = $this->resolvePolicies($authority, $chapterId, $ipc->id, $ipcMaterial, requireAll: true);
+                $custodians = $this->assertCompleteIpcMaterial($chapterId, $ipcMaterial);
+                $now = now('UTC');
+                $this->assertIndependentAgreedCounts($chapterId, $ipc, $ipcMaterial, $custodians, $now);
+
+                if (! is_array($ipc->signed_ipc_json) || ! isset($snapshotData['signed_ipc'])) {
+                    throw new ContractException(409, 'evidence_missing', 'The signed IPC paper binding is required.');
                 }
-                if (is_array($ipc->signed_ipc_json) || isset($snapshotData['signed_ipc'])) {
-                    if (! is_array($ipc->signed_ipc_json) || ! isset($snapshotData['signed_ipc'])
-                        || CanonicalJson::encode($ipc->signed_ipc_json) !== CanonicalJson::encode($snapshotData['signed_ipc'])) {
-                        throw new ContractException(409, 'evidence_mismatch', 'The signed IPC paper no longer matches the inspected snapshot.');
-                    }
-                    $this->verifyOpeningEvidenceBytes($chapterId, $ipc->signed_ipc_json, $ipc->id, $rm->id);
-                    $this->assertAuthorizationsCurrent($ipc, $ipc->signed_ipc_json);
+                if (CanonicalJson::encode($ipc->signed_ipc_json) !== CanonicalJson::encode($snapshotData['signed_ipc'])) {
+                    throw new ContractException(409, 'evidence_mismatch', 'The signed IPC paper no longer matches the inspected snapshot.');
                 }
+                $this->verifyOpeningEvidenceBytes($chapterId, $ipc->signed_ipc_json, $ipc->id, $rm->id);
+
+                $roundingMode = (string) ($policies['valuation_rounding']->rules_json['rounding_mode'] ?? '');
+                $ipcTotalPhp = $this->ipcTotalValuation($ipcMaterial['lines'], $roundingMode);
+                $authorizations = $this->assertAuthorizationsCurrent($chapterId, $ipc, $ipc->signed_ipc_json, $ipcTotalPhp);
+                $this->validateInspectedRmLines($ipcMaterial['lines'], $snapshotData['rm_material'], $roundingMode);
 
                 $evidenceSnapshot = $rm->evidenceSnapshot();
                 if ($payload['expected_revision'] !== (int) $rm->revision
@@ -968,23 +975,18 @@ final class OpeningDraftService
                     throw new ContractException(409, 'version_conflict', 'The inspected Opening RM snapshot has changed.');
                 }
 
-                $now = now('UTC');
-                $ackAt = CarbonImmutable::parse($payload['acknowledged_at'], 'UTC');
                 $inspectedAt = CarbonImmutable::parse($snapshotData['inspection']['inspected_at'], 'UTC');
-                if ($ackAt->lt($inspectedAt) || $ackAt->gt($now)) {
-                    throw new ContractException(409, 'invalid_source', 'Acknowledgment timestamp must be between inspection and current time.');
+                $ackAt = CarbonImmutable::parse($payload['acknowledged_at'], 'UTC');
+                if ($inspectedAt->lt(CarbonImmutable::parse($ipcMaterial['cutoff_at'], 'UTC')) || $ackAt->lt($inspectedAt) || $ackAt->gt($now)) {
+                    throw new ContractException(409, 'invalid_source', 'Acknowledgment timestamp must follow inspection and not be in the future.');
+                }
+                foreach ($authorizations as $auth) {
+                    if ($inspectedAt->lt(CarbonImmutable::parse($auth['authorized_at'], 'UTC'))) {
+                        throw new ContractException(409, 'invalid_source', 'Inspection timestamp cannot precede IPC authorization.');
+                    }
                 }
 
-                $evidenceRecord = EvidenceRecord::where('chapter_id', $chapterId)
-                    ->whereKey($payload['bytes']['evidence_id'])
-                    ->sharedLock()
-                    ->first();
-                if (! $evidenceRecord) {
-                    throw new ContractException(409, 'evidence_missing', 'The signed receipt paper evidence was not found.');
-                }
-                if ($evidenceRecord->purpose !== 'opening_receipt' || $evidenceRecord->record_id !== $rm->id) {
-                    throw new ContractException(409, 'evidence_mismatch', 'The signed paper evidence must belong to this Opening RM.');
-                }
+                $this->verifyOpeningEvidenceBytes($chapterId, $payload['bytes'], $ipc->id, $rm->id);
 
                 $binding = $this->checkEvidenceBinding->recordMatch(
                     $chapterId,
@@ -1182,111 +1184,8 @@ final class OpeningDraftService
     /** @return array<string, mixed> */
     private function validateIpcMaterial(ChapterAuthority $authority, string $chapterId, ?string $ipcId, array $material): array
     {
-        $policiesByKey = [];
-        $blockers = [];
-        foreach ($material['policies'] as $binding) {
-            $key = $binding['setting_key'];
-            if (isset($policiesByKey[$key])) {
-                throw new ContractException(409, 'invalid_source', "Duplicate policy binding for {$key}.");
-            }
-            [$owner, $schema] = self::POLICY_RULES[$key];
-            $policy = PolicyRecord::where('chapter_id', $chapterId)
-                ->where('policy_code', $key)
-                ->where('policy_version', $binding['version'])
-                ->where(fn ($q) => $q->where('aggregate_id', $binding['policy_id'])->orWhere('id', $binding['policy_id']))
-                ->sharedLock()
-                ->first();
-
-            if (! $policy) {
-                $blockers[] = ChapterAuthority::setupBlocker($key, $owner, 'missing');
-
-                continue;
-            }
-            $state = $authority->policyState($policy, $owner, $schema, $key === 'ipc_authorization' ? $ipcId : null);
-            if ($state !== 'effective') {
-                $blockers[] = ChapterAuthority::setupBlocker($key, $owner, $state ?? 'unapproved');
-
-                continue;
-            }
-            $policiesByKey[$key] = $policy;
-        }
-        if ($blockers !== []) {
-            throw new ContractException(428, 'setup_blocked', 'Required chapter setup is not currently effective.', [
-                'error' => [
-                    'code' => 'setup_blocked',
-                    'message' => 'Required chapter setup is not currently effective.',
-                    'blockers' => $blockers,
-                ],
-            ]);
-        }
-
-        if (isset($policiesByKey['ipc_authorization'])) {
-            $authRules = $policiesByKey['ipc_authorization']->rules_json ?? [];
-            if ($material['cutoff_at'] !== null && isset($authRules['cutoff_at']) && $material['cutoff_at'] !== $authRules['cutoff_at']) {
-                throw new ContractException(409, 'invalid_source', 'Cutoff timestamp does not match the pinned IPC authorization policy.');
-            }
-            $allowedTeam = $authRules['count_team_ids'] ?? [];
-            foreach ($material['count_team'] as $member) {
-                if (! in_array($member['user_id'], $allowedTeam, true)) {
-                    throw new ContractException(409, 'invalid_source', 'Count team member is not authorized by the pinned IPC authorization policy.');
-                }
-            }
-        }
-
-        $lineIds = [];
-        $recordedCustodians = [];
-        $lines = [];
-        foreach ($material['lines'] as $line) {
-            if (isset($lineIds[$line['line_id']])) {
-                throw new ContractException(409, 'invalid_source', 'Duplicate IPC line_id.');
-            }
-            $lineIds[$line['line_id']] = true;
-
-            $item = CatalogueItem::where('chapter_id', $chapterId)->whereKey($line['item_id'])->sharedLock()->first();
-            $variant = CatalogueVariant::where('chapter_id', $chapterId)->whereKey($line['variant_id'])->sharedLock()->first();
-            $unit = CatalogueUnit::where('chapter_id', $chapterId)->whereKey($line['unit_id'])->sharedLock()->first();
-            $location = CatalogueLocation::where('chapter_id', $chapterId)->whereKey($line['location_id'])->sharedLock()->first();
-
-            if (! $item || ! $variant || ! $unit || ! $location
-                || $item->state !== 'active'
-                || $variant->state !== 'active'
-                || $unit->state !== 'active'
-                || $location->state !== 'active'
-                || $variant->item_id !== $item->id
-                || (($variant->unit_id ?? $item->unit_id) !== null && ($variant->unit_id ?? $item->unit_id) !== $unit->id)
-                || (int) $variant->material_version !== $line['variant_material_version']
-                || (int) $unit->material_version !== $line['unit_material_version']
-                || (int) $location->material_version !== $line['location_material_version']
-                || (int) $unit->quantity_scale !== $line['quantity_scale']
-                || ($variant->quantity_scale !== null && (int) $variant->quantity_scale !== $line['quantity_scale'])) {
-                throw new ContractException(409, 'invalid_source', 'Line catalogue identity, unit scale, or material version is invalid.');
-            }
-
-            if ($line['counted_quantity'] !== null && ! $this->fitsScale($line['counted_quantity'], $line['quantity_scale'])) {
-                throw new ContractException(409, 'invalid_source', 'Counted quantity exceeds the approved unit scale.');
-            }
-
-            $custodianIds = $line['regular_custodian_ids'];
-            if (count(array_unique($custodianIds)) !== count($custodianIds)) {
-                throw new ContractException(409, 'invalid_source', 'Duplicate custodian in regular_custodian_ids.');
-            }
-            if ($location->custodian_id !== null && ! in_array($location->custodian_id, $custodianIds, true)) {
-                throw new ContractException(409, 'invalid_source', 'Line regular_custodian_ids must include the location recorded custodian.');
-            }
-            foreach ($custodianIds as $cid) {
-                if (! $this->isChapterMember($chapterId, $cid)) {
-                    throw new ContractException(409, 'invalid_source', 'Regular custodian is not an active chapter member.');
-                }
-                $recordedCustodians[$cid] = true;
-            }
-            if ($location->custodian_id !== null) {
-                $recordedCustodians[$location->custodian_id] = true;
-            }
-
-            sort($custodianIds);
-            $line['regular_custodian_ids'] = $custodianIds;
-            $lines[] = $line;
-        }
+        $this->resolvePolicies($authority, $chapterId, $ipcId, $material, requireAll: false);
+        [$lines, $recordedCustodians] = $this->validateLinesAndCustody($chapterId, $material['lines'], requireComplete: false);
 
         $teamSeen = [];
         $team = [];
@@ -1388,11 +1287,7 @@ final class OpeningDraftService
             $rm->revision = (int) $rm->revision + 1;
             $rm->updated_at = $now;
             $rm->save();
-            EvidenceBinding::where('chapter_id', $chapterId)
-                ->where('source_type', 'opening_receipt')
-                ->where('source_id', $rm->id)
-                ->where('status', 'active')
-                ->update(['status' => 'invalidated']);
+            $this->checkEvidenceBinding->invalidateActiveForTarget($chapterId, 'opening_receipt', $rm->id);
 
             $snapshot = $this->formatRm($rm);
             $op = $this->operationReceipt((string) Str::uuid(), 'replaceIpc', $key, $actor, $chapterId, 'opening_rm', $rm->id, (int) $rm->revision, (int) $rm->material_version, 200, $now);
@@ -1823,8 +1718,21 @@ final class OpeningDraftService
             ->exists();
     }
 
+    /** @return array{OpeningCount, OpeningRm} Acquire IPC sharedLock before RM lockForUpdate to match replaceIpc lock order. */
+    private function lockIpcThenRm(string $chapterId, string $rmId): array
+    {
+        $ipcId = OpeningRm::where('chapter_id', $chapterId)->whereKey($rmId)->value('ipc_id');
+        if (! $ipcId) {
+            throw new ContractException(404, 'resource_not_found', 'Resource not found.');
+        }
+        $ipc = $this->findIpc($chapterId, (string) $ipcId, lock: false);
+        $rm = $this->findRm($chapterId, $rmId, lock: true);
+
+        return [$ipc, $rm];
+    }
+
     /** @return array<string, PolicyRecord> */
-    private function requireEffectiveOpeningPolicies(ChapterAuthority $authority, string $chapterId, string $ipcId, array $material): array
+    private function resolvePolicies(ChapterAuthority $authority, string $chapterId, ?string $ipcId, array $material, bool $requireAll): array
     {
         $byKey = [];
         foreach ($material['policies'] ?? [] as $binding) {
@@ -1839,7 +1747,9 @@ final class OpeningDraftService
         $blockers = [];
         foreach (self::POLICY_RULES as $key => [$owner, $schema]) {
             if (! isset($byKey[$key])) {
-                $blockers[] = ChapterAuthority::setupBlocker($key, $owner, 'missing');
+                if ($requireAll) {
+                    $blockers[] = ChapterAuthority::setupBlocker($key, $owner, 'missing');
+                }
 
                 continue;
             }
@@ -1874,18 +1784,89 @@ final class OpeningDraftService
             ]);
         }
 
-        $authRules = $resolved['ipc_authorization']->rules_json ?? [];
-        if (($material['cutoff_at'] ?? null) !== ($authRules['cutoff_at'] ?? null)) {
-            throw new ContractException(409, 'invalid_source', 'Cutoff timestamp does not match the pinned IPC authorization policy.');
-        }
-        $allowedTeam = $authRules['count_team_ids'] ?? [];
-        foreach ($material['count_team'] ?? [] as $member) {
-            if (! in_array($member['user_id'] ?? '', $allowedTeam, true)) {
-                throw new ContractException(409, 'invalid_source', 'Count team member is not authorized by the pinned IPC authorization policy.');
+        if (isset($resolved['ipc_authorization'])) {
+            $authRules = $resolved['ipc_authorization']->rules_json ?? [];
+            if (($material['cutoff_at'] ?? null) !== null && isset($authRules['cutoff_at']) && $material['cutoff_at'] !== $authRules['cutoff_at']) {
+                throw new ContractException(409, 'invalid_source', 'Cutoff timestamp does not match the pinned IPC authorization policy.');
+            }
+            if ($requireAll && ($material['cutoff_at'] ?? null) !== ($authRules['cutoff_at'] ?? null)) {
+                throw new ContractException(409, 'invalid_source', 'Cutoff timestamp does not match the pinned IPC authorization policy.');
+            }
+            $allowedTeam = $authRules['count_team_ids'] ?? [];
+            foreach ($material['count_team'] ?? [] as $member) {
+                if (! in_array($member['user_id'] ?? '', $allowedTeam, true)) {
+                    throw new ContractException(409, 'invalid_source', 'Count team member is not authorized by the pinned IPC authorization policy.');
+                }
             }
         }
 
         return $resolved;
+    }
+
+    /** @return array{list<array<string, mixed>>, array<string, bool>} */
+    private function validateLinesAndCustody(string $chapterId, array $rawLines, bool $requireComplete): array
+    {
+        $lineIds = [];
+        $recordedCustodians = [];
+        $lines = [];
+        foreach ($rawLines as $line) {
+            if ($requireComplete && (($line['counted_quantity'] ?? null) === null
+                || ($line['unit_value'] ?? null) === null
+                || ($line['valuation_basis'] ?? null) === null)) {
+                throw new ContractException(409, 'source_incomplete', 'Every IPC line requires quantity, unit value, and valuation basis.');
+            }
+            if (isset($lineIds[$line['line_id']])) {
+                throw new ContractException(409, 'invalid_source', 'Duplicate IPC line_id.');
+            }
+            $lineIds[$line['line_id']] = true;
+
+            $item = CatalogueItem::where('chapter_id', $chapterId)->whereKey($line['item_id'])->sharedLock()->first();
+            $variant = CatalogueVariant::where('chapter_id', $chapterId)->whereKey($line['variant_id'])->sharedLock()->first();
+            $unit = CatalogueUnit::where('chapter_id', $chapterId)->whereKey($line['unit_id'])->sharedLock()->first();
+            $location = CatalogueLocation::where('chapter_id', $chapterId)->whereKey($line['location_id'])->sharedLock()->first();
+
+            if (! $item || ! $variant || ! $unit || ! $location
+                || $item->state !== 'active'
+                || $variant->state !== 'active'
+                || $unit->state !== 'active'
+                || $location->state !== 'active'
+                || $variant->item_id !== $item->id
+                || (($variant->unit_id ?? $item->unit_id) !== null && ($variant->unit_id ?? $item->unit_id) !== $unit->id)
+                || (int) $variant->material_version !== (int) $line['variant_material_version']
+                || (int) $unit->material_version !== (int) $line['unit_material_version']
+                || (int) $location->material_version !== (int) $line['location_material_version']
+                || (int) $unit->quantity_scale !== (int) $line['quantity_scale']
+                || ($variant->quantity_scale !== null && (int) $variant->quantity_scale !== (int) $line['quantity_scale'])) {
+                throw new ContractException(409, 'invalid_source', 'Line catalogue identity, unit scale, or material version is invalid.');
+            }
+
+            if ($line['counted_quantity'] !== null && ! $this->fitsScale((string) $line['counted_quantity'], (int) $line['quantity_scale'])) {
+                throw new ContractException(409, 'invalid_source', 'Counted quantity exceeds the approved unit scale.');
+            }
+
+            $custodianIds = $line['regular_custodian_ids'];
+            if (count(array_unique($custodianIds)) !== count($custodianIds)) {
+                throw new ContractException(409, 'invalid_source', 'Duplicate custodian in regular_custodian_ids.');
+            }
+            if ($location->custodian_id !== null && ! in_array($location->custodian_id, $custodianIds, true)) {
+                throw new ContractException(409, 'invalid_source', 'Line regular_custodian_ids must include the location recorded custodian.');
+            }
+            foreach ($custodianIds as $cid) {
+                if (! $requireComplete && ! $this->isChapterMember($chapterId, $cid)) {
+                    throw new ContractException(409, 'invalid_source', 'Regular custodian is not an active chapter member.');
+                }
+                $recordedCustodians[$cid] = true;
+            }
+            if ($location->custodian_id !== null) {
+                $recordedCustodians[$location->custodian_id] = true;
+            }
+
+            sort($custodianIds);
+            $line['regular_custodian_ids'] = $custodianIds;
+            $lines[] = $line;
+        }
+
+        return [$lines, $recordedCustodians];
     }
 
     /** @return list<string> Recorded custodian user IDs across all IPC lines. */
@@ -1898,48 +1879,7 @@ final class OpeningDraftService
             throw new ContractException(409, 'source_incomplete', 'IPC material is incomplete.');
         }
 
-        $lineIds = [];
-        $custodians = [];
-        foreach ($material['lines'] as $line) {
-            if (($line['counted_quantity'] ?? null) === null
-                || ($line['unit_value'] ?? null) === null
-                || ($line['valuation_basis'] ?? null) === null) {
-                throw new ContractException(409, 'source_incomplete', 'Every IPC line requires quantity, unit value, and valuation basis.');
-            }
-            if (isset($lineIds[$line['line_id']])) {
-                throw new ContractException(409, 'invalid_source', 'Duplicate IPC line_id.');
-            }
-            $lineIds[$line['line_id']] = true;
-
-            $item = CatalogueItem::where('chapter_id', $chapterId)->whereKey($line['item_id'])->sharedLock()->first();
-            $variant = CatalogueVariant::where('chapter_id', $chapterId)->whereKey($line['variant_id'])->sharedLock()->first();
-            $unit = CatalogueUnit::where('chapter_id', $chapterId)->whereKey($line['unit_id'])->sharedLock()->first();
-            $location = CatalogueLocation::where('chapter_id', $chapterId)->whereKey($line['location_id'])->sharedLock()->first();
-            if (! $item || ! $variant || ! $unit || ! $location
-                || $item->state !== 'active'
-                || $variant->state !== 'active'
-                || $unit->state !== 'active'
-                || $location->state !== 'active'
-                || $variant->item_id !== $item->id
-                || (($variant->unit_id ?? $item->unit_id) !== null && ($variant->unit_id ?? $item->unit_id) !== $unit->id)
-                || (int) $variant->material_version !== (int) $line['variant_material_version']
-                || (int) $unit->material_version !== (int) $line['unit_material_version']
-                || (int) $location->material_version !== (int) $line['location_material_version']
-                || (int) $unit->quantity_scale !== (int) $line['quantity_scale']
-                || ($variant->quantity_scale !== null && (int) $variant->quantity_scale !== (int) $line['quantity_scale'])
-                || ! $this->fitsScale((string) $line['counted_quantity'], (int) $line['quantity_scale'])) {
-                throw new ContractException(409, 'invalid_source', 'IPC line catalogue identity, unit scale, or material version is no longer valid.');
-            }
-            if ($location->custodian_id !== null && ! in_array($location->custodian_id, $line['regular_custodian_ids'], true)) {
-                throw new ContractException(409, 'invalid_source', 'IPC line regular_custodian_ids must include the location custodian.');
-            }
-            foreach ($line['regular_custodian_ids'] as $cid) {
-                $custodians[$cid] = true;
-            }
-            if ($location->custodian_id !== null) {
-                $custodians[$location->custodian_id] = true;
-            }
-        }
+        [, $custodians] = $this->validateLinesAndCustody($chapterId, $material['lines'], requireComplete: true);
 
         return array_keys($custodians);
     }
@@ -1976,6 +1916,16 @@ final class OpeningDraftService
             throw new ContractException(409, 'source_incomplete', 'At least two completed independent counts are required.');
         }
 
+        usort($completed, fn (array $a, array $b) => strcmp($a['actor_id'], $b['actor_id']));
+
+        // Recheck active account, chapter membership, and current ipc.count duty in UUID order.
+        foreach ($completed as $count) {
+            $counterAuth = $this->activeChapterAuthority($chapterId, $count['actor_id']);
+            if (! $counterAuth || ! $counterAuth->allows('ipc.count')) {
+                throw new ContractException(409, 'invalid_source', 'Completed counter no longer holds current ipc.count authority.');
+            }
+        }
+
         $hasIndependent = false;
         foreach ($completed as $count) {
             if (! in_array($count['actor_id'], $recordedCustodians, true)) {
@@ -2005,7 +1955,7 @@ final class OpeningDraftService
                     throw new ContractException(409, 'source_incomplete', 'Completed count entries require quantity and condition.');
                 }
                 $sourceLine = $linesById[$lid];
-                if ($this->toMicros((string) $entry['quantity']) !== $this->toMicros((string) $sourceLine['counted_quantity'])
+                if (! BigDecimal::of((string) $entry['quantity'])->isEqualTo((string) $sourceLine['counted_quantity'])
                     || $entry['condition'] !== $sourceLine['condition']) {
                     throw new ContractException(409, 'count_mismatch', 'Independent counts do not agree with the IPC material.');
                 }
@@ -2016,73 +1966,31 @@ final class OpeningDraftService
             throw new ContractException(403, 'independence_required', 'At least one completed counter must be independent of the recorded custodians.');
         }
 
-        usort($completed, fn (array $a, array $b) => strcmp($a['actor_id'], $b['actor_id']));
-
         return $completed;
     }
 
     /** @return array<string, mixed> */
     private function verifyOpeningEvidenceBytes(string $chapterId, array $binding, string $expectedIpcId, ?string $expectedRmId = null): array
     {
-        $record = EvidenceRecord::where('chapter_id', $chapterId)
-            ->whereKey($binding['evidence_id'] ?? '')
-            ->sharedLock()
-            ->first();
-        if (! $record) {
-            throw new ContractException(409, 'evidence_missing', 'Signed paper evidence was not found.');
-        }
-        if ($record->purpose !== 'opening_receipt') {
-            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence must have opening_receipt purpose.');
-        }
-        $targetRm = OpeningRm::where('chapter_id', $chapterId)
-            ->whereKey($record->record_id)
-            ->sharedLock()
-            ->first();
-        if (! $targetRm || $targetRm->ipc_id !== $expectedIpcId
-            || ($expectedRmId !== null && $targetRm->id !== $expectedRmId)) {
-            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence targets a different Opening RM or IPC.');
-        }
+        return $this->checkEvidenceBinding->verifyCurrentBytes(
+            $chapterId,
+            $binding,
+            'opening_receipt',
+            function (EvidenceRecord $record) use ($chapterId, $expectedIpcId, $expectedRmId): bool {
+                $targetRm = OpeningRm::where('chapter_id', $chapterId)
+                    ->whereKey($record->record_id)
+                    ->sharedLock()
+                    ->first();
 
-        $versionId = (string) ($binding['version_id'] ?? '');
-        $blobs = $record->exactVersion($versionId);
-        if ($blobs->isEmpty()) {
-            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence version was not found.');
-        }
-
-        try {
-            [, $invalidReason] = $this->paperStore->checkVersion($blobs);
-        } catch (ContractException $exception) {
-            if ($exception->statusCode === 503) {
-                throw new ContractException(503, 'unavailable', 'Signed paper verification is temporarily unavailable.');
-            }
-            throw $exception;
-        }
-        if ($invalidReason !== null) {
-            throw new ContractException(409, 'evidence_invalid', 'Signed paper evidence failed integrity or safety verification.');
-        }
-
-        $current = $record->currentVersionBlob();
-        if (! $current || $record->versionId($current) !== $versionId) {
-            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence version has been superseded.');
-        }
-
-        $actual = [
-            'evidence_id' => $record->id,
-            'version_id' => $versionId,
-            'attachments' => $blobs->map(fn (EvidenceBlob $b) => [
-                'attachment_id' => $b->id,
-                'sha256' => $b->sha256_hash,
-            ])->values()->all(),
-        ];
-        if (CanonicalJson::encode($actual) !== CanonicalJson::encode($binding)) {
-            throw new ContractException(409, 'evidence_mismatch', 'Signed paper evidence attachments do not match the current version.');
-        }
-
-        return $actual;
+                return $targetRm !== null
+                    && $targetRm->ipc_id === $expectedIpcId
+                    && ($expectedRmId === null || $targetRm->id === $expectedRmId);
+            },
+        );
     }
 
     /** @return list<array<string, mixed>> */
-    private function assertAuthorizationsCurrent(OpeningCount $ipc, array $signedIpc): array
+    private function assertAuthorizationsCurrent(string $chapterId, OpeningCount $ipc, array $signedIpc, string $ipcTotalPhp): array
     {
         $byDuty = [];
         $expectedJson = CanonicalJson::encode($signedIpc);
@@ -2103,14 +2011,41 @@ final class OpeningDraftService
             throw new ContractException(409, 'source_not_authorized', 'Both Chapter Head and Finance authorizations are required.');
         }
 
+        // Lock signatory identities in UUID order and verify current active authority and monetary ceilings.
+        $signatoryIds = array_values(array_unique([$byDuty['CHAPTER_HEAD']['actor_id'], $byDuty['FINANCE']['actor_id']]));
+        sort($signatoryIds);
+        $authorities = [];
+        foreach ($signatoryIds as $uid) {
+            $authorities[$uid] = $this->activeChapterAuthority($chapterId, $uid);
+        }
+        foreach (['CHAPTER_HEAD', 'FINANCE'] as $duty) {
+            $sigAuth = $authorities[$byDuty[$duty]['actor_id']] ?? null;
+            if (! $sigAuth || ! $sigAuth->allowsDuty($duty, decisionScope: 'ipc_authorization:'.$ipc->id, amount: $ipcTotalPhp)) {
+                throw new ContractException(409, 'source_not_authorized', "IPC {$duty} signatory no longer holds applicable authority.");
+            }
+        }
+
         return [$byDuty['CHAPTER_HEAD'], $byDuty['FINANCE']];
+    }
+
+    private function activeChapterAuthority(string $chapterId, string $userId): ?ChapterAuthority
+    {
+        $user = User::whereKey($userId)->whereIn('status', ['active', 'enabled'])->sharedLock()->first();
+        if (! $user) {
+            return null;
+        }
+        $membership = $user->memberships()->where('chapter_id', $chapterId)->current()->sharedLock()->first();
+        $chapter = Chapter::whereKey($chapterId)->whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS)->sharedLock()->first();
+        if (! $membership || ! $chapter) {
+            return null;
+        }
+
+        return ChapterAuthority::fromMembership($membership, $chapter);
     }
 
     private function validateInspectedRmLines(array $ipcLines, array $rmMaterial, string $roundingMode): void
     {
-        if (! in_array($roundingMode, ['half_up', 'half_even', 'down'], true)) {
-            throw new ContractException(409, 'invalid_source', 'Unsupported valuation rounding mode.');
-        }
+        $mode = $this->roundingMode($roundingMode);
 
         $ipcById = [];
         foreach ($ipcLines as $line) {
@@ -2118,7 +2053,8 @@ final class OpeningDraftService
         }
 
         $seen = [];
-        $totalCents = '0';
+        $total = BigDecimal::zero();
+        $max = BigDecimal::of(self::MAX_PHP_VALUE);
         foreach ($rmMaterial['lines'] ?? [] as $rmLine) {
             $lid = (string) ($rmLine['ipc_line_id'] ?? '');
             if (isset($seen[$lid]) || ! isset($ipcById[$lid])) {
@@ -2141,23 +2077,25 @@ final class OpeningDraftService
                 }
             }
 
-            $accMicros = $this->toMicros((string) $rmLine['accepted_quantity']);
-            $dmgMicros = $this->toMicros((string) $rmLine['damaged_quantity']);
-            $rejMicros = $this->toMicros((string) $rmLine['rejected_quantity']);
-            $srcMicros = $this->toMicros((string) $src['counted_quantity']);
-            if ($accMicros + $dmgMicros + $rejMicros !== $srcMicros) {
+            $acc = BigDecimal::of((string) $rmLine['accepted_quantity']);
+            $dmg = BigDecimal::of((string) $rmLine['damaged_quantity']);
+            $rej = BigDecimal::of((string) $rmLine['rejected_quantity']);
+            if (! $acc->plus($dmg)->plus($rej)->isEqualTo((string) $src['counted_quantity'])) {
                 throw new ContractException(409, 'invalid_source', 'Accepted, damaged, and rejected quantities must equal the authorized IPC count.');
             }
-            if ($src['condition'] !== 'usable' && $accMicros > 0) {
+            if ($src['condition'] !== 'usable' && $acc->isPositive()) {
                 throw new ContractException(409, 'invalid_source', 'Damaged or rejected source lines cannot be accepted without renewed source treatment.');
             }
 
-            [$expectedValue, $lineCents] = $this->computeAcceptedValue((string) $rmLine['accepted_quantity'], (string) $src['unit_value'], $roundingMode);
-            if ($rmLine['accepted_value'] !== $expectedValue) {
+            $expected = $acc->multipliedBy((string) $src['unit_value'])->toScale(2, $mode);
+            if ($expected->isGreaterThan($max)) {
+                throw new ContractException(409, 'invalid_source', 'Accepted line valuation exceeds supported PHP bounds.');
+            }
+            if ($rmLine['accepted_value'] !== (string) $expected) {
                 throw new ContractException(409, 'invalid_source', 'Accepted value does not match approved valuation rounding.');
             }
-            $totalCents = $this->addUint($totalCents, $lineCents);
-            if (strlen($totalCents) > 14) {
+            $total = $total->plus($expected);
+            if ($total->isGreaterThan($max)) {
                 throw new ContractException(409, 'invalid_source', 'Total accepted valuation exceeds supported PHP bounds.');
             }
         }
@@ -2167,76 +2105,32 @@ final class OpeningDraftService
         }
     }
 
-    private function toMicros(string $quantity): int
+    private function ipcTotalValuation(array $ipcLines, string $roundingMode): string
     {
-        [$whole, $frac] = array_pad(explode('.', $quantity, 2), 2, '');
-
-        return (int) $whole * 1_000_000 + (int) str_pad($frac, 6, '0');
-    }
-
-    /** @return array{string, string} [formatted PHP string, integer cents string] */
-    private function computeAcceptedValue(string $acceptedQty, string $unitValue, string $mode): array
-    {
-        [$qWhole, $qFrac] = array_pad(explode('.', $acceptedQty, 2), 2, '');
-        $qMicros = ltrim($qWhole.str_pad($qFrac, 6, '0'), '0') ?: '0';
-        [$uWhole, $uFrac] = array_pad(explode('.', $unitValue, 2), 2, '');
-        $uCents = ltrim($uWhole.str_pad($uFrac, 2, '0'), '0') ?: '0';
-
-        $prod = str_pad($this->mulUint($qMicros, $uCents), 7, '0', STR_PAD_LEFT);
-        $cents = ltrim(substr($prod, 0, -6), '0') ?: '0';
-        $rem = substr($prod, -6);
-
-        $roundUp = match ($mode) {
-            'half_up' => $rem >= '500000',
-            'half_even' => $rem > '500000' || ($rem === '500000' && ((int) substr($cents, -1)) % 2 === 1),
-            default => false,
-        };
-        if ($roundUp) {
-            $cents = $this->addUint($cents, '1');
-        }
-        if (strlen($cents) > 14) {
-            throw new ContractException(409, 'invalid_source', 'Accepted line valuation exceeds supported PHP bounds.');
-        }
-
-        $padded = str_pad($cents, 3, '0', STR_PAD_LEFT);
-        $wholePart = ltrim(substr($padded, 0, -2), '0') ?: '0';
-
-        return [$wholePart.'.'.substr($padded, -2), $cents];
-    }
-
-    private function mulUint(string $a, string $b): string
-    {
-        if ($a === '0' || $b === '0') {
-            return '0';
-        }
-        $la = strlen($a);
-        $lb = strlen($b);
-        $res = array_fill(0, $la + $lb, 0);
-        for ($i = $la - 1; $i >= 0; $i--) {
-            $da = (int) $a[$i];
-            for ($j = $lb - 1; $j >= 0; $j--) {
-                $sum = $res[$i + $j + 1] + $da * (int) $b[$j];
-                $res[$i + $j + 1] = $sum % 10;
-                $res[$i + $j] += intdiv($sum, 10);
+        $mode = $this->roundingMode($roundingMode);
+        $total = BigDecimal::zero();
+        $max = BigDecimal::of(self::MAX_PHP_VALUE);
+        foreach ($ipcLines as $line) {
+            $lineVal = BigDecimal::of((string) $line['counted_quantity'])
+                ->multipliedBy((string) $line['unit_value'])
+                ->toScale(2, $mode);
+            $total = $total->plus($lineVal);
+            if ($total->isGreaterThan($max)) {
+                throw new ContractException(409, 'invalid_source', 'Total IPC valuation exceeds supported PHP bounds.');
             }
         }
 
-        return ltrim(implode('', $res), '0') ?: '0';
+        return (string) $total->toScale(2, $mode);
     }
 
-    private function addUint(string $a, string $b): string
+    private function roundingMode(string $mode): RoundingMode
     {
-        $i = strlen($a) - 1;
-        $j = strlen($b) - 1;
-        $carry = 0;
-        $out = '';
-        while ($i >= 0 || $j >= 0 || $carry > 0) {
-            $sum = $carry + ($i >= 0 ? (int) $a[$i--] : 0) + ($j >= 0 ? (int) $b[$j--] : 0);
-            $out = ($sum % 10).$out;
-            $carry = intdiv($sum, 10);
-        }
-
-        return ltrim($out, '0') ?: '0';
+        return match ($mode) {
+            'half_up' => RoundingMode::HalfUp,
+            'half_even' => RoundingMode::HalfEven,
+            'down' => RoundingMode::Down,
+            default => throw new ContractException(409, 'invalid_source', 'Unsupported valuation rounding mode.'),
+        };
     }
 
     private function fitsScale(string $quantity, int $scale): bool

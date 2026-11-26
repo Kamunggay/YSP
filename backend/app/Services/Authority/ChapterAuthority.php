@@ -9,6 +9,7 @@ use App\Models\DutyGrant;
 use App\Models\InternalRf;
 use App\Models\PolicyRecord;
 use App\Models\User;
+use Brick\Math\BigDecimal;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -230,10 +231,19 @@ final class ChapterAuthority
         return self::setupBlocker($key, $owner, 'missing');
     }
 
-    public function allowsDuty(string $duty, ?string $unitId = null, ?string $decisionScope = null): bool
+    public function allowsDuty(string $duty, ?string $unitId = null, ?string $decisionScope = null, ?string $amount = null): bool
     {
-        return $this->grants->contains(fn (DutyGrant $grant) => $grant->duty_code === $duty && self::covers($grant, $unitId)
-            && (! $grant->is_alternate || ($this->alternateScopes[$grant->id] ?? null) === $decisionScope));
+        return $this->grants->contains(function (DutyGrant $grant) use ($duty, $unitId, $decisionScope, $amount): bool {
+            if ($grant->duty_code !== $duty || ! self::covers($grant, $unitId)) {
+                return false;
+            }
+            if ($grant->is_alternate && ($this->alternateScopes[$grant->id] ?? null) !== $decisionScope) {
+                return false;
+            }
+            $limit = $grant->scope['limit_php'] ?? null;
+
+            return $amount === null || $limit === null || BigDecimal::of($amount)->compareTo($limit) <= 0;
+        });
     }
 
     public function canReadRf(InternalRf $rf): bool

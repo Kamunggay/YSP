@@ -341,12 +341,23 @@ class OpeningAuthorizeAndMatchTest extends TestCase
             ->assertJsonPath('data.record.acknowledgment.bytes', $this->byteBinding($receiptPaper))
             ->assertJsonPath('data.posting', null);
 
-        // Replay returns original acknowledgment
+        // Replay returns original acknowledgment; a fresh match key while actively matched is rejected
         $this->asOfficer($this->observerId, $matchKey)
             ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/evidence-match", $matchBody)
             ->assertOk()
             ->assertHeader('X-Action-Replayed', 'true')
             ->assertJsonPath('data.record.acknowledgment.acknowledgment_id', $matched->json('data.record.acknowledgment.acknowledgment_id'));
+
+        $this->asOfficer($this->observerId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/evidence-match", [
+                'expected_revision' => 4,
+                'material_version' => 2,
+                'snapshot_sha256' => $snapshotSha,
+                'bytes' => $this->byteBinding($receiptPaper),
+                'acknowledged_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'invalid_transition');
 
         $rmPrint = $this->asOfficer($this->observerId)->get("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/print")
             ->assertOk()
@@ -786,6 +797,95 @@ class OpeningAuthorizeAndMatchTest extends TestCase
             ->assertJsonPath('data.inspection', null)
             ->assertJsonPath('data.snapshot', null)
             ->assertJsonPath('data.acknowledgment', null);
+    }
+
+    public function test_revoked_counter_monetary_limit_and_revoked_approver_are_enforced_at_gates(): void
+    {
+        $policies = $this->seedEffectivePolicies();
+        $line1 = (string) Str::uuid();
+        [$ipcId, $rmId, $paper] = $this->prepareCountedIpcAndRm($policies, [
+            $this->makeLine($line1, 'usable', '10', [$this->custodianId]), // total PHP 250.00
+        ]);
+
+        // 1. Revoking observer's ipc.count duty blocks submitIpc with 409 invalid_source
+        DutyGrant::where('chapter_id', $this->chapterId)
+            ->where('user_id', $this->observerId)
+            ->where('duty_code', 'INDEPENDENT_REVIEWER')
+            ->update(['status' => 'revoked']);
+
+        $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/submit", [
+                'expected_revision' => 4, 'material_version' => 2, 'signed_ipc' => $this->byteBinding($paper),
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'invalid_source');
+
+        // Restore counter duty and submit
+        DutyGrant::where('chapter_id', $this->chapterId)
+            ->where('user_id', $this->observerId)
+            ->where('duty_code', 'INDEPENDENT_REVIEWER')
+            ->update(['status' => 'active']);
+        $this->asOfficer($this->custodianId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/submit", [
+                'expected_revision' => 4, 'material_version' => 2, 'signed_ipc' => $this->byteBinding($paper),
+            ])->assertOk();
+
+        // 2. Monetary ceiling (limit_php < 250.00) denies authorizeIpc with 403 duty_denied
+        DutyGrant::where('chapter_id', $this->chapterId)
+            ->where('user_id', $this->financeId)
+            ->where('duty_code', 'FINANCE')
+            ->update(['scope' => ['unit_id' => null, 'limit_php' => '100.00']]);
+
+        $signedAt = now('UTC')->subSeconds(5)->format('Y-m-d\TH:i:s.u\Z');
+        $this->asOfficer($this->financeId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/authorizations", [
+                'expected_revision' => 5, 'material_version' => 2, 'duty' => 'FINANCE', 'signed_at' => $signedAt,
+            ])
+            ->assertStatus(403)
+            ->assertJsonPath('error.code', 'duty_denied');
+
+        // Raise limit_php to 250.00 (exact boundary) and complete both authorizations
+        DutyGrant::where('chapter_id', $this->chapterId)
+            ->where('user_id', $this->financeId)
+            ->where('duty_code', 'FINANCE')
+            ->update(['scope' => ['unit_id' => null, 'limit_php' => '250.00']]);
+
+        $this->asOfficer($this->headId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/authorizations", [
+                'expected_revision' => 5, 'material_version' => 2, 'duty' => 'CHAPTER_HEAD', 'signed_at' => $signedAt,
+            ])->assertOk();
+        $this->asOfficer($this->financeId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/ipcs/{$ipcId}/authorizations", [
+                'expected_revision' => 6, 'material_version' => 2, 'duty' => 'FINANCE', 'signed_at' => $signedAt,
+            ])->assertOk()->assertJsonPath('data.record.state', 'authorized');
+
+        // 3. Revoking Finance signatory before inspection blocks inspectOpeningRm with 409 source_not_authorized
+        $this->asOfficer($this->observerId, (string) Str::uuid())
+            ->putJson("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}", [
+                'expected_revision' => 1, 'reason' => 'Inspect lines',
+                'material' => [
+                    'ipc_material_version' => 2,
+                    'lines' => [[
+                        'ipc_line_id' => $line1, 'accepted_quantity' => '10', 'damaged_quantity' => '0',
+                        'rejected_quantity' => '0', 'accepted_value' => '250.00', 'finding_reason' => null,
+                    ]],
+                    'notes' => null,
+                ],
+            ])->assertOk();
+
+        DutyGrant::where('chapter_id', $this->chapterId)
+            ->where('user_id', $this->financeId)
+            ->where('duty_code', 'FINANCE')
+            ->update(['status' => 'revoked']);
+
+        $this->asOfficer($this->observerId, (string) Str::uuid())
+            ->postJson("/api/v1/chapters/{$this->chapterId}/opening-rms/{$rmId}/inspection", [
+                'expected_revision' => 2, 'ipc_material_version' => 2,
+                'inspected_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
+                'technical_representative_id' => null, 'inspection_notes' => 'Should fail revoked approver',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'source_not_authorized');
     }
 
     /** @return array{string, string, array<string, mixed>} */
