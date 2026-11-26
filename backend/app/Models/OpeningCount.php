@@ -29,6 +29,11 @@ class OpeningCount extends Model
         'authorized_at',
         'authorized_head_signature',
         'authorized_finance_signature',
+        'material_json',
+        'counts_json',
+        'signed_ipc_json',
+        'authorizations_json',
+        'posted_rm_id',
     ];
 
     protected function casts(): array
@@ -38,6 +43,10 @@ class OpeningCount extends Model
             'material_version' => 'integer',
             'submitted_at' => 'datetime',
             'authorized_at' => 'datetime',
+            'material_json' => 'array',
+            'counts_json' => 'array',
+            'signed_ipc_json' => 'array',
+            'authorizations_json' => 'array',
         ];
     }
 

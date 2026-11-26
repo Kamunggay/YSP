@@ -16,10 +16,15 @@ class ActionReceipt extends Model
     protected $casts = ['result' => 'array', 'status' => 'integer'];
 
     /** @param array{chapter_id: string, user_id: string, operation: string, key: string} $scope */
-    public static function record(array $scope, string $fingerprint, int $status, array $result): self
+    public static function record(array $scope, string $fingerprint, int $status, array $result, ?string $id = null): self
     {
         try {
-            return self::create($scope + compact('fingerprint', 'status', 'result'));
+            $attributes = $scope + compact('fingerprint', 'status', 'result');
+            if ($id !== null) {
+                $attributes['id'] = $id;
+            }
+
+            return self::create($attributes);
         } catch (UniqueConstraintViolationException $exception) {
             // Use a current read when another connection just committed this receipt.
             $receipt = self::where($scope)->sharedLock()->first();
