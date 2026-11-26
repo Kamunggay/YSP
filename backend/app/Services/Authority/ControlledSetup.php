@@ -2,14 +2,17 @@
 
 namespace App\Services\Authority;
 
+use App\Http\Requests\AuthInput;
 use App\Models\AuditLog;
 use App\Models\BrowserSession;
 use App\Models\Chapter;
 use App\Models\ChapterMembership;
-use App\Models\IdempotencyRecord;
+use App\Models\DutyGrant;
 use App\Models\User;
+use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\CanonicalJson;
 use DomainException;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,11 +20,13 @@ use PDOException;
 
 final class ControlledSetup
 {
+    public function __construct(private readonly DomainNotificationOutboxService $outbox) {}
+
     public function execute(string $procedure, mixed $body, #[\SensitiveParameter] ?string $sessionToken): array
     {
         $actor = null;
         $payload = null;
-        $key = is_string($body->action_key ?? null) && preg_match(\App\Http\Requests\AuthInput::UUID, $body->action_key)
+        $key = is_string($body->action_key ?? null) && preg_match(AuthInput::UUID, $body->action_key)
             ? $body->action_key : (string) Str::uuid();
 
         try {
@@ -47,13 +52,19 @@ final class ControlledSetup
 
                 $chapter = $payload['chapter_id'] === null ? null : Chapter::whereKey($payload['chapter_id'])
                     ->whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS)->lockForUpdate()->first();
-                $bootstrap = $chapter && $this->appointedHead($chapter, $payload);
-                $this->authorizeOperator($operator, $payload, $chapter, $bootstrap);
+                $appointment = $chapter ? $this->headAppointment($chapter, $payload) : null;
+                $this->authorizeOperator($operator, $payload, $chapter, $appointment !== null);
 
                 $operation = 'controlled:'.$procedure;
                 $fingerprint = CanonicalJson::sha256($payload);
-                $receipt = IdempotencyRecord::where('user_id', $actor)->where('chapter_id', $payload['chapter_id'])
-                    ->where('operation_name', $operation)->where('key', $payload['action_key'])->lockForUpdate()->first();
+                $receiptScope = [
+                    'operator_id' => $actor,
+                    'scope_id' => $payload['chapter_id'] ?? 'provider',
+                    'procedure_id' => $procedure,
+                    'action_key' => $payload['action_key'],
+                ];
+                $receipts = DB::table('controlled_setup_receipts');
+                $receipt = (clone $receipts)->where($receiptScope)->lockForUpdate()->first();
                 if ($receipt) {
                     if (! hash_equals($receipt->payload_hash, $fingerprint)) {
                         throw new DomainException('action_key_conflict');
@@ -62,7 +73,21 @@ final class ControlledSetup
                     return ['outcome' => 'replayed'] + json_decode($receipt->response_body, true, flags: JSON_THROW_ON_ERROR);
                 }
 
-                $this->verifyApprovals($payload, $users, $chapter, $bootstrap);
+                if ($appointment) {
+                    $priorBootstrap = AuditLog::where('chapter_id', $chapter->id)->where('action', $operation)
+                        ->where('details->head_appointment_audit_id', $appointment->id)->sharedLock()->first();
+                    if ($priorBootstrap) {
+                        throw new DomainException('approval_required');
+                    }
+
+                    $appointmentPayload = [
+                        'procedure_id' => 'prepareChapter', 'chapter_id' => null, 'target_id' => $appointment->entity_id,
+                        'operator_id' => $appointment->user_id, 'expected_version' => 0, 'reason' => $appointment->details['reason'],
+                        'input' => $appointment->details['input'], 'approvals' => $appointment->details['approvals'],
+                    ];
+                    $this->verifyApprovals($appointmentPayload, $users, null, false);
+                }
+                $this->verifyApprovals($payload, $users, $chapter, $appointment !== null);
                 [$effect, $details] = (new SetupChanges($payload, $users, $operator))->apply();
                 $audit = $this->audit($operation, $procedure, $payload['chapter_id'], $actor, $payload['target_id'], [
                     'action_key' => $payload['action_key'],
@@ -72,7 +97,7 @@ final class ControlledSetup
                     'prior_version' => $payload['expected_version'],
                     'version' => $payload['expected_version'] + 1,
                     'input' => $payload['input'],
-                ] + $details);
+                ] + ($appointment ? ['head_appointment_audit_id' => $appointment->id] : []) + $details);
 
                 $result = [
                     'outcome' => 'committed',
@@ -85,16 +110,12 @@ final class ControlledSetup
                     'session_effect' => $effect,
                 ];
 
-                IdempotencyRecord::create([
-                    'key' => $payload['action_key'],
-                    'chapter_id' => $payload['chapter_id'],
-                    'user_id' => $actor,
-                    'operation_name' => $operation,
-                    'resource_id' => $payload['target_id'],
+                $receipts->insert($receiptScope + [
                     'payload_hash' => $fingerprint,
-                    'response_code' => 200,
                     'response_body' => json_encode($result, JSON_THROW_ON_ERROR),
                 ]);
+
+                $this->recordInvalidation($payload, $chapter, $details);
 
                 return $result;
             }, 5);
@@ -114,6 +135,32 @@ final class ControlledSetup
         }
     }
 
+    private function recordInvalidation(array $payload, ?Chapter $chapter, array $details): void
+    {
+        $procedure = $payload['procedure_id'];
+        $user = match ($procedure) {
+            'setAccountStatus', 'resetMfa' => $payload['target_id'],
+            'setMembership' => $payload['input']['user_id'],
+            'setDuty', 'setAlternate' => $details['affected_user_id'],
+            default => null,
+        };
+        if ($user) {
+            $this->outbox->recordIntent('stage1.authority.changed.v1', null, $user, targetUserId: $user);
+        }
+
+        if ($procedure === 'recordPolicy') {
+            $members = $chapter->memberships()->current()->whereHas('user', fn ($query) => $query->whereIn('status', ['enabled', 'active']))
+                ->orderBy('id')->sharedLock()->get(['user_id']);
+            if ($members->isNotEmpty()) {
+                $version = 1 + (int) $chapter->policyRecords()->sharedLock()->get(['policy_version'])->sum('policy_version');
+                $this->outbox->recordIntent('stage1.chapter-setup.changed.v1', $chapter->id, $chapter->id, $version);
+            }
+            foreach ($members->pluck('user_id')->unique() as $member) {
+                $this->outbox->recordIntent('stage1.authority.changed.v1', null, $member, targetUserId: $member);
+            }
+        }
+    }
+
     private function lockUsers(?string $actor, array $payload): Collection
     {
         $input = $payload['input'];
@@ -123,6 +170,22 @@ final class ControlledSetup
             $input['replaces_user_id'] ?? null, $input['verified_by_user_id'] ?? null,
             ...array_column($payload['approvals'], 'approver_id'),
         ];
+        if ($this->isAppointmentProcedure($payload)) {
+            $appointment = AuditLog::where('action', 'controlled:prepareChapter')->where('entity_id', $payload['chapter_id'])->first();
+            $ids = [...$ids, ...array_column($appointment?->details['approvals'] ?? [], 'approver_id')];
+        }
+        if ($payload['procedure_id'] === 'recordPolicy') {
+            $value = json_decode($input['value'], true);
+            if ($input['setting_key'] === 'rf_approval_route' && is_array($value['routes'] ?? null)) {
+                $grants = collect($value['routes'])->flatMap(fn ($route) => [
+                    data_get($route, 'primary_approver_grant_id'), ...(array) data_get($route, 'alternate_authorization_ids', []),
+                ])->filter(fn ($id) => is_string($id) && preg_match(AuthInput::UUID, $id));
+                $ids = [...$ids, ...DutyGrant::whereIn('id', $grants)->where('chapter_id', $payload['chapter_id'])->pluck('user_id')];
+            }
+            if ($input['setting_key'] === 'ipc_authorization' && is_array($value['count_team_ids'] ?? null)) {
+                $ids = [...$ids, ...array_filter($value['count_team_ids'], fn ($id) => is_string($id) && preg_match(AuthInput::UUID, $id))];
+            }
+        }
         if (in_array($payload['procedure_id'], ['prepareAccount', 'resetMfa', 'setAccountStatus'], true)) {
             $ids[] = $payload['target_id'];
         }
@@ -135,16 +198,13 @@ final class ControlledSetup
 
     private function authorizeOperator(User $operator, array $payload, ?Chapter $chapter, bool $bootstrap): void
     {
-        $now = now()->format('Y-m-d H:i:s.u');
         $procedure = $payload['procedure_id'];
         if ($payload['chapter_id'] === null) {
             $role = $procedure === 'resetMfa' ? 'recovery_operator' : 'provisioner';
             $allowed = $this->providerGrants($role)->where('user_id', $operator->id)->sharedLock()->first();
         } elseif ($chapter) {
-            $allowed = DB::table('chapter_setup_entitlements')->where('chapter_id', $chapter->id)
-                ->where('user_id', $operator->id)->where('procedure_id', $procedure)
-                ->where('starts_at', '<=', $now)->whereNull('revoked_at')
-                ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', $now))->sharedLock()->first();
+            $allowed = ChapterAuthority::setupEntitlements($operator->id)->where('chapter_id', $chapter->id)
+                ->where('procedure_id', $procedure)->sharedLock()->first();
             if (! $allowed && $bootstrap) {
                 $allowed = $this->providerGrants('provisioner')->where('user_id', $operator->id)->sharedLock()->first();
             }
@@ -155,25 +215,32 @@ final class ControlledSetup
         }
     }
 
-    private function appointedHead(Chapter $chapter, array $payload): bool
+    private function isAppointmentProcedure(array $payload): bool
     {
-        if (! in_array($payload['procedure_id'], ['setMembership', 'setDuty'], true)
-            || $payload['expected_version'] !== 0 || $payload['input']['status'] !== 'active') {
-            return false;
+        return in_array($payload['procedure_id'], ['setMembership', 'setDuty'], true)
+            && $payload['expected_version'] === 0 && $payload['input']['status'] === 'active'
+            && in_array('PROVIDER_PROVISIONING', array_column($payload['approvals'], 'authority'), true);
+    }
+
+    private function headAppointment(Chapter $chapter, array $payload): ?AuditLog
+    {
+        if (! $this->isAppointmentProcedure($payload)) {
+            return null;
         }
 
         $input = $payload['input'];
         $appointment = AuditLog::where('action', 'controlled:prepareChapter')->where('entity_id', $chapter->id)->sharedLock()->first();
         $head = $appointment?->details['input']['initial_head_user_id'] ?? null;
-        if (! $head) {
-            return false;
-        }
-        if ($payload['procedure_id'] === 'setMembership') {
-            return $head === $input['user_id'];
+        if (! $head || empty($appointment->details['approvals'])) {
+            return null;
         }
 
-        return $input['duty'] === 'CHAPTER_HEAD' && $input['scope']['unit_id'] === null
-            && $chapter->memberships()->whereKey($input['membership_id'])->where('user_id', $head)->sharedLock()->first() !== null;
+        $matches = $payload['procedure_id'] === 'setMembership'
+            ? $head === $input['user_id']
+            : $input['duty'] === 'CHAPTER_HEAD' && $input['scope']['unit_id'] === null
+                && $chapter->memberships()->whereKey($input['membership_id'])->where('user_id', $head)->sharedLock()->first() !== null;
+
+        return $matches ? $appointment : null;
     }
 
     private function verifyApprovals(array $payload, Collection $users, ?Chapter $chapter, bool $bootstrap): void
@@ -205,6 +272,10 @@ final class ControlledSetup
 
     private function approverHasAuthority(User $approver, string $authority, array $payload, ?Chapter $chapter, array $details): bool
     {
+        if (! $approver->mfaCredential()->where('is_confirmed', true)->whereNotNull('encrypted_seed')->sharedLock()->first()) {
+            return false;
+        }
+
         if ($authority === 'PROVIDER_RECOVERY') {
             return ! in_array($approver->id, [$payload['operator_id'], $payload['target_id']], true)
                 && $this->providerGrants('recovery_operator')->where('user_id', $approver->id)->sharedLock()->first() !== null;
@@ -215,12 +286,11 @@ final class ControlledSetup
         }
 
         $membership = $approver->memberships()->current()->where('chapter_id', $chapter->id)->sharedLock()->first();
-        $factor = $approver->mfaCredential()->where('is_confirmed', true)->whereNotNull('encrypted_seed')->sharedLock()->first();
 
-        return $membership && $factor && ChapterAuthority::fromMembership($membership, $chapter)->allowsDuty($authority);
+        return $membership && ChapterAuthority::fromMembership($membership, $chapter)->allowsDuty($authority);
     }
 
-    public static function providerGrants(string $role): \Illuminate\Database\Query\Builder
+    public static function providerGrants(string $role): Builder
     {
         return DB::table('provider_role_grants')->where('role_code', $role)
             ->where('starts_at', '<=', now()->format('Y-m-d H:i:s.u'))->whereNull('revoked_at')

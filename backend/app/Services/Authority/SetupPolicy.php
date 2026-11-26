@@ -5,11 +5,14 @@ namespace App\Services\Authority;
 use App\Models\CatalogueItem;
 use App\Models\CatalogueVariant;
 use App\Models\DutyGrant;
+use App\Models\InternalRfLine;
 use App\Models\OpeningCount;
 use App\Models\PolicyRecord;
 use App\Services\Shared\CanonicalJson;
+use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use JsonException;
@@ -28,7 +31,7 @@ final class SetupPolicy
         'reference_series' => ['OpeningReferencePolicyValue', 'RfReferenceSeriesPolicyValue', 'IssueReferenceSeriesPolicyValue'],
     ];
 
-    public static function record(array $payload): array
+    public static function record(array $payload, Collection $users): array
     {
         $input = $payload['input'];
         $chapter = $payload['chapter_id'];
@@ -60,6 +63,10 @@ final class SetupPolicy
             throw new DomainException('version_conflict');
         }
         $priorEvidence = $prior?->setupEvidence() ?? [];
+        if ($prior && $prior->chapter_id === $chapter && $prior->policy_code === 'reference_series'
+            && $key === 'reference_series' && ($priorEvidence['value_schema_reference'] ?? null) !== $schema) {
+            throw new DomainException('invalid_input');
+        }
         if ($prior && ($prior->chapter_id !== $chapter || $prior->policy_code !== $key
             || ! array_key_exists('subject_id', $priorEvidence) || $priorEvidence['subject_id'] !== $subject
             || ($priorEvidence['value_schema_reference'] ?? null) !== $schema || ! $prior->effective_from
@@ -74,10 +81,10 @@ final class SetupPolicy
                 && ($key !== 'reference_series' || ($evidence['value_schema_reference'] ?? null) === $schema);
         });
         if ($sameSetting->contains(fn (PolicyRecord $row) => self::overlaps($row, $from, $until))) {
-            throw new DomainException('setup_blocked');
+            throw new DomainException('version_conflict');
         }
 
-        self::verifyScope($chapter, $target, $key, $subject, $value, $from, $until);
+        self::verifyScope($chapter, $target, $key, $subject, $value, $from, $until, $users);
         $prior?->update(['effective_until' => $from]);
         $row = PolicyRecord::create([
             ...($prior ? [] : ['id' => $target]),
@@ -187,7 +194,7 @@ final class SetupPolicy
         return $value;
     }
 
-    private static function verifyScope(string $chapter, string $target, string $key, ?string $subject, array $value, CarbonImmutable $from, ?CarbonImmutable $until): void
+    private static function verifyScope(string $chapter, string $target, string $key, ?string $subject, array $value, CarbonImmutable $from, ?CarbonImmutable $until, Collection $users): void
     {
         if (in_array($key, ['quantity_scale', 'price', 'rop', 'target_level'], true)) {
             $model = in_array($key, ['quantity_scale', 'price'], true) ? CatalogueVariant::class : CatalogueItem::class;
@@ -205,7 +212,7 @@ final class SetupPolicy
                 $peers = PolicyRecord::where('chapter_id', $chapter)->where('policy_code', $peerKey)->orderBy('id')->sharedLock()->get();
                 foreach ($peers as $peer) {
                     if (($peer->setupEvidence()['subject_id'] ?? null) === $subject && self::overlaps($peer, $from, $until)) {
-                        $comparison = \Brick\Math\BigDecimal::of($value['quantity'])->compareTo($peer->rules_json['quantity']);
+                        $comparison = BigDecimal::of($value['quantity'])->compareTo($peer->rules_json['quantity']);
                         if ($peer->rules_json['unit_id'] !== $value['unit_id'] || ($key === 'rop' ? $comparison > 0 : $comparison < 0)) {
                             throw new DomainException('setup_blocked');
                         }
@@ -215,9 +222,21 @@ final class SetupPolicy
 
             return;
         }
-        if ($key === 'ipc_authorization' && $subject !== null) {
-            if (! OpeningCount::whereKey($subject)->where('chapter_id', $chapter)->sharedLock()->first()) {
+        if ($key === 'ipc_authorization') {
+            if ($subject !== null && ! OpeningCount::whereKey($subject)->where('chapter_id', $chapter)->sharedLock()->first()) {
                 throw new DomainException('setup_blocked');
+            }
+            foreach ($value['count_team_ids'] as $id) {
+                $counter = $users->get($id);
+                if (! ControlledSetup::enabled($counter)
+                    || ! $counter->memberships()->current()->where('chapter_id', $chapter)->sharedLock()->first()
+                    || ! $counter->dutyGrants()->where('chapter_id', $chapter)->whereIn('duty_code', ['INVENTORY', 'INDEPENDENT_REVIEWER'])
+                        ->where('status', 'active')->where('is_alternate', false)
+                        ->where(fn ($query) => $query->whereNull('valid_from')->orWhere('valid_from', '<=', $from->format('Y-m-d H:i:s.u')))
+                        ->where(fn ($query) => $query->whereNull('valid_until')->orWhere('valid_until', '>', $from->format('Y-m-d H:i:s.u')))
+                        ->sharedLock()->first()) {
+                    throw new DomainException('setup_blocked');
+                }
             }
         } elseif ($subject !== null) {
             throw new DomainException('invalid_input');
@@ -229,21 +248,29 @@ final class SetupPolicy
                 throw new DomainException('setup_blocked');
             }
             if ($key === 'rf_approval_route') {
-                self::verifyRoute($chapter, $target, $unit, $assignment);
+                self::verifyRoute($chapter, $target, $unit, $assignment, $users);
+            }
+        }
+        foreach ($value['overrides'] ?? [] as $override) {
+            $expires = CarbonImmutable::parse($override['expires_at']);
+            if ($expires <= $from || ($until && $expires > $until)
+                || ! InternalRfLine::whereKey($override['rf_line_id'])->where('rf_id', $override['rf_id'])
+                    ->whereHas('rf', fn ($query) => $query->where('chapter_id', $chapter))->sharedLock()->first()) {
+                throw new DomainException('setup_blocked');
             }
         }
     }
 
-    private static function verifyRoute(string $chapter, string $target, string $unit, array $route): void
+    private static function verifyRoute(string $chapter, string $target, string $unit, array $route, Collection $users): void
     {
         $ids = $route['alternate_authorization_ids'];
-        $primary = self::currentRfGrant($chapter, $route['primary_approver_grant_id'], $unit);
+        $primary = self::currentRfGrant($chapter, $route['primary_approver_grant_id'], $unit, $users);
         if (! $primary || $primary->is_alternate || count(array_unique($ids)) !== count($ids)) {
             throw new DomainException('setup_blocked');
         }
 
         foreach ($ids as $id) {
-            $alternate = self::currentRfGrant($chapter, $id, $unit);
+            $alternate = self::currentRfGrant($chapter, $id, $unit, $users);
             if (! $alternate || $alternate->user_id === $primary->user_id || $alternate->replaces_user_id !== $primary->user_id
                 || $alternate->alternateDecisionScope() !== "rf_approval_route:{$target}:{$unit}") {
                 throw new DomainException('setup_blocked');
@@ -251,7 +278,7 @@ final class SetupPolicy
         }
     }
 
-    private static function currentRfGrant(string $chapter, string $id, string $unit): ?DutyGrant
+    private static function currentRfGrant(string $chapter, string $id, string $unit, Collection $users): ?DutyGrant
     {
         $grant = DutyGrant::whereKey($id)->where('chapter_id', $chapter)->where('duty_code', 'RF_APPROVER')
             ->where('status', 'active')->sharedLock()->first();
@@ -259,7 +286,7 @@ final class SetupPolicy
             || ! ChapterAuthority::covers($grant, $unit)) {
             return null;
         }
-        $user = $grant->user()->sharedLock()->first();
+        $user = $users->get($grant->user_id);
 
         return ControlledSetup::enabled($user) && $user->memberships()->current()->where('chapter_id', $chapter)->sharedLock()->first()
             ? $grant : null;

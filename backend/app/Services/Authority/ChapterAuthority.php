@@ -9,7 +9,9 @@ use App\Models\DutyGrant;
 use App\Models\InternalRf;
 use App\Models\PolicyRecord;
 use App\Models\User;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 final class ChapterAuthority
 {
@@ -56,6 +58,15 @@ final class ChapterAuthority
         public readonly int $version,
         private readonly array $alternateScopes,
     ) {}
+
+    public static function setupEntitlements(string $userId): Builder
+    {
+        $now = now()->format('Y-m-d H:i:s.u');
+
+        return DB::table('chapter_setup_entitlements')->where('user_id', $userId)
+            ->where('starts_at', '<=', $now)->whereNull('revoked_at')
+            ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', $now));
+    }
 
     public static function forChapter(User $user, string $chapterId): self
     {

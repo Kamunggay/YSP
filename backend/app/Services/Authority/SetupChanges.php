@@ -3,7 +3,6 @@
 namespace App\Services\Authority;
 
 use App\Models\AuditLog;
-use App\Models\BrowserSession;
 use App\Models\Chapter;
 use App\Models\ChapterMembership;
 use App\Models\DutyGrant;
@@ -43,7 +42,7 @@ final class SetupChanges
             'setMembership' => $this->setMembership(),
             'setDuty' => $this->setGrant(false),
             'setAlternate' => $this->setGrant(true),
-            'recordPolicy' => ['recheck_authority', SetupPolicy::record($this->payload)],
+            'recordPolicy' => ['recheck_authority', SetupPolicy::record($this->payload, $this->users)],
         };
     }
 
@@ -120,7 +119,7 @@ final class SetupChanges
                 }
                 $factor->save();
             }
-            BrowserSession::where('user_id', $target->id)->delete();
+            // The account version fences every session without taking session locks after the account lock.
         }
 
         return [$reset ? 'require_reenrollment' : ($status === 'disabled' ? 'revoke_all' : 'none'), ['prior_status' => $previous]];
@@ -195,6 +194,12 @@ final class SetupChanges
             throw new DomainException('setup_blocked');
         }
 
+        if (! $active && (($grant->scope['unit_id'] ?? null) !== $unit
+            || ($grant->scope['limit_php'] ?? null) !== $input['scope']['limit_php']
+            || ($alternate && $grant->alternateDecisionScope() !== $input['decision_scope_reference']))) {
+            throw new DomainException('setup_blocked');
+        }
+
         $from = CarbonImmutable::parse($input['effective_from']);
         $until = $input['effective_until'] === null ? null : CarbonImmutable::parse($input['effective_until']);
         if (($active ? $from->isPast() : $from->isFuture()) || ($until && $until <= $from)) {
@@ -238,7 +243,7 @@ final class SetupChanges
         }
         $grant->save();
 
-        return ['recheck_authority', ['prior_status' => $prior] + ($alternate ? [
+        return ['recheck_authority', ['prior_status' => $prior, 'affected_user_id' => $user->id] + ($alternate ? [
             'decision_scope_reference' => $input['decision_scope_reference'],
             'grant_sha256' => $grant->approvalDigest(),
         ] : [])];

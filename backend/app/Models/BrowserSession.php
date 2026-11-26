@@ -152,14 +152,18 @@ class BrowserSession extends Model
             ->where('starts_at', '<=', $now)
             ->whereNull('revoked_at')
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', $now))
-            ->sharedLock()->first(['id']) !== null || $user->dutyGrants()
-            ->whereIn('duty_code', ['CHAPTER_HEAD', 'FINANCE', 'RF_APPROVER', 'SALES_REVIEWER', 'BUDGET_APPROVER'])
-            ->where('status', 'active')
-            ->where(fn (Builder $query) => $query->whereNull('valid_from')->orWhere('valid_from', '<=', $now))
-            ->where(fn (Builder $query) => $query->whereNull('valid_until')->orWhere('valid_until', '>', $now))
-            ->whereIn('chapter_id', $user->memberships()->current()
-                ->whereHas('chapter', fn (Builder $query) => $query->whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS))
-                ->select('chapter_id'))
-            ->sharedLock()->first(['id']) !== null;
+            ->sharedLock()->first(['id']) !== null
+            || ChapterAuthority::setupEntitlements($user->id)
+                ->whereIn('chapter_id', Chapter::whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS)->select('id'))
+                ->sharedLock()->first(['id']) !== null
+            || $user->dutyGrants()
+                ->whereIn('duty_code', ['CHAPTER_HEAD', 'FINANCE', 'RF_APPROVER', 'SALES_REVIEWER', 'BUDGET_APPROVER'])
+                ->where('status', 'active')
+                ->where(fn (Builder $query) => $query->whereNull('valid_from')->orWhere('valid_from', '<=', $now))
+                ->where(fn (Builder $query) => $query->whereNull('valid_until')->orWhere('valid_until', '>', $now))
+                ->whereIn('chapter_id', $user->memberships()->current()
+                    ->whereHas('chapter', fn (Builder $query) => $query->whereIn('status', ChapterAuthority::AVAILABLE_CHAPTERS))
+                    ->select('chapter_id'))
+                ->sharedLock()->first(['id']) !== null;
     }
 }

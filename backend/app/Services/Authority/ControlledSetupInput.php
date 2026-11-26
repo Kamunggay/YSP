@@ -73,7 +73,7 @@ final class ControlledSetupInput
             'payload.procedure_id' => 'required|in:'.$procedure,
             'payload.action_key' => $id,
             'payload.operator_id' => $id,
-            'payload.chapter_id' => $provider ? ['present', fn ($field, $value, $fail) => $value === null ?: $fail('invalid_input')] : $id,
+            'payload.chapter_id' => $provider ? 'present' : $id,
             'payload.target_id' => $id,
             'payload.expected_version' => ['required', 'integer:strict', match ($procedure) {
                 'prepareAccount', 'prepareChapter' => 'in:0',
@@ -100,7 +100,13 @@ final class ControlledSetupInput
         }
 
         $data = json_decode(json_encode($body, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
-        if (Validator::make(['payload' => $data], $rules)->fails()) {
+        $nullable = [
+            $data['input']['effective_until'] ?? null, $data['input']['subject_id'] ?? null,
+            data_get($data, 'input.scope.unit_id'), data_get($data, 'input.scope.limit_php'),
+        ];
+        if (($provider && ($data['chapter_id'] ?? null) !== null)
+            || collect($nullable)->contains(fn ($value) => is_string($value) && trim($value) === '')
+            || Validator::make(['payload' => $data], $rules)->fails()) {
             throw new \DomainException('invalid_input');
         }
 

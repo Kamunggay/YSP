@@ -8,6 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::create('controlled_setup_receipts', function (Blueprint $table) {
+            $table->foreignUuid('operator_id')->constrained('users');
+            $table->string('scope_id', 36);
+            $table->string('procedure_id', 32);
+            $table->uuid('action_key');
+            $table->char('payload_hash', 64);
+            $table->longText('response_body');
+            $table->primary(['operator_id', 'scope_id', 'procedure_id', 'action_key'], 'controlled_setup_receipt_scope');
+        });
+
         Schema::create('chapter_setup_entitlements', function (Blueprint $table) {
             $table->id();
             $table->foreignUuid('user_id')->constrained();
@@ -68,5 +78,6 @@ return new class extends Migration
         Schema::dropIfExists('chapter_organizational_units');
         Schema::dropIfExists('account_onboarding_deliveries');
         Schema::dropIfExists('chapter_setup_entitlements');
+        Schema::dropIfExists('controlled_setup_receipts');
     }
 };
