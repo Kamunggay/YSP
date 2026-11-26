@@ -7,16 +7,18 @@ use App\Models\CatalogueUnit;
 use App\Models\Chapter;
 use App\Models\ChapterMembership;
 use App\Models\DutyGrant;
+use App\Models\EvidenceBinding;
 use App\Models\EvidenceBlob;
 use App\Models\OpeningCount;
 use App\Models\OpeningRm;
 use App\Models\StockHold;
 use App\Models\User;
+use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -180,29 +182,11 @@ class InventoryStage1ATest extends TestCase
         $this->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}")
             ->assertOk()->assertJsonPath('data.current_version', $response->json('data'));
 
-        // List versions
-        $versionsResponse = $this->asOfficer($this->userId)
-            ->getJson("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions");
-        $versionsResponse->assertStatus(200)
-            ->assertJsonCount(2, 'data');
-
-        // Replace version
-        $newRawBytes = $rawBytes."\n% New Version Appended";
-        $newFile = UploadedFile::fake()->createWithContent('updated_receipt.pdf', $newRawBytes);
-        $replaceResponse = $this->asOfficer($this->userId)
-            ->post("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions", [
-                'replacement_reason' => 'Clearer scan attached.',
-                'attachments' => [$newFile],
-            ]);
-
-        $replaceResponse->assertStatus(201)
-            ->assertJsonPath('data.version', 2)
-            ->assertJsonPath('data.replacement_reason', 'Clearer scan attached.');
-
-        $wrongVersionId = $replaceResponse->json('data.version_id');
-        $this->asOfficer($this->userId)
-            ->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/{$wrongVersionId}/attachments/{$attachmentId}/content")
-            ->assertNotFound()->assertJsonPath('error.code', 'evidence_not_found');
+        $this->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions")
+            ->assertOk()->assertJsonCount(2, 'data.versions')
+            ->assertJsonPath('data.next_cursor', null);
+        $this->get("/api/v1/chapters/{$this->chapterId}/evidence/{$evidenceId}/versions/{$legacyVersion}/attachments/{$legacyAttachment}/content")
+            ->assertOk()->assertContent($rawBytes);
 
         // Retrieve attachment content
         $contentResponse = $this->asOfficer($this->userId)
@@ -341,6 +325,121 @@ class InventoryStage1ATest extends TestCase
         $this->assertSame('unauthenticated', json_decode($body, true)['error']['code']);
     }
 
+    public function test_evidence_replacement_replays_and_keeps_exact_private_history(): void
+    {
+        $rm = $this->evidenceDraft();
+        $pdf = $this->paperPdf();
+        $files = [['application/pdf', $pdf]];
+        $first = $this->asOfficer($this->userId)->uploadPaper($rm, (string) Str::uuid(), $files)->assertCreated()->json('data');
+        $path = "/api/v1/chapters/{$this->chapterId}/evidence/{$first['evidence_id']}";
+        $history = "{$path}/versions";
+        $key = (string) Str::uuid();
+        $replace = fn (string $actionKey, int $expected, string $reason, array $parts) => $this->paperMultipart(
+            $history, $actionKey, ['expected_version' => (string) $expected, 'reason' => $reason], $parts,
+        );
+
+        $replace($key, 2, 'New scan', $files)->assertConflict()->assertJsonPath('error.code', 'version_conflict');
+        $replace($key, 1, ' ', $files)->assertUnprocessable()->assertJsonPath('error.fields.0.pointer', '/reason');
+        $replace($key, 1, 'New scan', [...$files, ['application/pdf', 'Invalid']])->assertUnprocessable();
+        $this->get($history)->assertOk()->assertJsonCount(1, 'data.versions')->assertJsonPath('data.next_cursor', null);
+        $second = $replace($key, 1, 'New scan', [...$files, ...$files])->assertCreated()
+            ->assertHeader('X-Action-Replayed', 'false')->assertJsonPath('data.supersedes_version_id', $first['version_id'])
+            ->assertJsonPath('data.version', 2)->assertJsonPath('data.replacement_reason', 'New scan')->json('data');
+        $cursor = $this->get("{$history}?limit=1")->assertOk()
+            ->assertJsonPath('data.versions.0.superseded_by_version_id', $second['version_id'])->json('data.next_cursor');
+        $next = "{$history}?limit=1&cursor=".rawurlencode($cursor);
+        $this->get($next)->assertOk()->assertJsonPath('data.versions.0.version_id', $second['version_id'])->assertJsonPath('data.next_cursor', null);
+        $this->get("{$history}?limit=1&limit=2")->assertBadRequest();
+        $oldDownload = "{$history}/{$first['version_id']}/attachments/{$first['attachments'][0]['attachment_id']}/content";
+        $this->get($oldDownload)->assertOk()->assertContent($pdf);
+        $this->get("{$history}/{$second['version_id']}/attachments/{$first['attachments'][0]['attachment_id']}/content")
+            ->assertNotFound()->assertJsonPath('error.code', 'evidence_not_found');
+
+        $replace((string) Str::uuid(), 2, 'Third scan', $files)->assertCreated();
+        $this->get($next)->assertConflict()->assertJsonPath('error.code', 'snapshot_stale');
+        $rm->update(['status' => 'POSTED']);
+        $replace($key, 1, 'New scan', [...$files, ...$files])->assertCreated()
+            ->assertHeader('X-Action-Replayed', 'true')->assertExactJson(['data' => $second]);
+        $replace($key, 1, 'Changed reason', [...$files, ...$files])->assertConflict()->assertJsonPath('error.code', 'action_key_conflict');
+        $replace((string) Str::uuid(), 3, 'After posting', $files)->assertConflict()->assertJsonPath('error.code', 'target_locked');
+        ChapterMembership::where('user_id', $this->userId)->update(['membership_status' => 'revoked']);
+        $this->get($oldDownload)->assertNotFound()->assertJsonPath('error.code', 'chapter_not_found');
+        $replace($key, 1, 'New scan', [...$files, ...$files])->assertNotFound()->assertJsonPath('error.code', 'chapter_not_found');
+    }
+
+    public function test_exact_evidence_binding_rechecks_order_snapshot_supersession_and_bytes(): void
+    {
+        $rm = $this->evidenceDraft();
+        $files = array_fill(0, 2, ['application/pdf', $this->paperPdf()]);
+        $published = $this->asOfficer($this->userId)->uploadPaper($rm, (string) Str::uuid(), $files)->assertCreated()->json('data');
+        $bytes = $this->byteBinding($published);
+        $snapshot = [
+            'target' => $published['target'], 'material_version' => 1, 'sha256' => hash('sha256', 'approved material'),
+        ];
+        $participant = app(CheckEvidenceBindingParticipant::class);
+        $match = DB::transaction(fn () => $participant->recordMatch(
+            $this->chapterId, $this->userId, $snapshot, $bytes, null, '', now('UTC')->toISOString(), [],
+        ));
+        $input = [
+            'chapter_id' => $this->chapterId, 'actor_id' => $this->userId,
+            'snapshot' => $snapshot, 'required_bytes' => $bytes, 'acknowledgment' => $match->match_projection,
+        ];
+        $check = fn (array $overrides = []) => DB::transaction(fn () => $participant->check($overrides + $input));
+        $this->assertSame('ready', $check()['outcome']);
+        $this->assertSame(['outcome' => 'missing', 'reason' => 'acknowledgment_missing'], $check(['acknowledgment' => null]));
+        $this->assertSame('snapshot_changed', $check(['snapshot' => ['material_version' => 2] + $snapshot])['reason']);
+        $this->assertSame('bytes_changed', $check([
+            'required_bytes' => ['attachments' => array_reverse($bytes['attachments'])] + $bytes,
+        ])['reason']);
+        $this->paperMultipart("/api/v1/chapters/{$this->chapterId}/evidence/{$published['evidence_id']}/versions",
+            (string) Str::uuid(), ['expected_version' => '1', 'reason' => 'Replacement'], $files)->assertCreated();
+        $this->assertSame('invalidated', $match->fresh()->status);
+        $this->assertSame('superseded_version', $check()['reason']);
+        Storage::disk('evidence')->delete(EvidenceBlob::findOrFail($bytes['attachments'][0]['attachment_id'])->payload_path);
+        $this->assertSame(['outcome' => 'invalid', 'reason' => 'object_missing'], $check());
+    }
+
+    public function test_hold_clearance_rejects_stale_and_unavailable_paper_and_binds_current_exact_bytes(): void
+    {
+        Storage::fake('evidence');
+        $hold = StockHold::create([
+            'chapter_id' => $this->chapterId, 'status' => 'active', 'version' => 1, 'material_version' => 1,
+            'reason_code' => 'quality_check', 'reason' => 'Check condition', 'placed_by_user_id' => $this->userId, 'placed_at' => now(),
+            'clearance_proposal_json' => ['finding' => 'Inspected and cleared'],
+            'clearance_material_sha256' => hash('sha256', 'approved clearance'), 'clearance_prepared_by_user_id' => $this->userId,
+        ]);
+        $files = [['application/pdf', $this->paperPdf()]];
+        $first = $this->asOfficer($this->userId)->uploadPaper($hold, (string) Str::uuid(), $files)->assertCreated()->json('data');
+        $second = $this->paperMultipart("/api/v1/chapters/{$this->chapterId}/evidence/{$first['evidence_id']}/versions",
+            (string) Str::uuid(), ['expected_version' => '1', 'reason' => 'Corrected clearance'], $files)->assertCreated()->json('data');
+        $clear = fn (array $paper, ?array $snapshot = null) => $this->postJson("/api/v1/chapters/{$this->chapterId}/stock-holds/{$hold->id}/clear", [
+            'expected_version' => 1, 'expected_material_version' => 1, 'matches_paper' => true, 'evidence' => $this->byteBinding($paper),
+            'expected_snapshot' => $snapshot ?? [
+                'target' => $first['target'], 'material_version' => 1, 'sha256' => $hold->clearance_material_sha256,
+            ],
+        ], ['X-Action-Key' => (string) Str::uuid()]);
+        $clear($first)->assertConflict()->assertJsonPath('error.code', 'evidence_mismatch');
+        $clear($second, ['target' => $first['target'], 'material_version' => 1, 'sha256' => hash('sha256', 'another material')])
+            ->assertConflict()->assertJsonPath('error.code', 'material_version_conflict');
+        $blob = EvidenceBlob::findOrFail($second['attachments'][0]['attachment_id']);
+        $disk = Storage::disk('evidence');
+        $disk->delete($blob->payload_path);
+        $clear($second)->assertConflict()->assertJsonPath('error.code', 'evidence_invalid');
+        $this->assertSame('active', $hold->fresh()->status);
+        $disk->put($blob->payload_path, $files[0][1]);
+        $clear($second)->assertOk();
+        $binding = EvidenceBinding::findOrFail($hold->fresh()->clearance_evidence_binding_id);
+        $this->assertEquals($this->byteBinding($second), $binding->match_projection['bytes']);
+    }
+
+    private function byteBinding(array $version): array
+    {
+        return [
+            'evidence_id' => $version['evidence_id'], 'version_id' => $version['version_id'],
+            'attachments' => array_map(fn ($file) => ['attachment_id' => $file['attachment_id'], 'sha256' => $file['sha256']], $version['attachments']),
+        ];
+    }
+
     private function evidenceDraft(): OpeningRm
     {
         Storage::fake('evidence');
@@ -353,9 +452,20 @@ class InventoryStage1ATest extends TestCase
 
     private function uploadPaper(OpeningRm|StockHold $target, string $key, array $files, ?string $extra = null, bool $finished = true): TestResponse
     {
+        return $this->paperMultipart("/api/v1/chapters/{$this->chapterId}/evidence", $key, [
+            'purpose' => $target instanceof OpeningRm ? 'opening_receipt' : 'hold_clearance',
+            'record_id' => $target->id,
+        ], $files, $extra, $finished);
+    }
+
+    private function paperMultipart(string $path, string $key, array $metadata, array $files, ?string $extra = null, bool $finished = true): TestResponse
+    {
         $boundary = (string) Str::uuid();
         $part = fn (string $name, string $value, string $headers = '') => "--{$boundary}\r\nContent-Disposition: form-data; name=\"{$name}\"{$headers}\r\n\r\n{$value}\r\n";
-        $body = $part('purpose', $target instanceof OpeningRm ? 'opening_receipt' : 'hold_clearance').$part('record_id', $target->id);
+        $body = '';
+        foreach ($metadata as $name => $value) {
+            $body .= $part($name, $value);
+        }
         if ($extra !== null) {
             $body .= $part($extra, 'opening_receipt');
         }
@@ -363,7 +473,7 @@ class InventoryStage1ATest extends TestCase
             $body .= $part('attachments', $bytes, "; filename=\"scan-{$boundary}\"\r\nContent-Type: {$mime}");
         }
 
-        return $this->call('POST', "/api/v1/chapters/{$this->chapterId}/evidence",
+        return $this->call('POST', $path,
             cookies: $this->prepareCookiesForRequest(),
             server: $this->transformHeadersToServerVars(['X-Action-Key' => $key, 'Accept' => 'application/json'])
                 + ['CONTENT_TYPE' => "multipart/form-data; boundary={$boundary}"],

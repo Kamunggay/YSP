@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ContractException;
 use App\Models\EvidenceBinding;
+use App\Models\EvidenceRecord;
 use App\Models\IdempotencyRecord;
 use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
@@ -598,7 +599,14 @@ class OpeningInventoryController extends Controller
             $bindingId = (string) Str::uuid();
         }
 
-        return DB::transaction(function () use ($rm, $chapterId, $bindingId, $userId) {
+        return DB::transaction(function () use ($rm, $chapterId, $bindingId, $userId, $request) {
+            $rm = OpeningRm::where('chapter_id', $chapterId)->whereKey($rm->id)->lockForUpdate()->firstOrFail();
+            if ($rm->status !== 'INSPECTED') {
+                throw new ContractException(409, 'invalid_transition', 'The Opening RM must be inspected before matching.');
+            }
+            if ($request->has('bytes') || $this->hasPublishedOpeningPaper($rm)) {
+                throw new ContractException(409, 'invalid_source', 'Match the signed paper against the approved Opening RM snapshot.');
+            }
             $rm->status = 'EVIDENCE_MATCHED';
             $rm->evidence_binding_id = $bindingId;
             $rm->revision += 1;
@@ -611,6 +619,12 @@ class OpeningInventoryController extends Controller
                 'data' => $rm,
             ], 200, ['Cache-Control' => 'no-store']);
         });
+    }
+
+    private function hasPublishedOpeningPaper(OpeningRm $rm): bool
+    {
+        return EvidenceRecord::where('chapter_id', $rm->chapter_id)->where('purpose', 'opening_receipt')
+            ->where('record_id', $rm->id)->sharedLock()->first(['id']) !== null;
     }
 
     /**
@@ -664,6 +678,22 @@ class OpeningInventoryController extends Controller
                     'error' => 'BASELINE_ALREADY_POSTED',
                     'message' => 'An opening baseline has already been posted for chapter (RCV-10, T-18, A-18).',
                 ], 409, ['Cache-Control' => 'no-store']);
+            }
+
+            $rm = OpeningRm::where('chapter_id', $chapterId)->whereKey($rm->id)->lockForUpdate()->firstOrFail();
+            $binding = $rm->evidence_binding_id
+                ? EvidenceBinding::where('chapter_id', $chapterId)->whereKey($rm->evidence_binding_id)->sharedLock()->first()
+                : null;
+            if ($binding?->match_projection) {
+                if ($request->input('acknowledgment_id') !== $binding->id || $binding->status !== 'active') {
+                    throw new ContractException(409, 'evidence_mismatch', 'Match the current signed paper before posting.');
+                }
+                $this->checkEvidenceBinding->verifyMatch(
+                    $chapterId, $userId, $rm->evidenceSnapshot(),
+                    $binding->match_projection['bytes'], $binding->match_projection, [],
+                );
+            } elseif ($request->has('acknowledgment_id') || $this->hasPublishedOpeningPaper($rm)) {
+                throw new ContractException(409, 'acknowledgment_missing', 'Match the current signed paper before posting.');
             }
 
             if (! $rm->rm_number) {

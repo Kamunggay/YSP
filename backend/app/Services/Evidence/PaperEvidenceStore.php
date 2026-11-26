@@ -99,6 +99,28 @@ final class PaperEvidenceStore
         return [$bytes, null];
     }
 
+    /** @param iterable<EvidenceBlob> $blobs
+     *  @return array{?string, ?string}
+     */
+    public function checkVersion(iterable $blobs, ?string $attachmentId = null): array
+    {
+        $selected = null;
+        foreach ($blobs as $blob) {
+            if (! $blob->payload_path) {
+                return [null, 'object_missing'];
+            }
+            [$bytes, $reason] = $this->check($blob);
+            if ($reason !== null) {
+                return [null, $reason];
+            }
+            if ($blob->id === $attachmentId) {
+                $selected = $bytes;
+            }
+        }
+
+        return [$selected, null];
+    }
+
     public function pruneUnpublished(): int
     {
         $disk = Storage::disk('evidence');

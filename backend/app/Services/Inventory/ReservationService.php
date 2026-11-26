@@ -810,35 +810,32 @@ class ReservationService
             }
 
             $evidenceInput = $input['evidence'] ?? [];
-            $evidenceId = $evidenceInput['evidence_id'] ?? null;
-            $bindingLines = $hold->ranges->map(fn (StockHoldRange $r) => [
-                'variant_id' => $r->lot_id,
-                'unit_id' => $r->basis_segment_id,
-                'quantity' => $r->quantity,
-            ])->values()->all();
-
-            try {
-                $check = $this->checkEvidenceBinding->check([
-                    'chapter_id' => $chapterId,
-                    'evidence_id' => $evidenceId,
-                    'binding_id' => $evidenceInput['binding_id'] ?? null,
-                    'source_type' => 'hold_clearance',
-                    'source_id' => $hold->id,
-                    'recipient_name' => $hold->clearance_prepared_by_user_id ?? $actorId,
-                    'lines' => $bindingLines,
-                ], strict: true);
-            } catch (DomainException $e) {
-                throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
-                    'failed_intent_committed' => false,
-                    'current' => ['hold' => $this->formatHold($hold)],
-                ]);
+            if (is_array($evidenceInput) && array_key_exists('version_id', $evidenceInput)) {
+                $snapshot = [
+                    'target' => ['purpose' => 'hold_clearance', 'record_id' => $hold->id],
+                    'material_version' => $hold->material_version,
+                    'sha256' => $hold->clearance_material_sha256,
+                ];
+                $current = ['hold' => $this->formatHold($hold)];
+                if (CanonicalJson::encode($expectedSnapshot) !== CanonicalJson::encode($snapshot)) {
+                    throw new ContractException(409, 'material_version_conflict', 'The clearance snapshot has changed.', [
+                        'failed_intent_committed' => false, 'current' => $current,
+                    ]);
+                }
+                $binding = $this->checkEvidenceBinding->recordMatch(
+                    $chapterId, $actorId, $snapshot, $evidenceInput, null, $actorId,
+                    now('UTC')->format('Y-m-d\TH:i:s.u\Z'), $current,
+                );
+                $check = ['acknowledgment_id' => $binding->id];
+            } else {
+                $check = $this->checkLegacyClearance($chapterId, $hold, $actorId, $evidenceInput);
             }
 
             $hold->status = 'cleared';
             $hold->cleared_by_user_id = $actorId;
             $hold->cleared_at = now();
             $hold->clearance_evidence_binding_id = $check['acknowledgment_id'] ?? null;
-            $hold->clearance_acknowledgment_json = [
+            $hold->clearance_acknowledgment_json = $binding->match_projection ?? [
                 'acknowledgment_id' => $check['acknowledgment_id'] ?? null,
                 'matched_by_user_id' => $actorId,
                 'matched_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
@@ -866,6 +863,35 @@ class ReservationService
                 $input
             );
         });
+    }
+
+    private function checkLegacyClearance(string $chapterId, StockHold $hold, string $actorId, array $evidenceInput): array
+    {
+        $evidenceId = $evidenceInput['evidence_id'] ?? null;
+        $bindingLines = $hold->ranges->map(fn (StockHoldRange $r) => [
+            'variant_id' => $r->lot_id,
+            'unit_id' => $r->basis_segment_id,
+            'quantity' => $r->quantity,
+        ])->values()->all();
+
+        try {
+            $check = $this->checkEvidenceBinding->check([
+                'chapter_id' => $chapterId,
+                'evidence_id' => $evidenceId,
+                'binding_id' => $evidenceInput['binding_id'] ?? null,
+                'source_type' => 'hold_clearance',
+                'source_id' => $hold->id,
+                'recipient_name' => $hold->clearance_prepared_by_user_id ?? $actorId,
+                'lines' => $bindingLines,
+            ], strict: true);
+        } catch (DomainException $e) {
+            throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
+                'failed_intent_committed' => false,
+                'current' => ['hold' => $this->formatHold($hold)],
+            ]);
+        }
+
+        return $check;
     }
 
     public function recomputeBlockedStateForLots(string $chapterId, array $lotIds, ?string $actorId = null): void
@@ -1157,7 +1183,8 @@ class ReservationService
                     'chapter_id' => $hold->chapter_id,
                 ],
                 'cleared_at' => $hold->cleared_at?->format('Y-m-d\TH:i:s.u\Z'),
-                'acknowledgment_id' => $hold->clearance_evidence_binding_id,
+                'resolution' => $clearanceProposal['resolution'],
+                'condition_treatment_source_id' => $clearanceProposal['condition_treatment_source_id'],
                 'acknowledgment' => $hold->clearance_acknowledgment_json,
             ]
             : null;

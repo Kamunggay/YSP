@@ -46,7 +46,7 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidenc
     Route::post('/evidence', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare');
     Route::get('/evidence/{evidence_id}', [PaperEvidenceController::class, 'show'])->middleware('stage-one.action:evidence.read');
     Route::get('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'versions'])->middleware('stage-one.action:evidence.read,history.read');
-    Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'replace'])->middleware('stage-one.action:evidence.prepare', 'idempotent');
+    Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare')->name('paper-evidence.replace');
     Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion'])->middleware('stage-one.action:evidence.read,history.read');
     Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment'])
         ->middleware('stage-one.action:'.implode(',', PaperEvidenceDownload::ACTIONS));

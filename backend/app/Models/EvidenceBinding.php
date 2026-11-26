@@ -17,6 +17,7 @@ class EvidenceBinding extends Model
 
     protected $casts = [
         'created_at' => 'datetime',
+        'match_projection' => 'array',
     ];
 
     public function evidenceRecord(): BelongsTo

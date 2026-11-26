@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Shared\CanonicalJson;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -55,5 +56,13 @@ class OpeningRm extends Model
     public function inspector(): BelongsTo
     {
         return $this->belongsTo(User::class, 'inspector_user_id');
+    }
+    public function evidenceSnapshot(): array
+    {
+        return [
+            'target' => ['purpose' => 'opening_receipt', 'record_id' => $this->id],
+            'material_version' => $this->material_version,
+            'sha256' => CanonicalJson::sha256($this->snapshot_data),
+        ];
     }
 }

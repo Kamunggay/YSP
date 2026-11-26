@@ -667,27 +667,50 @@ class ActualIssueController extends Controller
                 $bindingId = $request->input('evidence_binding_id') ?? $evidenceInput['binding_id'] ?? null;
                 $evidenceId = $request->input('evidence_id') ?? $evidenceInput['evidence_id'] ?? null;
 
-                $checkLines = $issue->lines->map(fn (ActualIssueLine $l) => [
-                    'variant_id' => $l->variant_id,
-                    'unit_id' => $l->unit_id,
-                    'quantity' => $l->issued_quantity,
-                ])->values()->all();
+                if (is_array($evidenceInput) && array_key_exists('version_id', $evidenceInput)) {
+                    $snapshot = $issue->evidenceSnapshot();
+                    $current = $this->issueService->formatIssue($issue);
+                    if (CanonicalJson::encode($request->input('expected_snapshot')) !== CanonicalJson::encode($snapshot)) {
+                        throw new ContractException(409, 'material_version_conflict', 'The issue snapshot has changed.', [
+                            'failed_intent_committed' => false, 'current' => $current,
+                        ]);
+                    }
+                    $handoverAt = $issue->handed_over_at ?? $issue->actual_handover_at;
+                    if ($request->input('matches_paper') !== true || ! $issue->recipient_user_id || ! $issue->acknowledged_at
+                        || ! $handoverAt || $handoverAt->gt($issue->acknowledged_at)
+                        || $issue->acknowledged_at->isFuture()) {
+                        throw new ContractException(409, 'recipient_invalid', 'A named recipient and valid actual acknowledgment are required.', [
+                            'failed_intent_committed' => false, 'current' => $current,
+                        ]);
+                    }
+                    $binding = $this->checkEvidenceBinding->recordMatch(
+                        $chapterId, $userId, $snapshot, $evidenceInput, $issue->recipient_user_id, $issue->recipient_name,
+                        $issue->acknowledged_at->utc()->format('Y-m-d\TH:i:s.u\Z'), $current,
+                    );
+                    $result = ['acknowledgment_id' => $binding->id];
+                } else {
+                    $checkLines = $issue->lines->map(fn (ActualIssueLine $l) => [
+                        'variant_id' => $l->variant_id,
+                        'unit_id' => $l->unit_id,
+                        'quantity' => $l->issued_quantity,
+                    ])->values()->all();
 
-                try {
-                    $result = $this->checkEvidenceBinding->check([
-                        'chapter_id' => $chapterId,
-                        'evidence_id' => $evidenceId,
-                        'binding_id' => $bindingId,
-                        'source_type' => 'actual_issue',
-                        'source_id' => $issue->id,
-                        'recipient_name' => $issue->recipient_name,
-                        'lines' => $checkLines,
-                    ], strict: true);
-                } catch (DomainException $e) {
-                    throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
-                        'failed_intent_committed' => false,
-                        'current' => $this->issueService->formatIssue($issue),
-                    ]);
+                    try {
+                        $result = $this->checkEvidenceBinding->check([
+                            'chapter_id' => $chapterId,
+                            'evidence_id' => $evidenceId,
+                            'binding_id' => $bindingId,
+                            'source_type' => 'actual_issue',
+                            'source_id' => $issue->id,
+                            'recipient_name' => $issue->recipient_name,
+                            'lines' => $checkLines,
+                        ], strict: true);
+                    } catch (DomainException $e) {
+                        throw new ContractException(409, 'evidence_mismatch', $e->getMessage(), [
+                            'failed_intent_committed' => false,
+                            'current' => $this->issueService->formatIssue($issue),
+                        ]);
+                    }
                 }
 
                 $issue->evidence_binding_id = $result['acknowledgment_id'] ?? $bindingId;
