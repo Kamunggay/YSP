@@ -1,0 +1,2256 @@
+status: candidate; required combined Efren and Glenn human review pending; not a passed runtime prerequisite
+spec: https://github.com/Kamunggay/YSP/issues/27
+base_master_revision: 4469cd73f0cc882e26d84df9a3ccd5a586435b73
+profiles:
+  replenishment:
+    owner: Glenn
+    ui_consumer: Glenn
+    reviewers:
+    - Leader
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#5-net-shortage--rop-replenishment-contract-get-replenishmentneeds--computenetshortagesnapshot
+    requirements:
+    - INV-10
+    - INV-11
+    - INV-12
+    - PRC-02
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - ADD-AC-11
+    source_nodes:
+    - S1-20
+    - S3-22
+    - S3-23
+    - T-02
+    coverage_limit: Read-only live net-shortage and ROP replenishment proposal query; Stage 3 so_shortage excluded and no
+      RepF/PO write performed.
+    operations:
+      listReplenishmentNeeds:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/replenishment/needs
+        required_action: replenishment.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+  repf:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#6-repf-intake-net-need-duplicate-guard-budget-review--recovery-ticket-02
+    requirements:
+    - PRC-01
+    - PRC-02
+    - PRC-03
+    - PRC-04
+    - PRC-08
+    - INV-11
+    - INV-12
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-07
+    - ADD-AC-11
+    source_nodes:
+    - S1-20
+    - S1-21
+    - S2-01
+    - S2-02
+    - S2-03
+    - T-04
+    - T-05
+    coverage_limit: Chapter-funded RF-shortage and ROP RepF lifecycle only; Stage 3 so_shortage rejected and budget approval
+      does not close linked RF demand.
+    operations:
+      listRepfs:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/repfs
+        required_action: repf.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      createRepf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/repfs
+        required_action: repf.draft
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      readRepf:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}
+        required_action: repf.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      replaceRepf:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}
+        required_action: repf.draft
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      submitRepf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/submit
+        required_action: repf.submit
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      reviewRepfBudget:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/budget-review
+        required_action: repf.budget_review
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      resumeRepfReview:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/resume-review
+        required_action: repf.budget_review
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      reviseRepf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/revise
+        required_action: repf.draft
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      cancelRepf:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/cancel
+        required_action: repf.cancel
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      listRepfHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/history
+        required_action: repf.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      readRepfVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/versions/{version}
+        required_action: repf.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      listRepfRelatedRecords:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/related
+        required_action: repf.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      printRepf:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/print
+        required_action: repf.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET printable view has no domain change.
+  quotations:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#112-nested-quotations--quotation-policy-enforcement-prc-05
+    requirements:
+    - PRC-05
+    - DOC-01
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-07
+    - DOC-08
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-07
+    source_nodes:
+    - S2-04
+    - S2-05
+    - T-06
+    coverage_limit: Nested quotations and policy-gated supplier selection under approved/partially-ordered RepFs; no standalone
+      /suppliers CRUD.
+    operations:
+      listRepfQuotations:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/quotations
+        required_action: quotation.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      createRepfQuotation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/quotations
+        required_action: quotation.manage
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      replaceRepfQuotation:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/quotations/{quotation_id}
+        required_action: quotation.manage
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      deleteRepfQuotation:
+        method: DELETE
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/quotations/{quotation_id}
+        required_action: quotation.manage
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+      recordSupplierSelection:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/repfs/{repf_id}/supplier-selection
+        required_action: quotation.select
+        events_disposition: emits
+        emits:
+        - stage2.repf.changed.v1
+  purchase_orders:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#113-po-state-machine-independence-amendments-short-closure--cancellation-prc-0609-rcv-06-rcv-07
+    requirements:
+    - PRC-05
+    - PRC-06
+    - PRC-07
+    - PRC-08
+    - PRC-09
+    - RCV-05
+    - RCV-06
+    - RCV-07
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-07
+    - AC-12
+    source_nodes:
+    - S2-06
+    - S2-07
+    - S2-08
+    - S3-21
+    - T-07
+    - T-08
+    coverage_limit: PO approval/issuance, optional non-blocking acknowledgment, amendments, close-short, and cancel; issuing
+      a PO never increases usable stock or closes RF shortages.
+    operations:
+      listPurchaseOrders:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/purchase-orders
+        required_action: po.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      createPurchaseOrder:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders
+        required_action: po.draft
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+      readPurchaseOrder:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}
+        required_action: po.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      replacePurchaseOrder:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}
+        required_action: po.draft
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+      submitPurchaseOrder:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/submit
+        required_action: po.submit
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+      approvePurchaseOrder:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/approve
+        required_action: po.approve
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+        - stage2.repf.changed.v1
+      returnPurchaseOrder:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/return
+        required_action: po.approve
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+      rejectPurchaseOrder:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/reject
+        required_action: po.approve
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+      recordPurchaseOrderAcknowledgment:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/acknowledgment
+        required_action: po.acknowledge
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+      proposePurchaseOrderAmendment:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/amendments
+        required_action: po.amend_propose
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+      approvePurchaseOrderAmendment:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/amendments/{amendment_id}/approve
+        required_action: po.amend_approve
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+        - stage2.repf.changed.v1
+      closeShortPurchaseOrder:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/close-short
+        required_action: po.close_short
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+      cancelPurchaseOrder:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/cancel
+        required_action: po.cancel
+        events_disposition: emits
+        emits:
+        - stage2.purchase-order.changed.v1
+        - stage2.repf.changed.v1
+      listPurchaseOrderHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/history
+        required_action: po.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      readPurchaseOrderVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/versions/{version}
+        required_action: po.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      listPurchaseOrderRelatedRecords:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/related
+        required_action: po.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      printPurchaseOrder:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/purchase-orders/{po_id}/print
+        required_action: po.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET printable view has no domain change.
+  procurement_operations:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#63-authorization-transactionlock-boundaries--committed-events
+    requirements:
+    - DOC-01
+    - DOC-03
+    - DOC-05
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    source_nodes:
+    - cross-cutting-recovery
+    - S2-02
+    - S2-07
+    coverage_limit: Original-actor safe-GET recovery of committed RepF, quotation, selection, and PO receipts; 404 never proves
+      rollback.
+    operations:
+      findProcurementOperationByKey:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/procurement-operations/by-key
+        required_action: repf.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET action-receipt recovery lookup has no domain change.
+      readProcurementOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/procurement-operations/{operation_id}
+        required_action: repf.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET action-receipt recovery lookup has no domain change.
+  donations:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#10-donation--sponsorship-acknowledgment-and-donor-restrictions-ticket-04
+    requirements:
+    - RCV-07
+    - RCV-11
+    - RCV-12
+    - RCV-13
+    - INV-09
+    - INV-14
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-08
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-14
+    source_nodes:
+    - S3-15
+    - S3-16
+    - S3-20
+    - T-18
+    - T-19
+    coverage_limit: In-kind DA intake, signed acknowledgment, bounded/uninterpreted donor restrictions, signed restriction
+      resolution, and DA recovery; zero cash/OR/buyer-credit side effects.
+    operations:
+      listDonations:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/donations
+        required_action: da.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      createDonation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/donations
+        required_action: da.draft
+        events_disposition: emits
+        emits:
+        - stage2.donation.changed.v1
+      readDonation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}
+        required_action: da.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      replaceDonation:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}
+        required_action: da.draft
+        events_disposition: emits
+        emits:
+        - stage2.donation.changed.v1
+      listDonationHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/history
+        required_action: da.history_read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      readDonationVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/versions/{version}
+        required_action: da.history_read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      listDonationRelated:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/related
+        required_action: da.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      printDonation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/print
+        required_action: da.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET printable view has no domain change.
+      submitDonation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/submit
+        required_action: da.submit
+        events_disposition: emits
+        emits:
+        - stage2.donation.changed.v1
+      acknowledgeDonation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/acknowledge
+        required_action: da.acknowledge
+        events_disposition: emits
+        emits:
+        - stage2.donation.changed.v1
+      returnDonation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/return
+        required_action: da.acknowledge
+        events_disposition: emits
+        emits:
+        - stage2.donation.changed.v1
+      declineDonation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/decline
+        required_action: da.acknowledge
+        events_disposition: emits
+        emits:
+        - stage2.donation.changed.v1
+      reviseDonation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/revise
+        required_action: da.draft
+        events_disposition: emits
+        emits:
+        - stage2.donation.changed.v1
+      closeShortDonation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/close-short
+        required_action: da.acknowledge
+        events_disposition: emits
+        emits:
+        - stage2.donation.changed.v1
+      cancelDonation:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/cancel
+        required_action: da.cancel
+        events_disposition: emits
+        emits:
+        - stage2.donation.changed.v1
+      resolveDonationRestriction:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/donations/{da_id}/restriction-resolutions
+        required_action: da.restriction_resolve
+        events_disposition: emits
+        emits:
+        - stage1.stock-lot.changed.v1
+        - stage2.donation.changed.v1
+      findDonationOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/donation-operations/by-key
+        required_action: da.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET action-receipt recovery lookup has no domain change.
+      readDonationOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/donation-operations/{operation_id}
+        required_action: da.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET action-receipt recovery lookup has no domain change.
+  receiving_reports:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#122-receiving-report-state-machine-inspection-rules--sourceoverdelivery-guards-rcv-0104-rcv-07
+    requirements:
+    - RCV-01
+    - RCV-02
+    - RCV-03
+    - RCV-04
+    - RCV-05
+    - RCV-07
+    - RCV-08
+    - RCV-09
+    - RCV-10
+    - RCV-12
+    - INV-09
+    - INV-13
+    - INV-14
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-08
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-02
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-12
+    - AC-14
+    source_nodes:
+    - S3-13
+    - S3-14
+    - S3-16
+    - S3-17
+    - S3-18
+    - S3-19
+    - S3-20
+    - T-16
+    - T-17
+    coverage_limit: Unified Stage 2 PO/DA Receiving Reports sharing the chapter RM sequence; Stage 1 /opening-rms remains
+      untouched for IPC opening baselines.
+    operations:
+      listReceivingReports:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-reports
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      createReceivingReport:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-reports
+        required_action: receiving.draft
+        events_disposition: emits
+        emits:
+        - stage2.receiving-report.changed.v1
+      readReceivingReport:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      replaceReceivingReport:
+        method: PUT
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}
+        required_action: receiving.draft
+        events_disposition: emits
+        emits:
+        - stage2.receiving-report.changed.v1
+      inspectReceivingReport:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/inspection
+        required_action: receiving.inspect
+        events_disposition: emits
+        emits:
+        - stage2.receiving-report.changed.v1
+      matchReceivingReportEvidence:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/evidence-match
+        required_action: receiving.match_evidence
+        events_disposition: emits
+        emits:
+        - stage2.receiving-report.changed.v1
+      postReceivingReport:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/post
+        required_action: receiving.post
+        events_disposition: emits
+        emits:
+        - stage1.stock-lot.changed.v1
+        - stage2.donation.changed.v1
+        - stage2.purchase-order.changed.v1
+        - stage2.receiving-discrepancy.changed.v1
+        - stage2.receiving-report.changed.v1
+      cancelReceivingReport:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/cancel
+        required_action: receiving.cancel
+        events_disposition: emits
+        emits:
+        - stage2.receiving-report.changed.v1
+      listReceivingReportMovements:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/movements
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      listReceivingReportDiscrepancies:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/discrepancies
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      listReceivingReportHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/history
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      readReceivingReportVersion:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/versions/{version}
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      listReceivingReportRelated:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/related
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      printReceivingReport:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-reports/{rm_id}/print
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET printable view has no domain change.
+  receiving_discrepancies:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#124-receiving-discrepancy-loops-rcv-0506-inv-14-s3-21
+    requirements:
+    - RCV-05
+    - RCV-06
+    - INV-14
+    - DOC-01
+    - DOC-03
+    - DOC-05
+    - DOC-07
+    - DOC-08
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-02
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-12
+    source_nodes:
+    - S3-21
+    - T-17
+    coverage_limit: Explicit PO/DA discrepancy lifecycle with signed resolution evidence; replacements arrive via a new PO-RM
+      and closing a PO/DA never clears quarantined lots.
+    operations:
+      listReceivingDiscrepancies:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-discrepancies
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      readReceivingDiscrepancy:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-discrepancies/{discrepancy_id}
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      notifySupplierOfReceivingDiscrepancy:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-discrepancies/{discrepancy_id}/notify-supplier
+        required_action: discrepancy.manage
+        events_disposition: emits
+        emits:
+        - stage2.receiving-discrepancy.changed.v1
+      resolveReceivingDiscrepancy:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-discrepancies/{discrepancy_id}/resolutions
+        required_action: discrepancy.resolve
+        events_disposition: emits
+        emits:
+        - stage2.receiving-discrepancy.changed.v1
+  receiving_holds:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#125-missing-source-delivery-holds-rcv-01-rcv-10-s3-15
+    requirements:
+    - RCV-01
+    - RCV-10
+    - DOC-01
+    - DOC-03
+    - DOC-05
+    - DOC-07
+    - DOC-08
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-02
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-12
+    source_nodes:
+    - S3-15
+    - T-16
+    coverage_limit: Dedicated missing-source delivery hold keeping undocumented goods outside usable stock and strictly prohibiting
+      IPC creation or linking.
+    operations:
+      listReceivingHolds:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-holds
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      createReceivingHold:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-holds
+        required_action: receiving.hold_manage
+        events_disposition: emits
+        emits:
+        - stage2.receiving-hold.changed.v1
+      readReceivingHold:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-holds/{hold_id}
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+      linkReceivingHoldSource:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-holds/{hold_id}/link-source
+        required_action: receiving.hold_manage
+        events_disposition: emits
+        emits:
+        - stage2.receiving-hold.changed.v1
+      rejectReturnReceivingHold:
+        method: POST
+        path: /api/v1/chapters/{chapter_id}/receiving-holds/{hold_id}/reject-return
+        required_action: receiving.hold_manage
+        events_disposition: emits
+        emits:
+        - stage2.receiving-hold.changed.v1
+      listReceivingHoldHistory:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-holds/{hold_id}/history
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read has no domain change.
+  receiving_operations:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#126-locking-order-recovery-committed-events--downstream-acceptance
+    requirements:
+    - DOC-01
+    - DOC-03
+    - DOC-05
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    source_nodes:
+    - cross-cutting-recovery
+    - S3-19
+    coverage_limit: Original-actor safe-GET recovery of committed Receiving Report, discrepancy, and missing-source hold receipts;
+      404 never proves rollback.
+    operations:
+      findReceivingOperationByKey:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-operations/by-key
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET action-receipt recovery lookup has no domain change.
+      readReceivingOperation:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/receiving-operations/{operation_id}
+        required_action: receiving.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET action-receipt recovery lookup has no domain change.
+  allocation_queue:
+    owner: Glenn
+    ui_consumer: Glenn
+    reviewers:
+    - Leader
+    - Efren
+    existence: specified_only
+    agreement: agreement.md#132-inv-09-allocation-queue--stage-1-repeated-partial-rf-fulfillment-inv-09-rf-05rf-08-rcv-04
+    requirements:
+    - INV-09
+    - RF-05
+    - RF-06
+    - RF-07
+    - RF-08
+    - RCV-04
+    - RCV-12
+    - GOV-01
+    - GOV-02
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-15
+    source_nodes:
+    - S1-14
+    - S1-15
+    - S1-16
+    - S3-22
+    - T-02
+    - T-03
+    coverage_limit: 'Read-only INV-09 priority queue (is_commit_authorization: false); actual reservation and repeated signed
+      partial RF issues use unchanged Stage 1 routes.'
+    operations:
+      listAllocationQueue:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/allocation-queue
+        required_action: allocation_queue.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET read-only INV-09 queue has no domain change.
+  officer_alerts:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#133-derived-live-officer-alerts-get-alerts-rpt-01
+    requirements:
+    - RPT-01
+    - PRC-08
+    - INV-10
+    - GOV-01
+    - GOV-02
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-16
+    source_nodes:
+    - S2-09
+    - S3-22
+    - T-21
+    coverage_limit: 'Live chapter-scoped duty-filtered alert feed (persisted_ack_supported: false); zero ack/dismiss write
+      routes and zero synthetic alert-only WebSocket events.'
+    operations:
+      listOfficerAlerts:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/alerts
+        required_action: alerts.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET live derived alert feed has no domain change and emits zero synthetic alert-only events.
+  reports:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#134-stage-2-structured-json--printable-html-reports-rpt-03-rpt-04-stage-2-rpt-06
+    requirements:
+    - RPT-02
+    - RPT-03
+    - RPT-04
+    - RPT-06
+    - DOC-04
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - GOV-01
+    - GOV-02
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - AC-16
+    source_nodes:
+    - S3-22
+    - S3-23
+    - T-22
+    - T-23
+    coverage_limit: Structured JSON and escaped printable HTML (/print) for inventory, procurement, and control reports; RPT-05
+      finance/booth reports and RPT-07 PDF/CSV exports explicitly deferred.
+    operations:
+      readInventoryReport:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/reports/inventory
+        required_action: reports.inventory.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET report read has no domain change.
+      printInventoryReport:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/reports/inventory/print
+        required_action: reports.inventory.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET printable report has no domain change.
+      readProcurementReport:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/reports/procurement
+        required_action: reports.procurement.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET report read has no domain change.
+      printProcurementReport:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/reports/procurement/print
+        required_action: reports.procurement.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET printable report has no domain change.
+      readControlReport:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/reports/control
+        required_action: reports.control.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET report read has no domain change.
+      printControlReport:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/reports/control/print
+        required_action: reports.control.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET printable report has no domain change.
+controlled_procedures:
+  recordPolicy:
+    canonical: openapi.yaml#/x-controlled-procedures/recordPolicy
+    owner: Leader
+    public_http_route: false
+    agreement: agreement.md#3-controlled-cli-only-stage-2-policies-and-reference-series
+policies:
+  stage2_new:
+    purchasing_quotation_policy:
+      setting_key: purchasing_quotation_policy
+      subject_scope: chapter
+      ownership: operational
+      schema: '#/components/schemas/PurchasingQuotationPolicyValue'
+    da_authorization:
+      setting_key: da_authorization
+      subject_scope: chapter
+      ownership: operational
+      schema: '#/components/schemas/DaAuthorizationPolicyValue'
+    reference_series_repf:
+      setting_key: reference_series
+      subject_scope: chapter
+      ownership: operational
+      schema: '#/components/schemas/RepfReferenceSeriesPolicyValue'
+    reference_series_po:
+      setting_key: reference_series
+      subject_scope: chapter
+      ownership: operational
+      schema: '#/components/schemas/PoReferenceSeriesPolicyValue'
+    reference_series_da:
+      setting_key: reference_series
+      subject_scope: chapter
+      ownership: operational
+      schema: '#/components/schemas/DaReferenceSeriesPolicyValue'
+  stage1_reused:
+    valuation_rounding:
+      setting_key: valuation_rounding
+      subject_scope: chapter
+      ownership: financial
+    rop:
+      setting_key: rop
+      subject_scope: item
+      ownership: operational
+    target_level:
+      setting_key: target_level
+      subject_scope: item
+      ownership: operational
+    quantity_scale:
+      setting_key: quantity_scale
+      subject_scope: variant
+      ownership: operational
+    allocation_priority:
+      setting_key: allocation_priority
+      subject_scope: chapter
+      ownership: operational
+    reference_series_rm_shared:
+      setting_key: reference_series
+      subject_scope: chapter
+      ownership: operational
+reference_series_families:
+  opening:
+    schema: '#/components/schemas/OpeningReferencePolicyValue'
+    consumers:
+    - submitIpc
+    - postOpeningRm
+    - postReceivingReport
+    counter_scopes:
+    - IPC
+    - RM
+  internal_rf:
+    schema: '#/components/schemas/RfReferenceSeriesPolicyValue'
+    consumers:
+    - submitInternalRf
+    counter_scopes:
+    - RF
+  actual_issue:
+    schema: '#/components/schemas/IssueReferenceSeriesPolicyValue'
+    consumers:
+    - prepareActualIssue
+    counter_scopes:
+    - IS_AR
+  repf:
+    schema: '#/components/schemas/RepfReferenceSeriesPolicyValue'
+    consumers:
+    - submitRepf
+    counter_scopes:
+    - REPF
+  purchase_order:
+    schema: '#/components/schemas/PoReferenceSeriesPolicyValue'
+    consumers:
+    - approvePurchaseOrder
+    counter_scopes:
+    - PO
+  donation_acknowledgment:
+    schema: '#/components/schemas/DaReferenceSeriesPolicyValue'
+    consumers:
+    - acknowledgeDonation
+    counter_scopes:
+    - DA
+evidence_purposes:
+  stage1_reused:
+  - opening_receipt
+  - hold_clearance
+  - actual_issue
+  stage2_added:
+  - quotation_attachment
+  - po_supplier_dr
+  - da_acknowledgment
+  - da_receipt
+  - donor_restriction_resolution
+  - receiving_discrepancy
+  - missing_source_hold
+internal_participants:
+  checkEvidenceBinding:
+    canonical: openapi.yaml#/x-stage2-evidence-participants/checkEvidenceBinding
+    owner: Leader
+    commit: caller_owned_single_mysql_transaction
+    public_http_route: false
+    agreement: agreement.md#4-additive-evidencepurpose-values-and-checkevidencebinding
+  computeNetShortageSnapshot:
+    canonical: openapi.yaml#/x-stage2-shortage-participants/computeNetShortageSnapshot
+    owner: Glenn
+    commit: caller_owned_single_mysql_transaction
+    public_http_route: false
+    agreement: agreement.md#internal-computenetshortagesnapshot-transaction-boundary
+  applyLotRestrictionResolution:
+    canonical: openapi.yaml#/x-stage2-donation-participants/applyLotRestrictionResolution
+    owner: Efren
+    commit: caller_owned_single_mysql_transaction
+    public_http_route: false
+    agreement: agreement.md#signed-evidence-and-restriction-resolution
+  prepareReceivingInventory:
+    canonical: openapi.yaml#/x-stage2-receiving-participants/prepareReceivingInventory
+    owner: Efren
+    commit: caller_owned_single_mysql_transaction
+    public_http_route: false
+    agreement: agreement.md#123-unified-efren-internal-posting-participant-preparereceivinginventory-rcv-0305-inv-14-adr-0004
+action_duties:
+  replenishment.read:
+  - INVENTORY
+  - PURCHASING
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  da.read:
+  - INVENTORY
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
+  da.history_read:
+  - INVENTORY
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
+  da.draft:
+  - INVENTORY
+  - RECEIVING
+  da.submit:
+  - INVENTORY
+  - RECEIVING
+  da.acknowledge:
+  - INVENTORY
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
+  da.cancel:
+  - INVENTORY
+  - RECEIVING
+  da.restriction_resolve:
+  - INVENTORY
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
+  repf.read:
+  - INVENTORY
+  - PURCHASING
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  - FINANCE
+  - INDEPENDENT_REVIEWER
+  repf.draft:
+  - INVENTORY
+  - PURCHASING
+  repf.submit:
+  - INVENTORY
+  - PURCHASING
+  repf.budget_review:
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  repf.cancel:
+  - INVENTORY
+  - PURCHASING
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  quotation.read:
+  - INVENTORY
+  - PURCHASING
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  - FINANCE
+  - INDEPENDENT_REVIEWER
+  quotation.manage:
+  - PURCHASING
+  quotation.select:
+  - PURCHASING
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  po.read:
+  - INVENTORY
+  - PURCHASING
+  - BUDGET_APPROVER
+  - RECEIVING
+  - CHAPTER_HEAD
+  - FINANCE
+  - INDEPENDENT_REVIEWER
+  po.draft:
+  - PURCHASING
+  po.submit:
+  - PURCHASING
+  po.approve:
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  po.acknowledge:
+  - PURCHASING
+  po.amend_propose:
+  - PURCHASING
+  po.amend_approve:
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  po.close_short:
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  po.cancel:
+  - PURCHASING
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  receiving.read:
+  - RECEIVING
+  - INVENTORY
+  - PURCHASING
+  - BUDGET_APPROVER
+  - CHAPTER_HEAD
+  - FINANCE
+  - INDEPENDENT_REVIEWER
+  receiving.draft:
+  - RECEIVING
+  - INVENTORY
+  receiving.inspect:
+  - RECEIVING
+  receiving.match_evidence:
+  - RECEIVING
+  receiving.post:
+  - RECEIVING
+  receiving.cancel:
+  - RECEIVING
+  - CHAPTER_HEAD
+  discrepancy.manage:
+  - RECEIVING
+  - PURCHASING
+  discrepancy.resolve:
+  - RECEIVING
+  - PURCHASING
+  - INVENTORY
+  - CHAPTER_HEAD
+  receiving.hold_manage:
+  - RECEIVING
+  - INVENTORY
+  - CHAPTER_HEAD
+  allocation_queue.read:
+  - INVENTORY
+  - DISPATCH
+  - RF_APPROVER
+  - CHAPTER_HEAD
+  alerts.read:
+  - INVENTORY
+  - DISPATCH
+  - PURCHASING
+  - BUDGET_APPROVER
+  - RECEIVING
+  - RF_APPROVER
+  - FINANCE
+  - CHAPTER_HEAD
+  - INDEPENDENT_REVIEWER
+  reports.inventory.read:
+  - INVENTORY
+  - DISPATCH
+  - PURCHASING
+  - BUDGET_APPROVER
+  - RECEIVING
+  - FINANCE
+  - CHAPTER_HEAD
+  - INDEPENDENT_REVIEWER
+  reports.procurement.read:
+  - INVENTORY
+  - PURCHASING
+  - BUDGET_APPROVER
+  - RECEIVING
+  - FINANCE
+  - CHAPTER_HEAD
+  - INDEPENDENT_REVIEWER
+  reports.control.read:
+  - INVENTORY
+  - RECEIVING
+  - BUDGET_APPROVER
+  - FINANCE
+  - CHAPTER_HEAD
+  - INDEPENDENT_REVIEWER
+events:
+  logical_channel: private-stage1.chapter.{chapter_id}
+  delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+  stage2_events:
+  - stage2.repf.changed.v1
+  - stage2.purchase-order.changed.v1
+  - stage2.donation.changed.v1
+  - stage2.receiving-report.changed.v1
+  - stage2.receiving-discrepancy.changed.v1
+  - stage2.receiving-hold.changed.v1
+  co_emitted_stage1_events:
+  - stage1.stock-lot.changed.v1
+  - stage1.internal-rf.changed.v1
+  - stage1.chapter-setup.changed.v1
+  - stage1.authority.changed.v1
+  synthetic_alert_events: []
+  agreement: notifications.md#ownership-requirements-and-boundaries
+stage1_compatibility:
+  openingRmsUnchanged:
+    requirements:
+    - RCV-01
+    - RCV-10
+    owner: Leader
+  cancelInternalRf:
+    requirements:
+    - PRC-08
+    owner: Glenn
+  stage1StockInboundOpenPo:
+    requirements:
+    - PRC-07
+    - PRC-09
+    owner: Glenn
+  repeatedRfFulfillmentUnchanged:
+    requirements:
+    - INV-09
+    - RF-05
+    - RF-06
+    - RF-07
+    - RF-08
+    - RCV-04
+    owner: Glenn
+deferred_scope:
+  stage3_sales_and_payments: Sales Orders (so_shortage rejected), Sales Invoices, verified payments/Official Receipts, payment
+    allocations, release coverage, and 48-hour expiry clocks.
+  stage4_booths_and_adj: Event booth custody/sales, manual outage entries, Stock Adjustment / Return Slips (ADJ), refunds/unequal
+    exchanges, and booth close-out reconciliation.
+  rpt05_finance_and_booth_reports: Sales Invoices, Official Receipts, payment allocations, booth custody/sales, and cash/remittance
+    reconciliations do not exist in Stage 2. No /reports/finance or /reports/booth routes are exposed in Stage 2.
+  rpt07_binary_exports: 'Binary PDF generation and CSV export streaming are explicitly deferred per specification #27 MVP
+    scope. Stage 2 delivers structured JSON reports and escaped non-executable printable HTML (/print) views enforcing identical
+    chapter/duty scoping, explicit filters, units, PHP currency, stock category labels, server report time, Cache-Control:
+    no-store, PrintCsp, and NoSniff.'
+  standalone_suppliers_and_http_policy_ui: No /suppliers master CRUD, no public HTTP policy-admin routes, and no persisted
+    alert ack/dismiss writes.
+error_and_blocker_codes:
+  forbidden_403:
+  - origin_denied
+  - mfa_incomplete
+  - duty_denied
+  - independence_required
+  - duty_limit_exceeded
+  conflict_409:
+  - version_conflict
+  - action_key_conflict
+  - snapshot_stale
+  - invalid_transition
+  - duplicate_supply_coverage
+  - quotation_policy_unmet
+  - budget_limit_exceeded
+  - source_not_eligible
+  - substitution_or_overdelivery_blocked
+  - po_has_accepted_receipts
+  - discrepancy_already_resolved
+  - hold_already_resolved
+  - evidence_missing
+  - evidence_invalid
+  - evidence_mismatch
+  - acknowledgment_missing
+  - target_locked
+  - setup_blocked
+requirement_coverage:
+  PRC-01:
+    disposition: stage2_contract
+    profiles:
+    - repf
+    scope: 'Strict Stage 2 RepF triggers (rf_shortage and rop_replenishment, funding_source: chapter_funds); Stage 3 so_shortage
+      rejected.'
+  PRC-02:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    scope: Live non-overlapping net-shortage calculation via GET /replenishment/needs and internal computeNetShortageSnapshot.
+  PRC-03:
+    disposition: stage2_contract
+    profiles:
+    - repf
+    scope: Multi-trigger RepFs carry exact line net-need breakdowns, PHP totals, and explicit additional_purchase_reason overrides
+      without double-counting.
+  PRC-04:
+    disposition: stage2_contract
+    profiles:
+    - repf
+    scope: Independent budget review (approve/hold/return/reject), grant PHP ceilings, mandatory reasons, and resume/revise
+      lifecycle.
+  PRC-05:
+    disposition: stage2_contract
+    profiles:
+    - quotations
+    - purchase_orders
+    scope: Nested RepF quotations with inline supplier metadata and purchasing_quotation_policy tier/waiver enforcement on
+      selection and PO approval.
+  PRC-06:
+    disposition: stage2_contract
+    profiles:
+    - purchase_orders
+    scope: PO draft, submit, independent approval (distinct from PO and RepF preparers) directly into issued with atomic PO
+      reference allocation.
+  PRC-07:
+    disposition: stage2_contract
+    profiles:
+    - purchase_orders
+    scope: PO issuance updates inbound_open_po and tracks ordered/accepted/rejected/closed_short/canceled/outstanding without
+      inflating usable stock.
+  PRC-08:
+    disposition: stage2_contract
+    profiles:
+    - repf
+    - purchase_orders
+    - officer_alerts
+    scope: Controlled RepF/PO cancellation, PO amendments blocked below accepted_quantity, and non-deadlocking Stage 1 cancelInternalRf
+      demand_changed flagging.
+  PRC-09:
+    disposition: stage2_contract
+    profiles:
+    - purchase_orders
+    - allocation_queue
+    scope: Issuing a PO keeps linked RF shortages visibly open until accepted eligible stock actually posts and is reserved/issued.
+  RCV-01:
+    disposition: stage2_contract
+    profiles:
+    - receiving_reports
+    - receiving_holds
+    scope: Unified Stage 2 PO/DA receiving requires approved PO+DR or acknowledged DA; sourceless arrivals isolate in /receiving-holds
+      without usable stock.
+  RCV-02:
+    disposition: stage2_contract
+    profiles:
+    - receiving_reports
+    scope: Inspection captures inspector, optional representative, exact variant-scale delivered = accepted + damaged + rejected
+      counts, and discrepancy notes.
+  RCV-03:
+    disposition: stage2_contract
+    profiles:
+    - receiving_reports
+    scope: postReceivingReport calls Efren prepareReceivingInventory so accepted units post usable lots while damaged/rejected
+      units post quarantined/rejected lots.
+  RCV-04:
+    disposition: stage2_contract
+    profiles:
+    - receiving_reports
+    - allocation_queue
+    scope: Accepted usable PO-RM and eligible DA-RM lots become immediately allocatable under INV-09 via Stage 1 reservation/issue
+      flows.
+  RCV-05:
+    disposition: stage2_contract
+    profiles:
+    - purchase_orders
+    - receiving_reports
+    - receiving_discrepancies
+    scope: Partial acceptance reduces PO outstanding only by accepted quantity; rejected/damaged units open discrepancy loops
+      with replacements via new PO-RM.
+  RCV-06:
+    disposition: stage2_contract
+    profiles:
+    - purchase_orders
+    - receiving_discrepancies
+    scope: 'Closing or short-closing a PO or DA preserves quarantined/rejected lots and open discrepancies (quarantined_lots_auto_cleared_on_source_close:
+      false).'
+  RCV-07:
+    disposition: stage2_contract
+    profiles:
+    - purchase_orders
+    - donations
+    - receiving_reports
+    scope: Unamended PO overdeliveries and variant/unit substitutions reject with 409 substitution_or_overdelivery_blocked;
+      DA excess requires a new acknowledged DA.
+  RCV-08:
+    disposition: partial
+    profiles:
+    - receiving_reports
+    scope: Stage 1 /opening-rms opening baseline remains untouched; Stage 2 coexists cleanly and shares only the chapter yearly
+      RM sequence.
+  RCV-09:
+    disposition: partial
+    profiles:
+    - receiving_reports
+    scope: Stage 1 /opening-rms opening baseline remains untouched; Stage 2 coexists cleanly and shares only the chapter yearly
+      RM sequence.
+  RCV-10:
+    disposition: stage2_contract
+    profiles:
+    - receiving_reports
+    - receiving_holds
+    scope: 'Missing-source holds permanently prohibit IPC creation (ipc_creation_prohibited: true) and Stage 1 opening-rm
+      baseline lock stays intact.'
+  RCV-11:
+    disposition: stage2_contract
+    profiles:
+    - donations
+    scope: DA intake, valuation_rounding pricing, policy-governed signed acknowledgment with DA numbering, return/decline/revise/close-short/cancel.
+  RCV-12:
+    disposition: stage2_contract
+    profiles:
+    - donations
+    - receiving_reports
+    - allocation_queue
+    scope: Bounded and ADR 0004 uninterpreted donor restrictions preserved per lot on shared SKUs; signed donor_restriction_resolution
+      updates segments via Efren.
+  RCV-13:
+    disposition: stage2_contract
+    profiles:
+    - donations
+    scope: In-kind DA acknowledgment creates zero cash received, Official Receipts, or buyer credit.
+  INV-09:
+    disposition: stage2_contract
+    profiles:
+    - allocation_queue
+    - receiving_reports
+    - donations
+    scope: INV-09 allocation queue ordering (active commitment, override, priority rank, needed_at, approved_at) respecting
+      bounded/uninterpreted restrictions and holds.
+  INV-10:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - officer_alerts
+    - reports
+    scope: Low-stock ROP breach compares usable_stockroom_on_hand <= approved_rop while keeping approved RF shortage visible
+      independently.
+  INV-11:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    scope: Non-overlapping gross/uncovered RF shortage and ROP top-up calculation mirrored onto ReplenishmentNeedItem and
+      RepfLine.net_need_breakdown.
+  INV-12:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    scope: Open RepF/PO inbound deducts from uncovered need; late/disputed/ineligible inbound surfaced separately; 409 duplicate_supply_coverage
+      guard.
+  INV-13:
+    disposition: partial
+    profiles:
+    - receiving_reports
+    scope: Receiving inspection and discrepancy tracking specified; routine physical-count variance ADJ remains Stage 4.
+  INV-14:
+    disposition: stage2_contract
+    profiles:
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    scope: Quarantined/rejected receiving lots remain excluded from usable stock and linked to explicit discrepancy resolution;
+      donor restrictions preserved independently of holds.
+  RPT-01:
+    disposition: stage2_contract
+    profiles:
+    - officer_alerts
+    scope: Live chapter-scoped duty-filtered GET /alerts across all 8 Stage 2 operational categories with zero persisted ack/dismiss
+      state.
+  RPT-02:
+    disposition: partial
+    profiles:
+    - reports
+    scope: Stage 2 report endpoints enforce explicit chapter, date range (<= 366 days), item/variant/location/status filters,
+      unit/PHP/category labels, and server report time; Stage 3-4 report families later.
+  RPT-03:
+    disposition: stage2_contract
+    profiles:
+    - reports
+    scope: Structured JSON and printable HTML inventory report (/reports/inventory{,/print}) with non-additive 7 categories,
+      reservations, availability, ROP/target, and inbound open POs.
+  RPT-04:
+    disposition: stage2_contract
+    profiles:
+    - reports
+    scope: Structured JSON and printable HTML procurement report (/reports/procurement{,/print}) covering RF progress, RepF
+      approvals, quotations, POs, and discrepancies.
+  RPT-05:
+    disposition: later_stage
+    profiles:
+    - reports
+    scope: Finance and booth reports (/reports/finance, /reports/booth) explicitly deferred to Stages 3-4 via x-stage2-deferred-reporting.
+  RPT-06:
+    disposition: partial
+    profiles:
+    - reports
+    scope: Stage 2 control report (/reports/control{,/print}) covers donation restrictions, signed resolution audit trail,
+      overdue exceptions, and actor/time/reason history; Stage 3-4 cash/ADJ controls later.
+  RPT-07:
+    disposition: later_stage
+    profiles:
+    - reports
+    scope: Binary PDF and CSV export streaming explicitly deferred post-Stage 2 via x-stage2-deferred-reporting; printable
+      escaped HTML (/print) delivered.
+  RF-05:
+    disposition: partial
+    profiles:
+    - allocation_queue
+    scope: Stage 1 internal RF reservation and repeated signed partial actual-issue routes remain unchanged and consume newly
+      posted Stage 2 PO-RM/DA-RM stock; booth/sales fulfillment later.
+  RF-06:
+    disposition: partial
+    profiles:
+    - allocation_queue
+    scope: Stage 1 internal RF reservation and repeated signed partial actual-issue routes remain unchanged and consume newly
+      posted Stage 2 PO-RM/DA-RM stock; booth/sales fulfillment later.
+  RF-07:
+    disposition: partial
+    profiles:
+    - allocation_queue
+    scope: Stage 1 internal RF reservation and repeated signed partial actual-issue routes remain unchanged and consume newly
+      posted Stage 2 PO-RM/DA-RM stock; booth/sales fulfillment later.
+  RF-08:
+    disposition: partial
+    profiles:
+    - allocation_queue
+    scope: Stage 1 internal RF reservation and repeated signed partial actual-issue routes remain unchanged and consume newly
+      posted Stage 2 PO-RM/DA-RM stock; booth/sales fulfillment later.
+  GOV-01:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    - quotations
+    - purchase_orders
+    - donations
+    - receiving_reports
+    - allocation_queue
+    - officer_alerts
+    - reports
+    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+      409 setup_blocked, and zero silent defaults.
+  GOV-02:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    - quotations
+    - purchase_orders
+    - donations
+    - receiving_reports
+    - allocation_queue
+    - officer_alerts
+    - reports
+    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+      409 setup_blocked, and zero silent defaults.
+  GOV-03:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    - quotations
+    - purchase_orders
+    - donations
+    - receiving_reports
+    - allocation_queue
+    - officer_alerts
+    - reports
+    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+      409 setup_blocked, and zero silent defaults.
+  GOV-04:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    - quotations
+    - purchase_orders
+    - donations
+    - receiving_reports
+    - allocation_queue
+    - officer_alerts
+    - reports
+    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+      409 setup_blocked, and zero silent defaults.
+  GOV-08:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    - quotations
+    - purchase_orders
+    - donations
+    - receiving_reports
+    - allocation_queue
+    - officer_alerts
+    - reports
+    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+      409 setup_blocked, and zero silent defaults.
+  GOV-09:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    - quotations
+    - purchase_orders
+    - donations
+    - receiving_reports
+    - allocation_queue
+    - officer_alerts
+    - reports
+    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+      409 setup_blocked, and zero silent defaults.
+  GOV-05:
+    disposition: partial
+    profiles:
+    - repf
+    - purchase_orders
+    - donations
+    - receiving_reports
+    scope: Independent RepF budget review, PO/amendment/close-short approval (distinct from PO and RepF preparers), and policy-configured
+      DA independence; ADJ/booth independence later.
+  GOV-06:
+    disposition: later_stage
+    profiles:
+    - receiving_reports
+    scope: Count-variance dual independent ADJ approval and sales/cash/booth close-out belong to Stages 3-4 and are excluded
+      from Stage 2.
+  GOV-07:
+    disposition: later_stage
+    profiles:
+    - receiving_reports
+    scope: Count-variance dual independent ADJ approval and sales/cash/booth close-out belong to Stages 3-4 and are excluded
+      from Stage 2.
+  SEC-01:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - allocation_queue
+    - officer_alerts
+    - reports
+    scope: 'Verbatim Stage 1 ysp_session + MFA + Origin + X-XSRF-TOKEN, Cache-Control: no-store, strict PrintCsp + nosniff,
+      uniform 404 anti-enumeration, current-authority WS re-evaluation, and zero public internal/CLI routes.'
+  SEC-02:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - allocation_queue
+    - officer_alerts
+    - reports
+    scope: 'Verbatim Stage 1 ysp_session + MFA + Origin + X-XSRF-TOKEN, Cache-Control: no-store, strict PrintCsp + nosniff,
+      uniform 404 anti-enumeration, current-authority WS re-evaluation, and zero public internal/CLI routes.'
+  SEC-03:
+    disposition: stage2_contract
+    profiles:
+    - replenishment
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - allocation_queue
+    - officer_alerts
+    - reports
+    scope: 'Verbatim Stage 1 ysp_session + MFA + Origin + X-XSRF-TOKEN, Cache-Control: no-store, strict PrintCsp + nosniff,
+      uniform 404 anti-enumeration, current-authority WS re-evaluation, and zero public internal/CLI routes.'
+  DOC-01:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-02:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-03:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-04:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-05:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-06:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-07:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-09:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-10:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-11:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    - procurement_operations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
+    - reports
+    scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
+      recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
+  DOC-08:
+    disposition: partial
+    profiles:
+    - quotations
+    - donations
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    scope: Signed-paper upload via Stage 1 /evidence* with 7 additive Stage 2 EvidencePurpose values and internal checkEvidenceBinding;
+      on-device signature capture remains deferred.
+  AC-07:
+    disposition: partial
+    profiles:
+    - repf
+    - quotations
+    - purchase_orders
+    scope: Contract seam specified for RepF/quotation/PO independence, grant ceilings, and budget/policy guards; authenticated
+      HTTP/MySQL runtime execution remains downstream.
+  AC-12:
+    disposition: partial
+    profiles:
+    - purchase_orders
+    - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    scope: Contract seam specified for PO 100 / RM 40+10 partial receiving, discrepancy replacement via new RM, overdelivery
+      blocking, and missing-source holds; runtime execution remains downstream.
+  AC-14:
+    disposition: partial
+    profiles:
+    - donations
+    - receiving_reports
+    scope: Contract seam specified for zero-cash DA, mixed-SKU bounded/uninterpreted DA-RM posting, and signed restriction
+      resolution via Efren; runtime execution remains downstream.
+  AC-15:
+    disposition: partial
+    profiles:
+    - allocation_queue
+    scope: Contract seam specified for INV-09 allocation queue handoff into unchanged Stage 1 reservation and repeated signed
+      partial actual-issue routes; runtime execution remains downstream.
+  AC-16:
+    disposition: partial
+    profiles:
+    - officer_alerts
+    - reports
+    scope: Contract seam specified for live duty-filtered alerts, JSON+/print Stage 2 reports, and 3-laptop WS refresh; runtime
+      and browser rehearsal remain downstream.
+  ADD-AC-11:
+    disposition: partial
+    profiles:
+    - replenishment
+    - repf
+    scope: RF-shortage and ROP chapter-budget net-need/RepF procurement specified with so_shortage rejected; Stage 3 customer
+      SO funding/OR gate remains later.
+journeys:
+  net-shortage-to-repf-budget-review:
+    fixture: Chapter 60000000-...-0001; variant TSHIRT-M (95000000-...-0051); combined RF shortage + ROP top-up -> multi-trigger
+      RepF -> independent budget approval & cancelInternalRf notice
+    cases:
+    - stage2-01-combined-rf-shortage-and-rop
+    - stage2-01-participant-net-shortage-ready
+    - stage2-02-repf-create-multi-trigger-draft
+    - stage2-02-repf-replace-draft-with-additional-purchase-reason
+    - stage2-02-repf-submit-allocates-reference
+    - stage2-02-repf-budget-review-approve
+    - stage2-02-repf-read-linked-demand-canceled
+    - stage2-02-procurement-operation-recover-by-key
+  quotations-to-po-issue-and-amendment:
+    fixture: Approved RepF -> nested inline-supplier quotations -> tier-compliant/waiver selection -> independent PO issuance
+      -> optional acknowledgment -> controlled amendment & close-short
+    cases:
+    - stage2-03-quotation-create-with-evidence
+    - stage2-03-supplier-selection-tier-compliant
+    - stage2-03-supplier-selection-emergency-waiver
+    - stage2-03-po-create-draft
+    - stage2-03-po-submit
+    - stage2-03-po-approve-and-issue
+    - stage2-03-po-acknowledgment-optional
+    - stage2-03-po-amendment-propose
+    - stage2-03-po-amendment-approve
+    - stage2-03-po-close-short
+    - stage2-03-procurement-recovery-po-approve
+  po-partial-receiving-40-10-discrepancy-and-replacement:
+    fixture: PO ordered 100 -> RM-1 (RM-2026-0002) accepts 40 + rejects 10 (60 open) -> Efren prepareReceivingInventory ->
+      discrepancy notified & resolved via new RM-2 (RM-2026-0003, 60 accepted -> 100 receiving_complete) + lost-response recovery
+    cases:
+    - stage2-05-rm-create-po-partial-draft
+    - stage2-05-rm-inspect-po-partial
+    - stage2-05-rm-evidence-match-po-dr
+    - stage2-05-rm-post-po-partial-40-accepted-10-rejected
+    - stage2-05-participant-prepare-receiving-po-partial
+    - stage2-05-recovery-by-key-post-rm
+    - stage2-05-discrepancy-notify-supplier
+    - stage2-05-rm-post-po-replacement-second-rm
+    - stage2-05-discrepancy-resolve-po-replacement
+  missing-source-hold-link-and-reject-return:
+    fixture: Undocumented delivery isolated in /receiving-holds (zero usable stock, IPC prohibited) -> link-source to PO or
+      reject-return with missing_source_hold evidence
+    cases:
+    - stage2-05-hold-create
+    - stage2-05-hold-link-source-po
+    - stage2-05-hold-reject-return-with-evidence
+    - stage2-05-hold-link-ipc-forbidden-invalid
+  da-acknowledgment-mixed-sku-and-restriction-resolution:
+    fixture: In-kind DA (zero cash/OR) -> signed acknowledgment -> DA-RM posting bounded + ADR 0004 uninterpreted lots sharing
+      one SKU -> signed apply resolution via Efren applyLotRestrictionResolution vs inexpressible audit_review
+    cases:
+    - stage2-04-draft-unrestricted-distribution-and-uninterpreted
+    - stage2-04-submit-da
+    - stage2-04-acknowledge-signed-paper
+    - stage2-05-rm-post-da-restricted-and-uninterpreted-shared-sku
+    - stage2-05-participant-prepare-receiving-da-mixed-restrictions
+    - stage2-04-resolve-uninterpreted-to-bounded
+    - stage2-04-participant-restrict-linked-segments
+    - stage2-04-audit-inexpressible-condition
+    - stage2-04-find-committed-resolution
+  allocation-queue-alerts-and-stage2-reports:
+    fixture: Replenished PO-RM & DA-RM stock -> INV-09 allocation queue (ADR 0004 uninterpreted excluded) -> live duty-filtered
+      alerts -> JSON and /print inventory, procurement, and control reports
+    cases:
+    - stage2-06-allocation-queue-inv09-mixed-sku
+    - stage2-06-alerts-multi-duty-all-categories
+    - stage2-06-alerts-duty-filtered-receiving-only
+    - stage2-06-report-inventory-json
+    - stage2-06-report-inventory-print
+    - stage2-06-report-procurement-json
+    - stage2-06-report-procurement-print
+    - stage2-06-report-control-json
+    - stage2-06-report-control-print
+example_categories:
+  setup_blocked:
+  - stage2-01-missing-rop-target-setup-blocked
+  - stage2-02-repf-setup-blocked-missing-ref-series
+  - stage2-03-selection-setup-blocked-missing-policy
+  - stage2-04-acknowledgment-no-current-policy
+  - stage2-06-allocation-queue-setup-blocked
+  duty_and_independence_denial:
+  - stage2-01-unauthorized-duty-denied
+  - stage2-02-repf-budget-review-independence-required
+  - stage2-02-repf-budget-review-duty-limit-exceeded
+  - stage2-03-po-approve-independence-required
+  - stage2-03-po-approve-duty-limit-exceeded
+  - stage2-04-acknowledgment-self-approval-denied
+  - stage2-04-resolution-duty-denied
+  - stage2-06-alerts-duty-denied
+  - stage2-06-report-control-duty-denied
+  duplicate_coverage_and_policy_guard:
+  - stage2-02-repf-duplicate-supply-coverage-conflict
+  - stage2-03-selection-quotation-policy-unmet
+  - stage2-03-po-approve-budget-limit-exceeded
+  - stage2-01-policy-purchasing-quotation-invalid-rejected
+  overdelivery_and_source_guard:
+  - stage2-05-rm-overdelivery-blocked-conflict
+  - stage2-05-rm-ineligible-source-blocked
+  - stage2-05-participant-prepare-receiving-overdelivery-rejected
+  - stage2-03-po-amendment-below-accepted-blocked
+  - stage2-03-po-cancel-partially-received-blocked
+  - stage2-04-cancel-after-posted-da-rm
+  evidence_binding_and_mismatch:
+  - stage2-01-participant-check-evidence-binding-ready
+  - stage2-01-participant-check-evidence-binding-missing
+  - stage2-04-acknowledgment-paper-missing
+  - stage2-04-resolution-paper-mismatch
+  - stage2-05-rm-replace-invalidates-evidence-binding
+  stale_versions_and_key_conflict:
+  - stage2-01-stale-cursor
+  - stage2-02-repf-version-conflict
+  - stage2-02-repf-action-key-conflict
+  - stage2-04-restriction-resolution-stale-version
+  - stage2-04-restriction-resolution-key-conflict
+  - stage2-06-allocation-queue-snapshot-stale
+  lost_response_recovery:
+  - stage2-02-procurement-operation-recover-by-key
+  - stage2-02-procurement-operation-read-by-id
+  - stage2-02-procurement-operation-not-found
+  - stage2-03-procurement-recovery-po-approve
+  - stage2-04-find-committed-resolution
+  - stage2-04-read-committed-resolution
+  - stage2-04-find-uncommitted-resolution
+  - stage2-05-recovery-by-key-post-rm
+  - stage2-05-recovery-by-id-discrepancy-resolution
+  stage3_scope_rejection:
+  - stage2-01-invalid-selector
+  - stage2-02-repf-so-shortage-rejected
+  - stage2-05-hold-link-ipc-forbidden-invalid
+  - stage2-06-report-inventory-invalid-selector
+  adr0004_uninterpreted_enforcement:
+  - stage2-04-reject-audit-that-unblocks-stock
+  - stage2-04-participant-refuses-uninterpreted-update
+  - stage2-05-rm-post-da-restricted-and-uninterpreted-shared-sku
+  - stage2-06-allocation-queue-inv09-mixed-sku
+  - stage2-06-report-control-json

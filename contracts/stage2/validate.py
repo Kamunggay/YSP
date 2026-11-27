@@ -14,6 +14,8 @@ from openapi_spec_validator import OpenAPIV31SpecValidator, validate
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
+from validate_handoff import run_handoff_negative_probes, validate_handoff
+
 STAGE2_EVIDENCE_PURPOSES = {
     "quotation_attachment",
     "po_supplier_dr",
@@ -1636,6 +1638,9 @@ def main():
         raise ValueError(f"Missing worked participant success: {sorted(participants.keys() - participant_coverage)}")
 
     event_validator = validate_notifications(root, document, examples, operations, dereference)
+    handoff_doc = read_yaml(root / "handoff.yaml")
+    events_doc = read_yaml(root / "events.yaml")
+    validate_handoff(root, handoff_doc, document, examples, events_doc, operations)
 
     print(
         "Versions: "
@@ -1889,6 +1894,7 @@ def main():
             if not errors:
                 raise ValueError(f"Invalid-example probe unexpectedly passed: {probe_label}")
             rejections.append(f"{probe_label}: rejected ({errors[0].validator})")
+        rejections.extend(run_handoff_negative_probes(root, handoff_doc, document, examples, events_doc, operations))
         raise ValueError("; ".join(rejections))
 
 
