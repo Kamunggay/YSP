@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder;
 use LogicException;
 
 final class Stage2RecordHistory extends Model
@@ -27,21 +27,33 @@ final class Stage2RecordHistory extends Model
         ];
     }
 
-    public function newEloquentBuilder($query): Builder
+    protected function newBaseQueryBuilder(): Builder
     {
-        return new class($query) extends Builder
+        $connection = $this->getConnection();
+
+        return new class($connection, $connection->getQueryGrammar(), $connection->getPostProcessor()) extends Builder
         {
             public function update(array $values): never
             {
                 $this->rejectWrite();
             }
 
-            public function delete(): never
+            public function delete($id = null): never
             {
                 $this->rejectWrite();
             }
 
-            public function upsert(array $values, $uniqueBy, $update = null): never
+            public function upsert(array $values, array|string $uniqueBy, ?array $update = null): never
+            {
+                $this->rejectWrite();
+            }
+
+            public function updateFrom(array $values): never
+            {
+                $this->rejectWrite();
+            }
+
+            public function truncate(): never
             {
                 $this->rejectWrite();
             }

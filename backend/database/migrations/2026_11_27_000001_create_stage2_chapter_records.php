@@ -12,6 +12,9 @@ return new class extends Migration
             $table->string('code', 80)->nullable();
             $table->string('name', 200)->nullable();
         });
+        Schema::table('inventory_lots', function (Blueprint $table): void {
+            $table->unique(['chapter_id', 'id'], 'inv_lots_chapter_identity_unique');
+        });
         Schema::create('chapter_events', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->foreignUuid('chapter_id')->constrained();
@@ -67,6 +70,7 @@ return new class extends Migration
             $table->json('additional_purchase_reason')->nullable();
             $table->text('notes')->nullable();
             $table->unique(['repf_id', 'line_number']);
+            $table->unique(['repf_id', 'id']);
             $table->index(['variant_id', 'repf_id']);
         });
         Schema::create('repf_quotations', function (Blueprint $table): void {
@@ -111,11 +115,15 @@ return new class extends Migration
             $table->json('acknowledgment')->nullable();
             $table->unique(['chapter_id', 'po_reference']);
             $table->unique(['chapter_id', 'id']);
+            $table->unique(['repf_id', 'id']);
         });
         Schema::create('purchase_order_lines', function (Blueprint $table): void {
             $table->uuid('id')->primary();
-            $table->foreignUuid('po_id')->constrained('purchase_orders');
-            $table->foreignUuid('repf_line_id')->constrained();
+            $table->uuid('po_id');
+            $table->uuid('repf_id');
+            $table->uuid('repf_line_id');
+            $table->foreign(['repf_id', 'po_id'])->references(['repf_id', 'id'])->on('purchase_orders');
+            $table->foreign(['repf_id', 'repf_line_id'])->references(['repf_id', 'id'])->on('repf_lines');
             $table->uuid('quotation_line_id')->nullable();
             $this->variant($table);
             $table->decimal('ordered_quantity', 18, 6);
@@ -280,8 +288,10 @@ return new class extends Migration
             $this->variant($table);
             $table->decimal('damaged_quantity', 18, 6);
             $table->decimal('rejected_quantity', 18, 6);
-            $table->foreignUuid('quarantined_lot_id')->nullable()->constrained('inventory_lots');
-            $table->foreignUuid('rejected_lot_id')->nullable()->constrained('inventory_lots');
+            $table->uuid('quarantined_lot_id')->nullable();
+            $table->uuid('rejected_lot_id')->nullable();
+            $table->foreign(['chapter_id', 'quarantined_lot_id'])->references(['chapter_id', 'id'])->on('inventory_lots');
+            $table->foreign(['chapter_id', 'rejected_lot_id'])->references(['chapter_id', 'id'])->on('inventory_lots');
             $table->text('discrepancy_notes');
             $table->json('supplier_notification')->nullable();
             $table->json('review_json')->nullable();
@@ -322,6 +332,9 @@ return new class extends Migration
         ] as $table) {
             Schema::dropIfExists($table);
         }
+        Schema::table('inventory_lots', function (Blueprint $table): void {
+            $table->dropUnique('inv_lots_chapter_identity_unique');
+        });
         Schema::table('chapter_organizational_units', function (Blueprint $table): void {
             $table->dropColumn(['code', 'name']);
         });

@@ -62,6 +62,9 @@ class FoundationsTest extends TestCase
             $entry->delete(...),
             fn () => Stage2RecordHistory::whereKey($entry->id)->update(['reason' => 'Bulk overwrite']),
             fn () => Stage2RecordHistory::whereKey($entry->id)->delete(),
+            fn () => Stage2RecordHistory::whereKey($entry->id)->forceDelete(),
+            fn () => $entry->increment('version'),
+            fn () => Stage2RecordHistory::whereKey($entry->id)->updateOrInsert(['id' => $entry->id], ['reason' => 'Rewrite']),
         ] as $rewrite) {
             try {
                 $rewrite();

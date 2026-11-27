@@ -103,7 +103,7 @@ class InventoryStage1ATest extends TestCase
         $accessResponse = $this->asOfficer($this->userId)
             ->get("/api/v1/chapters/{$this->chapterId}/access");
         $accessResponse->assertStatus(200)
-            ->assertJsonCount(24, 'data.actions')
+            ->assertJsonCount(63, 'data.actions')
             ->assertJsonPath('data.chapter_id', $this->chapterId);
     }
 
