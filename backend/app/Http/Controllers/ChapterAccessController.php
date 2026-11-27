@@ -72,6 +72,7 @@ class ChapterAccessController extends Controller
         $policies = $authority->chapter->policyRecords()->orderByDesc('policy_version')->orderBy('id')->get();
 
         $actions = [];
+        $blockersByAction = $authority->chapterPolicyBlockers($policies);
         foreach (ChapterAuthority::ACTION_DUTIES as $action => $requiredDuties) {
             $blockers = [];
             $state = 'duty_denied';
@@ -79,7 +80,7 @@ class ChapterAccessController extends Controller
                 $state = $authority->allows($action) && in_array($action, ['catalogue.read', 'catalogue.maintain', 'rf.draft', 'ipc.draft'], true)
                     ? 'allowed' : 'context_required';
 
-                $blockers = ChapterAuthority::chapterPolicyBlockers($action, $policies);
+                $blockers = $blockersByAction[$action] ?? [];
                 if ($blockers) {
                     $state = 'setup_blocked';
                 }

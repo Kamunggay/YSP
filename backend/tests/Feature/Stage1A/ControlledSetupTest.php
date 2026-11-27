@@ -385,11 +385,13 @@ class ControlledSetupTest extends TestCase
 
         $series = app(ReferenceSequenceService::class);
         try {
-            $series->nextReference($chapter->id, 'PO');
+            $series->nextReference($chapter->id, 'PO', policyOverride: [
+                'prefix' => 'LEGACY', 'width' => 6, 'policy_id' => null, 'policy_version' => null,
+            ]);
             $this->fail('An unconfigured Stage 2 reference series allocated a number.');
         } catch (ContractException $exception) {
             $this->assertSame(409, $exception->statusCode);
-            $this->assertSame('missing', $exception->extra['error']['blockers'][0]['state']);
+            $this->assertSame('missing', $exception->extra['setup_blockers'][0]['state']);
         }
         $opening = $makePolicy('reference_series', 'OpeningReferencePolicyValue', [
             'ipc_prefix' => 'SYIPC', 'rm_prefix' => 'SYRM', 'minimum_digits' => 7,
@@ -407,8 +409,7 @@ class ControlledSetupTest extends TestCase
             $this->assertSame($record['target_id'], $number['policy_id']);
             $this->assertSame(sprintf('SY%s-%d-00000001', $kind, now('Asia/Manila')->year), $number['reference']);
         }
-        $policyOverride = $series->resolveSeriesPolicy($chapter->id, 'RM', required: true);
-        $this->assertSame(2, $series->nextReference($chapter->id, 'RM', policyOverride: $policyOverride)['sequence']);
+        $this->assertSame(2, $series->nextReference($chapter->id, 'RM', requireApprovedPolicy: true)['sequence']);
         $this->assertSame(3, $series->nextReference($chapter->id, 'RM')['sequence']);
 
         $this->travelTo(now('Asia/Manila')->addYear()->startOfYear()->subSecond());
@@ -432,6 +433,7 @@ class ControlledSetupTest extends TestCase
         DB::table('chapter_setup_entitlements')->insert([
             'user_id' => $operator->id, 'chapter_id' => $chapter->id, 'procedure_id' => 'recordPolicy', 'starts_at' => now(),
         ]);
+        $operator->dutyGrants()->create(['chapter_id' => $chapter->id, 'duty_code' => 'INVENTORY']);
         $token = $this->operatorToken($operator);
         $access = fn () => collect($this->read('/chapters/'.$chapter->id.'/access', $token)
             ->assertOk()->assertHeader('Cache-Control', 'no-store')->json('data.actions'))->keyBy('action');
@@ -439,6 +441,9 @@ class ControlledSetupTest extends TestCase
         $this->assertCount(63, $access());
         $this->assertSame('duty_denied', $access()['po.approve']['state']);
         $this->assertSame('context_required', $access()['quotation.manage']['state']);
+        $allocation = $access()['allocation_queue.read'];
+        $this->assertSame('setup_blocked', $allocation['state']);
+        $this->assertSame('allocation_priority', $allocation['blockers'][0]['setting_key']);
         $this->assertSame('setup_blocked', $read()['state']);
         $this->assertSame('missing', $read()['blockers'][0]['state']);
 
@@ -468,6 +473,11 @@ class ControlledSetupTest extends TestCase
         $this->travel(1)->minute();
         $this->assertSame('context_required', $read()['state']);
         $this->assertSame([], $read()['blockers']);
+        $chapter->policyRecords()->create([
+            'policy_code' => 'reference_series',
+            'rules_json' => ['document_kind' => 'PO'],
+            'effective_from' => now()->subMinute(),
+        ]);
         $this->assertSame('missing', $access()['repf.submit']['blockers'][0]['state']);
         $this->travel(1)->minute();
         $this->assertSame('expired', $read()['blockers'][0]['state']);

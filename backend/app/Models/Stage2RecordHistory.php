@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
@@ -26,10 +27,29 @@ final class Stage2RecordHistory extends Model
         ];
     }
 
-    protected static function booted(): void
+    public function newEloquentBuilder($query): Builder
     {
-        $immutable = static fn () => throw new LogicException('Stage 2 record history is append-only.');
-        self::updating($immutable);
-        self::deleting($immutable);
+        return new class($query) extends Builder
+        {
+            public function update(array $values): never
+            {
+                $this->rejectWrite();
+            }
+
+            public function delete(): never
+            {
+                $this->rejectWrite();
+            }
+
+            public function upsert(array $values, $uniqueBy, $update = null): never
+            {
+                $this->rejectWrite();
+            }
+
+            private function rejectWrite(): never
+            {
+                throw new LogicException('Stage 2 record history is append-only.');
+            }
+        };
     }
 }

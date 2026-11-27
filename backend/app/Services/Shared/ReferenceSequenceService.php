@@ -29,11 +29,18 @@ class ReferenceSequenceService
      * @param  ?array{prefix: string, width: ?int, policy_id: ?string, policy_version: ?int}  $policyOverride
      * @return array{reference: string, sequence: int, year: int, prefix: string, policy_id: ?string, policy_version: ?int}
      */
-    public function nextReference(string $chapterId, string $documentKind, int $width = 6, ?array $policyOverride = null): array
-    {
-        $run = function () use ($chapterId, $documentKind, $width, $policyOverride): array {
+    public function nextReference(
+        string $chapterId,
+        string $documentKind,
+        int $width = 6,
+        ?array $policyOverride = null,
+        bool $requireApprovedPolicy = false,
+    ): array {
+        $run = function () use ($chapterId, $documentKind, $width, $policyOverride, $requireApprovedPolicy): array {
             $year = now('Asia/Manila')->year;
-            $policy = $policyOverride ?? $this->resolveSeriesPolicy($chapterId, $documentKind);
+            $required = $requireApprovedPolicy || in_array($documentKind, self::STAGE_2_SERIES, true);
+            $policy = $required ? $this->resolveSeriesPolicy($chapterId, $documentKind, required: true) :
+                ($policyOverride ?? $this->resolveSeriesPolicy($chapterId, $documentKind));
             $prefix = $policy['prefix'];
             $effectiveWidth = $policy['width'] ?? $width;
 
@@ -79,7 +86,7 @@ class ReferenceSequenceService
 
     /**
      * Resolve an approved series. Stage 2 numbering requires a current policy.
-     * PO-RM and DA-RM callers resolve 'RM' with $required before allocating the shared counter.
+     * PO-RM and DA-RM callers pass requireApprovedPolicy for the shared RM counter.
      *
      * @return array{prefix: string, width: ?int, policy_id: ?string, policy_version: ?int}
      */
@@ -126,12 +133,15 @@ class ReferenceSequenceService
 
         if ($required) {
             $blocker = ChapterAuthority::policyBlocker($policies, 'reference_series', 'CHAPTER_HEAD', $schema, at: $at);
-            throw new ContractException(409, 'setup_blocked', 'Current approved setup is required for this action.', [
-                'error' => [
-                    'code' => 'setup_blocked', 'message' => 'Current approved setup is required for this action.',
-                    'blockers' => [$blocker],
-                ],
-            ]);
+            $message = 'Current approved setup is required for this action.';
+            $details = $documentKind === 'DA'
+                ? ['error' => ['code' => 'setup_blocked', 'message' => $message, 'blockers' => [$blocker]]]
+                : ['failed_intent_committed' => false, 'current' => null, 'setup_blockers' => [$blocker]] + match ($documentKind) {
+                    'REPF' => ['coverage_conflicts' => []],
+                    'PO' => ['policy_evaluation' => null],
+                    default => [],
+                };
+            throw new ContractException(409, 'setup_blocked', $message, $details);
         }
 
         $policy = $policies->first(fn (PolicyRecord $row) => $row->aggregate_id === null

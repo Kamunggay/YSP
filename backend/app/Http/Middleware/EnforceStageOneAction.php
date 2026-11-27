@@ -27,9 +27,9 @@ class EnforceStageOneAction
             }
         }
 
-        if (! $request->isMethodSafe()) {
-            $authority->lockPoliciesFor($actions);
-        }
+        $authority->lockPoliciesFor($request->isMethodSafe()
+            ? array_intersect($actions, ['replenishment.read', 'allocation_queue.read'])
+            : $actions);
 
         if ($request->is('*/evidence', '*/evidence/*')) {
             $this->authorizeEvidenceTarget($request, $authority, $actions);

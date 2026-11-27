@@ -57,7 +57,12 @@ class FoundationsTest extends TestCase
             'snapshot_json' => ['status' => 'draft'], 'recorded_at' => now(),
         ]);
 
-        foreach ([fn () => $entry->update(['reason' => 'Overwrite']), $entry->delete(...)] as $rewrite) {
+        foreach ([
+            fn () => $entry->update(['reason' => 'Overwrite']),
+            $entry->delete(...),
+            fn () => Stage2RecordHistory::whereKey($entry->id)->update(['reason' => 'Bulk overwrite']),
+            fn () => Stage2RecordHistory::whereKey($entry->id)->delete(),
+        ] as $rewrite) {
             try {
                 $rewrite();
                 $this->fail('The existing history row was mutable.');
@@ -92,7 +97,7 @@ class FoundationsTest extends TestCase
         DB::table('repfs')->insert($scope + $actor + ['id' => $repf, 'status' => 'approved']);
         DB::table('purchase_orders')->insert($scope + $actor + [
             'id' => $po, 'status' => 'issued', 'repf_id' => $repf, 'supplier_selection_id' => (string) Str::uuid(),
-            'supplier' => '{}', 'delivery_location_id' => $location, 'expected_delivery_date' => now()->toDateString(),
+            'supplier' => '{}', 'delivery_location' => 'Synthetic receiving address', 'expected_delivery_date' => now()->toDateString(),
             'payment_and_delivery_terms' => 'Synthetic terms', 'total_amount_php' => '1.00',
         ]);
         $donor = $scope + $actor + [
@@ -110,7 +115,7 @@ class FoundationsTest extends TestCase
         ]);
         $sourceLine = (string) Str::uuid();
         DB::table('receiving_report_lines')->insert($line + [
-            'id' => $rmLine, 'rm_id' => $poRm, 'source_line_id' => $sourceLine, 'delivered_quantity' => '1',
+            'id' => $rmLine, 'rm_id' => $poRm, 'line_number' => 1, 'source_line_id' => $sourceLine, 'delivered_quantity' => '1',
         ]);
         DB::table('receiving_discrepancies')->insert($scope + $line + [
             'id' => $discrepancy, 'source_kind' => 'po', 'source_id' => $po, 'source_line_id' => $sourceLine,

@@ -46,8 +46,21 @@ final class StageTwoEvidenceTarget
         ?EvidenceRecord $evidence,
     ): ?bool {
         $chapter = $authority->chapter->id;
-        $editable = null;
-        foreach (self::RULES[$purpose] as $table => [$read, $write, $states]) {
+        $rules = self::RULES[$purpose];
+        $permitted = array_filter($rules, fn ($rule) => $authority->allows($rule[$editing ? 1 : 0]));
+        if ($permitted === []) {
+            return null;
+        }
+
+        if (count($rules) > 1) {
+            $matching = array_filter(array_keys($rules), fn ($table) => DB::table($table)->where('chapter_id', $chapter)->where('id', $id)->exists());
+            if (count($matching) !== 1 || ! isset($permitted[reset($matching)])) {
+                return null;
+            }
+            $permitted = array_intersect_key($permitted, array_flip($matching));
+        }
+
+        foreach ($permitted as $table => [, , $states]) {
             $query = DB::table($table)->where('chapter_id', $chapter)->where('id', $id);
             if ($table === 'receiving_reports') {
                 $query->where('source_kind', $purpose === 'po_supplier_dr' ? 'po' : 'da');
@@ -55,9 +68,6 @@ final class StageTwoEvidenceTarget
             $target = ($editing ? $query->lockForUpdate() : $query->sharedLock())->first();
             if (! $target) {
                 continue;
-            }
-            if ($editable !== null || ! $authority->allows($editing ? $write : $read)) {
-                return null;
             }
             $editable = in_array($target->status, $states, true);
             if ($editable && $editing && $evidence !== null) {
@@ -71,8 +81,10 @@ final class StageTwoEvidenceTarget
                     default => true,
                 };
             }
+
+            return $editable;
         }
 
-        return $editable;
+        return null;
     }
 }

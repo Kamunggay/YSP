@@ -9,6 +9,7 @@ use App\Models\DutyGrant;
 use App\Models\InternalRf;
 use App\Models\PolicyRecord;
 use App\Models\User;
+use App\Services\Shared\ReferenceSequenceService;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Query\Builder;
@@ -99,14 +100,14 @@ final class ChapterAuthority
         'quotation.select' => self::QUOTATION_POLICY,
         'po.draft' => self::QUOTATION_POLICY,
         'po.submit' => self::QUOTATION_POLICY,
-        'po.approve' => self::QUOTATION_POLICY + ['reference_series' => ['CHAPTER_HEAD', 'PoReferenceSeriesPolicyValue']],
         'po.amend_approve' => self::QUOTATION_POLICY,
         'da.draft' => self::VALUATION_POLICY,
         'da.submit' => self::VALUATION_POLICY,
-        'da.acknowledge' => self::DONATION_AUTHORIZATION + self::VALUATION_POLICY + ['reference_series' => ['CHAPTER_HEAD', 'DaReferenceSeriesPolicyValue']],
+        'da.acknowledge' => self::DONATION_AUTHORIZATION,
         'da.restriction_resolve' => self::DONATION_AUTHORIZATION,
         'receiving.inspect' => self::VALUATION_POLICY,
         'receiving.post' => self::RM_SERIES + self::VALUATION_POLICY,
+        'allocation_queue.read' => ['allocation_priority' => ['CHAPTER_HEAD', 'AllocationPriorityPolicyValue']],
     ];
 
     public const DUTIES = [
@@ -210,8 +211,9 @@ final class ChapterAuthority
                 'opening_rm.post' => ['ipc_authorization', 'quantity_scale'],
                 'issue.prepare', 'issue.post', 'rf.reserve', 'rf.reallocate' => ['quantity_scale', 'reference_series', 'allocation_priority'],
                 'repf.draft', 'repf.submit', 'repf.budget_review', 'replenishment.read' => ['quantity_scale', 'rop', 'target_level'],
-                'po.draft', 'po.amend_propose', 'da.draft', 'da.submit', 'da.acknowledge',
-                'receiving.draft', 'receiving.inspect', 'receiving.post', 'allocation_queue.read' => ['quantity_scale'],
+                'po.approve' => ['purchasing_quotation_policy', 'reference_series'],
+                'da.acknowledge' => ['quantity_scale', 'reference_series', 'valuation_rounding'],
+                'po.draft', 'po.amend_propose', 'da.draft', 'da.submit', 'receiving.draft', 'receiving.inspect', 'receiving.post', 'allocation_queue.read' => ['quantity_scale'],
                 default => [],
             },
         ])->unique()->sort()->values();
@@ -220,16 +222,35 @@ final class ChapterAuthority
         }
     }
 
-    public static function chapterPolicyBlockers(string $action, Collection $policies): array
+    public function chapterPolicyBlockers(Collection $policies): array
     {
-        $blockers = [];
-        foreach (self::CHAPTER_POLICIES[$action] ?? [] as $key => [$owner, $schema]) {
-            if ($blocker = self::policyBlocker($policies, $key, $owner, $schema)) {
-                $blockers[] = $blocker;
+        $byAction = [];
+        $evidence = [];
+        $resolved = [];
+        $at = now();
+        $duties = $this->duties();
+
+        foreach (self::CHAPTER_POLICIES as $action => $settings) {
+            if (! array_intersect($duties, self::ACTION_DUTIES[$action])) {
+                continue;
+            }
+
+            foreach ($settings as $key => [$owner, $schema]) {
+                if (! array_key_exists($schema, $resolved[$key] ?? [])) {
+                    $states = $policies->where('policy_code', $key)->map(function (PolicyRecord $policy) use ($owner, $schema, $at, &$evidence) {
+                        $approval = $evidence[$policy->id] ??= $policy->setupEvidence();
+
+                        return self::policyState($policy, $owner, $schema, at: $at, evidence: $approval);
+                    });
+                    $resolved[$key][$schema] = self::blockerForStates($key, $owner, $states);
+                }
+                if ($blocker = $resolved[$key][$schema]) {
+                    $byAction[$action][] = $blocker;
+                }
             }
         }
 
-        return $blockers;
+        return $byAction;
     }
 
     public function routedRfApprover(InternalRf $rf): ?DutyGrant
@@ -269,12 +290,23 @@ final class ChapterAuthority
         return $grant ? ($this->alternateScopes[$grant->id] ?? null) : null;
     }
 
-    public static function policyState(PolicyRecord $policy, string $owner, string $schema, ?string $allowedSubjectId = null, ?CarbonInterface $at = null): ?string
+    public static function policyState(PolicyRecord $policy, string $owner, string $schema, ?string $allowedSubjectId = null, ?CarbonInterface $at = null, ?array $evidence = null): ?string
     {
-        $evidence = $policy->setupEvidence();
+        $evidence ??= $policy->setupEvidence();
         $subject = $evidence['subject_id'] ?? null;
+        $schemaReference = $evidence['value_schema_reference'] ?? null;
+        if ($schemaReference === null && $policy->policy_code === 'reference_series') {
+            $value = $policy->rules_json;
+            $kind = $value['document_kind'] ?? null;
+            $family = is_string($kind) ? (ReferenceSequenceService::NUMBERED_SERIES_SCHEMAS[$kind] ?? null) : null;
+            if (isset($value['ipc_prefix'], $value['rm_prefix'])) {
+                $family = 'OpeningReferencePolicyValue';
+            }
+            $schemaReference = $family === null ? null : '#/components/schemas/'.$family;
+        }
+
         if (($subject !== null && ($allowedSubjectId === null || $subject !== $allowedSubjectId))
-            || (isset($evidence['value_schema_reference']) && $evidence['value_schema_reference'] !== '#/components/schemas/'.$schema)) {
+            || ($schemaReference !== null && $schemaReference !== '#/components/schemas/'.$schema)) {
             return null;
         }
         if (! isset($evidence['value_schema_reference'])
@@ -308,6 +340,12 @@ final class ChapterAuthority
     {
         $at ??= now();
         $states = $policies->where('policy_code', $key)->map(fn (PolicyRecord $policy) => self::policyState($policy, $owner, $schema, at: $at));
+
+        return self::blockerForStates($key, $owner, $states);
+    }
+
+    private static function blockerForStates(string $key, string $owner, Collection $states): ?array
+    {
         foreach (['effective', 'not_effective', 'expired', 'unapproved'] as $state) {
             if ($states->containsStrict($state)) {
                 return $state === 'effective' ? null : self::setupBlocker($key, $owner, $state);
