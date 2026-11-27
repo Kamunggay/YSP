@@ -31,7 +31,7 @@ class EnforceStageOneAction
             ? array_intersect($actions, ['replenishment.read', 'allocation_queue.read'])
             : $actions);
 
-        if ($request->is('*/evidence', '*/evidence/*')) {
+        if (! $request->is('*/candidates/*') && $request->is('*/evidence', '*/evidence/*')) {
             $this->authorizeEvidenceTarget($request, $authority, $actions);
 
             return $this->response($request, $next);
@@ -178,7 +178,7 @@ class EnforceStageOneAction
         $response = $next($request);
         if ($response->getStatusCode() === 404) {
             $code = match (true) {
-                $request->is('*/evidence', '*/evidence/*') => 'evidence_not_found',
+                ! $request->is('*/candidates/*') && $request->is('*/evidence', '*/evidence/*') => 'evidence_not_found',
                 $request->is('*/opening-actions/*') => 'operation_not_found',
                 default => 'resource_not_found',
             };

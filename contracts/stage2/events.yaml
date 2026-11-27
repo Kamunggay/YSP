@@ -597,6 +597,18 @@ operation_disposition:
   printControlReport:
     events: []
     reason: Safe GET printable report has no domain change.
+  listOfficerCandidates:
+    events: []
+    reason: Safe GET candidate read has no domain change.
+  listRequestingUnitCandidates:
+    events: []
+    reason: Safe GET candidate read has no domain change.
+  listEvidenceCandidates:
+    events: []
+    reason: Safe GET candidate read has no domain change.
+  listEventCandidates:
+    events: []
+    reason: Safe GET candidate read has no domain change.
 procedure_disposition:
   recordPolicy:
     events:

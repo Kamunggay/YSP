@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActualIssueController;
 use App\Http\Controllers\BrowserSessionController;
 use App\Http\Controllers\BuyerController;
+use App\Http\Controllers\CandidateListController;
 use App\Http\Controllers\CatalogueController;
 use App\Http\Controllers\ChapterAccessController;
 use App\Http\Controllers\HandoverController;
@@ -40,6 +41,10 @@ Route::prefix('v1/auth')->group(function () {
 Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads', 'stage-one.chapter')->group(function () {
     Route::get('/context', [ChapterAccessController::class, 'context']);
     Route::get('/access', [ChapterAccessController::class, 'access']);
+    Route::get('/candidates/officers', [CandidateListController::class, 'officers'])->middleware('stage-one.action:candidates.read');
+    Route::get('/candidates/requesting-units', [CandidateListController::class, 'requestingUnits'])->middleware('stage-one.action:candidates.read');
+    Route::get('/candidates/evidence', [CandidateListController::class, 'evidence'])->middleware('stage-one.action:evidence.read');
+    Route::get('/candidates/events', [CandidateListController::class, 'events'])->middleware('stage-one.action:candidates.read');
 });
 
 Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidence', 'stage-one.chapter')->group(function () {

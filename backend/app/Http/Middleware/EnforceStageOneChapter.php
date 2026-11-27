@@ -16,7 +16,7 @@ class EnforceStageOneChapter
     {
         $chapterId = $request->route('chapter_id');
         if (! preg_match(AuthInput::UUID, $chapterId)) {
-            if ($request->is('*/evidence', '*/evidence/*')) {
+            if (! $request->is('*/candidates/*') && $request->is('*/evidence', '*/evidence/*')) {
                 throw PaperEvidenceUpload::malformed();
             }
             throw new ContractException(400, 'invalid_selector', 'Invalid chapter selector.');

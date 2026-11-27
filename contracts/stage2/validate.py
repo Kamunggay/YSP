@@ -59,6 +59,8 @@ REQUIRED_STAGE2_ACTIONS = {
     "reports.inventory.read",
     "reports.procurement.read",
     "reports.control.read",
+    "candidates.read",
+    "evidence.read",
 }
 FORBIDDEN_PUBLIC_PATH_FRAGMENTS = (
     "/policies",
@@ -1335,6 +1337,37 @@ def main():
         if not {"Cache-Control", "Content-Security-Policy", "X-Content-Type-Options"} <= set(p_ok.get("headers", {})):
             raise ValueError(f"Printable report {print_op} 200 response missing required security/cache headers")
 
+    # Verify v0.5.1 additive candidate-list endpoints and q/eligible_for selectors on Leader's five list routes
+    for list_op in (
+        "listDonations",
+        "listRepfQuotations",
+        "listReceivingReports",
+        "listReceivingDiscrepancies",
+        "listReceivingHolds",
+    ):
+        l_ptr, l_def = operations[list_op]
+        l_params = {
+            dereference(l_ptr + f"/parameters/{i}")[1]["name"]
+            for i in range(len(l_def.get("parameters", [])))
+        }
+        if not {"q", "eligible_for"} <= l_params:
+            raise ValueError(f"v0.5.1 list operation {list_op} missing additive q or eligible_for parameter")
+    for cand_op, required_params in (
+        ("listOfficerCandidates", {"chapter_id", "q", "duty", "requesting_unit_id", "exclude_user_id", "limit", "cursor"}),
+        ("listRequestingUnitCandidates", {"chapter_id", "q", "for_duty", "limit", "cursor"}),
+        ("listEvidenceCandidates", {"chapter_id", "purpose", "record_id", "q", "limit", "cursor"}),
+        ("listEventCandidates", {"chapter_id", "q", "status", "limit", "cursor"}),
+    ):
+        c_ptr, c_def = operations[cand_op]
+        c_params = {
+            dereference(c_ptr + f"/parameters/{i}")[1]["name"]
+            for i in range(len(c_def.get("parameters", [])))
+        }
+        if not required_params <= c_params:
+            raise ValueError(f"v0.5.1 candidate operation {cand_op} missing parameters: {sorted(required_params - c_params)}")
+        if not {"200", "400", "401", "403", "404", "409", "429", "503"} <= set(c_def.get("responses", {})):
+            raise ValueError(f"v0.5.1 candidate operation {cand_op} missing required status branches")
+
     donation_transitions = document.get("x-stage2-donation-transitions", {})
     po_transitions = document.get("x-stage2-po-transitions", {})
     receiving_transitions = document.get("x-stage2-receiving-transitions", {})
@@ -1850,6 +1883,48 @@ def main():
                     "allocatable_now": True,
                 },
                 "deliberately invalid control report row marking ADR 0004 uninterpreted donation allocatable_now: true",
+            ),
+            (
+                "#/components/schemas/EvidenceCandidate",
+                {
+                    "evidence_id": "97400000-0000-4000-8000-000000000001",
+                    "chapter_id": "60000000-0000-4000-8000-000000000001",
+                    "target": {
+                        "purpose": "po_supplier_dr",
+                        "record_id": "97000000-0000-4000-8000-000000000001",
+                    },
+                    "version_id": "97400000-0000-4000-8000-000000000002",
+                    "version": 1,
+                    "technical_state": "invalid",
+                    "uploaded_by": "10000000-0000-4000-8000-000000000007",
+                    "uploaded_by_name": "Riza Receiving",
+                    "uploaded_by_public_id": "riza.receiving@ysp.invalid",
+                    "uploaded_at": "2026-11-26T08:10:00.000000Z",
+                    "replacement_reason": None,
+                    "attachments": [
+                        {
+                            "attachment_id": "97400000-0000-4000-8000-000000000003",
+                            "position": 1,
+                            "media_type": "application/pdf",
+                            "byte_length": 12480,
+                            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        }
+                    ],
+                },
+                "deliberately invalid evidence candidate exposing non-ready manifest",
+            ),
+            (
+                "#/components/schemas/EventCandidate",
+                {
+                    "event_id": "63000000-0000-4000-8000-000000000001",
+                    "chapter_id": "60000000-0000-4000-8000-000000000001",
+                    "code": "EVT-2026-OLD",
+                    "name": "Canceled Event",
+                    "status": "canceled",
+                    "starts_at": None,
+                    "ends_at": None,
+                },
+                "deliberately invalid event candidate exposing canceled event",
             ),
         ]
         rejections = []
