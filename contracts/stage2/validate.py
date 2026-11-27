@@ -75,6 +75,13 @@ FORBIDDEN_PUBLIC_PATH_FRAGMENTS = (
     "/reports/finance",
     "/reports/booth",
     "/export",
+    "/sales-orders",
+    "/sales-invoices",
+    "/payments",
+    "/official-receipts",
+    "/booths",
+    "/adjustments",
+    "/adj",
 )
 
 
@@ -1114,7 +1121,7 @@ def validate_notifications(root, document, examples, operations, dereference):
         f"{len(example_names)} event examples; {len(dispositions)} HTTP/{len(procedures)} procedure/"
         f"{len(compat_dispositions)} compatibility dispositions; {len(scenarios)} notification scenarios"
     )
-    return event_validator
+    return event_validator, agreement
 
 
 def main():
@@ -1637,10 +1644,15 @@ def main():
     if participant_coverage != participants.keys():
         raise ValueError(f"Missing worked participant success: {sorted(participants.keys() - participant_coverage)}")
 
-    event_validator = validate_notifications(root, document, examples, operations, dereference)
+    event_validator, events_doc = validate_notifications(root, document, examples, operations, dereference)
     handoff_doc = read_yaml(root / "handoff.yaml")
-    events_doc = read_yaml(root / "events.yaml")
-    validate_handoff(root, handoff_doc, document, examples, events_doc, operations)
+    handoff_shared = {
+        "stage1_evidence": STAGE1_EVIDENCE_PURPOSES,
+        "stage2_evidence": STAGE2_EVIDENCE_PURPOSES,
+        "forbidden_paths": FORBIDDEN_PUBLIC_PATH_FRAGMENTS,
+        "pointer_part": pointer_part,
+    }
+    validate_handoff(root, handoff_doc, document, examples, events_doc, operations, handoff_shared)
 
     print(
         "Versions: "
@@ -1894,7 +1906,9 @@ def main():
             if not errors:
                 raise ValueError(f"Invalid-example probe unexpectedly passed: {probe_label}")
             rejections.append(f"{probe_label}: rejected ({errors[0].validator})")
-        rejections.extend(run_handoff_negative_probes(root, handoff_doc, document, examples, events_doc, operations))
+        rejections.extend(
+            run_handoff_negative_probes(root, handoff_doc, document, examples, events_doc, operations, handoff_shared)
+        )
         raise ValueError("; ".join(rejections))
 
 

@@ -5,33 +5,6 @@ import re
 from decimal import Decimal
 
 
-CANONICAL_CHAPTER_DUTIES = {
-    "CHAPTER_HEAD",
-    "FINANCE",
-    "INVENTORY",
-    "PURCHASING",
-    "BUDGET_APPROVER",
-    "RECEIVING",
-    "DISPATCH",
-    "SALES_ORDER",
-    "CASHIER",
-    "BOOTH_OPERATOR",
-    "COMMITTEE_REQUESTER",
-    "RF_APPROVER",
-    "COUNT_VERIFIER",
-    "INDEPENDENT_REVIEWER",
-}
-
-EXPECTED_STAGE1_EVIDENCE_PURPOSES = {"opening_receipt", "hold_clearance", "actual_issue"}
-EXPECTED_STAGE2_EVIDENCE_PURPOSES = {
-    "quotation_attachment",
-    "po_supplier_dr",
-    "da_acknowledgment",
-    "da_receipt",
-    "donor_restriction_resolution",
-    "receiving_discrepancy",
-    "missing_source_hold",
-}
 EXPECTED_STAGE2_POLICIES = {
     "purchasing_quotation_policy",
     "da_authorization",
@@ -61,43 +34,13 @@ EXPECTED_INTERNAL_PARTICIPANTS = {
     "applyLotRestrictionResolution": ("x-stage2-donation-participants", "Efren"),
     "prepareReceivingInventory": ("x-stage2-receiving-participants", "Efren"),
 }
-EXPECTED_STAGE2_EVENTS = {
-    "stage2.repf.changed.v1",
-    "stage2.purchase-order.changed.v1",
-    "stage2.donation.changed.v1",
-    "stage2.receiving-report.changed.v1",
-    "stage2.receiving-discrepancy.changed.v1",
-    "stage2.receiving-hold.changed.v1",
-}
-EXPECTED_CO_EMITTED_STAGE1_EVENTS = {
-    "stage1.stock-lot.changed.v1",
-    "stage1.internal-rf.changed.v1",
-    "stage1.chapter-setup.changed.v1",
-    "stage1.authority.changed.v1",
-}
-FORBIDDEN_STAGE3_PLUS_FRAGMENTS = (
-    "/policies",
-    "/settings",
-    "/record-policy",
-    "/evidence-readiness",
-    "/readiness-token",
-    "/compute-net-shortage",
-    "/prepare-receiving",
-    "/apply-lot-restriction",
-    "/suppliers",
-    "/alerts/ack",
-    "/alerts/dismiss",
-    "/reports/finance",
-    "/reports/booth",
-    "/export",
-    "/sales-orders",
-    "/sales-invoices",
-    "/payments",
-    "/official-receipts",
-    "/booths",
-    "/adjustments",
-    "/adj",
-)
+EXPECTED_FORBIDDEN_403_CODES = [
+    "origin_denied",
+    "mfa_incomplete",
+    "duty_denied",
+    "independence_required",
+    "duty_limit_exceeded",
+]
 FORBIDDEN_BINARY_MEDIA_TYPES = {
     "application/pdf",
     "text/csv",
@@ -138,8 +81,9 @@ def check_agreement_link(link, doc_anchors, label):
     require(anchor in doc_anchors[filename], f"Unknown agreement anchor ({label}): {link}")
 
 
-def validate_handoff(root, handoff, document, examples, events, operations):
+def validate_handoff(root, handoff, document, examples, events, operations, shared):
     """Verify 100% parity across handoff.yaml, openapi.yaml, agreement.md, events.yaml, and examples.yaml."""
+    agreement_text = (root / "agreement.md").read_text(encoding="utf-8")
     doc_anchors = {
         "agreement.md": heading_anchors(root / "agreement.md"),
         "notifications.md": heading_anchors(root / "notifications.md"),
@@ -149,11 +93,13 @@ def validate_handoff(root, handoff, document, examples, events, operations):
     proc_cases = {case["name"]: case for case in examples.get("procedure_cases", [])}
     part_cases = {case["name"]: case for case in examples.get("participant_cases", [])}
     all_case_names = cases.keys() | proc_cases.keys() | part_cases.keys()
+    pointer_part = shared["pointer_part"]
 
     require(handoff.get("spec") == "https://github.com/Kamunggay/YSP/issues/27", "Wrong parent spec URL in handoff")
     require("pending" in str(handoff.get("status", "")).lower(), "Handoff status must state pending human review")
 
-    # 1. Verify action duties registry (all 39 entries, canonical duties only, 100% used)
+    # 1. Verify action duties registry against OpenAPI Duty enum and x-stage2-action-duties
+    canonical_duties = set(document["components"]["schemas"]["Duty"]["enum"])
     action_duties = document.get("x-stage2-action-duties", {})
     require(bool(action_duties), "Missing x-stage2-action-duties in OpenAPI")
     require(
@@ -161,10 +107,12 @@ def validate_handoff(root, handoff, document, examples, events, operations):
         "handoff.yaml action_duties differs from openapi.yaml x-stage2-action-duties",
     )
     for action_name, duties in action_duties.items():
-        require(bool(duties) and set(duties) <= CANONICAL_CHAPTER_DUTIES,
-                f"Non-canonical duty in x-stage2-action-duties/{action_name}: {duties}")
+        require(
+            bool(duties) and set(duties) <= canonical_duties,
+            f"Non-canonical duty in x-stage2-action-duties/{action_name}: {duties}",
+        )
 
-    # 2. Verify every HTTP operation maps to Section 7 owner, Glenn UI, reciprocal reviewers, action duty & event disposition
+    # 2. Verify every HTTP operation maps to Section 7 owner, Glenn UI, reciprocal reviewers, action duty, agreement.md & events.yaml
     listed = set()
     used_actions = set()
     event_dispositions = events["operation_disposition"]
@@ -196,11 +144,11 @@ def validate_handoff(root, handoff, document, examples, events, operations):
         for op_id, entry in profile["operations"].items():
             require(op_id not in listed, f"Duplicate handoff operation: {op_id}")
             require(op_id in operations, f"Unknown handoff operation: {op_id}")
+            require(op_id in agreement_text, f"Operation ID missing from agreement.md: {op_id}")
             listed.add(op_id)
             pointer, operation = operations[op_id]
-            escaped_path = entry["path"].replace("~", "~0").replace("/", "~1")
             require(
-                pointer == f"#/paths/{escaped_path}/{entry['method'].lower()}",
+                pointer == f"#/paths/{pointer_part(entry['path'])}/{entry['method'].lower()}",
                 f"Handoff method/path differs for {op_id}",
             )
             require(operation.get("x-existence") == "new", f"Expected x-existence: new on {op_id}")
@@ -220,8 +168,7 @@ def validate_handoff(root, handoff, document, examples, events, operations):
             emits = sorted(ev_disp.get("events", []))
             if emits:
                 require(
-                    entry.get("events_disposition") == "emits"
-                    and sorted(entry.get("emits", [])) == emits,
+                    entry.get("events_disposition") == "emits" and sorted(entry.get("emits", [])) == emits,
                     f"Handoff events_disposition/emits mismatch on {op_id}",
                 )
             else:
@@ -236,7 +183,7 @@ def validate_handoff(root, handoff, document, examples, events, operations):
     require(listed == operations.keys(), f"Handoff operation inventory differs: {sorted(listed ^ operations.keys())}")
     require(used_actions == action_duties.keys(), f"Unused x-stage2-action-duties: {sorted(action_duties.keys() - used_actions)}")
 
-    # 3. Verify controlled procedures and internal participants (zero public HTTP routes)
+    # 3. Verify controlled procedures and ALL x-stage2-*-participants extensions dynamically (zero public HTTP routes)
     procedures = document.get("x-controlled-procedures", {})
     require(handoff["controlled_procedures"].keys() == procedures.keys(), "Controlled procedures inventory differs")
     for proc_id, entry in handoff["controlled_procedures"].items():
@@ -245,78 +192,111 @@ def validate_handoff(root, handoff, document, examples, events, operations):
         check_agreement_link(entry["agreement"], doc_anchors, f"procedure:{proc_id}")
 
     actual_participants = {}
-    for pid, (ext, expected_owner) in EXPECTED_INTERNAL_PARTICIPANTS.items():
-        group = document.get(ext, {})
-        require(pid in group, f"Missing expected internal participant {pid} in {ext}")
-        actual_participants[pid] = (ext, group[pid], expected_owner)
+    for ext, group in document.items():
+        if ext.startswith("x-stage2-") and ext.endswith("-participants") and isinstance(group, dict):
+            for pid, canonical in group.items():
+                require(pid not in actual_participants, f"Duplicate participant across extensions: {pid}")
+                actual_participants[pid] = (ext, canonical)
     require(
-        handoff["internal_participants"].keys() == actual_participants.keys(),
-        "Internal participants inventory differs",
+        actual_participants.keys() == EXPECTED_INTERNAL_PARTICIPANTS.keys() == handoff["internal_participants"].keys(),
+        f"Internal participants inventory differs: {sorted(actual_participants.keys() ^ EXPECTED_INTERNAL_PARTICIPANTS.keys())}",
     )
     for pid, entry in handoff["internal_participants"].items():
-        ext, canonical, expected_owner = actual_participants[pid]
-        require(entry["canonical"] == f"openapi.yaml#/{ext}/{pid}", f"Bad participant canonical ref: {pid}")
+        ext, canonical = actual_participants[pid]
+        expected_ext, expected_owner = EXPECTED_INTERNAL_PARTICIPANTS[pid]
+        require(ext == expected_ext and entry["canonical"] == f"openapi.yaml#/{ext}/{pid}", f"Bad participant ref: {pid}")
         require(entry["owner"] == canonical.get("owner") == expected_owner, f"Participant owner mismatch: {pid}")
         require(entry.get("commit") == "caller_owned_single_mysql_transaction", f"Bad participant commit boundary: {pid}")
         require(entry.get("public_http_route") is False, f"Participant must declare public_http_route: false: {pid}")
         require(pid not in operations, f"Internal participant exposed as public HTTP operation: {pid}")
         check_agreement_link(entry["agreement"], doc_anchors, f"participant:{pid}")
 
-    # 4. Verify policies, reference_series families, EvidencePurpose, events, compatibility & error codes
+    # 4. Deep nested-value parity for policies, reference_series, EvidencePurpose, events, compatibility & error codes
+    expected_s2_policies = {
+        k: {
+            "setting_key": v.get("setting_key", k),
+            "subject_scope": v["subject_scope"],
+            "ownership": v["ownership"],
+            "schema": v["schema"]["$ref"],
+        }
+        for k, v in document["x-stage2-policy-values"].items()
+    }
     require(
-        set(document["x-stage2-policy-values"].keys()) == EXPECTED_STAGE2_POLICIES
-        and set(handoff["policies"]["stage2_new"].keys()) == EXPECTED_STAGE2_POLICIES,
-        "Stage 2 new policy keys mismatch",
+        expected_s2_policies.keys() == EXPECTED_STAGE2_POLICIES
+        and handoff["policies"]["stage2_new"] == expected_s2_policies,
+        "Stage 2 new policies nested parity mismatch",
+    )
+    expected_s1_policies = {
+        k: {
+            "setting_key": v.get("setting_key", k),
+            "subject_scope": v["subject_scope"],
+            "ownership": v["ownership"],
+        }
+        for k, v in document["x-stage1-reused-policy-values"].items()
+    }
+    require(
+        expected_s1_policies.keys() == EXPECTED_STAGE1_REUSED_POLICIES
+        and handoff["policies"]["stage1_reused"] == expected_s1_policies,
+        "Stage 1 reused policies nested parity mismatch",
+    )
+    expected_ref_families = {
+        k: {
+            "schema": v["schema"]["$ref"],
+            "consumers": v["consumers"],
+            "counter_scopes": v["counter_scopes"],
+        }
+        for k, v in document["x-reference-series-policy-identity"]["families"].items()
+    }
+    require(
+        expected_ref_families.keys() == EXPECTED_REFERENCE_FAMILIES
+        and handoff["reference_series_families"] == expected_ref_families,
+        "reference_series families nested parity mismatch",
     )
     require(
-        set(document["x-stage1-reused-policy-values"].keys()) == EXPECTED_STAGE1_REUSED_POLICIES
-        and set(handoff["policies"]["stage1_reused"].keys()) == EXPECTED_STAGE1_REUSED_POLICIES,
-        "Stage 1 reused policy keys mismatch",
-    )
-    ref_families = document["x-reference-series-policy-identity"]["families"]
-    require(
-        set(ref_families.keys()) == EXPECTED_REFERENCE_FAMILIES
-        and set(handoff["reference_series_families"].keys()) == EXPECTED_REFERENCE_FAMILIES,
-        "reference_series families mismatch",
-    )
-    ev_enum = set(document["components"]["schemas"]["EvidencePurpose"]["enum"])
-    require(
-        ev_enum == EXPECTED_STAGE1_EVIDENCE_PURPOSES | EXPECTED_STAGE2_EVIDENCE_PURPOSES
-        and set(handoff["evidence_purposes"]["stage1_reused"]) == EXPECTED_STAGE1_EVIDENCE_PURPOSES
-        and set(handoff["evidence_purposes"]["stage2_added"]) == EXPECTED_STAGE2_EVIDENCE_PURPOSES,
+        set(handoff["evidence_purposes"]["stage1_reused"]) == shared["stage1_evidence"]
+        and set(handoff["evidence_purposes"]["stage2_added"]) == shared["stage2_evidence"],
         "EvidencePurpose registry mismatch",
     )
+    ch = events["channel_conventions"]
     require(
-        set(events["definitions"].keys()) == EXPECTED_STAGE2_EVENTS
-        and set(handoff["events"]["stage2_events"]) == EXPECTED_STAGE2_EVENTS
-        and set(events["co_emitted_stage1_events"].keys()) == EXPECTED_CO_EMITTED_STAGE1_EVENTS
-        and set(handoff["events"]["co_emitted_stage1_events"]) == EXPECTED_CO_EMITTED_STAGE1_EVENTS
-        and handoff["events"]["synthetic_alert_events"] == [],
-        "Stage 2 events registry mismatch",
+        handoff["events"]["logical_channel"] == ch["logical_chapter_channel"]
+        and handoff["events"]["delivery_channel"] == ch["delivery_chapter_channel"]
+        and set(handoff["events"]["stage2_events"]) == set(events["definitions"].keys())
+        and set(handoff["events"]["co_emitted_stage1_events"]) == set(events["co_emitted_stage1_events"].keys())
+        and handoff["events"]["synthetic_alert_events"] == []
+        and ch["synthetic_alert_events_allowed"] is False,
+        "Stage 2 events/channels nested parity mismatch",
     )
     check_agreement_link(handoff["events"]["agreement"], doc_anchors, "events")
+
+    expected_compat = {
+        k: {kk: vv for kk, vv in v.items() if kk not in {"contract", "stage1_operations", "stage1_operation"}}
+        for k, v in document["x-stage1-compatibility"].items()
+    }
     require(
-        set(handoff["stage1_compatibility"].keys()) == set(document["x-stage1-compatibility"].keys()),
-        "Stage 1 compatibility inventory mismatch",
+        handoff["stage1_compatibility"] == expected_compat,
+        "Stage 1 compatibility nested ownership/requirements mismatch",
     )
-    conflict_codes = set(document["components"]["schemas"]["Stage2ConflictCode"]["enum"])
     require(
-        set(handoff["error_and_blocker_codes"]["conflict_409"]) == conflict_codes,
-        "Stage2ConflictCode registry mismatch",
+        handoff["error_and_blocker_codes"]["forbidden_403"] == EXPECTED_FORBIDDEN_403_CODES
+        and handoff["error_and_blocker_codes"]["conflict_409"] == document["components"]["schemas"]["Stage2ConflictCode"]["enum"],
+        "Stage 2 error/conflict code registry mismatch",
     )
 
-    # 5. Stage 3+ scope leak guardrails (paths, enums, media types, deferred reporting)
+    # 5. Stage 3+ scope leak guardrails (paths, enums, binary media types)
     for path_str, path_item in document["paths"].items():
         lowered = path_str.lower()
-        for fragment in FORBIDDEN_STAGE3_PLUS_FRAGMENTS:
+        for fragment in shared["forbidden_paths"]:
             require(fragment not in lowered, f"Forbidden Stage 3+ or internal path leaked: {path_str}")
         for method, operation in path_item.items():
             if method not in {"get", "post", "put", "patch", "delete"}:
                 continue
             for resp in operation.get("responses", {}).values():
                 media_types = set(resp.get("content", {}).keys())
-                require(not (media_types & FORBIDDEN_BINARY_MEDIA_TYPES),
-                        f"Forbidden Stage 3+/RPT-07 binary media type leaked on {operation['operationId']}: {media_types}")
+                require(
+                    not (media_types & FORBIDDEN_BINARY_MEDIA_TYPES),
+                    f"Forbidden Stage 3+/RPT-07 binary media type leaked on {operation['operationId']}: {media_types}",
+                )
     require(
         document["components"]["schemas"]["RepfTriggerKind"]["enum"] == ["rf_shortage", "rop_replenishment"],
         "RepfTriggerKind leaked Stage 3 so_shortage or unexpected trigger",
@@ -325,14 +305,8 @@ def validate_handoff(root, handoff, document, examples, events, operations):
         document["components"]["schemas"]["ReceivingSourceKind"]["enum"] == ["po", "da"],
         "ReceivingSourceKind leaked forbidden source kind",
     )
-    deferred_rep = document.get("x-stage2-deferred-reporting", {})
-    require(
-        deferred_rep.get("finance_and_booth_reports", {}).get("requirement") == "RPT-05"
-        and deferred_rep.get("binary_pdf_csv_exports", {}).get("requirement") == "RPT-07",
-        "x-stage2-deferred-reporting must explicitly defer RPT-05 and RPT-07",
-    )
 
-    # 6. Complete PRD/TRD requirement disposition coverage
+    # 6. Complete PRD/TRD requirement disposition coverage + 100% bidirectional profile/requirement parity
     expected_reqs = (
         {f"PRC-{n:02}" for n in range(1, 10)}
         | {f"RCV-{n:02}" for n in range(1, 14)}
@@ -360,7 +334,23 @@ def validate_handoff(root, handoff, document, examples, events, operations):
     for later_req in ("RPT-05", "RPT-07", "GOV-06", "GOV-07"):
         require(coverage[later_req]["disposition"] == "later_stage", f"{later_req} must remain later_stage")
 
-    # 7. Verify linked journeys, example categories, and cross-case worked arithmetic
+    profile_req_pairs = {
+        (pname, req_id)
+        for pname, profile in handoff["profiles"].items()
+        for req_id in profile["requirements"]
+    }
+    coverage_req_pairs = {
+        (pname, req_id)
+        for req_id, entry in coverage.items()
+        if entry["disposition"] != "later_stage"
+        for pname in entry["profiles"]
+    }
+    require(
+        profile_req_pairs == coverage_req_pairs,
+        f"Profile vs requirement_coverage mismatch: {sorted(profile_req_pairs ^ coverage_req_pairs)[:10]}",
+    )
+
+    # 7. Verify linked journeys, example categories, and cross-case worked arithmetic across ALL 6 journeys
     for jname, journey in handoff["journeys"].items():
         require(
             bool(journey.get("fixture"))
@@ -381,12 +371,53 @@ def validate_handoff(root, handoff, document, examples, events, operations):
 
 
 def validate_worked_stage2_arithmetic(cases, part_cases):
-    """Cross-check linked Stage 2 worked journeys (PO 100 / RM 40+10+60, DA mixed SKU, INV-09/ADR 0004)."""
-    # 1. PO 100 / RM-1 (40 accepted + 10 rejected) -> open discrepancy -> RM-2 (60 replacement) -> resolved + recovery
+    """Cross-check all 6 linked Stage 2 worked journeys across examples.yaml."""
+    # 1. Net-shortage -> multi-trigger RepF -> independent budget approval & linked-RF cancel flag
+    repf_sub = cases["stage2-02-repf-submit-allocates-reference"]["response"]["body"]["data"]["result"]
+    repf_app = cases["stage2-02-repf-budget-review-approve"]["response"]["body"]["data"]["result"]
+    repf_cancel_flag = cases["stage2-02-repf-read-linked-demand-canceled"]["response"]["body"]["data"]
+    require(
+        bool(repf_sub["repf_reference"])
+        and repf_sub["status"] == "pending_budget_review"
+        and repf_app["status"] == "approved"
+        and Decimal(repf_app["approved_budget_php"]) == Decimal(repf_app["estimated_total_php"])
+        and repf_app["budget_reviewer"]["user_id"] != repf_app["preparer"]["user_id"]
+        and repf_cancel_flag["linked_demand_canceled"] is True,
+        "Worked RepF submission/approval/linked-RF-cancel journey mismatch",
+    )
+
+    # 2. Quotations -> PO approval/issuance (dual independence) -> close-short conservation & recovery parity
+    po_app_receipt = cases["stage2-03-po-approve-and-issue"]["response"]["body"]["data"]
+    po_rec_receipt = cases["stage2-03-procurement-recovery-po-approve"]["response"]["body"]["data"]
+    require(po_app_receipt == po_rec_receipt, "Recovered approvePurchaseOrder receipt differs from original commit")
+    po_app = po_app_receipt["result"]
+    require(
+        bool(po_app["po_reference"])
+        and po_app["status"] == "issued"
+        and po_app["approved_by"]["user_id"] not in {po_app["preparer"]["user_id"], po_app["originating_repf_preparer"]["user_id"]}
+        and all(
+            Decimal(ln["accepted_quantity"]) == Decimal("0")
+            and Decimal(ln["outstanding_quantity"]) == Decimal(ln["ordered_quantity"])
+            for ln in po_app["lines"]
+        ),
+        "Worked PO approval dual-independence or initial inbound arithmetic mismatch",
+    )
+    po_cs = cases["stage2-03-po-close-short"]["response"]["body"]["data"]["result"]
+    require(
+        po_cs["status"] == "closed_short"
+        and all(
+            Decimal(ln["outstanding_quantity"]) == Decimal("0")
+            and Decimal(ln["accepted_quantity"]) + Decimal(ln["closed_short_quantity"]) + Decimal(ln["canceled_quantity"])
+            == Decimal(ln["ordered_quantity"])
+            for ln in po_cs["lines"]
+        ),
+        "Worked PO close-short quantity conservation mismatch",
+    )
+
+    # 3. PO 100 / RM-1 (40 accepted + 10 rejected) -> open discrepancy -> RM-2 (60 replacement) -> resolved + recovery
     rm1_receipt = cases["stage2-05-rm-post-po-partial-40-accepted-10-rejected"]["response"]["body"]["data"]
     rm1_recovered = cases["stage2-05-recovery-by-key-post-rm"]["response"]["body"]["data"]
     require(rm1_receipt == rm1_recovered, "Recovered postReceivingReport receipt differs from original commit")
-
     rm1 = rm1_receipt["result"]
     rm1_line = rm1["lines"][0]
     require(
@@ -398,7 +429,6 @@ def validate_worked_stage2_arithmetic(cases, part_cases):
         and len(rm1_receipt["posting"]["created_discrepancy_ids"]) == 1,
         "Worked PO partial receipt 40 accepted / 10 rejected mismatch",
     )
-
     part_po = part_cases["stage2-05-participant-prepare-receiving-po-partial"]["output"]
     usable_qty = sum((Decimal(lot["quantity"]) for lot in part_po["usable_lots"]), Decimal("0"))
     rejected_qty = sum((Decimal(lot["quantity"]) for lot in part_po["quarantined_or_rejected_lots"]), Decimal("0"))
@@ -412,7 +442,6 @@ def validate_worked_stage2_arithmetic(cases, part_cases):
         and part_po["emit_stock_lot_changed_event"] is True,
         "Efren prepareReceivingInventory PO 40+10/60-open arithmetic mismatch",
     )
-
     rm2_receipt = cases["stage2-05-rm-post-po-replacement-second-rm"]["response"]["body"]["data"]
     rm2 = rm2_receipt["result"]
     rm2_line = rm2["lines"][0]
@@ -423,7 +452,6 @@ def validate_worked_stage2_arithmetic(cases, part_cases):
         and rm2_receipt["posting"]["source_status_after"] == "receiving_complete",
         "Replacement PO-RM must be a new RM completing 40 + 60 = 100",
     )
-
     disc_resolved = cases["stage2-05-discrepancy-resolve-po-replacement"]["response"]["body"]["data"]["result"]
     require(
         disc_resolved["id"] == rm1_receipt["posting"]["created_discrepancy_ids"][0]
@@ -434,7 +462,26 @@ def validate_worked_stage2_arithmetic(cases, part_cases):
         "Discrepancy resolution must link to the new posted replacement PO-RM",
     )
 
-    # 2. DA-RM mixed restriction shared SKU (bounded + ADR 0004 uninterpreted) & signed restriction resolution
+    # 4. Missing-source hold zero usable stock, IPC prohibition & link/reject transitions
+    for case_name, expected_status in (
+        ("stage2-05-hold-create", "held"),
+        ("stage2-05-hold-link-source-po", "linked_to_source"),
+        ("stage2-05-hold-reject-return-with-evidence", "rejected_returned"),
+    ):
+        hold = cases[case_name]["response"]["body"]["data"]["result"]
+        require(
+            hold["status"] == expected_status
+            and hold["usable_stock_posted"] is False
+            and hold["ipc_creation_prohibited"] is True,
+            f"Missing-source hold invariant failed on {case_name}",
+        )
+    hold_rej = cases["stage2-05-hold-reject-return-with-evidence"]["response"]["body"]["data"]["result"]
+    require(
+        hold_rej["rejection_return"]["evidence_acknowledgment"]["snapshot"]["target"]["purpose"] == "missing_source_hold",
+        "Missing-source hold rejection must bind missing_source_hold evidence",
+    )
+
+    # 5. DA-RM mixed restriction shared SKU (bounded + ADR 0004 uninterpreted) & signed restriction resolution
     da_rm = cases["stage2-05-rm-post-da-restricted-and-uninterpreted-shared-sku"]["response"]["body"]["data"]["result"]
     da_variants = {line["variant_id"] for line in da_rm["lines"]}
     da_states = {line["restrictions"]["state"] for line in da_rm["lines"]}
@@ -456,7 +503,7 @@ def validate_worked_stage2_arithmetic(cases, part_cases):
         "Inexpressible audit review must keep donor restriction uninterpreted",
     )
 
-    # 3. Allocation queue & reports enforce ADR 0004 uninterpreted unallocatable & non-additive stock categories
+    # 6. Allocation queue & reports enforce ADR 0004 uninterpreted unallocatable & non-additive stock categories
     alloc_body = cases["stage2-06-allocation-queue-inv09-mixed-sku"]["response"]["body"]
     require(alloc_body["is_commit_authorization"] is False, "Allocation queue must not authorize commits")
     for row in alloc_body["data"]:
@@ -472,26 +519,28 @@ def validate_worked_stage2_arithmetic(cases, part_cases):
     )
 
 
-def run_handoff_negative_probes(root, handoff, document, examples, events, operations):
+def run_handoff_negative_probes(root, handoff, document, examples, events, operations, shared):
     """Prove handoff guardrails reject leaked internal participant routes and Stage 3+ scope."""
+    probes = [
+        (
+            "deliberately leaked internal participant route",
+            "/api/v1/chapters/{chapter_id}/prepare-receiving",
+            {"post": {"operationId": "prepareReceivingInventory", "responses": {"200": {"description": "bad"}}}},
+        ),
+        (
+            "deliberately leaked Stage 3+ RPT-05 finance route",
+            "/api/v1/chapters/{chapter_id}/reports/finance",
+            {"get": {"operationId": "readFinanceReport", "responses": {"200": {"description": "bad"}}}},
+        ),
+    ]
     rejections = []
-
-    leaked_internal_doc = copy.deepcopy(document)
-    leaked_internal_doc["paths"]["/api/v1/chapters/{chapter_id}/prepare-receiving"] = {"post": {"operationId": "prepareReceivingInventory", "responses": {"200": {"description": "bad"}}}}
-    try:
-        validate_handoff(root, handoff, leaked_internal_doc, examples, events, operations)
-    except ValueError as err:
-        rejections.append(f"deliberately leaked internal participant route: rejected ({err})")
-    else:
-        raise ValueError("Handoff guardrail unexpectedly passed leaked internal participant route")
-
-    leaked_stage3_doc = copy.deepcopy(document)
-    leaked_stage3_doc["paths"]["/api/v1/chapters/{chapter_id}/reports/finance"] = {"get": {"operationId": "readFinanceReport", "responses": {"200": {"description": "bad"}}}}
-    try:
-        validate_handoff(root, handoff, leaked_stage3_doc, examples, events, operations)
-    except ValueError as err:
-        rejections.append(f"deliberately leaked Stage 3+ RPT-05 finance route: rejected ({err})")
-    else:
-        raise ValueError("Handoff guardrail unexpectedly passed leaked Stage 3+ route")
-
+    for label, path_str, path_item in probes:
+        mutated = copy.deepcopy(document)
+        mutated["paths"][path_str] = path_item
+        try:
+            validate_handoff(root, handoff, mutated, examples, events, operations, shared)
+        except ValueError as err:
+            rejections.append(f"{label}: rejected ({err})")
+        else:
+            raise ValueError(f"Handoff guardrail unexpectedly passed: {label}")
     return rejections

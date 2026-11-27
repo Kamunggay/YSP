@@ -11,10 +11,10 @@ profiles:
     existence: specified_only
     agreement: agreement.md#5-net-shortage--rop-replenishment-contract-get-replenishmentneeds--computenetshortagesnapshot
     requirements:
+    - PRC-02
     - INV-10
     - INV-11
     - INV-12
-    - PRC-02
     - GOV-01
     - GOV-02
     - GOV-03
@@ -56,24 +56,26 @@ profiles:
     - PRC-08
     - INV-11
     - INV-12
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-08
+    - GOV-09
+    - GOV-05
+    - SEC-01
+    - SEC-02
+    - SEC-03
     - DOC-01
     - DOC-02
     - DOC-03
     - DOC-04
     - DOC-05
+    - DOC-06
+    - DOC-07
     - DOC-09
     - DOC-10
     - DOC-11
-    - GOV-01
-    - GOV-02
-    - GOV-03
-    - GOV-04
-    - GOV-05
-    - GOV-08
-    - GOV-09
-    - SEC-01
-    - SEC-02
-    - SEC-03
     - AC-07
     - ADD-AC-11
     source_nodes:
@@ -188,15 +190,6 @@ profiles:
     agreement: agreement.md#112-nested-quotations--quotation-policy-enforcement-prc-05
     requirements:
     - PRC-05
-    - DOC-01
-    - DOC-03
-    - DOC-04
-    - DOC-05
-    - DOC-07
-    - DOC-08
-    - DOC-09
-    - DOC-10
-    - DOC-11
     - GOV-01
     - GOV-02
     - GOV-03
@@ -206,6 +199,17 @@ profiles:
     - SEC-01
     - SEC-02
     - SEC-03
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - DOC-08
     - AC-07
     source_nodes:
     - S2-04
@@ -266,24 +270,26 @@ profiles:
     - RCV-05
     - RCV-06
     - RCV-07
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-08
+    - GOV-09
+    - GOV-05
+    - SEC-01
+    - SEC-02
+    - SEC-03
     - DOC-01
     - DOC-02
     - DOC-03
     - DOC-04
     - DOC-05
+    - DOC-06
+    - DOC-07
     - DOC-09
     - DOC-10
     - DOC-11
-    - GOV-01
-    - GOV-02
-    - GOV-03
-    - GOV-04
-    - GOV-05
-    - GOV-08
-    - GOV-09
-    - SEC-01
-    - SEC-02
-    - SEC-03
     - AC-07
     - AC-12
     source_nodes:
@@ -427,16 +433,25 @@ profiles:
     existence: specified_only
     agreement: agreement.md#63-authorization-transactionlock-boundaries--committed-events
     requirements:
-    - DOC-01
-    - DOC-03
-    - DOC-05
-    - DOC-10
-    - DOC-11
     - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-08
     - GOV-09
     - SEC-01
     - SEC-02
     - SEC-03
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-09
+    - DOC-10
+    - DOC-11
     source_nodes:
     - cross-cutting-recovery
     - S2-02
@@ -473,6 +488,16 @@ profiles:
     - RCV-13
     - INV-09
     - INV-14
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-08
+    - GOV-09
+    - GOV-05
+    - SEC-01
+    - SEC-02
+    - SEC-03
     - DOC-01
     - DOC-02
     - DOC-03
@@ -480,20 +505,10 @@ profiles:
     - DOC-05
     - DOC-06
     - DOC-07
-    - DOC-08
     - DOC-09
     - DOC-10
     - DOC-11
-    - GOV-01
-    - GOV-02
-    - GOV-03
-    - GOV-04
-    - GOV-05
-    - GOV-08
-    - GOV-09
-    - SEC-01
-    - SEC-02
-    - SEC-03
+    - DOC-08
     - AC-14
     source_nodes:
     - S3-15
@@ -653,6 +668,16 @@ profiles:
     - INV-09
     - INV-13
     - INV-14
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-08
+    - GOV-09
+    - GOV-05
+    - SEC-01
+    - SEC-02
+    - SEC-03
     - DOC-01
     - DOC-02
     - DOC-03
@@ -660,19 +685,10 @@ profiles:
     - DOC-05
     - DOC-06
     - DOC-07
-    - DOC-08
     - DOC-09
     - DOC-10
     - DOC-11
-    - GOV-01
-    - GOV-02
-    - GOV-04
-    - GOV-05
-    - GOV-08
-    - GOV-09
-    - SEC-01
-    - SEC-02
-    - SEC-03
+    - DOC-08
     - AC-12
     - AC-14
     source_nodes:
@@ -802,21 +818,26 @@ profiles:
     - RCV-05
     - RCV-06
     - INV-14
-    - DOC-01
-    - DOC-03
-    - DOC-05
-    - DOC-07
-    - DOC-08
-    - DOC-09
-    - DOC-10
-    - DOC-11
     - GOV-01
     - GOV-02
+    - GOV-03
+    - GOV-04
     - GOV-08
     - GOV-09
     - SEC-01
     - SEC-02
     - SEC-03
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - DOC-08
     - AC-12
     source_nodes:
     - S3-21
@@ -863,21 +884,26 @@ profiles:
     requirements:
     - RCV-01
     - RCV-10
-    - DOC-01
-    - DOC-03
-    - DOC-05
-    - DOC-07
-    - DOC-08
-    - DOC-09
-    - DOC-10
-    - DOC-11
     - GOV-01
     - GOV-02
+    - GOV-03
+    - GOV-04
     - GOV-08
     - GOV-09
     - SEC-01
     - SEC-02
     - SEC-03
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-09
+    - DOC-10
+    - DOC-11
+    - DOC-08
     - AC-12
     source_nodes:
     - S3-15
@@ -936,16 +962,25 @@ profiles:
     existence: specified_only
     agreement: agreement.md#126-locking-order-recovery-committed-events--downstream-acceptance
     requirements:
-    - DOC-01
-    - DOC-03
-    - DOC-05
-    - DOC-10
-    - DOC-11
     - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-08
     - GOV-09
     - SEC-01
     - SEC-02
     - SEC-03
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-09
+    - DOC-10
+    - DOC-11
     source_nodes:
     - cross-cutting-recovery
     - S3-19
@@ -975,15 +1010,18 @@ profiles:
     existence: specified_only
     agreement: agreement.md#132-inv-09-allocation-queue--stage-1-repeated-partial-rf-fulfillment-inv-09-rf-05rf-08-rcv-04
     requirements:
+    - PRC-09
+    - RCV-04
+    - RCV-12
     - INV-09
     - RF-05
     - RF-06
     - RF-07
     - RF-08
-    - RCV-04
-    - RCV-12
     - GOV-01
     - GOV-02
+    - GOV-03
+    - GOV-04
     - GOV-08
     - GOV-09
     - SEC-01
@@ -1016,11 +1054,13 @@ profiles:
     existence: specified_only
     agreement: agreement.md#133-derived-live-officer-alerts-get-alerts-rpt-01
     requirements:
-    - RPT-01
     - PRC-08
     - INV-10
+    - RPT-01
     - GOV-01
     - GOV-02
+    - GOV-03
+    - GOV-04
     - GOV-08
     - GOV-09
     - SEC-01
@@ -1050,21 +1090,30 @@ profiles:
     existence: specified_only
     agreement: agreement.md#134-stage-2-structured-json--printable-html-reports-rpt-03-rpt-04-stage-2-rpt-06
     requirements:
+    - INV-10
     - RPT-02
     - RPT-03
     - RPT-04
     - RPT-06
-    - DOC-04
-    - DOC-09
-    - DOC-10
-    - DOC-11
     - GOV-01
     - GOV-02
+    - GOV-03
+    - GOV-04
     - GOV-08
     - GOV-09
     - SEC-01
     - SEC-02
     - SEC-03
+    - DOC-01
+    - DOC-02
+    - DOC-03
+    - DOC-04
+    - DOC-05
+    - DOC-06
+    - DOC-07
+    - DOC-09
+    - DOC-10
+    - DOC-11
     - AC-16
     source_nodes:
     - S3-22
@@ -1440,20 +1489,25 @@ events:
   agreement: notifications.md#ownership-requirements-and-boundaries
 stage1_compatibility:
   openingRmsUnchanged:
+    owner: Leader
+    posting_participant_owner: Efren
     requirements:
     - RCV-01
     - RCV-10
-    owner: Leader
   cancelInternalRf:
-    requirements:
-    - PRC-08
     owner: Glenn
+    procurement_consumer: Leader
+    requirement: PRC-08
   stage1StockInboundOpenPo:
+    owner: Glenn
+    procurement_producer: Leader
     requirements:
     - PRC-07
     - PRC-09
-    owner: Glenn
   repeatedRfFulfillmentUnchanged:
+    allocation_queue_owner: Glenn
+    actual_issue_owner: Efren
+    receiving_orchestrator: Leader
     requirements:
     - INV-09
     - RF-05
@@ -1461,7 +1515,6 @@ stage1_compatibility:
     - RF-07
     - RF-08
     - RCV-04
-    owner: Glenn
 deferred_scope:
   stage3_sales_and_payments: Sales Orders (so_shortage rejected), Sales Invoices, verified payments/Official Receipts, payment
     allocations, release coverage, and 48-hour expiry clocks.
@@ -1760,8 +1813,12 @@ requirement_coverage:
     - repf
     - quotations
     - purchase_orders
+    - procurement_operations
     - donations
     - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
     - allocation_queue
     - officer_alerts
     - reports
@@ -1774,8 +1831,12 @@ requirement_coverage:
     - repf
     - quotations
     - purchase_orders
+    - procurement_operations
     - donations
     - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
     - allocation_queue
     - officer_alerts
     - reports
@@ -1788,8 +1849,12 @@ requirement_coverage:
     - repf
     - quotations
     - purchase_orders
+    - procurement_operations
     - donations
     - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
     - allocation_queue
     - officer_alerts
     - reports
@@ -1802,8 +1867,12 @@ requirement_coverage:
     - repf
     - quotations
     - purchase_orders
+    - procurement_operations
     - donations
     - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
     - allocation_queue
     - officer_alerts
     - reports
@@ -1816,8 +1885,12 @@ requirement_coverage:
     - repf
     - quotations
     - purchase_orders
+    - procurement_operations
     - donations
     - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
     - allocation_queue
     - officer_alerts
     - reports
@@ -1830,8 +1903,12 @@ requirement_coverage:
     - repf
     - quotations
     - purchase_orders
+    - procurement_operations
     - donations
     - receiving_reports
+    - receiving_discrepancies
+    - receiving_holds
+    - receiving_operations
     - allocation_queue
     - officer_alerts
     - reports

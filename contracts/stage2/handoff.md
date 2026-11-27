@@ -88,7 +88,7 @@ Run the pinned workspace-local validator (`contracts/stage2/validation-requireme
 
 | Reviewer responsibility | Required check on the combined revision | Current state |
 | --- | --- | --- |
-| Leader (canonical coordinator) | Cross-slice compatibility, Stage 1 seam preservation, ownership/guardrail parity, and delivery readiness | Automated contract + Standards/Spec review executed; combined team sign-off pending |
+| Leader (canonical coordinator) | Cross-slice compatibility, Stage 1 seam preservation, ownership/guardrail parity, and delivery readiness | Pending actual combined review |
 | Glenn (UI & shortage/allocation owner) | UI consumption across all 90 operations, `GET /replenishment/needs`, `computeNetShortageSnapshot`, `GET /allocation-queue`, `/stock*` `inbound_open_po`, and WebSocket refresh/preserved-edit handling | Pending actual human review |
 | Efren (inventory posting & security reviewer) | Consequential Leader/shared boundaries, `prepareReceivingInventory`, `applyLotRestrictionResolution`, locking/idempotency/evidence fences, and Stage 1 repeated actual-issue compatibility | Pending actual human review |
 
