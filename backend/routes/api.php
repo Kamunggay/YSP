@@ -6,6 +6,9 @@ use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\CandidateListController;
 use App\Http\Controllers\CatalogueController;
 use App\Http\Controllers\ChapterAccessController;
+use App\Http\Controllers\DonationController;
+use App\Http\Controllers\DonationMutationController;
+use App\Http\Controllers\DonationOperationController;
 use App\Http\Controllers\HandoverController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InternalRfController;
@@ -20,6 +23,7 @@ use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\StockQueryController;
 use App\Http\PaperEvidenceDownload;
+use App\Services\Donations\DonationWorkflow;
 use App\Services\Procurement\RepfWorkflow;
 use Illuminate\Support\Facades\Route;
 
@@ -87,6 +91,33 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads,r
     ] as $operation => [$method, $path]) {
         Route::match([$method], $path, RepfMutationController::class)
             ->name($operation)->middleware('stage-one.action:'.RepfWorkflow::ACTIONS[$operation]);
+    }
+});
+
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads', 'stage-one.chapter')->group(function () {
+    Route::get('/donations', [DonationController::class, 'index'])->middleware('stage-one.action:da.read');
+    Route::get('/donations/{da_id}', [DonationController::class, 'show'])->middleware('stage-one.action:da.read');
+    Route::get('/donations/{da_id}/history', [DonationController::class, 'history'])->middleware('stage-one.action:da.history_read,history.read');
+    Route::get('/donations/{da_id}/versions/{version}', [DonationController::class, 'version'])->middleware('stage-one.action:da.history_read,history.read');
+    Route::get('/donations/{da_id}/related', [DonationController::class, 'related'])->middleware('stage-one.action:da.read');
+    Route::get('/donations/{da_id}/print', [DonationController::class, 'print'])->middleware('stage-one.action:da.read');
+    Route::get('/donation-operations/by-key', [DonationOperationController::class, 'byKey'])->middleware('stage-one.action:da.read');
+    Route::get('/donation-operations/{operation_id}', [DonationOperationController::class, 'show'])->middleware('stage-one.action:da.read');
+
+    foreach ([
+        'createDonation' => ['POST', '/donations'],
+        'replaceDonation' => ['PUT', '/donations/{da_id}'],
+        'submitDonation' => ['POST', '/donations/{da_id}/submit'],
+        'acknowledgeDonation' => ['POST', '/donations/{da_id}/acknowledge'],
+        'returnDonation' => ['POST', '/donations/{da_id}/return'],
+        'declineDonation' => ['POST', '/donations/{da_id}/decline'],
+        'reviseDonation' => ['POST', '/donations/{da_id}/revise'],
+        'closeShortDonation' => ['POST', '/donations/{da_id}/close-short'],
+        'cancelDonation' => ['POST', '/donations/{da_id}/cancel'],
+        'resolveDonationRestriction' => ['POST', '/donations/{da_id}/restriction-resolutions'],
+    ] as $operation => [$method, $path]) {
+        Route::match([$method], $path, DonationMutationController::class)
+            ->name($operation)->middleware('stage-one.action:'.DonationWorkflow::ACTIONS[$operation]);
     }
 });
 

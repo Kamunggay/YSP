@@ -23,6 +23,9 @@ final class SnapshotPage
     ): JsonResponse {
         $authority = $request->attributes->get(ChapterAuthority::class);
         $userId = $request->user()->id;
+        $grantsHash = hash('sha256', CanonicalJson::encode($authority->grants->map(fn ($grant) => [
+            $grant->id, $grant->duty_code, (int) $grant->version, $grant->scope,
+        ])->all()));
         $snapshotHash = hash('sha256', CanonicalJson::encode([$snapshotVersion, $items]));
         $offset = 0;
         $expires = now('UTC')->addMinutes(5)->timestamp;
@@ -45,6 +48,7 @@ final class SnapshotPage
             }
             if (($decoded['expires'] ?? 0) <= now('UTC')->timestamp
                 || ($decoded['authority_version'] ?? null) !== $authority->version
+                || ($decoded['grants'] ?? null) !== $grantsHash
                 || ($decoded['snapshot'] ?? null) !== $snapshotHash) {
                 throw new ContractException(409, 'snapshot_stale', 'List snapshot is stale; restart pagination.');
             }
@@ -59,6 +63,7 @@ final class SnapshotPage
                 'user' => $userId,
                 'chapter' => $chapterId,
                 'authority_version' => $authority->version,
+                'grants' => $grantsHash,
                 'filters' => $filters,
                 'limit' => $limit,
                 'snapshot' => $snapshotHash,
