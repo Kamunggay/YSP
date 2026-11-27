@@ -1,4 +1,4 @@
-# Schema-checked Stage 2 contract examples (Tickets 01, 02, 03, 04, 05).
+# Schema-checked Stage 2 contract examples (Tickets 01, 02, 03, 04, 05, 06).
 # Synthetic fixtures only; IDs, values, and approvals are illustrative, never approved setup.
 context:
   chapter_id: 60000000-0000-4000-8000-000000000001
@@ -10355,6 +10355,992 @@ cases:
                     sha256: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
             created_at: '2026-11-26T08:40:00.000000Z'
             updated_at: '2026-11-27T09:30:00.000000Z'
+
+  # --- Ticket 06: Allocation Queue, Derived Officer Alerts & Stage 2 Reports ---
+  - name: stage2-06-allocation-queue-inv09-mixed-sku
+    operationId: listAllocationQueue
+    before: >-
+      INV-09 ordered allocation queue after PO-RM (40 usable accepted) and DA-RM
+      (15 bounded eligible + 10 ADR 0004 uninterpreted) post for SKU TSHIRT-M alongside
+      a 5-unit active StockHold. Demonstrates strict tier ordering (active_commitment ->
+      approved_override -> standard_priority with approved_at tie-break) and mixed
+      restricted/unrestricted SKU visibility excluding active holds and ineligible/
+      uninterpreted lots.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+        eligible_only: false
+    response:
+      status: '200'
+      body:
+        allocation_policy:
+          policy_id: 70000000-0000-4000-8000-000000000005
+          version: 2
+        observed_at: '2026-11-27T10:00:00.000000Z'
+        is_commit_authorization: false
+        data:
+          - queue_position: 1
+            allocation_tier: active_commitment
+            priority_rank: 3
+            override_policy_id: null
+            needed_at: '2026-12-03T08:00:00.000000Z'
+            approved_at: '2026-11-25T10:00:00.000000Z'
+            rf_id: 91000000-0000-4000-8000-000000000001
+            rf_reference: RF-2026-0001
+            rf_line_id: 91000000-0000-4000-8000-000000000011
+            rf_version: 3
+            rf_material_version: 1
+            rf_progress_version: 2
+            rf_fulfillment: partially_issued
+            requesting_unit_id: 62000000-0000-4000-8000-000000000001
+            event_id: 63000000-0000-4000-8000-000000000001
+            item_id: 95000000-0000-4000-8000-000000000050
+            item_code: TSHIRT
+            item_name: Chapter Shirt
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            variant_label: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            quantity_scale: 0
+            approved_quantity: '45'
+            issued_quantity: '20'
+            canceled_quantity: '0'
+            active_reserved_quantity: '10'
+            unreserved_outstanding_quantity: '15'
+            usable_stockroom_on_hand: '65'
+            active_stock_hold_quantity: '5'
+            ineligible_restricted_quantity: '10'
+            uninterpreted_restricted_quantity: '10'
+            eligible_available_quantity: '40'
+            eligible_sources:
+              - stock_lot_id: 97600000-0000-4000-8000-000000000001
+                source_kind: po_rm
+                source_reference: RM-2026-0002
+                location_id: 61000000-0000-4000-8000-000000000001
+                free_quantity: '30'
+                restriction_state: unrestricted
+              - stock_lot_id: 97600000-0000-4000-8000-000000000002
+                source_kind: da_rm
+                source_reference: RM-2026-0003
+                location_id: 61000000-0000-4000-8000-000000000001
+                free_quantity: '10'
+                restriction_state: bounded
+            stage1_next_routes:
+              allocation_review_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000001/allocation-review?rf_line_id=91000000-0000-4000-8000-000000000011
+              reservation_prepare_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000001/reservation-preparations
+              actual_issue_prepare_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000001/actual-issues
+          - queue_position: 2
+            allocation_tier: approved_override
+            priority_rank: 4
+            override_policy_id: 70000000-0000-4000-8000-000000000099
+            needed_at: '2026-12-05T08:00:00.000000Z'
+            approved_at: '2026-11-26T05:00:00.000000Z'
+            rf_id: 91000000-0000-4000-8000-000000000002
+            rf_reference: RF-2026-0002
+            rf_line_id: 91000000-0000-4000-8000-000000000021
+            rf_version: 2
+            rf_material_version: 1
+            rf_progress_version: 1
+            rf_fulfillment: outstanding
+            requesting_unit_id: 62000000-0000-4000-8000-000000000002
+            event_id: null
+            item_id: 95000000-0000-4000-8000-000000000050
+            item_code: TSHIRT
+            item_name: Chapter Shirt
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            variant_label: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            quantity_scale: 0
+            approved_quantity: '10'
+            issued_quantity: '0'
+            canceled_quantity: '0'
+            active_reserved_quantity: '0'
+            unreserved_outstanding_quantity: '10'
+            usable_stockroom_on_hand: '65'
+            active_stock_hold_quantity: '5'
+            ineligible_restricted_quantity: '25'
+            uninterpreted_restricted_quantity: '10'
+            eligible_available_quantity: '30'
+            eligible_sources:
+              - stock_lot_id: 97600000-0000-4000-8000-000000000001
+                source_kind: po_rm
+                source_reference: RM-2026-0002
+                location_id: 61000000-0000-4000-8000-000000000001
+                free_quantity: '30'
+                restriction_state: unrestricted
+            stage1_next_routes:
+              allocation_review_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000002/allocation-review?rf_line_id=91000000-0000-4000-8000-000000000021
+              reservation_prepare_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000002/reservation-preparations
+              actual_issue_prepare_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000002/actual-issues
+          - queue_position: 3
+            allocation_tier: standard_priority
+            priority_rank: 1
+            override_policy_id: null
+            needed_at: '2026-12-01T08:00:00.000000Z'
+            approved_at: '2026-11-25T09:00:00.000000Z'
+            rf_id: 91000000-0000-4000-8000-000000000003
+            rf_reference: RF-2026-0003
+            rf_line_id: 91000000-0000-4000-8000-000000000031
+            rf_version: 2
+            rf_material_version: 1
+            rf_progress_version: 1
+            rf_fulfillment: outstanding
+            requesting_unit_id: 62000000-0000-4000-8000-000000000003
+            event_id: null
+            item_id: 95000000-0000-4000-8000-000000000050
+            item_code: TSHIRT
+            item_name: Chapter Shirt
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            variant_label: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            quantity_scale: 0
+            approved_quantity: '20'
+            issued_quantity: '0'
+            canceled_quantity: '0'
+            active_reserved_quantity: '0'
+            unreserved_outstanding_quantity: '20'
+            usable_stockroom_on_hand: '65'
+            active_stock_hold_quantity: '5'
+            ineligible_restricted_quantity: '25'
+            uninterpreted_restricted_quantity: '10'
+            eligible_available_quantity: '30'
+            eligible_sources:
+              - stock_lot_id: 97600000-0000-4000-8000-000000000001
+                source_kind: po_rm
+                source_reference: RM-2026-0002
+                location_id: 61000000-0000-4000-8000-000000000001
+                free_quantity: '30'
+                restriction_state: unrestricted
+            stage1_next_routes:
+              allocation_review_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000003/allocation-review?rf_line_id=91000000-0000-4000-8000-000000000031
+              reservation_prepare_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000003/reservation-preparations
+              actual_issue_prepare_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000003/actual-issues
+          - queue_position: 4
+            allocation_tier: standard_priority
+            priority_rank: 1
+            override_policy_id: null
+            needed_at: '2026-12-01T08:00:00.000000Z'
+            approved_at: '2026-11-26T04:00:00.000000Z'
+            rf_id: 91000000-0000-4000-8000-000000000004
+            rf_reference: RF-2026-0004
+            rf_line_id: 91000000-0000-4000-8000-000000000041
+            rf_version: 2
+            rf_material_version: 1
+            rf_progress_version: 1
+            rf_fulfillment: outstanding
+            requesting_unit_id: 62000000-0000-4000-8000-000000000003
+            event_id: null
+            item_id: 95000000-0000-4000-8000-000000000050
+            item_code: TSHIRT
+            item_name: Chapter Shirt
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            variant_label: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            quantity_scale: 0
+            approved_quantity: '12'
+            issued_quantity: '0'
+            canceled_quantity: '0'
+            active_reserved_quantity: '0'
+            unreserved_outstanding_quantity: '12'
+            usable_stockroom_on_hand: '65'
+            active_stock_hold_quantity: '5'
+            ineligible_restricted_quantity: '25'
+            uninterpreted_restricted_quantity: '10'
+            eligible_available_quantity: '30'
+            eligible_sources:
+              - stock_lot_id: 97600000-0000-4000-8000-000000000001
+                source_kind: po_rm
+                source_reference: RM-2026-0002
+                location_id: 61000000-0000-4000-8000-000000000001
+                free_quantity: '30'
+                restriction_state: unrestricted
+            stage1_next_routes:
+              allocation_review_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000004/allocation-review?rf_line_id=91000000-0000-4000-8000-000000000041
+              reservation_prepare_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000004/reservation-preparations
+              actual_issue_prepare_route: /api/v1/chapters/60000000-0000-4000-8000-000000000001/internal-rfs/91000000-0000-4000-8000-000000000004/actual-issues
+        page:
+          next_cursor: null
+          snapshot_version: 22
+
+  - name: stage2-06-allocation-queue-setup-blocked
+    operationId: listAllocationQueue
+    before: Chapter allocation_priority policy is expired; returns 409 setup_blocked without inventing priority order.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+    response:
+      status: '409'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000601
+        error:
+          code: setup_blocked
+          message: Active chapter allocation_priority policy is required to compute INV-09 queue order.
+          blockers:
+            - setting_key: allocation_priority
+              subject_id: null
+              state: expired
+              approval_owner: CHAPTER_HEAD
+              message: Chapter allocation_priority policy has expired and requires CHAPTER_HEAD renewal via controlled CLI setup.
+
+  - name: stage2-06-allocation-queue-snapshot-stale
+    operationId: listAllocationQueue
+    before: Five-minute snapshot cursor expired after new PO-RM stock posted; returns 409 snapshot_stale.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+        cursor: v1.alloc.expired.snapshot.22
+    response:
+      status: '409'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000602
+        error:
+          code: snapshot_stale
+          message: Allocation queue snapshot expired or underlying stock/demand changed; restart from page 1.
+
+  - name: stage2-06-allocation-queue-duty-denied
+    operationId: listAllocationQueue
+    before: Caller holds BOOTH_CASHIER only and lacks allocation_queue.read; returns 403 duty_denied.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+    response:
+      status: '403'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000603
+        error:
+          code: duty_denied
+          message: Current chapter duty does not allow allocation_queue.read.
+
+  - name: stage2-06-allocation-queue-invalid-selector
+    operationId: listAllocationQueue
+    before: Malformed rf_id query selector returns 400 invalid_selector.
+    invalid_parameters:
+      - query.rf_id
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        rf_id: not-a-uuid
+    response:
+      status: '400'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000604
+        error:
+          code: invalid_selector
+          message: Query parameter rf_id must be a valid UUID.
+
+  - name: stage2-06-alerts-multi-duty-all-categories
+    operationId: listOfficerAlerts
+    before: >-
+      Chapter Head / multi-duty officer sees all 8 derived live alert categories
+      (low-stock ROP breach, pending RepF/PO/DA approvals, PRC-08 demand_changed,
+      open receiving discrepancy, active missing-source hold, and open RF shortage)
+      with persisted_ack_supported: false.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        caller_matched_duties:
+          - INVENTORY
+          - PURCHASING
+          - BUDGET_APPROVER
+          - RECEIVING
+          - CHAPTER_HEAD
+        persisted_ack_supported: false
+        observed_at: '2026-11-27T10:05:00.000000Z'
+        data:
+          - alert_key: low_stock_rop:variant:95000000-0000-4000-8000-000000000051
+            alert_type: low_stock_rop
+            severity: warning
+            record_kind: variant
+            record_id: 95000000-0000-4000-8000-000000000051
+            record_reference: TSHIRT-M
+            responsible_duty: INVENTORY
+            summary: Usable stockroom on-hand (15 PCS) is at or below approved ROP (20 PCS).
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/replenishment/needs?variant_id=95000000-0000-4000-8000-000000000051
+            detected_at: '2026-11-27T10:05:00.000000Z'
+          - alert_key: repf_pending_approval:repf:90000000-0000-4000-8000-000000000010
+            alert_type: repf_pending_approval
+            severity: warning
+            record_kind: repf
+            record_id: 90000000-0000-4000-8000-000000000010
+            record_reference: REPF-2026-0001
+            responsible_duty: BUDGET_APPROVER
+            summary: RepF REPF-2026-0001 (PHP 14400.00) is awaiting independent budget review.
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/repfs/90000000-0000-4000-8000-000000000010
+            detected_at: '2026-11-26T06:00:00.000000Z'
+          - alert_key: po_pending_approval:purchase_order:94000000-0000-4000-8000-000000000001
+            alert_type: po_pending_approval
+            severity: warning
+            record_kind: purchase_order
+            record_id: 94000000-0000-4000-8000-000000000001
+            record_reference: PO-DRAFT-0001
+            responsible_duty: BUDGET_APPROVER
+            summary: Purchase Order draft for PHP 24000.00 is awaiting approval and PO reference issuance.
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/purchase-orders/94000000-0000-4000-8000-000000000001
+            detected_at: '2026-11-26T07:00:00.000000Z'
+          - alert_key: da_pending_acknowledgment:donation:92000000-0000-4000-8000-000000000001
+            alert_type: da_pending_acknowledgment
+            severity: info
+            record_kind: donation
+            record_id: 92000000-0000-4000-8000-000000000001
+            record_reference: DA-DRAFT-0001
+            responsible_duty: CHAPTER_HEAD
+            summary: Submitted in-kind Donation Acknowledgment is awaiting signed acknowledgment.
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/donations/92000000-0000-4000-8000-000000000001
+            detected_at: '2026-11-26T07:30:00.000000Z'
+          - alert_key: demand_changed:purchase_order:94000000-0000-4000-8000-000000000002
+            alert_type: demand_changed
+            severity: critical
+            record_kind: purchase_order
+            record_id: 94000000-0000-4000-8000-000000000002
+            record_reference: PO-2026-0002
+            responsible_duty: PURCHASING
+            summary: Linked RF RF-2026-0005 unissued remainder was canceled (PRC-08); review open PO-2026-0002 for amendment or cancellation.
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/purchase-orders/94000000-0000-4000-8000-000000000002
+            detected_at: '2026-11-26T09:00:00.000000Z'
+          - alert_key: open_receiving_discrepancy:receiving_discrepancy:97100000-0000-4000-8000-000000000001
+            alert_type: open_receiving_discrepancy
+            severity: critical
+            record_kind: receiving_discrepancy
+            record_id: 97100000-0000-4000-8000-000000000001
+            record_reference: RM-2026-0002
+            responsible_duty: RECEIVING
+            summary: 10 rejected PCS from PO-2026-0001 on RM-2026-0002 remain unresolved in rejected stock.
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/receiving-discrepancies/97100000-0000-4000-8000-000000000001
+            detected_at: '2026-11-26T08:40:00.000000Z'
+          - alert_key: active_missing_source_hold:receiving_hold:97200000-0000-4000-8000-000000000001
+            alert_type: active_missing_source_hold
+            severity: warning
+            record_kind: receiving_hold
+            record_id: 97200000-0000-4000-8000-000000000001
+            record_reference: HOLD-2026-0001
+            responsible_duty: RECEIVING
+            summary: Undocumented delivery held outside usable stock awaiting PO/DA linkage or refusal.
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/receiving-holds/97200000-0000-4000-8000-000000000001
+            detected_at: '2026-11-26T09:10:00.000000Z'
+          - alert_key: open_rf_shortage:internal_rf:91000000-0000-4000-8000-000000000001
+            alert_type: open_rf_shortage
+            severity: warning
+            record_kind: internal_rf
+            record_id: 91000000-0000-4000-8000-000000000001
+            record_reference: RF-2026-0001
+            responsible_duty: INVENTORY
+            summary: Approved RF-2026-0001 has 15 PCS unreserved shortage awaiting allocation or replenishment.
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/allocation-queue?rf_id=91000000-0000-4000-8000-000000000001
+            detected_at: '2026-11-25T10:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 23
+
+  - name: stage2-06-alerts-duty-filtered-receiving-only
+    operationId: listOfficerAlerts
+    before: >-
+      Officer holding only RECEIVING duty receives strictly RECEIVING-assigned alerts
+      (discrepancy + missing-source hold); budget/purchasing/inventory alerts are excluded.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        limit: 25
+    response:
+      status: '200'
+      body:
+        caller_matched_duties:
+          - RECEIVING
+        persisted_ack_supported: false
+        observed_at: '2026-11-27T10:06:00.000000Z'
+        data:
+          - alert_key: open_receiving_discrepancy:receiving_discrepancy:97100000-0000-4000-8000-000000000001
+            alert_type: open_receiving_discrepancy
+            severity: critical
+            record_kind: receiving_discrepancy
+            record_id: 97100000-0000-4000-8000-000000000001
+            record_reference: RM-2026-0002
+            responsible_duty: RECEIVING
+            summary: 10 rejected PCS from PO-2026-0001 on RM-2026-0002 remain unresolved in rejected stock.
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/receiving-discrepancies/97100000-0000-4000-8000-000000000001
+            detected_at: '2026-11-26T08:40:00.000000Z'
+          - alert_key: active_missing_source_hold:receiving_hold:97200000-0000-4000-8000-000000000001
+            alert_type: active_missing_source_hold
+            severity: warning
+            record_kind: receiving_hold
+            record_id: 97200000-0000-4000-8000-000000000001
+            record_reference: HOLD-2026-0001
+            responsible_duty: RECEIVING
+            summary: Undocumented delivery held outside usable stock awaiting PO/DA linkage or refusal.
+            target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/receiving-holds/97200000-0000-4000-8000-000000000001
+            detected_at: '2026-11-26T09:10:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 23
+
+  - name: stage2-06-alerts-duty-denied
+    operationId: listOfficerAlerts
+    before: Caller holding COMMITTEE_REQUESTER only lacks alerts.read; returns 403 duty_denied.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+    response:
+      status: '403'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000605
+        error:
+          code: duty_denied
+          message: Current chapter duty does not allow alerts.read.
+
+  - name: stage2-06-alerts-invalid-selector
+    operationId: listOfficerAlerts
+    before: Unknown alert_type selector returns 400 invalid_selector.
+    invalid_parameters:
+      - query.alert_type
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        alert_type: dismissed_alerts
+    response:
+      status: '400'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000606
+        error:
+          code: invalid_selector
+          message: Query parameter alert_type is not a supported Stage 2 alert category.
+
+  - name: stage2-06-report-inventory-json
+    operationId: readInventoryReport
+    before: >-
+      Structured JSON Stage 2 inventory report (RPT-03) for SKU TSHIRT-M showing
+      usable unrestricted/bounded stockroom row with inbound open PO (60), separate
+      ADR 0004 uninterpreted row (available_to_allocate: 0), and rejected quarantine row.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-11-01'
+        date_to: '2026-11-27'
+        variant_id: 95000000-0000-4000-8000-000000000051
+        location_id: 61000000-0000-4000-8000-000000000001
+        status: all
+        limit: 25
+    response:
+      status: '200'
+      body:
+        metadata:
+          report_kind: inventory
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          chapter_name: YSP Metro Chapter
+          currency_code: PHP
+          currency_label: Philippine Peso (PHP)
+          generated_at: '2026-11-27T10:10:00.000000Z'
+          filters:
+            date_from: '2026-11-01'
+            date_to: '2026-11-27'
+            item_id: null
+            variant_id: 95000000-0000-4000-8000-000000000051
+            location_id: 61000000-0000-4000-8000-000000000001
+            status: all
+        stock_category_labels:
+          usable_stockroom_on_hand: Usable stockroom on-hand
+          available_to_allocate: Available-to-allocate
+          rf_reserved: RF-reserved
+          so_reserved: SO-reserved
+          booth_custody: Booth custody
+          quarantined_rejected: Quarantined/rejected
+          inbound_open_po: Inbound / open PO
+          views_are_additive: false
+        data:
+          - item_id: 95000000-0000-4000-8000-000000000050
+            item_code: TSHIRT
+            item_name: Chapter Shirt
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            variant_label: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            unit_label: Pieces
+            quantity_scale: 0
+            location_id: 61000000-0000-4000-8000-000000000001
+            location_name: Main Chapter Stockroom
+            custodian_id: 10000000-0000-4000-8000-000000000002
+            custodian_name: Inventory Custodian
+            condition: usable
+            custody: stockroom
+            restriction_state: unrestricted
+            eligibility_status: eligible
+            usable_stockroom_on_hand: '40'
+            available_to_allocate: '30'
+            rf_reserved: '10'
+            quarantined_rejected: '0'
+            active_stock_hold: '0'
+            inbound_open_po: '60'
+            period_receipts_quantity: '40'
+            period_issues_quantity: '20'
+            unreserved_rf_shortage: '15'
+            approved_rop: '20'
+            approved_target: '80'
+            low_stock_breach: false
+            usable_valuation_php: '9600.00'
+          - item_id: 95000000-0000-4000-8000-000000000050
+            item_code: TSHIRT
+            item_name: Chapter Shirt
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            variant_label: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            unit_label: Pieces
+            quantity_scale: 0
+            location_id: 61000000-0000-4000-8000-000000000001
+            location_name: Main Chapter Stockroom
+            custodian_id: 10000000-0000-4000-8000-000000000002
+            custodian_name: Inventory Custodian
+            condition: usable
+            custody: stockroom
+            restriction_state: uninterpreted
+            eligibility_status: blocked_uninterpreted
+            usable_stockroom_on_hand: '10'
+            available_to_allocate: '0'
+            rf_reserved: '0'
+            quarantined_rejected: '0'
+            active_stock_hold: '0'
+            inbound_open_po: '0'
+            period_receipts_quantity: '10'
+            period_issues_quantity: '0'
+            unreserved_rf_shortage: '0'
+            approved_rop: '20'
+            approved_target: '80'
+            low_stock_breach: false
+            usable_valuation_php: '2400.00'
+          - item_id: 95000000-0000-4000-8000-000000000050
+            item_code: TSHIRT
+            item_name: Chapter Shirt
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            variant_label: Chapter Shirt / Medium
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            unit_label: Pieces
+            quantity_scale: 0
+            location_id: 61000000-0000-4000-8000-000000000001
+            location_name: Main Chapter Stockroom
+            custodian_id: 10000000-0000-4000-8000-000000000002
+            custodian_name: Inventory Custodian
+            condition: rejected
+            custody: stockroom
+            restriction_state: unrestricted
+            eligibility_status: quarantined_or_rejected
+            usable_stockroom_on_hand: '0'
+            available_to_allocate: '0'
+            rf_reserved: '0'
+            quarantined_rejected: '10'
+            active_stock_hold: '0'
+            inbound_open_po: '0'
+            period_receipts_quantity: '0'
+            period_issues_quantity: '0'
+            unreserved_rf_shortage: '0'
+            approved_rop: '20'
+            approved_target: '80'
+            low_stock_breach: false
+            usable_valuation_php: '0.00'
+        totals:
+          row_count: 3
+          total_usable_valuation_php: '12000.00'
+          low_stock_row_count: 0
+          uninterpreted_row_count: 1
+          shortage_row_count: 1
+        page:
+          next_cursor: null
+          snapshot_version: 24
+
+  - name: stage2-06-report-inventory-print
+    operationId: printInventoryReport
+    before: Escaped non-executable printable HTML inventory report with required no-store, PrintCsp, and NoSniff headers.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-11-01'
+        date_to: '2026-11-27'
+        variant_id: 95000000-0000-4000-8000-000000000051
+        location_id: 61000000-0000-4000-8000-000000000001
+        status: all
+      headers:
+        Accept: text/html
+    response:
+      status: '200'
+      media_type: text/html
+      headers:
+        Cache-Control: no-store
+        Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action
+          'none'
+        X-Content-Type-Options: nosniff
+      body: '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Inventory Report - YSP Metro Chapter</title></head><body><h1>Stage 2 Inventory Report (RPT-03)</h1><p>Chapter: YSP Metro Chapter | Period: 2026-11-01 to 2026-11-27 | Currency: PHP | Generated: 2026-11-27T10:10:00.000000Z</p><p>Stock categories are non-additive: Usable stockroom on-hand 40 PCS (Available-to-allocate 30 PCS, RF-reserved 10 PCS), Blocked uninterpreted 10 PCS, Quarantined/rejected 10 PCS, Inbound / open PO 60 PCS | Total Usable Valuation: PHP 12000.00</p></body></html>'
+
+  - name: stage2-06-report-inventory-invalid-selector
+    operationId: readInventoryReport
+    before: Malformed date_from selector returns 400 invalid_selector.
+    invalid_parameters:
+      - query.date_from
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-13-40'
+        date_to: '2026-11-27'
+    response:
+      status: '400'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000607
+        error:
+          code: invalid_selector
+          message: Query parameter date_from must be a valid ISO date YYYY-MM-DD with date_from <= date_to.
+
+  - name: stage2-06-report-inventory-print-duty-denied
+    operationId: printInventoryReport
+    before: Printable HTML endpoint enforces identical reports.inventory.read duty scoping as JSON endpoint.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-11-01'
+        date_to: '2026-11-27'
+      headers:
+        Accept: text/html
+    response:
+      status: '403'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000608
+        error:
+          code: duty_denied
+          message: Current chapter duty does not allow reports.inventory.read.
+
+  - name: stage2-06-report-procurement-json
+    operationId: readProcurementReport
+    before: >-
+      Structured JSON Stage 2 demand and procurement report (RPT-04) showing RF
+      progress, RepF approval and quotation selection, and PO 100 ordered / 40 accepted /
+      10 rejected / 60 open with open discrepancy count.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-11-01'
+        date_to: '2026-11-27'
+        variant_id: 95000000-0000-4000-8000-000000000051
+        status: all
+        limit: 25
+    response:
+      status: '200'
+      body:
+        metadata:
+          report_kind: procurement
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          chapter_name: YSP Metro Chapter
+          currency_code: PHP
+          currency_label: Philippine Peso (PHP)
+          generated_at: '2026-11-27T10:15:00.000000Z'
+          filters:
+            date_from: '2026-11-01'
+            date_to: '2026-11-27'
+            item_id: null
+            variant_id: 95000000-0000-4000-8000-000000000051
+            location_id: null
+            status: all
+        rf_demand_summary:
+          - rf_id: 91000000-0000-4000-8000-000000000001
+            rf_reference: RF-2026-0001
+            rf_line_id: 91000000-0000-4000-8000-000000000011
+            requesting_unit_id: 62000000-0000-4000-8000-000000000001
+            priority_rank: 3
+            needed_at: '2026-12-03T08:00:00.000000Z'
+            approved_at: '2026-11-25T10:00:00.000000Z'
+            rf_fulfillment: partially_issued
+            item_id: 95000000-0000-4000-8000-000000000050
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            quantity_scale: 0
+            approved_quantity: '45'
+            issued_quantity: '20'
+            outstanding_quantity: '25'
+            canceled_quantity: '0'
+            active_reserved_quantity: '10'
+        repf_summary:
+          - repf_id: 90000000-0000-4000-8000-000000000010
+            repf_reference: REPF-2026-0001
+            status: ordered
+            trigger_kind: rf_shortage
+            urgency: urgent
+            linked_demand_canceled: false
+            requested_total_php: '24000.00'
+            budget_decision: approve
+            budget_reviewed_at: '2026-11-26T04:00:00.000000Z'
+            quotation_count: 3
+            supplier_selected: true
+        purchase_order_summary:
+          - po_id: 94000000-0000-4000-8000-000000000001
+            po_reference: PO-2026-0001
+            repf_id: 90000000-0000-4000-8000-000000000010
+            status: partially_received
+            supplier_name: Metro Print & Apparel Corp.
+            linked_demand_canceled: false
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            quantity_scale: 0
+            location_id: 61000000-0000-4000-8000-000000000001
+            ordered_quantity: '100'
+            accepted_quantity: '40'
+            rejected_or_disputed_quantity: '10'
+            outstanding_quantity: '60'
+            ordered_total_php: '24000.00'
+            accepted_value_php: '9600.00'
+            open_discrepancy_count: 1
+            resolved_discrepancy_count: 0
+        totals:
+          open_rf_lines_count: 1
+          repf_count: 1
+          po_count: 1
+          total_ordered_php: '24000.00'
+          total_accepted_value_php: '9600.00'
+          open_discrepancy_count: 1
+        page:
+          next_cursor: null
+          snapshot_version: 24
+
+  - name: stage2-06-report-procurement-print
+    operationId: printProcurementReport
+    before: Escaped non-executable printable HTML demand/procurement report with no-store, PrintCsp, and NoSniff headers.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-11-01'
+        date_to: '2026-11-27'
+        variant_id: 95000000-0000-4000-8000-000000000051
+        status: all
+      headers:
+        Accept: text/html
+    response:
+      status: '200'
+      media_type: text/html
+      headers:
+        Cache-Control: no-store
+        Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action
+          'none'
+        X-Content-Type-Options: nosniff
+      body: '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Procurement Report - YSP Metro Chapter</title></head><body><h1>Stage 2 Demand and Procurement Report (RPT-04)</h1><p>Chapter: YSP Metro Chapter | Period: 2026-11-01 to 2026-11-27 | Currency: PHP | Generated: 2026-11-27T10:15:00.000000Z</p><p>RF-2026-0001: 20/45 PCS issued (25 outstanding) | PO-2026-0001: 40/100 PCS accepted, 10 rejected, 60 open | Ordered: PHP 24000.00 | Accepted: PHP 9600.00 | Open discrepancies: 1</p></body></html>'
+
+  - name: stage2-06-report-procurement-invalid-status
+    operationId: readProcurementReport
+    before: Unknown status filter returns 400 invalid_selector.
+    invalid_parameters:
+      - query.status
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-11-01'
+        date_to: '2026-11-27'
+        status: booth_reconciled
+    response:
+      status: '400'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000609
+        error:
+          code: invalid_selector
+          message: Query parameter status is not a valid procurement report status.
+
+  - name: stage2-06-report-control-json
+    operationId: readControlReport
+    before: >-
+      Structured JSON Stage 2 control and donation report (Stage 2 RPT-06) showing
+      bounded and ADR 0004 uninterpreted donation lots, signed-evidence restriction
+      resolution trail, overdue procurement/receiving exceptions, and actor/time/reason
+      audit history.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-11-01'
+        date_to: '2026-11-27'
+        status: all
+        limit: 25
+    response:
+      status: '200'
+      body:
+        metadata:
+          report_kind: control
+          chapter_id: 60000000-0000-4000-8000-000000000001
+          chapter_name: YSP Metro Chapter
+          currency_code: PHP
+          currency_label: Philippine Peso (PHP)
+          generated_at: '2026-11-27T10:20:00.000000Z'
+          filters:
+            date_from: '2026-11-01'
+            date_to: '2026-11-27'
+            item_id: null
+            variant_id: null
+            location_id: null
+            status: all
+        donation_restrictions:
+          - da_id: 92000000-0000-4000-8000-000000000001
+            da_reference: DA-2026-0001
+            da_status: received
+            donor_name: Youth Civic Foundation
+            location_id: 61000000-0000-4000-8000-000000000001
+            item_id: 95000000-0000-4000-8000-000000000050
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            quantity_scale: 0
+            declared_quantity: '15'
+            received_quantity: '15'
+            declared_value_php: '3600.00'
+            restriction:
+              state: bounded
+              allowed_uses:
+                - internal_use
+              event_ids:
+                - 63000000-0000-4000-8000-000000000001
+              requesting_unit_ids:
+                - 62000000-0000-4000-8000-000000000001
+              effective_from: '2026-11-26T00:00:00.000000Z'
+              effective_until: '2026-12-31T23:59:59.000000Z'
+              interpretation_id: 92500000-0000-4000-8000-000000000001
+              source_condition_reference: Donor letter section 2.1
+            allocatable_now: true
+          - da_id: 92000000-0000-4000-8000-000000000001
+            da_reference: DA-2026-0001
+            da_status: received
+            donor_name: Youth Civic Foundation
+            location_id: 61000000-0000-4000-8000-000000000001
+            item_id: 95000000-0000-4000-8000-000000000050
+            variant_id: 95000000-0000-4000-8000-000000000051
+            variant_code: TSHIRT-M
+            unit_id: 95000000-0000-4000-8000-000000000052
+            unit_code: PCS
+            quantity_scale: 0
+            declared_quantity: '10'
+            received_quantity: '10'
+            declared_value_php: '2400.00'
+            restriction:
+              state: uninterpreted
+              allowed_uses: []
+              event_ids: []
+              requesting_unit_ids: []
+              effective_from: null
+              effective_until: null
+              interpretation_id: null
+              source_condition_reference: Pending donor clarification letter
+            allocatable_now: false
+        restriction_resolutions:
+          - resolution_id: 92500000-0000-4000-8000-000000000001
+            da_id: 92000000-0000-4000-8000-000000000001
+            da_reference: DA-2026-0001
+            da_line_id: 92000000-0000-4000-8000-000000000011
+            previous_state: uninterpreted
+            resolved_state: bounded
+            affected_lot_count: 1
+            evidence_id: 92400000-0000-4000-8000-000000000011
+            actor:
+              user_id: 10000000-0000-4000-8000-000000000001
+              display_name: Chapter Head
+            resolved_at: '2026-11-26T14:00:00.000000Z'
+            reason: Donor signed clarification restricting 15 shirts to Event 0001 internal volunteers.
+        overdue_exceptions:
+          - exception_kind: overdue_receiving_discrepancy
+            record_id: 97100000-0000-4000-8000-000000000001
+            record_reference: RM-2026-0002
+            location_id: 61000000-0000-4000-8000-000000000001
+            responsible_duty: RECEIVING
+            status: supplier_notified
+            due_or_since_at: '2026-11-26T08:40:00.000000Z'
+            overdue_hours: 25
+            summary: 10 rejected shirts on RM-2026-0002 awaiting supplier replacement PO-RM.
+        audit_history:
+          - event_id: 98000000-0000-4000-8000-000000000001
+            record_kind: donation
+            record_id: 92000000-0000-4000-8000-000000000001
+            record_reference: DA-2026-0001
+            action: resolve_restriction
+            actor:
+              user_id: 10000000-0000-4000-8000-000000000001
+              display_name: Chapter Head
+            occurred_at: '2026-11-26T14:00:00.000000Z'
+            reason: Donor signed clarification restricting 15 shirts to Event 0001 internal volunteers.
+        totals:
+          donation_row_count: 2
+          uninterpreted_donation_count: 1
+          resolution_count: 1
+          overdue_exception_count: 1
+          audit_entry_count: 1
+          total_declared_donation_value_php: '6000.00'
+        page:
+          next_cursor: null
+          snapshot_version: 24
+
+  - name: stage2-06-report-control-print
+    operationId: printControlReport
+    before: Escaped non-executable printable HTML control/donation report with no-store, PrintCsp, and NoSniff headers.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-11-01'
+        date_to: '2026-11-27'
+        status: all
+      headers:
+        Accept: text/html
+    response:
+      status: '200'
+      media_type: text/html
+      headers:
+        Cache-Control: no-store
+        Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action
+          'none'
+        X-Content-Type-Options: nosniff
+      body: '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Control Report - YSP Metro Chapter</title></head><body><h1>Stage 2 Control and Donation Report (RPT-06)</h1><p>Chapter: YSP Metro Chapter | Period: 2026-11-01 to 2026-11-27 | Currency: PHP | Generated: 2026-11-27T10:20:00.000000Z</p><p>DA-2026-0001 (Youth Civic Foundation): 15 PCS bounded (allocatable), 10 PCS uninterpreted (blocked per ADR 0004) | Declared Donation Value: PHP 6000.00 | Resolutions: 1 | Overdue Exceptions: 1</p></body></html>'
+
+  - name: stage2-06-report-control-duty-denied
+    operationId: readControlReport
+    before: Caller holding DISPATCH only lacks reports.control.read; returns 403 duty_denied.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        date_from: '2026-11-01'
+        date_to: '2026-11-27'
+    response:
+      status: '403'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000610
+        error:
+          code: duty_denied
+          message: Current chapter duty does not allow reports.control.read.
 
 procedure_cases:
   - name: stage2-01-policy-purchasing-quotation-committed

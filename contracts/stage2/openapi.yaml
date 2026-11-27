@@ -2,9 +2,9 @@ openapi: 3.1.1
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: YSP Stage 2 canonical HTTP agreement
-  version: 0.4.0
+  version: 0.5.0
   description: >-
-    Specification #27 canonical Stage 2 contract package (tickets 01-05). Reuses
+    Specification #27 canonical Stage 2 contract package (tickets 01-06). Reuses
     Stage 1 transport, cookie/CSRF security, X-Action-Key idempotency, snapshot-bound
     cursor pagination, scalar formats, error/blocker envelopes, and BoundedRestriction
     verbatim. Defines controlled CLI-only Stage 2 policies, additive EvidencePurpose
@@ -13,9 +13,11 @@ info:
     quotations, policy-gated supplier selection, Purchase Order lifecycle/amendments,
     Donation Acknowledgments and donor-restriction resolutions, unified PO/DA
     Receiving Reports with Efren prepareReceivingInventory, receiving discrepancy
-    loops, missing-source delivery holds, and action-receipt recovery. agreement.md
-    defines normative authorization, locking, calculation, ownership, and
-    coordination rules. No runtime code, migrations, UI, or CI changes.
+    loops, missing-source delivery holds, action-receipt recovery, Glenn INV-09
+    allocation queue, Leader derived duty-filtered officer alerts, and structured
+    JSON plus printable HTML Stage 2 inventory, procurement, and control reports.
+    agreement.md defines normative authorization, locking, calculation, ownership,
+    and coordination rules. No runtime code, migrations, UI, or CI changes.
 servers:
   - url: /
     description: Same origin as the browser; HTTPS required except isolated loopback development.
@@ -41,6 +43,12 @@ tags:
     description: Missing-source delivery hold intake, source linking, and authorized refusal/return outside usable stock with zero IPC creation owned by Leader (RCV-01, RCV-10, S3-15).
   - name: Receiving Operations
     description: Action-receipt recovery lookups for uncertain Stage 2 receiving, discrepancy, and missing-source hold mutations owned by Leader.
+  - name: Allocation Queue
+    description: Glenn INV-09 eligible-demand allocation queue connecting newly posted PO and DA stockroom lots to Stage 1 unchanged RF reservation and repeated signed actual-issue flows.
+  - name: Officer Alerts
+    description: Leader live chapter-scoped, duty-filtered officer alert feed (RPT-01) with zero persisted acknowledgment or dismissal state.
+  - name: Reports
+    description: Leader structured JSON and printable HTML (/print) views for Stage 2 inventory (RPT-03), demand/procurement (RPT-04), and control/donation (RPT-06) reports (RPT-05 and binary PDF/CSV RPT-07 deferred).
 
 paths:
   /api/v1/chapters/{chapter_id}/replenishment/needs:
@@ -4406,6 +4414,499 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
 
+  /api/v1/chapters/{chapter_id}/allocation-queue:
+    get:
+      operationId: listAllocationQueue
+      tags:
+        - Allocation Queue
+      x-owner: Glenn
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Leader
+      x-existence: new
+      x-required-action: allocation_queue.read
+      summary: Query chapter-scoped INV-09 eligible-demand allocation queue
+      description: >-
+        Current full individual session/MFA, chapter membership, and allocation_queue.read
+        duty are required on every call. Lists approved pending internal RF lines
+        (unreserved_outstanding_quantity > 0) ordered strictly by INV-09:
+        (1) active commitments (active_reserved_quantity > 0), (2) approved
+        allocation_priority overrides, then (3) approved priority_rank ascending,
+        needed_at ascending, approved_at ascending, and deterministic rf_line_id
+        ascending tie-breaker. Displays each line's current eligible available stock
+        from newly posted PO-RM, DA-RM, and Opening RM usable stockroom lots while
+        excluding active StockHolds and ineligible or ADR 0004 uninterpreted
+        BoundedRestriction lots (RCV-04). Read-only guidance only
+        (is_commit_authorization: false); officers execute reservations and repeated
+        signed partial issues through Stage 1 unchanged /internal-rfs*,
+        /reservation-preparations*, /reservations*, and /actual-issues* routes
+        (INV-09, RF-05 through RF-08, RCV-04). Safe GET accepts no request body and
+        no X-Action-Key. Reject unknown or repeated query selectors with 400
+        invalid_selector. Missing/expired allocation_priority or quantity_scale
+        policy returns 409 setup_blocked; expired or mutated 5-minute cursors return
+        409 snapshot_stale. Every response sends Cache-Control: no-store.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/ReplenishmentItemFilter'
+        - $ref: '#/components/parameters/ReplenishmentVariantFilter'
+        - $ref: '#/components/parameters/AllocationQueueRfFilter'
+        - $ref: '#/components/parameters/AllocationQueueUnitFilter'
+        - $ref: '#/components/parameters/AllocationQueueEligibleOnlyFilter'
+      responses:
+        '200':
+          description: Current authorized INV-09 ordered snapshot of approved pending RF lines and eligible available stock.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllocationQueueList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/AllocationQueueConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/alerts:
+    get:
+      operationId: listOfficerAlerts
+      tags:
+        - Officer Alerts
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: alerts.read
+      summary: Query live chapter-scoped, duty-filtered officer alerts
+      description: >-
+        Current full individual session/MFA, chapter membership, and at least one
+        alerts.read operational or oversight duty are required on every call.
+        Derived live from current committed chapter records with zero persisted alert
+        acknowledgment or dismissal write routes (RPT-01; persisted_ack_supported:
+        false). Surfaces chapter-scoped low-stock ROP breaches, pending RepF/PO/DA
+        approvals, linked-RF demand_changed warnings (PRC-08), open receiving
+        discrepancies, active missing-source delivery holds, and open RF shortages.
+        Results are strictly filtered to alerts whose responsible_duty is held by
+        the caller's active chapter duty grants (reported in caller_matched_duties);
+        supplying responsible_duty intersects with the caller's active grants and
+        never discloses alerts belonging to duties the caller does not hold. Safe
+        GET accepts no request body and no X-Action-Key. Reject unknown or repeated
+        query selectors with 400 invalid_selector. Expired or mutated 5-minute
+        cursors return 409 snapshot_stale. Every response sends Cache-Control: no-store.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/AlertTypeFilter'
+        - $ref: '#/components/parameters/AlertSeverityFilter'
+        - $ref: '#/components/parameters/AlertDutyFilter'
+      responses:
+        '200':
+          description: Live chapter-scoped officer alerts filtered strictly to the caller's active chapter duties.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficerAlertList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/reports/inventory:
+    get:
+      operationId: readInventoryReport
+      tags:
+        - Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: reports.inventory.read
+      summary: Read structured JSON Stage 2 inventory report (RPT-03)
+      description: >-
+        Current full individual session/MFA, chapter membership, and
+        reports.inventory.read duty are required on every call. Requires explicit
+        chapter_id and date_from/date_to range (date_from <= date_to, max 366 days)
+        plus optional item_id, variant_id, location_id, and status filters. Rejects
+        unknown, repeated, or inverted selectors with 400 invalid_selector; unknown
+        or foreign item_id/variant_id/location_id yields uniform 404
+        resource_not_found after chapter admission. Reports balances by item/variant,
+        location/custodian, eligibility/condition, RF reservations, availability,
+        period receipts/issues, unreserved RF shortages, ROP/target, and inbound/open
+        PO commitments with labeled units, PHP currency, non-additive stock
+        categories, and server generated_at timestamp (RPT-03). Binary PDF/CSV
+        exports (RPT-07) and finance/booth reports (RPT-05) are explicitly deferred
+        outside Stage 2. Every response sends Cache-Control: no-store.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReportDateFrom'
+        - $ref: '#/components/parameters/ReportDateTo'
+        - $ref: '#/components/parameters/ReplenishmentItemFilter'
+        - $ref: '#/components/parameters/ReplenishmentVariantFilter'
+        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/InventoryReportStatusFilter'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Structured Stage 2 inventory report snapshot (RPT-03).
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryReportResponse'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/reports/inventory/print:
+    get:
+      operationId: printInventoryReport
+      tags:
+        - Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: reports.inventory.read
+      summary: Render escaped non-executable printable HTML inventory report (RPT-03)
+      description: >-
+        Enforces identical chapter admission, reports.inventory.read duty scoping,
+        and explicit date_from/date_to/item_id/variant_id/location_id/status query
+        selector validation as readInventoryReport. Renders escaped, non-executable
+        printable HTML labeling chapter, date range, units, PHP currency,
+        non-additive stock categories, and server report time. Sends Cache-Control:
+        no-store, strict PrintCsp, and NoSniff. Binary PDF/CSV exports (RPT-07)
+        remain deferred outside Stage 2.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReportDateFrom'
+        - $ref: '#/components/parameters/ReportDateTo'
+        - $ref: '#/components/parameters/ReplenishmentItemFilter'
+        - $ref: '#/components/parameters/ReplenishmentVariantFilter'
+        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/InventoryReportStatusFilter'
+      responses:
+        '200':
+          description: Escaped non-executable printable HTML Stage 2 inventory report view.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Content-Security-Policy:
+              $ref: '#/components/headers/PrintCsp'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+          content:
+            text/html:
+              schema:
+                type: string
+                minLength: 1
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/reports/procurement:
+    get:
+      operationId: readProcurementReport
+      tags:
+        - Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: reports.procurement.read
+      summary: Read structured JSON Stage 2 demand and procurement report (RPT-04)
+      description: >-
+        Current full individual session/MFA, chapter membership, and
+        reports.procurement.read duty are required on every call. Requires explicit
+        chapter_id and date_from/date_to range (date_from <= date_to, max 366 days)
+        plus optional item_id, variant_id, location_id, and status filters. Rejects
+        unknown, repeated, or inverted selectors with 400 invalid_selector. Reports
+        internal RF fulfilled/outstanding/canceled quantities with priority and need
+        date, RepF budget approvals, quotation and PO progress, accepted/rejected
+        receiving quantities, and supplier discrepancies with labeled units, PHP
+        currency, and server generated_at timestamp (RPT-04; SO demand fields
+        deferred to Stage 3). Every response sends Cache-Control: no-store.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReportDateFrom'
+        - $ref: '#/components/parameters/ReportDateTo'
+        - $ref: '#/components/parameters/ReplenishmentItemFilter'
+        - $ref: '#/components/parameters/ReplenishmentVariantFilter'
+        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ProcurementReportStatusFilter'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Structured Stage 2 demand and procurement report snapshot (RPT-04).
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcurementReportResponse'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/reports/procurement/print:
+    get:
+      operationId: printProcurementReport
+      tags:
+        - Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: reports.procurement.read
+      summary: Render escaped non-executable printable HTML demand and procurement report (RPT-04)
+      description: >-
+        Enforces identical chapter admission, reports.procurement.read duty scoping,
+        and explicit date_from/date_to/item_id/variant_id/location_id/status query
+        selector validation as readProcurementReport. Renders escaped,
+        non-executable printable HTML labeling chapter, date range, units, PHP
+        currency, RF/RepF/PO/discrepancy progress, and server report time. Sends
+        Cache-Control: no-store, strict PrintCsp, and NoSniff.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReportDateFrom'
+        - $ref: '#/components/parameters/ReportDateTo'
+        - $ref: '#/components/parameters/ReplenishmentItemFilter'
+        - $ref: '#/components/parameters/ReplenishmentVariantFilter'
+        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ProcurementReportStatusFilter'
+      responses:
+        '200':
+          description: Escaped non-executable printable HTML Stage 2 demand and procurement report view.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Content-Security-Policy:
+              $ref: '#/components/headers/PrintCsp'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+          content:
+            text/html:
+              schema:
+                type: string
+                minLength: 1
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/reports/control:
+    get:
+      operationId: readControlReport
+      tags:
+        - Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: reports.control.read
+      summary: Read structured JSON Stage 2 control and donation report (Stage 2 RPT-06)
+      description: >-
+        Current full individual session/MFA, chapter membership, and
+        reports.control.read duty are required on every call. Requires explicit
+        chapter_id and date_from/date_to range (date_from <= date_to, max 366 days)
+        plus optional item_id, variant_id, location_id, and status filters. Rejects
+        unknown, repeated, or inverted selectors with 400 invalid_selector. Reports
+        donation sources with BoundedRestriction state (including ADR 0004
+        uninterpreted lots), restriction-resolution audit trail, overdue procurement
+        and receiving exceptions, and actor/time/reason audit history with labeled
+        units, PHP currency, and server generated_at timestamp (Stage 2 RPT-06; ADJ
+        and booth variance history belong to Stage 4). Every response sends
+        Cache-Control: no-store.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReportDateFrom'
+        - $ref: '#/components/parameters/ReportDateTo'
+        - $ref: '#/components/parameters/ReplenishmentItemFilter'
+        - $ref: '#/components/parameters/ReplenishmentVariantFilter'
+        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ControlReportStatusFilter'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+      responses:
+        '200':
+          description: Structured Stage 2 control and donation report snapshot (RPT-06).
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlReportResponse'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/reports/control/print:
+    get:
+      operationId: printControlReport
+      tags:
+        - Reports
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: reports.control.read
+      summary: Render escaped non-executable printable HTML control and donation report (Stage 2 RPT-06)
+      description: >-
+        Enforces identical chapter admission, reports.control.read duty scoping, and
+        explicit date_from/date_to/item_id/variant_id/location_id/status query
+        selector validation as readControlReport. Renders escaped, non-executable
+        printable HTML labeling chapter, date range, units, PHP currency, donation
+        restrictions, restriction-resolution trail, overdue exceptions, actor/time/
+        reason history, and server report time. Omits raw evidence URLs and signature
+        images. Sends Cache-Control: no-store, strict PrintCsp, and NoSniff.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/ReportDateFrom'
+        - $ref: '#/components/parameters/ReportDateTo'
+        - $ref: '#/components/parameters/ReplenishmentItemFilter'
+        - $ref: '#/components/parameters/ReplenishmentVariantFilter'
+        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ControlReportStatusFilter'
+      responses:
+        '200':
+          description: Escaped non-executable printable HTML Stage 2 control and donation report view.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+            Content-Security-Policy:
+              $ref: '#/components/headers/PrintCsp'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/NoSniff'
+          content:
+            text/html:
+              schema:
+                type: string
+                minLength: 1
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
 components:
   securitySchemes:
     browserSession:
@@ -4833,6 +5334,86 @@ components:
       description: Committed receiving action-receipt UUID.
       schema:
         $ref: '#/components/schemas/Uuid'
+    AllocationQueueRfFilter:
+      in: query
+      name: rf_id
+      required: false
+      description: Optional chapter-owned approved internal RF UUID filter for allocation queue entries; unknown or foreign RF yields uniform 404 resource_not_found.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    AllocationQueueUnitFilter:
+      in: query
+      name: requesting_unit_id
+      required: false
+      description: Optional chapter-owned requesting unit UUID filter for allocation queue entries.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    AllocationQueueEligibleOnlyFilter:
+      in: query
+      name: eligible_only
+      required: false
+      description: Optional boolean filter; when true returns only pending RF lines with positive eligible_available_quantity.
+      schema:
+        type: boolean
+        default: false
+    AlertTypeFilter:
+      in: query
+      name: alert_type
+      required: false
+      description: Optional officer alert category filter. Unknown or repeated values return 400 invalid_selector.
+      schema:
+        $ref: '#/components/schemas/OfficerAlertType'
+    AlertSeverityFilter:
+      in: query
+      name: severity
+      required: false
+      description: Optional officer alert severity filter (critical, warning, or info).
+      schema:
+        $ref: '#/components/schemas/OfficerAlertSeverity'
+    AlertDutyFilter:
+      in: query
+      name: responsible_duty
+      required: false
+      description: Optional responsible duty filter intersected strictly with the caller's active chapter duties; never discloses alerts outside caller grants.
+      schema:
+        $ref: '#/components/schemas/Duty'
+    ReportDateFrom:
+      in: query
+      name: date_from
+      required: true
+      description: Required inclusive report start date (ISO 8601 YYYY-MM-DD, must be <= date_to with maximum 366-day span). Missing, malformed, repeated, or inverted range returns 400 invalid_selector.
+      schema:
+        $ref: '#/components/schemas/IsoDate'
+      example: '2026-11-01'
+    ReportDateTo:
+      in: query
+      name: date_to
+      required: true
+      description: Required inclusive report end date (ISO 8601 YYYY-MM-DD, must be >= date_from with maximum 366-day span). Missing, malformed, repeated, or inverted range returns 400 invalid_selector.
+      schema:
+        $ref: '#/components/schemas/IsoDate'
+      example: '2026-11-27'
+    InventoryReportStatusFilter:
+      in: query
+      name: status
+      required: false
+      description: Optional inventory report status filter. Unknown or repeated values return 400 invalid_selector.
+      schema:
+        $ref: '#/components/schemas/InventoryReportStatus'
+    ProcurementReportStatusFilter:
+      in: query
+      name: status
+      required: false
+      description: Optional procurement report status filter. Unknown or repeated values return 400 invalid_selector.
+      schema:
+        $ref: '#/components/schemas/ProcurementReportStatus'
+    ControlReportStatusFilter:
+      in: query
+      name: status
+      required: false
+      description: Optional control report status filter. Unknown or repeated values return 400 invalid_selector.
+      schema:
+        $ref: '#/components/schemas/ControlReportStatus'
 
   schemas:
     # --- Shared Stage 1 Scalar & Envelope Primitives (verbatim reuse) ---
@@ -13401,6 +13982,1406 @@ components:
                 - target_locked
                 - authority_changed
 
+    # --- Allocation Queue Schemas (Glenn; INV-09, RF-05..RF-08, RCV-04) ---
+    AllocationTier:
+      type: string
+      enum:
+        - active_commitment
+        - approved_override
+        - standard_priority
+      description: INV-09 primary ordering tier before priority_rank, needed_at, and approved_at.
+    AllocationEligibleSourceLot:
+      type: object
+      additionalProperties: false
+      required:
+        - stock_lot_id
+        - source_kind
+        - source_reference
+        - location_id
+        - free_quantity
+        - restriction_state
+      properties:
+        stock_lot_id:
+          $ref: '#/components/schemas/Uuid'
+        source_kind:
+          type: string
+          enum:
+            - opening_rm
+            - po_rm
+            - da_rm
+        source_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        free_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        restriction_state:
+          type: string
+          enum:
+            - unrestricted
+            - bounded
+          description: Eligible stock lots only; ADR 0004 uninterpreted lots are never eligible for allocation.
+    AllocationStage1NextRoutes:
+      type: object
+      additionalProperties: false
+      required:
+        - allocation_review_route
+        - reservation_prepare_route
+        - actual_issue_prepare_route
+      properties:
+        allocation_review_route:
+          type: string
+          minLength: 1
+          maxLength: 240
+          pattern: '^/api/v1/chapters/[0-9a-f-]{36}/internal-rfs/[0-9a-f-]{36}/allocation-review\?rf_line_id=[0-9a-f-]{36}$'
+        reservation_prepare_route:
+          type: string
+          minLength: 1
+          maxLength: 240
+          pattern: '^/api/v1/chapters/[0-9a-f-]{36}/internal-rfs/[0-9a-f-]{36}/reservation-preparations$'
+        actual_issue_prepare_route:
+          type: string
+          minLength: 1
+          maxLength: 240
+          pattern: '^/api/v1/chapters/[0-9a-f-]{36}/internal-rfs/[0-9a-f-]{36}/actual-issues$'
+    AllocationQueueEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - queue_position
+        - allocation_tier
+        - priority_rank
+        - override_policy_id
+        - needed_at
+        - approved_at
+        - rf_id
+        - rf_reference
+        - rf_line_id
+        - rf_version
+        - rf_material_version
+        - rf_progress_version
+        - rf_fulfillment
+        - requesting_unit_id
+        - event_id
+        - item_id
+        - item_code
+        - item_name
+        - variant_id
+        - variant_code
+        - variant_label
+        - unit_id
+        - unit_code
+        - quantity_scale
+        - approved_quantity
+        - issued_quantity
+        - canceled_quantity
+        - active_reserved_quantity
+        - unreserved_outstanding_quantity
+        - usable_stockroom_on_hand
+        - active_stock_hold_quantity
+        - ineligible_restricted_quantity
+        - uninterpreted_restricted_quantity
+        - eligible_available_quantity
+        - eligible_sources
+        - stage1_next_routes
+      properties:
+        queue_position:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        allocation_tier:
+          $ref: '#/components/schemas/AllocationTier'
+        priority_rank:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        override_policy_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        needed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        approved_at:
+          $ref: '#/components/schemas/UtcInstant'
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        rf_material_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        rf_progress_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        rf_fulfillment:
+          type: string
+          enum:
+            - outstanding
+            - partially_issued
+        requesting_unit_id:
+          $ref: '#/components/schemas/Uuid'
+        event_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        item_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        item_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: '\S'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        variant_label:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: '\S'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        approved_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        issued_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        canceled_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        active_reserved_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        unreserved_outstanding_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        usable_stockroom_on_hand:
+          $ref: '#/components/schemas/StockQuantity'
+        active_stock_hold_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        ineligible_restricted_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        uninterpreted_restricted_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        eligible_available_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        eligible_sources:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/AllocationEligibleSourceLot'
+        stage1_next_routes:
+          $ref: '#/components/schemas/AllocationStage1NextRoutes'
+      allOf:
+        - if:
+            properties:
+              allocation_tier:
+                const: approved_override
+          then:
+            properties:
+              override_policy_id:
+                $ref: '#/components/schemas/Uuid'
+          else:
+            properties:
+              override_policy_id:
+                type: 'null'
+        - if:
+            properties:
+              allocation_tier:
+                const: active_commitment
+          then:
+            properties:
+              active_reserved_quantity:
+                $ref: '#/components/schemas/PositiveStockQuantity'
+    AllocationQueueList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - allocation_policy
+        - observed_at
+        - is_commit_authorization
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/AllocationQueueEntry'
+        allocation_policy:
+          $ref: '#/components/schemas/PolicyBindingRef'
+        observed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        is_commit_authorization:
+          const: false
+        page:
+          $ref: '#/components/schemas/Page'
+
+    # --- Derived Officer Alert Schemas (Leader; RPT-01) ---
+    OfficerAlertType:
+      type: string
+      enum:
+        - low_stock_rop
+        - repf_pending_approval
+        - po_pending_approval
+        - da_pending_acknowledgment
+        - demand_changed
+        - open_receiving_discrepancy
+        - active_missing_source_hold
+        - open_rf_shortage
+    OfficerAlertSeverity:
+      type: string
+      enum:
+        - critical
+        - warning
+        - info
+    OfficerAlertRecordKind:
+      type: string
+      enum:
+        - variant
+        - repf
+        - purchase_order
+        - donation
+        - receiving_discrepancy
+        - receiving_hold
+        - internal_rf
+    OfficerAlert:
+      type: object
+      additionalProperties: false
+      required:
+        - alert_key
+        - alert_type
+        - severity
+        - record_kind
+        - record_id
+        - record_reference
+        - responsible_duty
+        - summary
+        - target_route_hint
+        - detected_at
+      properties:
+        alert_key:
+          type: string
+          minLength: 1
+          maxLength: 160
+          pattern: '^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[0-9a-f-]{36}$'
+        alert_type:
+          $ref: '#/components/schemas/OfficerAlertType'
+        severity:
+          $ref: '#/components/schemas/OfficerAlertSeverity'
+        record_kind:
+          $ref: '#/components/schemas/OfficerAlertRecordKind'
+        record_id:
+          $ref: '#/components/schemas/Uuid'
+        record_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        responsible_duty:
+          $ref: '#/components/schemas/Duty'
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 300
+          pattern: '\S'
+        target_route_hint:
+          type: string
+          minLength: 1
+          maxLength: 240
+          pattern: '^/api/v1/chapters/[0-9a-f-]{36}/'
+        detected_at:
+          $ref: '#/components/schemas/UtcInstant'
+      allOf:
+        - if:
+            properties:
+              alert_type:
+                const: low_stock_rop
+          then:
+            properties:
+              record_kind:
+                const: variant
+              responsible_duty:
+                enum:
+                  - INVENTORY
+                  - PURCHASING
+        - if:
+            properties:
+              alert_type:
+                const: repf_pending_approval
+          then:
+            properties:
+              record_kind:
+                const: repf
+              responsible_duty:
+                enum:
+                  - BUDGET_APPROVER
+                  - CHAPTER_HEAD
+        - if:
+            properties:
+              alert_type:
+                const: po_pending_approval
+          then:
+            properties:
+              record_kind:
+                const: purchase_order
+              responsible_duty:
+                enum:
+                  - BUDGET_APPROVER
+                  - CHAPTER_HEAD
+        - if:
+            properties:
+              alert_type:
+                const: da_pending_acknowledgment
+          then:
+            properties:
+              record_kind:
+                const: donation
+              responsible_duty:
+                enum:
+                  - INVENTORY
+                  - RECEIVING
+                  - CHAPTER_HEAD
+                  - FINANCE
+        - if:
+            properties:
+              alert_type:
+                const: demand_changed
+          then:
+            properties:
+              record_kind:
+                enum:
+                  - repf
+                  - purchase_order
+              responsible_duty:
+                enum:
+                  - PURCHASING
+                  - BUDGET_APPROVER
+                  - CHAPTER_HEAD
+        - if:
+            properties:
+              alert_type:
+                const: open_receiving_discrepancy
+          then:
+            properties:
+              record_kind:
+                const: receiving_discrepancy
+              responsible_duty:
+                enum:
+                  - RECEIVING
+                  - PURCHASING
+                  - INVENTORY
+                  - CHAPTER_HEAD
+        - if:
+            properties:
+              alert_type:
+                const: active_missing_source_hold
+          then:
+            properties:
+              record_kind:
+                const: receiving_hold
+              responsible_duty:
+                enum:
+                  - RECEIVING
+                  - INVENTORY
+                  - CHAPTER_HEAD
+        - if:
+            properties:
+              alert_type:
+                const: open_rf_shortage
+          then:
+            properties:
+              record_kind:
+                const: internal_rf
+              responsible_duty:
+                enum:
+                  - INVENTORY
+                  - PURCHASING
+                  - DISPATCH
+    OfficerAlertList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - caller_matched_duties
+        - persisted_ack_supported
+        - observed_at
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/OfficerAlert'
+        caller_matched_duties:
+          type: array
+          minItems: 1
+          maxItems: 14
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Duty'
+        persisted_ack_supported:
+          const: false
+        observed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        page:
+          $ref: '#/components/schemas/Page'
+
+    # --- Stage 2 Report Schemas (Leader; RPT-03, RPT-04, Stage 2 RPT-06) ---
+    InventoryReportStatus:
+      type: string
+      enum:
+        - all
+        - low_stock
+        - with_shortage
+        - with_quarantine
+        - with_uninterpreted_restriction
+        - normal
+      default: all
+    ProcurementReportStatus:
+      type: string
+      enum:
+        - all
+        - open_demand
+        - awaiting_approval
+        - in_procurement
+        - partially_received
+        - with_discrepancy
+        - demand_changed
+        - closed
+      default: all
+    ControlReportStatus:
+      type: string
+      enum:
+        - all
+        - uninterpreted_restriction
+        - bounded_restriction
+        - overdue_exception
+        - discrepancy_open
+        - hold_open
+        - resolved
+      default: all
+    ReportFilterEcho:
+      type: object
+      additionalProperties: false
+      required:
+        - date_from
+        - date_to
+        - item_id
+        - variant_id
+        - location_id
+        - status
+      properties:
+        date_from:
+          $ref: '#/components/schemas/IsoDate'
+        date_to:
+          $ref: '#/components/schemas/IsoDate'
+        item_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        variant_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        location_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        status:
+          type: string
+          minLength: 1
+          maxLength: 60
+          pattern: '^[a-z][a-z0-9_]*$'
+    ReportMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - report_kind
+        - chapter_id
+        - chapter_name
+        - currency_code
+        - currency_label
+        - generated_at
+        - filters
+      properties:
+        report_kind:
+          type: string
+          enum:
+            - inventory
+            - procurement
+            - control
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: '\S'
+        currency_code:
+          const: PHP
+        currency_label:
+          const: Philippine Peso (PHP)
+        generated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        filters:
+          $ref: '#/components/schemas/ReportFilterEcho'
+    StockCategoryLabels:
+      type: object
+      additionalProperties: false
+      required:
+        - usable_stockroom_on_hand
+        - available_to_allocate
+        - rf_reserved
+        - so_reserved
+        - booth_custody
+        - quarantined_rejected
+        - inbound_open_po
+        - views_are_additive
+      properties:
+        usable_stockroom_on_hand:
+          const: Usable stockroom on-hand
+        available_to_allocate:
+          const: Available-to-allocate
+        rf_reserved:
+          const: RF-reserved
+        so_reserved:
+          const: SO-reserved
+        booth_custody:
+          const: Booth custody
+        quarantined_rejected:
+          const: Quarantined/rejected
+        inbound_open_po:
+          const: Inbound / open PO
+        views_are_additive:
+          const: false
+    InventoryReportRow:
+      type: object
+      additionalProperties: false
+      required:
+        - item_id
+        - item_code
+        - item_name
+        - variant_id
+        - variant_code
+        - variant_label
+        - unit_id
+        - unit_code
+        - unit_label
+        - quantity_scale
+        - location_id
+        - location_name
+        - custodian_id
+        - custodian_name
+        - condition
+        - custody
+        - restriction_state
+        - eligibility_status
+        - usable_stockroom_on_hand
+        - available_to_allocate
+        - rf_reserved
+        - quarantined_rejected
+        - active_stock_hold
+        - inbound_open_po
+        - period_receipts_quantity
+        - period_issues_quantity
+        - unreserved_rf_shortage
+        - approved_rop
+        - approved_target
+        - low_stock_breach
+        - usable_valuation_php
+      properties:
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        item_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        item_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: '\S'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        variant_label:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: '\S'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        unit_label:
+          type: string
+          minLength: 1
+          maxLength: 60
+          pattern: '\S'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        location_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          pattern: '\S'
+        custodian_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        custodian_name:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 120
+              pattern: '\S'
+            - type: 'null'
+        condition:
+          type: string
+          enum:
+            - usable
+            - quarantined
+            - rejected
+        custody:
+          type: string
+          enum:
+            - stockroom
+            - booth
+            - inbound
+        restriction_state:
+          type: string
+          enum:
+            - unrestricted
+            - bounded
+            - uninterpreted
+        eligibility_status:
+          type: string
+          enum:
+            - eligible
+            - restricted_bounded
+            - blocked_uninterpreted
+            - held
+            - quarantined_or_rejected
+        usable_stockroom_on_hand:
+          $ref: '#/components/schemas/StockQuantity'
+        available_to_allocate:
+          $ref: '#/components/schemas/StockQuantity'
+        rf_reserved:
+          $ref: '#/components/schemas/StockQuantity'
+        quarantined_rejected:
+          $ref: '#/components/schemas/StockQuantity'
+        active_stock_hold:
+          $ref: '#/components/schemas/StockQuantity'
+        inbound_open_po:
+          $ref: '#/components/schemas/StockQuantity'
+        period_receipts_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        period_issues_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        unreserved_rf_shortage:
+          $ref: '#/components/schemas/StockQuantity'
+        approved_rop:
+          anyOf:
+            - $ref: '#/components/schemas/StockQuantity'
+            - type: 'null'
+        approved_target:
+          anyOf:
+            - $ref: '#/components/schemas/StockQuantity'
+            - type: 'null'
+        low_stock_breach:
+          type: boolean
+        usable_valuation_php:
+          $ref: '#/components/schemas/PhpAmount'
+      allOf:
+        - if:
+            properties:
+              restriction_state:
+                const: uninterpreted
+          then:
+            properties:
+              eligibility_status:
+                enum:
+                  - blocked_uninterpreted
+                  - held
+                  - quarantined_or_rejected
+        - if:
+            properties:
+              condition:
+                enum:
+                  - quarantined
+                  - rejected
+          then:
+            properties:
+              eligibility_status:
+                const: quarantined_or_rejected
+    InventoryReportTotals:
+      type: object
+      additionalProperties: false
+      required:
+        - row_count
+        - total_usable_valuation_php
+        - low_stock_row_count
+        - uninterpreted_row_count
+        - shortage_row_count
+      properties:
+        row_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        total_usable_valuation_php:
+          $ref: '#/components/schemas/PhpAmount'
+        low_stock_row_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        uninterpreted_row_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        shortage_row_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+    InventoryReportResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - metadata
+        - stock_category_labels
+        - data
+        - totals
+        - page
+      properties:
+        metadata:
+          allOf:
+            - $ref: '#/components/schemas/ReportMetadata'
+            - properties:
+                report_kind:
+                  const: inventory
+                filters:
+                  properties:
+                    status:
+                      $ref: '#/components/schemas/InventoryReportStatus'
+        stock_category_labels:
+          $ref: '#/components/schemas/StockCategoryLabels'
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/InventoryReportRow'
+        totals:
+          $ref: '#/components/schemas/InventoryReportTotals'
+        page:
+          $ref: '#/components/schemas/Page'
+
+    ProcurementRfDemandRow:
+      type: object
+      additionalProperties: false
+      required:
+        - rf_id
+        - rf_reference
+        - rf_line_id
+        - requesting_unit_id
+        - priority_rank
+        - needed_at
+        - approved_at
+        - rf_fulfillment
+        - item_id
+        - variant_id
+        - variant_code
+        - unit_id
+        - unit_code
+        - quantity_scale
+        - approved_quantity
+        - issued_quantity
+        - outstanding_quantity
+        - canceled_quantity
+        - active_reserved_quantity
+      properties:
+        rf_id:
+          $ref: '#/components/schemas/Uuid'
+        rf_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        rf_line_id:
+          $ref: '#/components/schemas/Uuid'
+        requesting_unit_id:
+          $ref: '#/components/schemas/Uuid'
+        priority_rank:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        needed_at:
+          $ref: '#/components/schemas/UtcInstant'
+        approved_at:
+          $ref: '#/components/schemas/UtcInstant'
+        rf_fulfillment:
+          type: string
+          enum:
+            - outstanding
+            - partially_issued
+            - fulfilled
+            - closed_canceled
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        approved_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        issued_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        outstanding_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        canceled_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        active_reserved_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+    ProcurementRepfRow:
+      type: object
+      additionalProperties: false
+      required:
+        - repf_id
+        - repf_reference
+        - status
+        - trigger_kind
+        - urgency
+        - linked_demand_canceled
+        - requested_total_php
+        - budget_decision
+        - budget_reviewed_at
+        - quotation_count
+        - supplier_selected
+      properties:
+        repf_id:
+          $ref: '#/components/schemas/Uuid'
+        repf_reference:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        status:
+          $ref: '#/components/schemas/RepfStatus'
+        trigger_kind:
+          $ref: '#/components/schemas/RepfTriggerKind'
+        urgency:
+          $ref: '#/components/schemas/RepfUrgency'
+        linked_demand_canceled:
+          type: boolean
+        requested_total_php:
+          $ref: '#/components/schemas/PhpAmount'
+        budget_decision:
+          anyOf:
+            - $ref: '#/components/schemas/RepfBudgetDecision'
+            - type: 'null'
+        budget_reviewed_at:
+          anyOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        quotation_count:
+          type: integer
+          minimum: 0
+          maximum: 100
+        supplier_selected:
+          type: boolean
+    ProcurementPoRow:
+      type: object
+      additionalProperties: false
+      required:
+        - po_id
+        - po_reference
+        - repf_id
+        - status
+        - supplier_name
+        - linked_demand_canceled
+        - variant_id
+        - variant_code
+        - unit_id
+        - unit_code
+        - quantity_scale
+        - location_id
+        - ordered_quantity
+        - accepted_quantity
+        - rejected_or_disputed_quantity
+        - outstanding_quantity
+        - ordered_total_php
+        - accepted_value_php
+        - open_discrepancy_count
+        - resolved_discrepancy_count
+      properties:
+        po_id:
+          $ref: '#/components/schemas/Uuid'
+        po_reference:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        repf_id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          $ref: '#/components/schemas/PurchaseOrderStatus'
+        supplier_name:
+          type: string
+          minLength: 1
+          maxLength: 160
+          pattern: '\S'
+        linked_demand_canceled:
+          type: boolean
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        location_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        ordered_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        accepted_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        rejected_or_disputed_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        outstanding_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        ordered_total_php:
+          $ref: '#/components/schemas/PhpAmount'
+        accepted_value_php:
+          $ref: '#/components/schemas/PhpAmount'
+        open_discrepancy_count:
+          type: integer
+          minimum: 0
+          maximum: 1000
+        resolved_discrepancy_count:
+          type: integer
+          minimum: 0
+          maximum: 1000
+    ProcurementReportTotals:
+      type: object
+      additionalProperties: false
+      required:
+        - open_rf_lines_count
+        - repf_count
+        - po_count
+        - total_ordered_php
+        - total_accepted_value_php
+        - open_discrepancy_count
+      properties:
+        open_rf_lines_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        repf_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        po_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        total_ordered_php:
+          $ref: '#/components/schemas/PhpAmount'
+        total_accepted_value_php:
+          $ref: '#/components/schemas/PhpAmount'
+        open_discrepancy_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+    ProcurementReportResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - metadata
+        - rf_demand_summary
+        - repf_summary
+        - purchase_order_summary
+        - totals
+        - page
+      properties:
+        metadata:
+          allOf:
+            - $ref: '#/components/schemas/ReportMetadata'
+            - properties:
+                report_kind:
+                  const: procurement
+                filters:
+                  properties:
+                    status:
+                      $ref: '#/components/schemas/ProcurementReportStatus'
+        rf_demand_summary:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ProcurementRfDemandRow'
+        repf_summary:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ProcurementRepfRow'
+        purchase_order_summary:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ProcurementPoRow'
+        totals:
+          $ref: '#/components/schemas/ProcurementReportTotals'
+        page:
+          $ref: '#/components/schemas/Page'
+
+    ControlDonationRestrictionRow:
+      type: object
+      additionalProperties: false
+      required:
+        - da_id
+        - da_reference
+        - da_status
+        - donor_name
+        - location_id
+        - item_id
+        - variant_id
+        - variant_code
+        - unit_id
+        - unit_code
+        - quantity_scale
+        - declared_quantity
+        - received_quantity
+        - declared_value_php
+        - restriction
+        - allocatable_now
+      properties:
+        da_id:
+          $ref: '#/components/schemas/Uuid'
+        da_reference:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+        da_status:
+          $ref: '#/components/schemas/DonationStatus'
+        donor_name:
+          type: string
+          minLength: 1
+          maxLength: 160
+          pattern: '\S'
+        location_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_id:
+          $ref: '#/components/schemas/Uuid'
+        variant_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        unit_code:
+          $ref: '#/components/schemas/CatalogueCode'
+        quantity_scale:
+          type: integer
+          minimum: 0
+          maximum: 6
+        declared_quantity:
+          $ref: '#/components/schemas/PositiveStockQuantity'
+        received_quantity:
+          $ref: '#/components/schemas/StockQuantity'
+        declared_value_php:
+          $ref: '#/components/schemas/PhpAmount'
+        restriction:
+          $ref: '#/components/schemas/BoundedRestriction'
+        allocatable_now:
+          type: boolean
+      allOf:
+        - if:
+            properties:
+              restriction:
+                properties:
+                  state:
+                    const: uninterpreted
+          then:
+            properties:
+              allocatable_now:
+                const: false
+    ControlRestrictionResolutionRow:
+      type: object
+      additionalProperties: false
+      required:
+        - resolution_id
+        - da_id
+        - da_reference
+        - da_line_id
+        - previous_state
+        - resolved_state
+        - affected_lot_count
+        - evidence_id
+        - actor
+        - resolved_at
+        - reason
+      properties:
+        resolution_id:
+          $ref: '#/components/schemas/Uuid'
+        da_id:
+          $ref: '#/components/schemas/Uuid'
+        da_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        da_line_id:
+          $ref: '#/components/schemas/Uuid'
+        previous_state:
+          type: string
+          enum:
+            - uninterpreted
+            - bounded
+            - unrestricted
+        resolved_state:
+          type: string
+          enum:
+            - unrestricted
+            - bounded
+        affected_lot_count:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        evidence_id:
+          $ref: '#/components/schemas/Uuid'
+        actor:
+          $ref: '#/components/schemas/ProcurementActor'
+        resolved_at:
+          $ref: '#/components/schemas/UtcInstant'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+    ControlOverdueExceptionRow:
+      type: object
+      additionalProperties: false
+      required:
+        - exception_kind
+        - record_id
+        - record_reference
+        - location_id
+        - responsible_duty
+        - status
+        - due_or_since_at
+        - overdue_hours
+        - summary
+      properties:
+        exception_kind:
+          type: string
+          enum:
+            - overdue_repf_approval
+            - overdue_po_approval
+            - overdue_po_delivery
+            - overdue_receiving_discrepancy
+            - overdue_missing_source_hold
+            - unresolved_uninterpreted_restriction
+        record_id:
+          $ref: '#/components/schemas/Uuid'
+        record_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        location_id:
+          anyOf:
+            - $ref: '#/components/schemas/Uuid'
+            - type: 'null'
+        responsible_duty:
+          $ref: '#/components/schemas/Duty'
+        status:
+          type: string
+          minLength: 1
+          maxLength: 60
+          pattern: '^[a-z][a-z0-9_]*$'
+        due_or_since_at:
+          $ref: '#/components/schemas/UtcInstant'
+        overdue_hours:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 300
+          pattern: '\S'
+    ControlAuditHistoryRow:
+      type: object
+      additionalProperties: false
+      required:
+        - event_id
+        - record_kind
+        - record_id
+        - record_reference
+        - action
+        - actor
+        - occurred_at
+        - reason
+      properties:
+        event_id:
+          $ref: '#/components/schemas/Uuid'
+        record_kind:
+          type: string
+          enum:
+            - repf
+            - quotation
+            - purchase_order
+            - donation
+            - receiving_report
+            - receiving_discrepancy
+            - receiving_hold
+        record_id:
+          $ref: '#/components/schemas/Uuid'
+        record_reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        action:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '^[a-z][a-z0-9_]*$'
+        actor:
+          $ref: '#/components/schemas/ProcurementActor'
+        occurred_at:
+          $ref: '#/components/schemas/UtcInstant'
+        reason:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+    ControlReportTotals:
+      type: object
+      additionalProperties: false
+      required:
+        - donation_row_count
+        - uninterpreted_donation_count
+        - resolution_count
+        - overdue_exception_count
+        - audit_entry_count
+        - total_declared_donation_value_php
+      properties:
+        donation_row_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        uninterpreted_donation_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        resolution_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        overdue_exception_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        audit_entry_count:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        total_declared_donation_value_php:
+          $ref: '#/components/schemas/PhpAmount'
+    ControlReportResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - metadata
+        - donation_restrictions
+        - restriction_resolutions
+        - overdue_exceptions
+        - audit_history
+        - totals
+        - page
+      properties:
+        metadata:
+          allOf:
+            - $ref: '#/components/schemas/ReportMetadata'
+            - properties:
+                report_kind:
+                  const: control
+                filters:
+                  properties:
+                    status:
+                      $ref: '#/components/schemas/ControlReportStatus'
+        donation_restrictions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ControlDonationRestrictionRow'
+        restriction_resolutions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ControlRestrictionResolutionRow'
+        overdue_exceptions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ControlOverdueExceptionRow'
+        audit_history:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ControlAuditHistoryRow'
+        totals:
+          $ref: '#/components/schemas/ControlReportTotals'
+        page:
+          $ref: '#/components/schemas/Page'
+
   responses:
     InvalidSelector:
       description: Unknown, repeated, or malformed query selector, malformed chapter UUID after admission, or foreign/malformed cursor.
@@ -13883,6 +15864,27 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ReceivingHoldConflict'
+    AllocationQueueConflict:
+      description: >-
+        setup_blocked when required allocation_priority or quantity_scale policy is
+        missing, unapproved, not_effective, or expired; snapshot_stale when a
+        5-minute pagination cursor expired or underlying authority/stock/demand
+        changed.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStore'
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/SetupBlocked'
+              - allOf:
+                  - $ref: '#/components/schemas/Error'
+                  - properties:
+                      error:
+                        properties:
+                          code:
+                            const: snapshot_stale
 
 x-controlled-procedures:
   recordPolicy:
@@ -14023,6 +16025,45 @@ x-stage2-action-duties:
     - RECEIVING
     - INVENTORY
     - CHAPTER_HEAD
+  allocation_queue.read:
+    - INVENTORY
+    - DISPATCH
+    - RF_APPROVER
+    - CHAPTER_HEAD
+  alerts.read:
+    - INVENTORY
+    - DISPATCH
+    - PURCHASING
+    - BUDGET_APPROVER
+    - RECEIVING
+    - RF_APPROVER
+    - FINANCE
+    - CHAPTER_HEAD
+    - INDEPENDENT_REVIEWER
+  reports.inventory.read:
+    - INVENTORY
+    - DISPATCH
+    - PURCHASING
+    - BUDGET_APPROVER
+    - RECEIVING
+    - FINANCE
+    - CHAPTER_HEAD
+    - INDEPENDENT_REVIEWER
+  reports.procurement.read:
+    - INVENTORY
+    - PURCHASING
+    - BUDGET_APPROVER
+    - RECEIVING
+    - FINANCE
+    - CHAPTER_HEAD
+    - INDEPENDENT_REVIEWER
+  reports.control.read:
+    - INVENTORY
+    - RECEIVING
+    - BUDGET_APPROVER
+    - FINANCE
+    - CHAPTER_HEAD
+    - INDEPENDENT_REVIEWER
 
 x-stage2-policy-values:
   purchasing_quotation_policy:
@@ -14480,3 +16521,56 @@ x-stage1-compatibility:
       rejected_or_disputed_quantity without reducing outstanding_quantity until
       accepted replacement or closeShortPurchaseOrder/cancelPurchaseOrder zeroes
       outstanding_quantity.
+  repeatedRfFulfillmentUnchanged:
+    stage1_operations:
+      - GET /api/v1/chapters/{chapter_id}/internal-rfs
+      - GET /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}
+      - GET /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/allocation-review
+      - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservation-preparations
+      - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservation-preparations/{preparation_id}/commit
+      - GET /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations
+      - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/release
+      - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/reallocate
+      - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/actual-issues
+      - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/actual-issues/{issue_id}/acknowledgments
+      - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/actual-issues/{issue_id}/post
+    allocation_queue_owner: Glenn
+    actual_issue_owner: Efren
+    receiving_orchestrator: Leader
+    requirements:
+      - INV-09
+      - RF-05
+      - RF-06
+      - RF-07
+      - RF-08
+      - RCV-04
+    contract: >-
+      Stage 1 /internal-rfs*, /reservation-preparations*, /reservations*, and
+      /actual-issues* routes and schemas remain completely unchanged in Stage 2.
+      Once Leader postReceivingReport commits accepted PO-RM or DA-RM stockroom
+      lots through Efren prepareReceivingInventory (RCV-04), eligible usable lots
+      appear immediately in Glenn GET /allocation-queue alongside existing active
+      commitments and approved pending RF lines ordered by INV-09. Officers reserve
+      newly posted lots through Stage 1 prepareRfReservation + commitRfReservation
+      and execute each repeated partial physical batch through Stage 1
+      prepareActualIssue + matchActualIssueAcknowledgment + postActualIssue until
+      the RF reaches RF-08 closure (all approved demand issued or remainder formally
+      canceled).
+
+x-stage2-deferred-reporting:
+  finance_and_booth_reports:
+    requirement: RPT-05
+    deferred_to: Stages 3-4
+    rationale: >-
+      Sales Invoices, Official Receipts, payment allocations, booth custody/sales,
+      and cash/remittance reconciliations do not exist in Stage 2. No /reports/finance
+      or /reports/booth routes are exposed in Stage 2.
+  binary_pdf_csv_exports:
+    requirement: RPT-07
+    deferred_to: Post-Stage 2
+    rationale: >-
+      Binary PDF generation and CSV export streaming are explicitly deferred per
+      specification #27 MVP scope. Stage 2 delivers structured JSON reports and
+      escaped non-executable printable HTML (/print) views enforcing identical
+      chapter/duty scoping, explicit filters, units, PHP currency, stock category
+      labels, server report time, Cache-Control: no-store, PrintCsp, and NoSniff.

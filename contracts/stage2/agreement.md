@@ -333,3 +333,55 @@ Leader owns all nested quotation, supplier-selection, and Purchase Order HTTP ro
 - **Recovery (`/receiving-operations/by-key` & `/receiving-operations/{operation_id}`):** Covers all 11 unsafe Ticket 05 mutations (`ReceivingOperationName`) using discriminated `ReceivingOperationReceipt` (`receiving_report`, `receiving_discrepancy`, `receiving_hold`), strictly limited to the original immutable actor who retains current chapter membership, `receiving.read`, and the originating mutation's required duty.
 - **Committed events (ticket 07 registry):** `postReceivingReport` emits `stage2.receiving-report.changed.v1`, `stage1.stock-lot.changed.v1`, `stage2.purchase-order.changed.v1` or `stage2.donation.changed.v1`, and `stage2.receiving-discrepancy.changed.v1` (when discrepancies are created); other RM/discrepancy/hold mutations emit their respective committed `stage2.receiving-*.changed.v1` notices on `private-stage1.chapter.{chapter_id}`.
 - **Downstream HTTP/MySQL acceptance obligations:** Verify `PO 100 / RM 40 accepted + 10 rejected` arithmetic (usable `+40` immediately allocatable under `INV-09`, rejected `+10` + open discrepancy, PO `partially_received` with `60` open), unamended overdelivery above `60` and variant/unit substitution blocking (`409 substitution_or_overdelivery_blocked`), material edit invalidating `evidence_matched` binding back to `draft`, supplier replacement via a **new** `PO-RM` referencing `resolves_discrepancy_id` + `receiving_discrepancy` evidence resolution, `DA-RM` posting `bounded` and ADR 0004 `uninterpreted` lots sharing a SKU, `closeShortPurchaseOrder`/`closeShortDonation` preserving quarantined/rejected lots (`RCV-06`), missing-source hold zero usable stock + IPC prohibition + `link-source` / `reject-return` with `missing_source_hold` evidence, concurrent `RM` reference allocation once-only uniqueness shared with Stage 1 `/opening-rms`, and `/receiving-operations/*` lost-response recovery.
+
+## 13. Allocation Queue, Derived Officer Alerts & Stage 2 Reports (Ticket 06)
+
+### 13.1 Operation ownership & action duties
+
+- **Ownership:**
+  - **Glenn** owns `GET /api/v1/chapters/{chapter_id}/allocation-queue` (`listAllocationQueue`), all UI consumption across Ticket 06 operations, and Stage 1 compatibility across `/internal-rfs*`, `/reservation-preparations*`, `/reservations*`, and `/stock*`.
+  - **Leader** owns `GET /api/v1/chapters/{chapter_id}/alerts` (`listOfficerAlerts`) and all six Stage 2 report operations (`readInventoryReport`, `printInventoryReport`, `readProcurementReport`, `printProcurementReport`, `readControlReport`, `printControlReport`).
+  - **Efren** owns Stage 1's unchanged `/actual-issues*` repeated signed partial-issue execution and Stage 2's `prepareReceivingInventory` / `applyLotRestrictionResolution` stockroom lot producers consumed by Glenn's allocation queue and Leader's reports.
+- **Action duties (`x-stage2-action-duties`):**
+  - `allocation_queue.read`: `INVENTORY`, `DISPATCH`, `RF_APPROVER`, `CHAPTER_HEAD`.
+  - `alerts.read`: `INVENTORY`, `DISPATCH`, `PURCHASING`, `BUDGET_APPROVER`, `RECEIVING`, `RF_APPROVER`, `FINANCE`, `CHAPTER_HEAD`, `INDEPENDENT_REVIEWER` (every returned alert is additionally filtered to `responsible_duty` within the caller's active chapter duty grants).
+  - `reports.inventory.read`: `INVENTORY`, `DISPATCH`, `PURCHASING`, `BUDGET_APPROVER`, `RECEIVING`, `FINANCE`, `CHAPTER_HEAD`, `INDEPENDENT_REVIEWER`.
+  - `reports.procurement.read`: `INVENTORY`, `PURCHASING`, `BUDGET_APPROVER`, `RECEIVING`, `FINANCE`, `CHAPTER_HEAD`, `INDEPENDENT_REVIEWER`.
+  - `reports.control.read`: `INVENTORY`, `RECEIVING`, `BUDGET_APPROVER`, `FINANCE`, `CHAPTER_HEAD`, `INDEPENDENT_REVIEWER`.
+
+### 13.2 `INV-09` allocation queue & Stage 1 repeated partial RF fulfillment (`INV-09`, `RF-05`–`RF-08`, `RCV-04`)
+
+- **Strict `INV-09` ordering:** `GET /api/v1/chapters/{chapter_id}/allocation-queue` lists approved pending internal RF lines (`unreserved_outstanding_quantity > 0`) ordered deterministically by:
+  1. `allocation_tier`: `active_commitment` (RF lines holding existing active reservations `active_reserved_quantity > 0`) → `approved_override` (RF lines with an active, independently approved `allocation_priority` override `override_policy_id != null`) → `standard_priority`.
+  2. Approved `priority_rank` ascending (from chapter `allocation_priority` policy).
+  3. Required date/time `needed_at` ascending.
+  4. RF approval time `approved_at` ascending, then `rf_line_id` ascending as deterministic tie-breaker.
+- **Eligible available stock & mixed-SKU visibility (`RCV-04`, ADR 0004):** For each pending RF line, Glenn computes current eligible available stock across newly posted `po_rm`, `da_rm`, and `opening_rm` usable stockroom lots:
+  - Excludes active `StockHold`s (`active_stock_hold_quantity`), existing active reservations, and any lot whose `BoundedRestriction` does not cover the RF's use/unit/event/window (`ineligible_restricted_quantity`) or whose `state` is ADR 0004 `uninterpreted` (`uninterpreted_restricted_quantity`).
+  - `eligible_sources` may list strictly `unrestricted` or eligible `bounded` lots (`uninterpreted` is schema-rejected) whose `free_quantity` values sum exactly to `eligible_available_quantity`.
+  - Missing/expired chapter `allocation_priority` or variant `quantity_scale` policy returns `409 setup_blocked` rather than inventing order; expired or mutated 5-minute cursors return `409 snapshot_stale`.
+- **Stage 1 repeated fulfillment handoff (`x-stage1-compatibility.repeatedRfFulfillmentUnchanged`):** `listAllocationQueue` is read-only guidance (`is_commit_authorization: false`). Once accepted PO-RM or DA-RM stockroom lots post via `postReceivingReport` (`RCV-04`), officers inspect and reserve eligible replenished stock through Stage 1's unchanged `/internal-rfs/{rf_id}/allocation-review`, `/reservation-preparations`, `/reservation-preparations/{preparation_id}/commit`, and `/reservations*` routes, and issue each partial batch with signed recipient acknowledgment through Stage 1's unchanged `/internal-rfs/{rf_id}/actual-issues*` routes until all approved demand is issued or its remainder is formally canceled (`RF-05`–`RF-08`).
+
+### 13.3 Derived live officer alerts (`GET /alerts`, `RPT-01`)
+
+- **Zero persisted alert state:** `GET /api/v1/chapters/{chapter_id}/alerts` is derived live from current committed chapter state (`persisted_ack_supported: false`). No `/alerts/ack`, `/alerts/dismiss`, or write HTTP methods on `/alerts` exist in Stage 2; alerts disappear automatically when their underlying record is resolved, approved, linked, or replenished.
+- **Covered live categories:**
+  - `low_stock_rop` (`variant`, `INVENTORY | PURCHASING`) — `usable_stockroom_on_hand <= approved_rop`
+  - `repf_pending_approval` (`repf`, `BUDGET_APPROVER | CHAPTER_HEAD`)
+  - `po_pending_approval` (`purchase_order`, `BUDGET_APPROVER | CHAPTER_HEAD`)
+  - `da_pending_acknowledgment` (`donation`, `INVENTORY | RECEIVING | CHAPTER_HEAD | FINANCE`)
+  - `demand_changed` (`repf | purchase_order`, `PURCHASING | BUDGET_APPROVER | CHAPTER_HEAD`) — surfaced automatically when Stage 1 `cancelInternalRf` flags open RepFs/POs (`PRC-08`)
+  - `open_receiving_discrepancy` (`receiving_discrepancy`, `RECEIVING | PURCHASING | INVENTORY | CHAPTER_HEAD`)
+  - `active_missing_source_hold` (`receiving_hold`, `RECEIVING | INVENTORY | CHAPTER_HEAD`)
+  - `open_rf_shortage` (`internal_rf`, `INVENTORY | PURCHASING | DISPATCH`)
+- **Duty scoping:** Every response reports `caller_matched_duties` (the caller's active chapter duties intersecting `alerts.read`) and returns ONLY alerts whose `responsible_duty` belongs to `caller_matched_duties`. Supplying `responsible_duty` further narrows within the caller's active grants and never discloses another duty's alerts.
+
+### 13.4 Stage 2 structured JSON & printable HTML reports (`RPT-03`, `RPT-04`, Stage 2 `RPT-06`)
+
+- **Endpoints & identical scoping:**
+  - `GET /api/v1/chapters/{chapter_id}/reports/inventory` and `/print` (`RPT-03`, `reports.inventory.read`): balances by item/variant, location/custodian, condition/custody/restriction eligibility, non-additive 7 stock categories (`views_are_additive: false`), RF reservations, availability (strictly `0` for `uninterpreted` and quarantined/rejected rows), period receipts/issues, unreserved RF shortages, approved ROP/target, low-stock breach indicator, and inbound/open PO commitments.
+  - `GET /api/v1/chapters/{chapter_id}/reports/procurement` and `/print` (`RPT-04`, `reports.procurement.read`): internal RF fulfilled/outstanding/canceled/reserved quantities with priority and need date, RepF budget approvals and quotation/selection status, PO ordered/accepted/rejected/outstanding quantities, PHP values, and open/resolved supplier discrepancies.
+  - `GET /api/v1/chapters/{chapter_id}/reports/control` and `/print` (Stage 2 `RPT-06`, `reports.control.read`): donation sources with `BoundedRestriction` states (`allocatable_now: false` for ADR 0004 `uninterpreted`), signed-evidence restriction-resolution audit trail, overdue procurement/receiving/restriction exceptions, and actor/time/reason audit history.
+- **Explicit filters, labels & security headers:** Both JSON and `/print` variants require explicit `chapter_id`, `date_from`, and `date_to` (`date_from <= date_to`, max 366 days) plus optional `item_id`, `variant_id`, `location_id`, and report-specific `status` selectors; reject unknown, repeated, malformed, or inverted selectors with `400 invalid_selector`; enforce identical chapter and duty authorization on JSON and `/print`; label exact units, `PHP` currency, non-additive stock categories, and server `generated_at` report time; and emit `Cache-Control: no-store` on every response (plus strict `PrintCsp` and `X-Content-Type-Options: nosniff` on `/print`, omitting raw evidence URLs and signature images).
+- **Explicit deferrals (`x-stage2-deferred-reporting`):** Finance/booth reports (`RPT-05`, `/reports/finance`, `/reports/booth`) are deferred to Stages 3–4; binary PDF and CSV export generation (`RPT-07`) is deferred outside Stage 2.
+- **Downstream HTTP/MySQL acceptance obligations:** Verify `INV-09` tier and priority/needed_at/approved_at tie-breaking across newly posted PO-RM and DA-RM lots sharing a SKU alongside active `StockHold`s and ADR 0004 `uninterpreted` lots; verify end-to-end allocation handoff into Stage 1's unchanged `/reservation-preparations` and repeated `/actual-issues` without route changes; verify live duty-filtered `/alerts` visibility (including zero write routes and automatic alert disappearance upon resolution/approval); verify identical chapter/duty/filter enforcement, `400 invalid_selector` rejection on unknown/repeated/inverted query params, exact unit/PHP/category/server-time labels, and `Cache-Control: no-store` + `PrintCsp` + `NoSniff` headers across all three JSON and `/print` report pairs.

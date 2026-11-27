@@ -51,6 +51,11 @@ REQUIRED_STAGE2_ACTIONS = {
     "discrepancy.manage",
     "discrepancy.resolve",
     "receiving.hold_manage",
+    "allocation_queue.read",
+    "alerts.read",
+    "reports.inventory.read",
+    "reports.procurement.read",
+    "reports.control.read",
 }
 FORBIDDEN_PUBLIC_PATH_FRAGMENTS = (
     "/policies",
@@ -62,6 +67,11 @@ FORBIDDEN_PUBLIC_PATH_FRAGMENTS = (
     "/prepare-receiving",
     "/apply-lot-restriction",
     "/suppliers",
+    "/alerts/ack",
+    "/alerts/dismiss",
+    "/reports/finance",
+    "/reports/booth",
+    "/export",
 )
 
 
@@ -681,6 +691,181 @@ def check_prepare_receiving_invariants(inp, out, label):
             raise ValueError(f"{label}.source_line_updates[{idx}]: delta mismatch against input lines")
 
 
+ALLOCATION_TIER_ORDER = {
+    "active_commitment": 0,
+    "approved_override": 1,
+    "standard_priority": 2,
+}
+
+
+def check_allocation_queue_invariants(body, label):
+    if body["is_commit_authorization"] is not False:
+        raise ValueError(f"{label}: is_commit_authorization must be false")
+    prev_key = None
+    for idx, row in enumerate(body["data"]):
+        if row["queue_position"] != idx + 1:
+            raise ValueError(f"{label}[{idx}]: queue_position must be contiguous starting at 1")
+        approved = Decimal(row["approved_quantity"])
+        issued = Decimal(row["issued_quantity"])
+        canceled = Decimal(row["canceled_quantity"])
+        reserved = Decimal(row["active_reserved_quantity"])
+        unreserved = Decimal(row["unreserved_outstanding_quantity"])
+        if approved - issued - canceled - reserved != unreserved or unreserved <= 0:
+            raise ValueError(f"{label}[{idx}]: unreserved_outstanding_quantity mismatch")
+        if row["allocation_tier"] == "active_commitment" and reserved <= 0:
+            raise ValueError(f"{label}[{idx}]: active_commitment requires active_reserved_quantity > 0")
+        usable = Decimal(row["usable_stockroom_on_hand"])
+        held = Decimal(row["active_stock_hold_quantity"])
+        ineligible = Decimal(row["ineligible_restricted_quantity"])
+        uninterpreted = Decimal(row["uninterpreted_restricted_quantity"])
+        eligible = Decimal(row["eligible_available_quantity"])
+        if uninterpreted > ineligible:
+            raise ValueError(f"{label}[{idx}]: uninterpreted_restricted_quantity exceeds ineligible_restricted_quantity")
+        if eligible > usable - held - ineligible:
+            raise ValueError(f"{label}[{idx}]: eligible_available_quantity exceeds usable - held - ineligible")
+        source_sum = sum((Decimal(s["free_quantity"]) for s in row["eligible_sources"]), Decimal("0"))
+        if source_sum != eligible:
+            raise ValueError(f"{label}[{idx}]: sum(eligible_sources.free_quantity) != eligible_available_quantity")
+        routes = row["stage1_next_routes"]
+        if row["rf_id"] not in routes["allocation_review_route"] or row["rf_line_id"] not in routes["allocation_review_route"]:
+            raise ValueError(f"{label}[{idx}]: allocation_review_route does not match rf_id/rf_line_id")
+        if row["rf_id"] not in routes["reservation_prepare_route"] or row["rf_id"] not in routes["actual_issue_prepare_route"]:
+            raise ValueError(f"{label}[{idx}]: stage1_next_routes do not match rf_id")
+        order_key = (
+            ALLOCATION_TIER_ORDER[row["allocation_tier"]],
+            row["priority_rank"],
+            row["needed_at"],
+            row["approved_at"],
+            row["rf_line_id"],
+        )
+        if prev_key is not None and order_key <= prev_key:
+            raise ValueError(f"{label}[{idx}]: INV-09 ordering violated")
+        prev_key = order_key
+
+
+def check_officer_alerts_invariants(body, label):
+    if body["persisted_ack_supported"] is not False:
+        raise ValueError(f"{label}: persisted_ack_supported must be false")
+    allowed_duties = set(body["caller_matched_duties"])
+    seen_keys = set()
+    for idx, alert in enumerate(body["data"]):
+        if alert["responsible_duty"] not in allowed_duties:
+            raise ValueError(f"{label}[{idx}]: alert responsible_duty outside caller_matched_duties")
+        expected_key = f"{alert['alert_type']}:{alert['record_kind']}:{alert['record_id']}"
+        if alert["alert_key"] != expected_key:
+            raise ValueError(f"{label}[{idx}]: alert_key must equal alert_type:record_kind:record_id")
+        if expected_key in seen_keys:
+            raise ValueError(f"{label}[{idx}]: duplicate alert_key in live feed")
+        seen_keys.add(expected_key)
+
+
+def check_report_date_range(metadata, label):
+    f = metadata["filters"]
+    if f["date_from"] > f["date_to"]:
+        raise ValueError(f"{label}: report date_from must be <= date_to")
+
+
+def check_inventory_report_invariants(body, label):
+    check_report_date_range(body["metadata"], label)
+    if body["stock_category_labels"]["views_are_additive"] is not False:
+        raise ValueError(f"{label}: stock categories must remain non-additive")
+    rows = body["data"]
+    total_val = Decimal("0.00")
+    low_count = 0
+    uninterp_count = 0
+    shortage_count = 0
+    for idx, row in enumerate(rows):
+        usable = Decimal(row["usable_stockroom_on_hand"])
+        avail = Decimal(row["available_to_allocate"])
+        if avail > usable:
+            raise ValueError(f"{label}[{idx}]: available_to_allocate exceeds usable_stockroom_on_hand")
+        if row["restriction_state"] == "uninterpreted" and avail != 0:
+            raise ValueError(f"{label}[{idx}]: uninterpreted row must have available_to_allocate == 0")
+        if row["condition"] in {"quarantined", "rejected"} and (usable != 0 or avail != 0):
+            raise ValueError(f"{label}[{idx}]: quarantined/rejected row must have 0 usable and available stock")
+        total_val += Decimal(row["usable_valuation_php"])
+        if row["low_stock_breach"]:
+            low_count += 1
+        if row["restriction_state"] == "uninterpreted":
+            uninterp_count += 1
+        if Decimal(row["unreserved_rf_shortage"]) > 0:
+            shortage_count += 1
+    totals = body["totals"]
+    if (
+        totals["row_count"] != len(rows)
+        or Decimal(totals["total_usable_valuation_php"]) != total_val
+        or totals["low_stock_row_count"] != low_count
+        or totals["uninterpreted_row_count"] != uninterp_count
+        or totals["shortage_row_count"] != shortage_count
+    ):
+        raise ValueError(f"{label}: inventory report totals mismatch")
+
+
+def check_procurement_report_invariants(body, label):
+    check_report_date_range(body["metadata"], label)
+    open_rf_lines = 0
+    for idx, rf in enumerate(body["rf_demand_summary"]):
+        approved = Decimal(rf["approved_quantity"])
+        issued = Decimal(rf["issued_quantity"])
+        outstanding = Decimal(rf["outstanding_quantity"])
+        canceled = Decimal(rf["canceled_quantity"])
+        reserved = Decimal(rf["active_reserved_quantity"])
+        if issued + outstanding + canceled != approved:
+            raise ValueError(f"{label}.rf[{idx}]: issued + outstanding + canceled != approved")
+        if reserved > outstanding:
+            raise ValueError(f"{label}.rf[{idx}]: active_reserved exceeds outstanding")
+        if outstanding > 0:
+            open_rf_lines += 1
+    total_ordered = Decimal("0.00")
+    total_accepted = Decimal("0.00")
+    open_disc = 0
+    for idx, po in enumerate(body["purchase_order_summary"]):
+        ordered = Decimal(po["ordered_quantity"])
+        accepted = Decimal(po["accepted_quantity"])
+        outstanding = Decimal(po["outstanding_quantity"])
+        if accepted > ordered:
+            raise ValueError(f"{label}.po[{idx}]: accepted_quantity exceeds ordered_quantity")
+        if po["status"] in {"issued", "partially_received", "receiving_complete"} and ordered - accepted != outstanding:
+            raise ValueError(f"{label}.po[{idx}]: outstanding_quantity != ordered - accepted")
+        total_ordered += Decimal(po["ordered_total_php"])
+        total_accepted += Decimal(po["accepted_value_php"])
+        open_disc += po["open_discrepancy_count"]
+    totals = body["totals"]
+    if (
+        totals["open_rf_lines_count"] != open_rf_lines
+        or totals["repf_count"] != len(body["repf_summary"])
+        or totals["po_count"] != len(body["purchase_order_summary"])
+        or Decimal(totals["total_ordered_php"]) != total_ordered
+        or Decimal(totals["total_accepted_value_php"]) != total_accepted
+        or totals["open_discrepancy_count"] != open_disc
+    ):
+        raise ValueError(f"{label}: procurement report totals mismatch")
+
+
+def check_control_report_invariants(body, label):
+    check_report_date_range(body["metadata"], label)
+    total_decl = Decimal("0.00")
+    uninterp = 0
+    for idx, row in enumerate(body["donation_restrictions"]):
+        if Decimal(row["received_quantity"]) > Decimal(row["declared_quantity"]):
+            raise ValueError(f"{label}.donation[{idx}]: received_quantity exceeds declared_quantity")
+        if row["restriction"]["state"] == "uninterpreted":
+            uninterp += 1
+            if row["allocatable_now"] is not False:
+                raise ValueError(f"{label}.donation[{idx}]: uninterpreted donation must have allocatable_now: false")
+        total_decl += Decimal(row["declared_value_php"])
+    totals = body["totals"]
+    if (
+        totals["donation_row_count"] != len(body["donation_restrictions"])
+        or totals["uninterpreted_donation_count"] != uninterp
+        or totals["resolution_count"] != len(body["restriction_resolutions"])
+        or totals["overdue_exception_count"] != len(body["overdue_exceptions"])
+        or totals["audit_entry_count"] != len(body["audit_history"])
+        or Decimal(totals["total_declared_donation_value_php"]) != total_decl
+    ):
+        raise ValueError(f"{label}: control report totals mismatch")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--invalid-example", action="store_true")
@@ -798,6 +983,8 @@ def main():
         for method, operation in path_item.items():
             if method not in {"get", "post", "put", "patch", "delete", "options", "head", "trace"}:
                 continue
+            if "/alerts" in lowered and method != "get":
+                raise ValueError(f"Derived officer alerts must not expose write route: {method.upper()} {path}")
             operation_id = operation["operationId"]
             if operation_id in operations:
                 raise ValueError(f"Duplicate operation ID: {operation_id}")
@@ -850,6 +1037,36 @@ def main():
     unknown_rcv_ops = rcv_ops - unsafe_operations
     if unknown_rcv_ops:
         raise ValueError(f"ReceivingOperationName references non-unsafe or unknown operations: {sorted(unknown_rcv_ops)}")
+
+    # Verify Stage 1 repeated RF fulfillment compatibility and explicit Stage 2 report deferrals (RPT-05, RPT-07)
+    compat = document.get("x-stage1-compatibility", {})
+    if "repeatedRfFulfillmentUnchanged" not in compat:
+        raise ValueError("Missing x-stage1-compatibility.repeatedRfFulfillmentUnchanged documentation")
+    deferred = document.get("x-stage2-deferred-reporting", {})
+    if (
+        deferred.get("finance_and_booth_reports", {}).get("requirement") != "RPT-05"
+        or deferred.get("binary_pdf_csv_exports", {}).get("requirement") != "RPT-07"
+    ):
+        raise ValueError("Missing explicit deferral documentation for RPT-05 and RPT-07 under x-stage2-deferred-reporting")
+
+    # Verify JSON and /print Stage 2 report pairs enforce identical duty scoping, filter params, and print headers
+    required_report_filters = {"chapter_id", "date_from", "date_to", "item_id", "variant_id", "location_id", "status"}
+    for json_op, print_op in (
+        ("readInventoryReport", "printInventoryReport"),
+        ("readProcurementReport", "printProcurementReport"),
+        ("readControlReport", "printControlReport"),
+    ):
+        j_ptr, j_def = operations[json_op]
+        p_ptr, p_def = operations[print_op]
+        if j_def.get("x-required-action") != p_def.get("x-required-action"):
+            raise ValueError(f"Report pair {json_op}/{print_op} must enforce identical x-required-action")
+        j_params = {dereference(j_ptr + f"/parameters/{i}")[1]["name"] for i in range(len(j_def.get("parameters", [])))}
+        p_params = {dereference(p_ptr + f"/parameters/{i}")[1]["name"] for i in range(len(p_def.get("parameters", [])))}
+        if not required_report_filters <= j_params or not required_report_filters <= p_params:
+            raise ValueError(f"Report pair {json_op}/{print_op} missing explicit required filters")
+        _, p_ok = dereference(p_ptr + "/responses/200")
+        if not {"Cache-Control", "Content-Security-Policy", "X-Content-Type-Options"} <= set(p_ok.get("headers", {})):
+            raise ValueError(f"Printable report {print_op} 200 response missing required security/cache headers")
 
     donation_transitions = document.get("x-stage2-donation-transitions", {})
     po_transitions = document.get("x-stage2-po-transitions", {})
@@ -968,6 +1185,16 @@ def main():
                             check_receiving_discrepancy_invariants(body_data["result"], name, check_value, case)
                         elif rk == "receiving_hold":
                             check_receiving_hold_invariants(body_data["result"], name, check_value, case)
+                elif case["operationId"] == "listAllocationQueue":
+                    check_allocation_queue_invariants(response["body"], name)
+                elif case["operationId"] == "listOfficerAlerts":
+                    check_officer_alerts_invariants(response["body"], name)
+                elif case["operationId"] == "readInventoryReport":
+                    check_inventory_report_invariants(response["body"], name)
+                elif case["operationId"] == "readProcurementReport":
+                    check_procurement_report_invariants(response["body"], name)
+                elif case["operationId"] == "readControlReport":
+                    check_control_report_invariants(response["body"], name)
         elif "body" in response:
             raise ValueError(f"{name}: bodyless status contains a body")
 
@@ -1292,6 +1519,60 @@ def main():
                     "updated_at": "2026-11-26T08:00:00.000000Z",
                 },
                 "deliberately invalid discrepancy claiming quarantined lots auto-clear on source close",
+            ),
+            (
+                "#/components/schemas/AllocationEligibleSourceLot",
+                {
+                    "stock_lot_id": "97600000-0000-4000-8000-000000000099",
+                    "source_kind": "da_rm",
+                    "source_reference": "RM-2026-0003",
+                    "location_id": "61000000-0000-4000-8000-000000000001",
+                    "free_quantity": "10",
+                    "restriction_state": "uninterpreted",
+                },
+                "deliberately invalid allocation queue source exposing ADR 0004 uninterpreted lot as eligible",
+            ),
+            (
+                "#/components/schemas/OfficerAlertList",
+                {
+                    "data": [],
+                    "caller_matched_duties": ["RECEIVING"],
+                    "persisted_ack_supported": True,
+                    "observed_at": "2026-11-27T10:00:00.000000Z",
+                    "page": {"next_cursor": None, "snapshot_version": 23},
+                },
+                "deliberately invalid officer alert list claiming persisted_ack_supported: true",
+            ),
+            (
+                "#/components/schemas/ControlDonationRestrictionRow",
+                {
+                    "da_id": "92000000-0000-4000-8000-000000000001",
+                    "da_reference": "DA-2026-0001",
+                    "da_status": "received",
+                    "donor_name": "Youth Civic Foundation",
+                    "location_id": "61000000-0000-4000-8000-000000000001",
+                    "item_id": "95000000-0000-4000-8000-000000000050",
+                    "variant_id": "95000000-0000-4000-8000-000000000051",
+                    "variant_code": "TSHIRT-M",
+                    "unit_id": "95000000-0000-4000-8000-000000000052",
+                    "unit_code": "PCS",
+                    "quantity_scale": 0,
+                    "declared_quantity": "10",
+                    "received_quantity": "10",
+                    "declared_value_php": "2400.00",
+                    "restriction": {
+                        "state": "uninterpreted",
+                        "allowed_uses": [],
+                        "event_ids": [],
+                        "requesting_unit_ids": [],
+                        "effective_from": None,
+                        "effective_until": None,
+                        "interpretation_id": None,
+                        "source_condition_reference": "Pending donor letter",
+                    },
+                    "allocatable_now": True,
+                },
+                "deliberately invalid control report row marking ADR 0004 uninterpreted donation allocatable_now: true",
             ),
         ]
         rejections = []
