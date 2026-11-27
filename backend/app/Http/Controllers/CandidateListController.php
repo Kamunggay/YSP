@@ -296,16 +296,19 @@ class CandidateListController extends Controller
     private function authorizeEvidenceTargetRead(ChapterAuthority $authority, string $purpose, string $recordId): bool
     {
         if (StageTwoEvidenceTarget::supports($purpose)) {
-            return StageTwoEvidenceTarget::authorize($authority, $purpose, $recordId, false, null) !== null;
+            return $authority->allows('evidence.read')
+                && StageTwoEvidenceTarget::authorize($authority, $purpose, $recordId, false, null) !== null;
         }
 
         $chapterId = $authority->chapter->id;
         if ($purpose === 'opening_receipt') {
-            return $authority->allows('opening_rm.read')
+            return $authority->allows('evidence.read')
+                && $authority->allows('opening_rm.read')
                 && OpeningRm::where('chapter_id', $chapterId)->whereKey($recordId)->sharedLock()->exists();
         }
         if ($purpose === 'hold_clearance') {
-            return $authority->allows('stock.read')
+            return $authority->allows('evidence.read')
+                && $authority->allows('stock.read')
                 && StockHold::where('chapter_id', $chapterId)->whereKey($recordId)->sharedLock()->exists();
         }
         if ($purpose === 'actual_issue') {
@@ -344,7 +347,7 @@ class CandidateListController extends Controller
             return null;
         }
         $trimmed = trim($raw, ' ');
-        if ($trimmed === '' || mb_strlen($trimmed) > 80) {
+        if ($trimmed === '' || ! preg_match('/\S/u', $trimmed) || mb_strlen($trimmed) > 80) {
             throw new ContractException(400, 'invalid_selector', 'Invalid search selector.');
         }
 
@@ -395,6 +398,12 @@ class CandidateListController extends Controller
         $snapshot = hash('sha256', CanonicalJson::encode([
             'membership_id' => $authority->membership->id,
             'authority_version' => $authority->version,
+            'active_grants' => $authority->grants->map(fn ($grant) => [
+                'id' => $grant->id,
+                'duty' => $grant->duty_code,
+                'version' => (int) $grant->version,
+                'scope' => $grant->scope,
+            ])->all(),
             'items' => $items,
         ]));
         $snapshotVersion = 1 + (hexdec(substr($snapshot, 0, 7)) & 0x7FFFFFFE);
@@ -411,39 +420,39 @@ class CandidateListController extends Controller
                 throw new ContractException(400, 'invalid_selector', 'Invalid pagination cursor.');
             }
             if (! is_array($decoded)
-                || ($decoded['v'] ?? null) !== 1
-                || ($decoded['e'] ?? null) !== $endpoint
-                || ($decoded['u'] ?? null) !== $request->user()->id
-                || ($decoded['c'] ?? null) !== $authority->chapter->id
-                || ($decoded['l'] ?? null) !== $limit
-                || ($decoded['f'] ?? null) !== $filterHash
-                || ! is_int($decoded['o'] ?? null)
-                || ! is_int($decoded['x'] ?? null)
-                || ! is_string($decoded['s'] ?? null)) {
+                || ($decoded['version'] ?? null) !== 1
+                || ($decoded['endpoint'] ?? null) !== $endpoint
+                || ($decoded['user'] ?? null) !== $request->user()->id
+                || ($decoded['chapter'] ?? null) !== $authority->chapter->id
+                || ($decoded['limit'] ?? null) !== $limit
+                || ($decoded['filters'] ?? null) !== $filterHash
+                || ! is_int($decoded['offset'] ?? null)
+                || ! is_int($decoded['expires'] ?? null)
+                || ! is_string($decoded['snapshot'] ?? null)) {
                 throw new ContractException(400, 'invalid_selector', 'Invalid pagination cursor.');
             }
-            if ($decoded['x'] <= now()->timestamp || ! hash_equals($decoded['s'], $snapshot)) {
+            if ($decoded['expires'] <= now()->timestamp || ! hash_equals($decoded['snapshot'], $snapshot)) {
                 throw new ContractException(409, 'snapshot_stale', 'Candidate snapshot cursor expired or underlying state changed; restart from page 1.');
             }
-            if ($decoded['o'] <= 0 || $decoded['o'] >= count($items)) {
+            if ($decoded['offset'] <= 0 || $decoded['offset'] >= count($items)) {
                 throw new ContractException(400, 'invalid_selector', 'Invalid pagination cursor.');
             }
 
-            $offset = $decoded['o'];
-            $expires = $decoded['x'];
+            $offset = $decoded['offset'];
+            $expires = $decoded['expires'];
         }
 
         $next = $offset + $limit < count($items)
             ? Crypt::encryptString(json_encode([
-                'v' => 1,
-                'e' => $endpoint,
-                'u' => $request->user()->id,
-                'c' => $authority->chapter->id,
-                'l' => $limit,
-                'f' => $filterHash,
-                's' => $snapshot,
-                'o' => $offset + $limit,
-                'x' => $expires,
+                'version' => 1,
+                'endpoint' => $endpoint,
+                'user' => $request->user()->id,
+                'chapter' => $authority->chapter->id,
+                'limit' => $limit,
+                'filters' => $filterHash,
+                'snapshot' => $snapshot,
+                'offset' => $offset + $limit,
+                'expires' => $expires,
             ], JSON_THROW_ON_ERROR))
             : null;
 

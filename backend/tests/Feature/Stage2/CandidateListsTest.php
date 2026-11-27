@@ -163,6 +163,14 @@ class CandidateListsTest extends TestCase
         // Search matching on code/name
         $matched = $this->asBrowserOfficer($officer->id)->get($base.'?q=beta')->assertOk()->json('data');
         $this->assertSame([$unitB], array_column($matched, 'unit_id'));
+
+        // Unit-scoped-only active officer (no chapter-wide grants) can still query requesting-units & officers
+        $unitOnlyOfficer = $this->createOfficer($chapter, [['COMMITTEE_REQUESTER', $unitA]], 'Unit Only', 'unit.only@ysp.invalid');
+        $scopedUnits = $this->asBrowserOfficer($unitOnlyOfficer->id)->get($base.'?for_duty=COMMITTEE_REQUESTER')
+            ->assertOk()->assertHeader('Cache-Control', 'no-store')->json('data');
+        $this->assertSame([$unitA], array_column($scopedUnits, 'unit_id'));
+        $this->asBrowserOfficer($unitOnlyOfficer->id)->get("/api/v1/chapters/{$chapter->id}/candidates/officers")
+            ->assertOk()->assertHeader('Cache-Control', 'no-store');
     }
 
     public function test_evidence_candidates_target_authority_ready_only_search_pagination_and_uniform_404(): void
@@ -396,6 +404,7 @@ class CandidateListsTest extends TestCase
             $officersUrl.'?%71=Peer',
             $officersUrl.'?q=',
             $officersUrl.'?q=%20%20',
+            $officersUrl.'?q=%09',
             $officersUrl.'?limit=0',
             $officersUrl.'?limit=101',
             $officersUrl.'?duty=NOT_A_DUTY',
@@ -430,6 +439,15 @@ class CandidateListsTest extends TestCase
         $caller->memberships()->where('chapter_id', $chapter->id)->increment('version');
         $this->asBrowserOfficer($caller->id)->get($officersUrl.'?limit=1&cursor='.urlencode($freshCursor))
             ->assertConflict()->assertJsonPath('error.code', 'snapshot_stale');
+
+        // 7b. Snapshot invalidation on clock-based grant expiry without a version bump -> 409 snapshot_stale
+        $caller->dutyGrants()->where('chapter_id', $chapter->id)->where('duty_code', 'RECEIVING')
+            ->update(['valid_until' => now()->addSeconds(30)]);
+        $expiryAwareCursor = $this->asBrowserOfficer($caller->id)->get($officersUrl.'?limit=1')->assertOk()->json('page.next_cursor');
+        Carbon::setTestNow(now()->addSeconds(45));
+        $this->asBrowserOfficer($caller->id)->get($officersUrl.'?limit=1&cursor='.urlencode($expiryAwareCursor))
+            ->assertConflict()->assertJsonPath('error.code', 'snapshot_stale');
+        Carbon::setTestNow();
 
         // 8. Snapshot invalidation after 5-minute window expires -> 409 snapshot_stale
         $expiringCursor = $this->asBrowserOfficer($caller->id)->get($officersUrl.'?limit=1')->assertOk()->json('page.next_cursor');

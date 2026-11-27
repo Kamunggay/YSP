@@ -1901,7 +1901,7 @@ requirement_coverage:
     - officer_alerts
     - reports
     - candidates
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-02:
     disposition: stage2_contract
@@ -1920,7 +1920,7 @@ requirement_coverage:
     - officer_alerts
     - reports
     - candidates
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-03:
     disposition: stage2_contract
@@ -1939,7 +1939,7 @@ requirement_coverage:
     - officer_alerts
     - reports
     - candidates
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-04:
     disposition: stage2_contract
@@ -1958,7 +1958,7 @@ requirement_coverage:
     - officer_alerts
     - reports
     - candidates
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-08:
     disposition: stage2_contract
@@ -1977,7 +1977,7 @@ requirement_coverage:
     - officer_alerts
     - reports
     - candidates
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-09:
     disposition: stage2_contract
@@ -1996,7 +1996,7 @@ requirement_coverage:
     - officer_alerts
     - reports
     - candidates
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-05:
     disposition: partial

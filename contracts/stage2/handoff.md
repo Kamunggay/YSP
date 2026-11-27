@@ -89,7 +89,7 @@ Run the pinned workspace-local validator (`contracts/stage2/validation-requireme
 | Reviewer responsibility | Required check on the combined revision | Current state |
 | --- | --- | --- |
 | Leader (canonical coordinator) | Cross-slice compatibility, Stage 1 seam preservation, ownership/guardrail parity, and delivery readiness | Pending actual combined review |
-| Glenn (UI & shortage/allocation owner) | UI consumption across all 90 operations, `GET /replenishment/needs`, `computeNetShortageSnapshot`, `GET /allocation-queue`, `/stock*` `inbound_open_po`, and WebSocket refresh/preserved-edit handling | Pending actual human review |
+| Glenn (UI & shortage/allocation owner) | UI consumption across all 94 operations, `GET /replenishment/needs`, `computeNetShortageSnapshot`, `GET /allocation-queue`, `/stock*` `inbound_open_po`, and WebSocket refresh/preserved-edit handling | Pending actual human review |
 | Efren (inventory posting & security reviewer) | Consequential Leader/shared boundaries, `prepareReceivingInventory`, `applyLotRestrictionResolution`, locking/idempotency/evidence fences, and Stage 1 repeated actual-issue compatibility | Pending actual human review |
 
 Agent Standards and Spec reviews are recorded truthfully in local ticket/delivery evidence and never impersonate Efren's or Glenn's human sign-off. Passing contract validation or resolving local ticket `08` on `integration/stage2-contracts` does not by itself authorize unapproved `master` merge, create an implementation PR, or close parent issue `#27`.
