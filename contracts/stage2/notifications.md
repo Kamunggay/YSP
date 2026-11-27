@@ -79,8 +79,11 @@ digits ending `Z`; Asia/Manila is display-only), `chapter_id` (UUIDv4, non-null)
 | `stage2.receiving-hold.changed.v1` | `receiving_hold` | `ReceivingHold` | `id` | `version` | `material_version` |
 
 - **Nested quotations & supplier selection:** `createRepfQuotation`, `replaceRepfQuotation`, `deleteRepfQuotation`,
-  and `recordSupplierSelection` emit `stage2.repf.changed.v1` for the parent RepF, refreshing `listRepfQuotations`,
-  `readRepf`, and dependent procurement queries.
+  and `recordSupplierSelection` emit `stage2.repf.changed.v1` with a fresh `event_id` carrying the parent RepF's
+  current `(version, material_version)` without incrementing `Repf.version`. Clients MUST therefore refresh mounted
+  `listRepfQuotations`, `readRepf`, and `readProcurementReport` on any unseen `event_id` for
+  `stage2.repf.changed.v1` even when `resource_version` equals the last reconciled `Repf.version` (suppressing only
+  duplicate `event_id` deliveries or strictly older versions).
 - **Stage 1 `stage1.stock-lot.changed.v1` co-emission:**
   - `postReceivingReport` co-emits `stage1.stock-lot.changed.v1` inside the same commit for every usable,
     quarantined, or rejected lot posted via Efren's `prepareReceivingInventory`, alongside
@@ -110,9 +113,11 @@ digits ending `Z`; Asia/Manila is display-only), `chapter_id` (UUIDv4, non-null)
 - **Deduplication & ordering:** Clients deduplicate by `event_id` within the active session and track reconciled
   `(user_id, chapter_id, resource_kind, resource_id, resource_version, material_version)`. Events carry no
   cross-resource ordering guarantee and no replay cursor; clients never infer stock quantities, PHP totals, or
-  outstanding balances from event counts. Older or equal versions are ignored only after a successful current GET;
-  a newer notice arriving while a GET is in flight marks the subject dirty for one follow-up GET; slow obsolete
-  GET response generations are discarded.
+  outstanding balances from event counts. Strictly older versions (`< resource_version`) are ignored after a
+  successful current GET, and equal versions with a duplicate `event_id` are ignored; an unseen `event_id` at an
+  equal `resource_version` on `stage2.repf.changed.v1` still invalidates nested quotation/procurement reads. A newer
+  notice arriving while a GET is in flight marks the subject dirty for one follow-up GET; slow obsolete GET
+  response generations are discarded.
 - **Disconnect/reconnect resynchronization sweep (no mutation replay):** On initial connect, socket reconnect, or
   tab focus return after disconnection:
   1. Mark mounted Stage 2 projections stale and suspend consequential write submissions.

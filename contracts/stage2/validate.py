@@ -900,6 +900,18 @@ def validate_notifications(root, document, examples, operations, dereference):
         "material_version",
     }
 
+    conventions = agreement.get("channel_conventions", {})
+    expected_logical_chapter = "private-stage1.chapter.{chapter_id}"
+    expected_delivery_chapter = "private-stage1.chapter.{chapter_id}.user.{user_id}"
+    expected_delivery_session = "private-stage1.user.{user_id}"
+    if (
+        conventions.get("logical_chapter_channel") != expected_logical_chapter
+        or conventions.get("delivery_chapter_channel") != expected_delivery_chapter
+        or conventions.get("delivery_session_channel") != expected_delivery_session
+        or conventions.get("synthetic_alert_events_allowed") is not False
+    ):
+        raise ValueError("Stage 2 channel_conventions mismatch")
+
     definitions = agreement["definitions"]
     if definitions.keys() != expected_events:
         raise ValueError(f"Stage 2 event definitions mismatch: {sorted(definitions.keys())}")
@@ -907,12 +919,7 @@ def validate_notifications(root, document, examples, operations, dereference):
     if {item["schema"].removeprefix("#/$defs/") for item in definitions.values()} != schema_names:
         raise ValueError("Stage 2 event registry/schema coverage differs")
 
-    methods = {
-        operation["operationId"]: method
-        for item in document["paths"].values()
-        for method, operation in item.items()
-        if isinstance(operation, dict) and "operationId" in operation
-    }
+    methods = {operation_id: pointer.rsplit("/", 1)[-1] for operation_id, (pointer, _) in operations.items()}
 
     for name, definition in definitions.items():
         if "alert" in name:
@@ -930,8 +937,12 @@ def validate_notifications(root, document, examples, operations, dereference):
             raise ValueError(f"Event name/version mismatch: {name}")
         if "alert" in payload_props["resource_kind"].get("const", ""):
             raise ValueError(f"Synthetic alert resource_kind forbidden: {name}")
-        if definition["channel"] != "chapter" or definition.get("logical_channel") != "private-stage1.chapter.{chapter_id}":
-            raise ValueError(f"Stage 2 event must use private-stage1.chapter.{{chapter_id}}: {name}")
+        if (
+            definition["channel"] != "chapter"
+            or definition.get("logical_channel") != expected_logical_chapter
+            or definition.get("delivery_channel") != expected_delivery_chapter
+        ):
+            raise ValueError(f"Stage 2 event channel metadata differs from channel_conventions: {name}")
         if not definition["refresh_operations"]:
             raise ValueError(f"Event must map at least one safe GET refresh operation: {name}")
         for operation_id in definition["refresh_operations"]:
@@ -960,6 +971,20 @@ def validate_notifications(root, document, examples, operations, dereference):
     for s1_name, s1_def in co_emitted.items():
         if not s1_name.startswith("stage1.") or not s1_name.endswith(".changed.v1") or "alert" in s1_name:
             raise ValueError(f"Invalid co-emitted Stage 1 event name: {s1_name}")
+        if s1_def.get("channel") == "chapter":
+            if (
+                s1_def.get("logical_channel") != expected_logical_chapter
+                or s1_def.get("delivery_channel") != expected_delivery_chapter
+            ):
+                raise ValueError(f"Co-emitted chapter Stage 1 event channel mismatch: {s1_name}")
+        elif s1_def.get("channel") == "session":
+            if (
+                s1_def.get("logical_channel") != expected_delivery_session
+                or s1_def.get("delivery_channel") != expected_delivery_session
+            ):
+                raise ValueError(f"Co-emitted session Stage 1 event channel mismatch: {s1_name}")
+        else:
+            raise ValueError(f"Unknown co-emitted Stage 1 event channel: {s1_name}")
         for operation_id in s1_def.get("stage2_refresh_operations", []):
             if methods.get(operation_id) != "get":
                 raise ValueError(f"Co-emitted Stage 1 event refresh is not a canonical safe GET read: {operation_id}")
@@ -978,8 +1003,13 @@ def validate_notifications(root, document, examples, operations, dereference):
         raise ValueError("Event procedure_disposition does not cover controlled procedure inventory")
     if "cancelInternalRf" not in compat_dispositions:
         raise ValueError("Missing Stage 1 cancelInternalRf compatibility disposition")
-    if "stage1.internal-rf.changed.v1" not in compat_dispositions["cancelInternalRf"]["events"]:
-        raise ValueError("cancelInternalRf must preserve stage1.internal-rf.changed.v1")
+    required_cancel_events = {
+        "stage1.internal-rf.changed.v1",
+        "stage2.repf.changed.v1",
+        "stage2.purchase-order.changed.v1",
+    }
+    if not required_cancel_events <= set(compat_dispositions["cancelInternalRf"]["events"]):
+        raise ValueError("cancelInternalRf must preserve stage1.internal-rf.changed.v1 and co-emit RepF/PO events")
     for op_id in ("postReceivingReport", "resolveDonationRestriction"):
         if "stage1.stock-lot.changed.v1" not in dispositions[op_id]["events"]:
             raise ValueError(f"{op_id} must co-emit stage1.stock-lot.changed.v1")
