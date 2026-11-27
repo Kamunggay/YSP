@@ -31,7 +31,7 @@ class EnforceStageOneAction
             ? array_intersect($actions, ['replenishment.read', 'allocation_queue.read'])
             : $actions);
 
-        if ($request->is('*/evidence', '*/evidence/*')) {
+        if ($request->routeIs('paper-evidence.*')) {
             $this->authorizeEvidenceTarget($request, $authority, $actions);
 
             return $this->response($request, $next);
@@ -63,8 +63,9 @@ class EnforceStageOneAction
         }
 
         $rfList = $request->route()->getActionMethod() === 'listInternalRfs';
+        $candidateList = $request->isMethod('GET') && $request->is('*/candidates/*');
         $receipt = $request->isMethod('GET') && $request->is('*/internal-rfs/operation-results', '*/internal-rfs/operation-results/*', '*/actual-issue-operations/*', '*/reservation-operations/*', '*/opening-actions/*');
-        if (! $rfList && ! $receipt) {
+        if (! $rfList && ! $candidateList && ! $receipt) {
             foreach ($actions as $action) {
                 if ($action === 'ipc.authorize' || ($action === 'rf.draft' && ! $rf) || ($action === 'rf.read' && $rf)) {
                     continue;
@@ -178,7 +179,7 @@ class EnforceStageOneAction
         $response = $next($request);
         if ($response->getStatusCode() === 404) {
             $code = match (true) {
-                $request->is('*/evidence', '*/evidence/*') => 'evidence_not_found',
+                $request->routeIs('paper-evidence.*') => 'evidence_not_found',
                 $request->is('*/opening-actions/*', '*/procurement-operations/*') => 'operation_not_found',
                 default => 'resource_not_found',
             };

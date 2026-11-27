@@ -438,7 +438,7 @@ class ControlledSetupTest extends TestCase
         $access = fn () => collect($this->read('/chapters/'.$chapter->id.'/access', $token)
             ->assertOk()->assertHeader('Cache-Control', 'no-store')->json('data.actions'))->keyBy('action');
         $read = fn () => $access()['quotation.select'];
-        $this->assertCount(63, $access());
+        $this->assertCount(64, $access());
         $this->assertSame('duty_denied', $access()['po.approve']['state']);
         $this->assertSame('context_required', $access()['quotation.manage']['state']);
         $allocation = $access()['allocation_queue.read'];

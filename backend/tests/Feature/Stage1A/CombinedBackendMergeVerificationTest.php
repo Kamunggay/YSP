@@ -113,33 +113,41 @@ class CombinedBackendMergeVerificationTest extends TestCase
             $this->markTestSkipped('Locked Stage 1 OpenAPI file is not mounted in this container.');
         }
 
-        $locked = [];
-        $inPaths = false;
-        $currentPath = null;
-        foreach (file($specPath, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
-            if (preg_match('/^paths:\s*$/', $line)) {
-                $inPaths = true;
+        $readOperations = static function (string $path): array {
+            $ops = [];
+            $inPaths = false;
+            $currentPath = null;
+            foreach (file($path, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
+                if (preg_match('/^paths:\s*$/', $line)) {
+                    $inPaths = true;
 
-                continue;
-            }
-            if ($inPaths && preg_match('/^[A-Za-z0-9_-]+:/', $line)) {
-                $inPaths = false;
+                    continue;
+                }
+                if ($inPaths && preg_match('/^[A-Za-z0-9_-]+:/', $line)) {
+                    $inPaths = false;
 
-                continue;
-            }
-            if (! $inPaths) {
-                continue;
-            }
-            if (preg_match('/^  (\/\S+):\s*$/', $line, $match)) {
-                $currentPath = $match[1];
+                    continue;
+                }
+                if (! $inPaths) {
+                    continue;
+                }
+                if (preg_match('/^  (\/\S+):\s*$/', $line, $match)) {
+                    $currentPath = $match[1];
 
-                continue;
+                    continue;
+                }
+                if ($currentPath !== null && preg_match('/^    (get|post|put|patch|delete):\s*$/', $line, $match)) {
+                    $key = strtoupper($match[1]).' '.preg_replace('/\{[^}]+\}/', '{}', $currentPath);
+                    $ops[$key] = strtoupper($match[1]).' '.$currentPath;
+                }
             }
-            if ($currentPath !== null && preg_match('/^    (get|post|put|patch|delete):\s*$/', $line, $match)) {
-                $key = strtoupper($match[1]).' '.preg_replace('/\{[^}]+\}/', '{}', $currentPath);
-                $locked[$key] = strtoupper($match[1]).' '.$currentPath;
-            }
-        }
+
+            return $ops;
+        };
+
+        $locked = $readOperations($specPath);
+        $stage2Path = realpath(base_path('../contracts/stage2/openapi.yaml'));
+        $stage2Locked = ($stage2Path !== false && is_file($stage2Path)) ? $readOperations($stage2Path) : [];
 
         $registered = [];
         foreach (Route::getRoutes() as $route) {
@@ -160,10 +168,10 @@ class CombinedBackendMergeVerificationTest extends TestCase
         $this->assertSame([], array_diff_key($locked, $registered), 'Missing locked Stage 1 OpenAPI operations.');
 
         $extra = array_keys(array_diff_key($registered, $locked));
-        sort($extra);
-        $allowed = self::ALLOWED_EXTRA_ROUTES;
-        sort($allowed);
-        $this->assertSame($allowed, $extra);
+        $unexpected = array_values(array_diff($extra, self::ALLOWED_EXTRA_ROUTES, array_keys($stage2Locked)));
+        $this->assertSame([], $unexpected, 'Unexpected uncontracted API routes registered.');
+        $missingAllowed = array_values(array_diff(self::ALLOWED_EXTRA_ROUTES, $extra));
+        $this->assertSame([], $missingAllowed, 'Missing expected Stage 1 extra routes.');
     }
 
     public function test_connected_journey_from_approved_ipc_and_opening_rm_to_stock_rf_reservation_and_signed_actual_issue(): void

@@ -2,13 +2,16 @@ openapi: 3.1.1
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: YSP Stage 2 canonical HTTP agreement
-  version: 0.5.0
+  version: 0.5.1
   description: >-
-    Specification #27 canonical Stage 2 contract package (tickets 01-06). Reuses
-    Stage 1 transport, cookie/CSRF security, X-Action-Key idempotency, snapshot-bound
-    cursor pagination, scalar formats, error/blocker envelopes, and BoundedRestriction
-    verbatim. Defines controlled CLI-only Stage 2 policies, additive EvidencePurpose
-    values, Leader checkEvidenceBinding reuse, Glenn live net-shortage/ROP query and
+    Specification #27 canonical Stage 2 contract package (tickets 01-06) with
+    strictly additive v0.5.1 candidate-list amendment (Leader typed searchable
+    candidate endpoints plus additive q/eligible_for selectors on Leader's five
+    remaining Stage 2 list routes). Reuses Stage 1 transport, cookie/CSRF security,
+    X-Action-Key idempotency, snapshot-bound cursor pagination, scalar formats,
+    error/blocker envelopes, and BoundedRestriction verbatim. Defines controlled
+    CLI-only Stage 2 policies, additive EvidencePurpose values, Leader
+    checkEvidenceBinding reuse, Glenn live net-shortage/ROP query and
     computeNetShortageSnapshot participant, RepF intake/budget review, nested
     quotations, policy-gated supplier selection, Purchase Order lifecycle/amendments,
     Donation Acknowledgments and donor-restriction resolutions, unified PO/DA
@@ -17,7 +20,7 @@ info:
     allocation queue, Leader derived duty-filtered officer alerts, and structured
     JSON plus printable HTML Stage 2 inventory, procurement, and control reports.
     agreement.md defines normative authorization, locking, calculation, ownership,
-    and coordination rules. No runtime code, migrations, UI, or CI changes.
+    and coordination rules.
 servers:
   - url: /
     description: Same origin as the browser; HTTPS required except isolated loopback development.
@@ -49,6 +52,8 @@ tags:
     description: Leader live chapter-scoped, duty-filtered officer alert feed (RPT-01) with zero persisted acknowledgment or dismissal state.
   - name: Reports
     description: Leader structured JSON and printable HTML (/print) views for Stage 2 inventory (RPT-03), demand/procurement (RPT-04), and control/donation (RPT-06) reports (RPT-05 and binary PDF/CSV RPT-07 deferred).
+  - name: Candidates
+    description: Leader-owned typed searchable candidate endpoints (v0.5.1 additive amendment) for officers, requesting units, ready signed-paper evidence, and active chapter events.
 
 paths:
   /api/v1/chapters/{chapter_id}/replenishment/needs:
@@ -129,6 +134,8 @@ paths:
       - {$ref: '#/components/parameters/PageLimit'}
       - {$ref: '#/components/parameters/SnapshotCursor'}
       - {$ref: '#/components/parameters/DonationStatusFilter'}
+      - {$ref: '#/components/parameters/CandidateSearchQuery'}
+      - {$ref: '#/components/parameters/DonationEligibleForFilter'}
       responses:
         '200':
           description: Current DA page.
@@ -1505,6 +1512,8 @@ paths:
         - $ref: '#/components/parameters/RepfId'
         - $ref: '#/components/parameters/PageLimit'
         - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/CandidateSearchQuery'
+        - $ref: '#/components/parameters/QuotationEligibleForFilter'
       responses:
         '200':
           description: Authorized snapshot-paginated list of RepF quotations.
@@ -2967,6 +2976,8 @@ paths:
         - $ref: '#/components/parameters/ReceivingStatusFilter'
         - $ref: '#/components/parameters/ReceivingSourceIdFilter'
         - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/CandidateSearchQuery'
+        - $ref: '#/components/parameters/ReceivingReportEligibleForFilter'
       responses:
         '200':
           description: Current authorized page of Stage 2 Receiving Reports.
@@ -3770,6 +3781,8 @@ paths:
         - $ref: '#/components/parameters/ReceivingSourceKindFilter'
         - $ref: '#/components/parameters/DiscrepancyRmIdFilter'
         - $ref: '#/components/parameters/ReceivingSourceIdFilter'
+        - $ref: '#/components/parameters/CandidateSearchQuery'
+        - $ref: '#/components/parameters/ReceivingDiscrepancyEligibleForFilter'
       responses:
         '200':
           description: Current authorized page of receiving discrepancies.
@@ -4002,6 +4015,8 @@ paths:
         - $ref: '#/components/parameters/PageLimit'
         - $ref: '#/components/parameters/SnapshotCursor'
         - $ref: '#/components/parameters/ReceivingHoldStatusFilter'
+        - $ref: '#/components/parameters/CandidateSearchQuery'
+        - $ref: '#/components/parameters/ReceivingHoldEligibleForFilter'
       responses:
         '200':
           description: Current authorized page of missing-source delivery holds.
@@ -4907,6 +4922,219 @@ paths:
         '503':
           $ref: '#/components/responses/Unavailable'
 
+  /api/v1/chapters/{chapter_id}/candidates/officers:
+    get:
+      operationId: listOfficerCandidates
+      tags:
+        - Candidates
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: candidates.read
+      summary: Search active chapter officer candidates
+      description: >-
+        Returns currently enabled active members of the active chapter who hold at least
+        one active valid duty grant, filtered server-side by q, duty, requesting_unit_id,
+        and exclude_user_id on every page. Excludes disabled, foreign-chapter, revoked, or
+        excluded actors. Ordered by display_name ascending, public_id ascending, then
+        user_id ascending under a 5-minute snapshot-bound cursor. Safe GET accepts no
+        request body and no X-Action-Key; rejects unknown or repeated selectors with 400
+        invalid_selector and sends Cache-Control: no-store.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/CandidateSearchQuery'
+        - $ref: '#/components/parameters/OfficerDutyFilter'
+        - $ref: '#/components/parameters/OfficerRequestingUnitFilter'
+        - $ref: '#/components/parameters/OfficerExcludeUserFilter'
+      responses:
+        '200':
+          description: Current authorized page of active chapter officer candidates.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfficerCandidateList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/candidates/requesting-units:
+    get:
+      operationId: listRequestingUnitCandidates
+      tags:
+        - Candidates
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: candidates.read
+      summary: Search active chapter requesting-unit candidates
+      description: >-
+        Returns active (ended_at IS NULL) chapter organizational units with readable code
+        and name, filtered server-side by q and optional caller duty scope (for_duty) on
+        every page. Excludes ended and foreign-chapter units. Ordered by code ascending,
+        name ascending, then unit_id ascending under a 5-minute snapshot-bound cursor.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/CandidateSearchQuery'
+        - $ref: '#/components/parameters/RequestingUnitForDutyFilter'
+      responses:
+        '200':
+          description: Current authorized page of active chapter requesting-unit candidates.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestingUnitCandidateList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/candidates/evidence:
+    get:
+      operationId: listEvidenceCandidates
+      tags:
+        - Candidates
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: evidence.read
+      summary: Search ready current signed-paper evidence manifests for an authorized target
+      description: >-
+        Requires current evidence.read and target read authority for (purpose, record_id).
+        Returns only freshly verified ready current evidence manifests (evidence_id,
+        current version_id, attachment digests, and upload metadata) for that authorized
+        target. Returns uniform 404 resource_not_found when the target is unknown,
+        foreign-chapter, wrong source kind, or unauthorized. Ordered by uploaded_at
+        descending then evidence_id ascending under a 5-minute snapshot-bound cursor.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/EvidenceCandidatePurpose'
+        - $ref: '#/components/parameters/EvidenceCandidateRecordId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/CandidateSearchQuery'
+      responses:
+        '200':
+          description: Current authorized page of ready signed-paper evidence candidates.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceCandidateList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+  /api/v1/chapters/{chapter_id}/candidates/events:
+    get:
+      operationId: listEventCandidates
+      tags:
+        - Candidates
+      x-owner: Leader
+      x-ui-consumer: Glenn
+      x-reviewers:
+        - Efren
+        - Glenn
+      x-existence: new
+      x-required-action: candidates.read
+      summary: Search active chapter event candidates
+      description: >-
+        Returns active selectable (planned or active) chapter events with readable code,
+        name, status, and dates strictly scoped to the active chapter. Excludes closed,
+        canceled, and foreign-chapter events from every page. Ordered by starts_at
+        ascending (nulls last), code ascending, then event_id ascending under a 5-minute
+        snapshot-bound cursor.
+      security:
+        - browserSession: []
+      parameters:
+        - $ref: '#/components/parameters/ChapterId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/SnapshotCursor'
+        - $ref: '#/components/parameters/CandidateSearchQuery'
+        - $ref: '#/components/parameters/EventCandidateStatusFilter'
+      responses:
+        '200':
+          description: Current authorized page of active chapter event candidates.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventCandidateList'
+        '400':
+          $ref: '#/components/responses/InvalidSelector'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ChapterAccessDenied'
+        '404':
+          $ref: '#/components/responses/ResourceNotFound'
+        '409':
+          $ref: '#/components/responses/SnapshotStaleConflict'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
 components:
   securitySchemes:
     browserSession:
@@ -5421,6 +5649,115 @@ components:
       description: Optional control report status filter. Unknown or repeated values return 400 invalid_selector.
       schema:
         $ref: '#/components/schemas/ControlReportStatus'
+
+    CandidateSearchQuery:
+      in: query
+      name: q
+      required: false
+      description: Trim outer ASCII spaces; case-insensitive literal substring match on readable names, codes, references, or digests; no wildcards.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 80
+        pattern: '\S'
+    DonationEligibleForFilter:
+      in: query
+      name: eligible_for
+      required: false
+      description: Optional workflow eligibility filter narrowing DAs to records eligible for DA-RM receiving or post-acknowledgment restriction resolution.
+      schema:
+        type: string
+        enum:
+          - receiving
+          - restriction_resolution
+    QuotationEligibleForFilter:
+      in: query
+      name: eligible_for
+      required: false
+      description: Optional workflow eligibility filter narrowing RepF quotations to comparable quotes for supplier selection or the selected quote for PO drafting.
+      schema:
+        type: string
+        enum:
+          - supplier_selection
+          - purchase_order
+    ReceivingReportEligibleForFilter:
+      in: query
+      name: eligible_for
+      required: false
+      description: Optional workflow eligibility filter narrowing Receiving Reports to posted PO-RMs eligible to resolve a PO receiving discrepancy.
+      schema:
+        type: string
+        enum:
+          - discrepancy_replacement
+    ReceivingDiscrepancyEligibleForFilter:
+      in: query
+      name: eligible_for
+      required: false
+      description: Optional workflow eligibility filter narrowing discrepancies to open PO discrepancies for supplier notification or active discrepancies for resolution.
+      schema:
+        type: string
+        enum:
+          - supplier_notification
+          - resolution
+    ReceivingHoldEligibleForFilter:
+      in: query
+      name: eligible_for
+      required: false
+      description: Optional workflow eligibility filter narrowing missing-source holds to held records for source linking or linked_to_source holds for receiving draft intake.
+      schema:
+        type: string
+        enum:
+          - source_link
+          - receiving_draft
+    OfficerDutyFilter:
+      in: query
+      name: duty
+      required: false
+      description: Optional canonical chapter duty filter requiring an active valid grant for that duty.
+      schema:
+        $ref: '#/components/schemas/Duty'
+    OfficerRequestingUnitFilter:
+      in: query
+      name: requesting_unit_id
+      required: false
+      description: Optional active chapter organizational unit UUID filter; unknown, ended, or foreign unit returns uniform 404 resource_not_found.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    OfficerExcludeUserFilter:
+      in: query
+      name: exclude_user_id
+      required: false
+      description: Optional user UUID excluded from officer candidates (for example, to enforce preparer/issuer independence in pickers).
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RequestingUnitForDutyFilter:
+      in: query
+      name: for_duty
+      required: false
+      description: Optional canonical duty filter restricting returned active units to those covered by the caller's active grant for that duty.
+      schema:
+        $ref: '#/components/schemas/Duty'
+    EvidenceCandidatePurpose:
+      in: query
+      name: purpose
+      required: true
+      description: Required Stage 1 or Stage 2 EvidencePurpose for the target record.
+      schema:
+        $ref: '#/components/schemas/EvidencePurpose'
+    EvidenceCandidateRecordId:
+      in: query
+      name: record_id
+      required: true
+      description: Required chapter-owned target record UUID; unknown, foreign, wrong source kind, or unauthorized target returns uniform 404 resource_not_found.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    EventCandidateStatusFilter:
+      in: query
+      name: status
+      required: false
+      description: Optional selectable chapter event status filter (planned or active only).
+      schema:
+        $ref: '#/components/schemas/ChapterEventStatus'
 
   schemas:
     # --- Shared Stage 1 Scalar & Envelope Primitives (verbatim reuse) ---
@@ -15422,6 +15759,255 @@ components:
         page:
           $ref: '#/components/schemas/Page'
 
+    # --- Searchable Candidate Schemas (v0.5.1 Additive Amendment) ---
+    ChapterEventStatus:
+      type: string
+      enum:
+        - planned
+        - active
+    OfficerCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        - user_id
+        - public_id
+        - display_name
+        - duties
+        - unit_ids
+        - has_chapter_wide_scope
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        public_id:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        duties:
+          type: array
+          minItems: 1
+          maxItems: 14
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Duty'
+        unit_ids:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Uuid'
+        has_chapter_wide_scope:
+          type: boolean
+    OfficerCandidateList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/OfficerCandidate'
+        page:
+          $ref: '#/components/schemas/Page'
+    RequestingUnitCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        - unit_id
+        - chapter_id
+        - code
+        - name
+        - active
+      properties:
+        unit_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        active:
+          const: true
+    RequestingUnitCandidateList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RequestingUnitCandidate'
+        page:
+          $ref: '#/components/schemas/Page'
+    EvidenceCandidateAttachment:
+      type: object
+      additionalProperties: false
+      required:
+        - attachment_id
+        - position
+        - media_type
+        - byte_length
+        - sha256
+      properties:
+        attachment_id:
+          $ref: '#/components/schemas/Uuid'
+        position:
+          type: integer
+          minimum: 1
+          maximum: 20
+        media_type:
+          type: string
+          enum:
+            - application/pdf
+            - image/png
+            - image/jpeg
+        byte_length:
+          type: integer
+          minimum: 1
+        sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+    EvidenceCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        - evidence_id
+        - chapter_id
+        - target
+        - version_id
+        - version
+        - technical_state
+        - uploaded_by
+        - uploaded_by_name
+        - uploaded_by_public_id
+        - uploaded_at
+        - replacement_reason
+        - attachments
+      properties:
+        evidence_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        target:
+          $ref: '#/components/schemas/EvidenceTarget'
+        version_id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        technical_state:
+          const: ready
+        uploaded_by:
+          $ref: '#/components/schemas/Uuid'
+        uploaded_by_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        uploaded_by_public_id:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        uploaded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        replacement_reason:
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 500
+              pattern: '\S'
+            - type: 'null'
+        attachments:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/EvidenceCandidateAttachment'
+    EvidenceCandidateList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EvidenceCandidate'
+        page:
+          $ref: '#/components/schemas/Page'
+    EventCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        - event_id
+        - chapter_id
+        - code
+        - name
+        - status
+        - starts_at
+        - ends_at
+      properties:
+        event_id:
+          $ref: '#/components/schemas/Uuid'
+        chapter_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '\S'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+        status:
+          $ref: '#/components/schemas/ChapterEventStatus'
+        starts_at:
+          anyOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+        ends_at:
+          anyOf:
+            - $ref: '#/components/schemas/UtcInstant'
+            - type: 'null'
+    EventCandidateList:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+        - page
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EventCandidate'
+        page:
+          $ref: '#/components/schemas/Page'
+
   responses:
     InvalidSelector:
       description: Unknown, repeated, or malformed query selector, malformed chapter UUID after admission, or foreign/malformed cursor.
@@ -16104,6 +16690,26 @@ x-stage2-action-duties:
     - FINANCE
     - CHAPTER_HEAD
     - INDEPENDENT_REVIEWER
+  candidates.read:
+    - COMMITTEE_REQUESTER
+    - RF_APPROVER
+    - SALES_OFFICER
+    - SALES_REVIEWER
+    - FINANCE
+    - INVENTORY
+    - PURCHASING
+    - BUDGET_APPROVER
+    - RECEIVING
+    - DISPATCH
+    - BOOTH_CUSTODIAN
+    - BOOTH_CASHIER
+    - INDEPENDENT_REVIEWER
+    - CHAPTER_HEAD
+  evidence.read:
+    - INVENTORY
+    - RECEIVING
+    - DISPATCH
+    - RF_APPROVER
 
 x-stage2-policy-values:
   purchasing_quotation_policy:

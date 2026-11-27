@@ -1165,6 +1165,64 @@ profiles:
         events_disposition: none
         emits: []
         no_event_reason: Safe GET printable report has no domain change.
+  candidates:
+    owner: Leader
+    ui_consumer: Glenn
+    reviewers:
+    - Efren
+    - Glenn
+    existence: specified_only
+    agreement: agreement.md#15-searchable-candidate-lists-and-list-eligibility-selectors-v051-amendment
+    requirements:
+    - GOV-01
+    - GOV-02
+    - GOV-03
+    - GOV-04
+    - GOV-05
+    - GOV-08
+    - GOV-09
+    - SEC-01
+    - SEC-02
+    - SEC-03
+    - DOC-01
+    - DOC-04
+    - DOC-05
+    source_nodes:
+    - S1-20
+    - S2-04
+    - S3-15
+    - T-04
+    coverage_limit: Leader-owned typed searchable candidate endpoints (v0.5.1 additive amendment); every write action still
+      revalidates selected references inside its MySQL transaction.
+    operations:
+      listOfficerCandidates:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/candidates/officers
+        required_action: candidates.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET candidate read has no domain change.
+      listRequestingUnitCandidates:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/candidates/requesting-units
+        required_action: candidates.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET candidate read has no domain change.
+      listEvidenceCandidates:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/candidates/evidence
+        required_action: evidence.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET candidate read has no domain change.
+      listEventCandidates:
+        method: GET
+        path: /api/v1/chapters/{chapter_id}/candidates/events
+        required_action: candidates.read
+        events_disposition: none
+        emits: []
+        no_event_reason: Safe GET candidate read has no domain change.
 controlled_procedures:
   recordPolicy:
     canonical: openapi.yaml#/x-controlled-procedures/recordPolicy
@@ -1470,6 +1528,26 @@ action_duties:
   - FINANCE
   - CHAPTER_HEAD
   - INDEPENDENT_REVIEWER
+  candidates.read:
+  - COMMITTEE_REQUESTER
+  - RF_APPROVER
+  - SALES_OFFICER
+  - SALES_REVIEWER
+  - FINANCE
+  - INVENTORY
+  - PURCHASING
+  - BUDGET_APPROVER
+  - RECEIVING
+  - DISPATCH
+  - BOOTH_CUSTODIAN
+  - BOOTH_CASHIER
+  - INDEPENDENT_REVIEWER
+  - CHAPTER_HEAD
+  evidence.read:
+  - INVENTORY
+  - RECEIVING
+  - DISPATCH
+  - RF_APPROVER
 events:
   logical_channel: private-stage1.chapter.{chapter_id}
   delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
@@ -1822,7 +1900,8 @@ requirement_coverage:
     - allocation_queue
     - officer_alerts
     - reports
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    - candidates
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-02:
     disposition: stage2_contract
@@ -1840,7 +1919,8 @@ requirement_coverage:
     - allocation_queue
     - officer_alerts
     - reports
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    - candidates
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-03:
     disposition: stage2_contract
@@ -1858,7 +1938,8 @@ requirement_coverage:
     - allocation_queue
     - officer_alerts
     - reports
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    - candidates
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-04:
     disposition: stage2_contract
@@ -1876,7 +1957,8 @@ requirement_coverage:
     - allocation_queue
     - officer_alerts
     - reports
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    - candidates
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-08:
     disposition: stage2_contract
@@ -1894,7 +1976,8 @@ requirement_coverage:
     - allocation_queue
     - officer_alerts
     - reports
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    - candidates
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-09:
     disposition: stage2_contract
@@ -1912,7 +1995,8 @@ requirement_coverage:
     - allocation_queue
     - officer_alerts
     - reports
-    scope: Chapter-scoped routes, 14 canonical duties (39 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
+    - candidates
+    scope: Chapter-scoped routes, 14 canonical duties (41 x-stage2-action-duties), CLI-only recordPolicy governance, explicit
       409 setup_blocked, and zero silent defaults.
   GOV-05:
     disposition: partial
@@ -1921,6 +2005,7 @@ requirement_coverage:
     - purchase_orders
     - donations
     - receiving_reports
+    - candidates
     scope: Independent RepF budget review, PO/amendment/close-short approval (distinct from PO and RepF preparers), and policy-configured
       DA independence; ADJ/booth independence later.
   GOV-06:
@@ -1951,6 +2036,7 @@ requirement_coverage:
     - allocation_queue
     - officer_alerts
     - reports
+    - candidates
     scope: 'Verbatim Stage 1 ysp_session + MFA + Origin + X-XSRF-TOKEN, Cache-Control: no-store, strict PrintCsp + nosniff,
       uniform 404 anti-enumeration, current-authority WS re-evaluation, and zero public internal/CLI routes.'
   SEC-02:
@@ -1969,6 +2055,7 @@ requirement_coverage:
     - allocation_queue
     - officer_alerts
     - reports
+    - candidates
     scope: 'Verbatim Stage 1 ysp_session + MFA + Origin + X-XSRF-TOKEN, Cache-Control: no-store, strict PrintCsp + nosniff,
       uniform 404 anti-enumeration, current-authority WS re-evaluation, and zero public internal/CLI routes.'
   SEC-03:
@@ -1987,6 +2074,7 @@ requirement_coverage:
     - allocation_queue
     - officer_alerts
     - reports
+    - candidates
     scope: 'Verbatim Stage 1 ysp_session + MFA + Origin + X-XSRF-TOKEN, Cache-Control: no-store, strict PrintCsp + nosniff,
       uniform 404 anti-enumeration, current-authority WS re-evaluation, and zero public internal/CLI routes.'
   DOC-01:
@@ -2002,6 +2090,7 @@ requirement_coverage:
     - receiving_holds
     - receiving_operations
     - reports
+    - candidates
     scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
       recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
   DOC-02:
@@ -2047,6 +2136,7 @@ requirement_coverage:
     - receiving_holds
     - receiving_operations
     - reports
+    - candidates
     scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
       recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
   DOC-05:
@@ -2062,6 +2152,7 @@ requirement_coverage:
     - receiving_holds
     - receiving_operations
     - reports
+    - candidates
     scope: Stage 2 REPF/PO/DA/shared-RM references, immutable snapshots/histories, printable escaped HTML, exact action-key
       recovery, and atomic outcomes; Stage 3-4 financial/booth documents and binary exports later.
   DOC-06:
@@ -2268,6 +2359,15 @@ journeys:
     - stage2-06-report-procurement-print
     - stage2-06-report-control-json
     - stage2-06-report-control-print
+  candidate-pickers-v051:
+    fixture: Active chapter searchable pickers for officers (similar-name distinguishing context), requesting units (for_duty), ready paper evidence (uniform 404 denial), and active events
+    cases:
+    - stage2-07-candidates-officers-search
+    - stage2-07-candidates-officers-stale-cursor
+    - stage2-07-candidates-requesting-units-for-duty
+    - stage2-07-candidates-evidence-ready
+    - stage2-07-candidates-evidence-unauthorized-404
+    - stage2-07-candidates-events-active
 example_categories:
   setup_blocked:
   - stage2-01-missing-rop-target-setup-blocked
@@ -2310,6 +2410,7 @@ example_categories:
   - stage2-04-restriction-resolution-stale-version
   - stage2-04-restriction-resolution-key-conflict
   - stage2-06-allocation-queue-snapshot-stale
+  - stage2-07-candidates-officers-stale-cursor
   lost_response_recovery:
   - stage2-02-procurement-operation-recover-by-key
   - stage2-02-procurement-operation-read-by-id

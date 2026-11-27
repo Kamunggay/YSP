@@ -82,6 +82,7 @@ final class ChapterAuthority
         'reports.inventory.read' => ['INVENTORY', 'DISPATCH', 'PURCHASING', 'BUDGET_APPROVER', 'RECEIVING', 'FINANCE', 'CHAPTER_HEAD', 'INDEPENDENT_REVIEWER'],
         'reports.procurement.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'RECEIVING', 'FINANCE', 'CHAPTER_HEAD', 'INDEPENDENT_REVIEWER'],
         'reports.control.read' => ['INVENTORY', 'RECEIVING', 'BUDGET_APPROVER', 'FINANCE', 'CHAPTER_HEAD', 'INDEPENDENT_REVIEWER'],
+        'candidates.read' => self::DUTIES,
     ];
 
     private const QUOTATION_POLICY = ['purchasing_quotation_policy' => ['CHAPTER_HEAD', 'PurchasingQuotationPolicyValue']];

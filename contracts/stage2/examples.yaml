@@ -11358,6 +11358,161 @@ cases:
           code: duty_denied
           message: Current chapter duty does not allow reports.control.read.
 
+  - name: stage2-07-candidates-officers-search
+    operationId: listOfficerCandidates
+    before: Search active chapter officers matching 'Cruz' with COMMITTEE_REQUESTER duty for a unit, excluding current issuer; returns distinguishing public_id and unit scopes.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        q: Cruz
+        duty: COMMITTEE_REQUESTER
+        requesting_unit_id: 62000000-0000-4000-8000-000000000001
+        exclude_user_id: 10000000-0000-4000-8000-000000000002
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - user_id: 10000000-0000-4000-8000-000000000011
+            public_id: maria.cruz.logistics@ysp.invalid
+            display_name: Maria Cruz
+            duties:
+              - COMMITTEE_REQUESTER
+            unit_ids:
+              - 62000000-0000-4000-8000-000000000001
+            has_chapter_wide_scope: false
+          - user_id: 10000000-0000-4000-8000-000000000012
+            public_id: maria.cruz.youth@ysp.invalid
+            display_name: Maria Cruz
+            duties:
+              - COMMITTEE_REQUESTER
+            unit_ids: []
+            has_chapter_wide_scope: true
+        page:
+          next_cursor: null
+          snapshot_version: 14
+
+  - name: stage2-07-candidates-officers-stale-cursor
+    operationId: listOfficerCandidates
+    before: Five-minute snapshot cursor expired or underlying candidate authority changed; returns 409 snapshot_stale.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        cursor: synthetic-expired-officer-candidate-cursor
+        limit: 25
+    response:
+      status: '409'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000701
+        error:
+          code: snapshot_stale
+          message: Officer candidate snapshot cursor expired or underlying state changed; restart from page 1.
+
+  - name: stage2-07-candidates-requesting-units-for-duty
+    operationId: listRequestingUnitCandidates
+    before: Search active chapter organizational units eligible for the caller's COMMITTEE_REQUESTER duty; excludes ended and foreign units.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        q: Youth
+        for_duty: COMMITTEE_REQUESTER
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - unit_id: 62000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            code: YTH-OPS
+            name: Youth Operations Committee
+            active: true
+        page:
+          next_cursor: null
+          snapshot_version: 9
+
+  - name: stage2-07-candidates-evidence-ready
+    operationId: listEvidenceCandidates
+    before: Authorized officer with evidence.read and receiving.read lists ready current po_supplier_dr manifests for a chapter PO-RM.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        purpose: po_supplier_dr
+        record_id: 97000000-0000-4000-8000-000000000001
+        q: aaaa
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - evidence_id: 97400000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            target:
+              purpose: po_supplier_dr
+              record_id: 97000000-0000-4000-8000-000000000001
+            version_id: 97400000-0000-4000-8000-000000000002
+            version: 1
+            technical_state: ready
+            uploaded_by: 10000000-0000-4000-8000-000000000007
+            uploaded_by_name: Riza Receiving
+            uploaded_by_public_id: riza.receiving@ysp.invalid
+            uploaded_at: '2026-11-26T08:10:00.000000Z'
+            replacement_reason: null
+            attachments:
+              - attachment_id: 97400000-0000-4000-8000-000000000003
+                position: 1
+                media_type: application/pdf
+                byte_length: 12480
+                sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        page:
+          next_cursor: null
+          snapshot_version: 21
+
+  - name: stage2-07-candidates-evidence-unauthorized-404
+    operationId: listEvidenceCandidates
+    before: Caller with evidence.read queries an unknown, foreign-chapter, or unauthorized target; returns uniform 404 resource_not_found.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        purpose: da_acknowledgment
+        record_id: 92000000-0000-4000-8000-000000000999
+    response:
+      status: '404'
+      body:
+        request_id: 55000000-0000-4000-8000-000000000702
+        error:
+          code: resource_not_found
+          message: Resource not found.
+
+  - name: stage2-07-candidates-events-active
+    operationId: listEventCandidates
+    before: Search active chapter events matching 'Summit' for bounded donor-restriction pickers; excludes closed/canceled and foreign events.
+    request:
+      path:
+        chapter_id: 60000000-0000-4000-8000-000000000001
+      query:
+        q: Summit
+        status: active
+        limit: 25
+    response:
+      status: '200'
+      body:
+        data:
+          - event_id: 63000000-0000-4000-8000-000000000001
+            chapter_id: 60000000-0000-4000-8000-000000000001
+            code: EVT-2026-SUMMIT
+            name: Metro Youth Summit 2026
+            status: active
+            starts_at: '2026-12-01T00:00:00.000000Z'
+            ends_at: '2026-12-03T12:00:00.000000Z'
+        page:
+          next_cursor: null
+          snapshot_version: 17
+
 procedure_cases:
   - name: stage2-01-policy-purchasing-quotation-committed
     procedureId: recordPolicy

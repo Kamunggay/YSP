@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActualIssueController;
 use App\Http\Controllers\BrowserSessionController;
 use App\Http\Controllers\BuyerController;
+use App\Http\Controllers\CandidateListController;
 use App\Http\Controllers\CatalogueController;
 use App\Http\Controllers\ChapterAccessController;
 use App\Http\Controllers\HandoverController;
@@ -44,16 +45,20 @@ Route::prefix('v1/auth')->group(function () {
 Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads', 'stage-one.chapter')->group(function () {
     Route::get('/context', [ChapterAccessController::class, 'context']);
     Route::get('/access', [ChapterAccessController::class, 'access']);
+    Route::get('/candidates/officers', [CandidateListController::class, 'officers'])->middleware('stage-one.action:candidates.read');
+    Route::get('/candidates/requesting-units', [CandidateListController::class, 'requestingUnits'])->middleware('stage-one.action:candidates.read');
+    Route::get('/candidates/evidence', [CandidateListController::class, 'evidence'])->middleware('stage-one.action:evidence.read');
+    Route::get('/candidates/events', [CandidateListController::class, 'events'])->middleware('stage-one.action:candidates.read');
 });
 
-Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidence', 'stage-one.chapter')->group(function () {
-    Route::post('/evidence', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare');
-    Route::get('/evidence/{evidence_id}', [PaperEvidenceController::class, 'show'])->middleware('stage-one.action:evidence.read');
-    Route::get('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'versions'])->middleware('stage-one.action:evidence.read,history.read');
-    Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare')->name('paper-evidence.replace');
-    Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion'])->middleware('stage-one.action:evidence.read,history.read');
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidence', 'stage-one.chapter')->name('paper-evidence.')->group(function () {
+    Route::post('/evidence', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare')->name('upload');
+    Route::get('/evidence/{evidence_id}', [PaperEvidenceController::class, 'show'])->middleware('stage-one.action:evidence.read')->name('show');
+    Route::get('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'versions'])->middleware('stage-one.action:evidence.read,history.read')->name('versions');
+    Route::post('/evidence/{evidence_id}/versions', [PaperEvidenceController::class, 'upload'])->middleware('stage-one.action:evidence.prepare')->name('replace');
+    Route::get('/evidence/{evidence_id}/versions/{version_id}', [PaperEvidenceController::class, 'showVersion'])->middleware('stage-one.action:evidence.read,history.read')->name('show-version');
     Route::get('/evidence/{evidence_id}/versions/{version_id}/attachments/{attachment_id}/content', [PaperEvidenceController::class, 'retrieveAttachment'])
-        ->middleware('stage-one.action:'.implode(',', PaperEvidenceDownload::ACTIONS));
+        ->middleware('stage-one.action:'.implode(',', PaperEvidenceDownload::ACTIONS))->name('download');
 });
 
 Route::post('/v1/chapters/{chapter_id}/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeChapter'])
