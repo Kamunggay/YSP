@@ -183,13 +183,12 @@ def check_donation_evidence(check_value, case, receipt):
 
     check_value("#/components/schemas/" + material_schema, material, name + " signed material")
     # These closed projections use ASCII field names, integer numbers and string decimals.
-    canonical = json.dumps(material, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     snapshot = binding["snapshot"]
     if (
         material != expected
         or snapshot["target"]["record_id"] != expected["da_id"]
         or snapshot["material_version"] != expected["material_version"]
-        or snapshot["sha256"] != sha256(canonical.encode("utf-8")).hexdigest()
+        or snapshot["sha256"] != canonical_sha256(material)
         or binding["binding"] != request["evidence"]
         or binding["signed_at"] != request["signed_at"]
     ):
@@ -406,11 +405,37 @@ def canonical_sha256(obj):
     return sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def check_receiving_report_invariants(rm, label, check_value=None, case=None):
+def is_unrestricted(r):
+    return (
+        r["state"] == "unrestricted"
+        and not r["allowed_uses"]
+        and not r["event_ids"]
+        and not r["requesting_unit_ids"]
+        and r["effective_from"] is None
+        and r["effective_until"] is None
+        and r["interpretation_id"] is None
+        and r["source_condition_reference"] is None
+    )
+
+
+def check_receiving_movement_invariants(mov, label):
+    """Verify exact movement valuation, condition, allocatability, and PO restriction rules."""
+    expected_total = php_line_total(mov["quantity"], mov["unit_valuation_php"])
+    if Decimal(mov["total_value_php"]) != expected_total:
+        raise ValueError(f"{label}: movement total_value_php mismatch")
+    if mov["source_kind"] == "po_rm" and not is_unrestricted(mov["restrictions"]):
+        raise ValueError(f"{label}: po_rm movement must carry unrestricted BoundedRestriction")
+    expected_alloc = mov["condition"] == "usable" and mov["restrictions"]["state"] != "uninterpreted"
+    if mov["immediately_allocatable"] != expected_alloc:
+        raise ValueError(f"{label}: movement immediately_allocatable mismatch")
+
+
+def check_receiving_report_invariants(rm, label, check_value=None, case=None, posting=None):
     """Verify RCV-01..07 exact decimal conservation, PHP totals, restriction rules, and signed evidence hash."""
     zero = Decimal("0")
     total_php = Decimal("0.00")
     expected_purpose = "po_supplier_dr" if rm["source_kind"] == "po" else "da_receipt"
+    discrepant_lines = 0
     for idx, line in enumerate(rm["lines"]):
         line_label = f"{label}.lines[{idx}]"
         delivered = Decimal(line["delivered_quantity"])
@@ -423,24 +448,15 @@ def check_receiving_report_invariants(rm, label, check_value=None, case=None):
         if Decimal(line["accepted_value_php"]) != expected_val:
             raise ValueError(f"{line_label}: accepted_value_php mismatch")
         total_php += expected_val
-        if (damaged > zero or rejected > zero) and line["discrepancy_notes"] is None:
-            raise ValueError(f"{line_label}: damaged/rejected quantity requires discrepancy_notes")
+        if damaged > zero or rejected > zero:
+            discrepant_lines += 1
+            if line["discrepancy_notes"] is None:
+                raise ValueError(f"{line_label}: damaged/rejected quantity requires discrepancy_notes")
         if rm["source_kind"] == "po":
-            r = line["restrictions"]
-            if (
-                r["state"] != "unrestricted"
-                or r["allowed_uses"]
-                or r["event_ids"]
-                or r["requesting_unit_ids"]
-                or r["effective_from"] is not None
-                or r["effective_until"] is not None
-                or r["interpretation_id"] is not None
-                or r["source_condition_reference"] is not None
-            ):
+            if not is_unrestricted(line["restrictions"]):
                 raise ValueError(f"{line_label}: PO-RM line must carry unrestricted BoundedRestriction")
-        else:
-            if line["resolves_discrepancy_id"] is not None:
-                raise ValueError(f"{line_label}: DA-RM line cannot reference resolves_discrepancy_id")
+        elif line["resolves_discrepancy_id"] is not None:
+            raise ValueError(f"{line_label}: DA-RM line cannot reference resolves_discrepancy_id")
     if Decimal(rm["accepted_total_value_php"]) != total_php:
         raise ValueError(f"{label}: accepted_total_value_php does not equal sum of line accepted values")
     snap = rm["snapshot"]
@@ -455,11 +471,52 @@ def check_receiving_report_invariants(rm, label, check_value=None, case=None):
     if ack is not None:
         if snap is None or ack["snapshot"] != snap:
             raise ValueError(f"{label}: evidence_acknowledgment snapshot differs from RM snapshot")
-    if case is not None and "evidence_material" in case:
-        mat = case["evidence_material"]
-        check_value("#/components/schemas/ReceivingReportEvidenceMaterial", mat, label + " evidence_material")
-        if snap is None or snap["sha256"] != canonical_sha256(mat):
-            raise ValueError(f"{label}: RM snapshot sha256 does not match canonical ReceivingReportEvidenceMaterial")
+    if case is not None:
+        op = case["operationId"]
+        req_body = case.get("request", {}).get("body", {})
+        if op in {"inspectReceivingReport", "matchReceivingReportEvidence", "postReceivingReport"}:
+            if "evidence_material" not in case:
+                raise ValueError(f"{label}: {op} worked example must include evidence_material")
+            mat = case["evidence_material"]
+            check_value("#/components/schemas/ReceivingReportEvidenceMaterial", mat, label + " evidence_material")
+            expected_mat = {
+                "chapter_id": rm["chapter_id"],
+                "rm_id": rm["id"],
+                "material_version": rm["material_version"],
+                "source_kind": rm["source_kind"],
+                "source_id": rm["source_id"],
+                "source_reference": rm["source_reference"],
+                "source_material_version": rm["source_material_version"],
+                "supplier_dr_reference": rm["supplier_dr_reference"],
+                "supplier_dr_date": rm["supplier_dr_date"],
+                "location_id": rm["location_id"],
+                "accepted_total_value_php": rm["accepted_total_value_php"],
+                "inspector_id": rm["inspection"]["inspector"]["user_id"],
+                "technical_or_requesting_representative_id": (
+                    rm["inspection"]["technical_or_requesting_representative"]["user_id"]
+                    if rm["inspection"]["technical_or_requesting_representative"]
+                    else None
+                ),
+                "inspected_at": rm["inspection"]["inspected_at"],
+                "lines": rm["lines"],
+            }
+            if mat != expected_mat or snap is None or snap["sha256"] != canonical_sha256(mat):
+                raise ValueError(f"{label}: RM snapshot sha256 or material projection mismatch")
+        if op == "matchReceivingReportEvidence":
+            if (
+                ack is None
+                or ack["bytes"] != req_body["evidence"]
+                or ack["acknowledged_at"] != req_body["acknowledged_at"]
+                or snap["sha256"] != req_body["snapshot_sha256"]
+            ):
+                raise ValueError(f"{label}: evidence_acknowledgment does not match request evidence/acknowledged_at")
+        if op == "postReceivingReport":
+            if posting is None or posting["stock_version"] != rm["posting_stock_version"]:
+                raise ValueError(f"{label}: posting.stock_version does not match rm.posting_stock_version")
+            if len(posting["created_discrepancy_ids"]) != discrepant_lines:
+                raise ValueError(f"{label}: posting.created_discrepancy_ids count does not match discrepant lines")
+            if ack["acknowledgment_id"] != req_body["acknowledgment_id"]:
+                raise ValueError(f"{label}: postReceivingReport acknowledgment_id mismatch")
 
 
 def check_receiving_discrepancy_invariants(disc, label, check_value=None, case=None):
@@ -476,6 +533,8 @@ def check_receiving_discrepancy_invariants(disc, label, check_value=None, case=N
         raise ValueError(f"{label}: rejected_lot_id presence must match rejected_quantity > 0")
     if disc["quarantined_lots_auto_cleared_on_source_close"] is not False:
         raise ValueError(f"{label}: quarantined_lots_auto_cleared_on_source_close must be false")
+    if disc["source_kind"] == "da" and disc["supplier_notification"] is not None:
+        raise ValueError(f"{label}: DA discrepancy cannot have supplier_notification")
     res = disc["resolution"]
     if res is not None:
         po_kinds = {"supplier_replacement_received", "returned_to_supplier", "credit_or_short_closed"}
@@ -483,14 +542,33 @@ def check_receiving_discrepancy_invariants(disc, label, check_value=None, case=N
         valid_kinds = po_kinds if disc["source_kind"] == "po" else da_kinds
         if res["resolution_kind"] not in valid_kinds:
             raise ValueError(f"{label}: resolution_kind incompatible with source_kind {disc['source_kind']}")
-        snap = res["evidence_acknowledgment"]["snapshot"]
+        ack = res["evidence_acknowledgment"]
+        snap = ack["snapshot"]
         if snap["target"]["purpose"] != "receiving_discrepancy" or snap["target"]["record_id"] != disc["id"]:
             raise ValueError(f"{label}: resolution evidence target/purpose mismatch")
-        if case is not None and "evidence_material" in case:
-            mat = case["evidence_material"]
-            check_value("#/components/schemas/ReceivingDiscrepancyEvidenceMaterial", mat, label + " evidence_material")
-            if snap["sha256"] != canonical_sha256(mat):
-                raise ValueError(f"{label}: discrepancy resolution sha256 mismatch")
+        if case is not None and case["operationId"] == "resolveReceivingDiscrepancy":
+            req_body = case["request"]["body"]
+            if req_body["action"] == "resolve":
+                if "evidence_material" not in case:
+                    raise ValueError(f"{label}: resolveReceivingDiscrepancy(resolve) must include evidence_material")
+                mat = case["evidence_material"]
+                check_value("#/components/schemas/ReceivingDiscrepancyEvidenceMaterial", mat, label + " evidence_material")
+                expected_mat = {
+                    "chapter_id": disc["chapter_id"],
+                    "discrepancy_id": disc["id"],
+                    "material_version": req_body["expected_material_version"],
+                    "resolution_kind": res["resolution_kind"],
+                    "reason": res["reason"],
+                    "replacement_rm_id": res["replacement_rm_id"],
+                    "quarantined_lot_disposition": res["quarantined_lot_disposition"],
+                }
+                if (
+                    mat != expected_mat
+                    or snap["sha256"] != canonical_sha256(mat)
+                    or ack["bytes"] != req_body["evidence"]
+                    or ack["acknowledged_at"] != req_body["signed_at"]
+                ):
+                    raise ValueError(f"{label}: discrepancy resolution evidence/material mismatch")
 
 
 def check_receiving_hold_invariants(hold, label, check_value=None, case=None):
@@ -499,23 +577,40 @@ def check_receiving_hold_invariants(hold, label, check_value=None, case=None):
         raise ValueError(f"{label}: receiving hold violates zero-usable-stock or IPC prohibition")
     rej = hold["rejection_return"]
     if rej is not None:
-        snap = rej["evidence_acknowledgment"]["snapshot"]
+        ack = rej["evidence_acknowledgment"]
+        snap = ack["snapshot"]
         if snap["target"]["purpose"] != "missing_source_hold" or snap["target"]["record_id"] != hold["id"]:
             raise ValueError(f"{label}: hold rejection evidence target/purpose mismatch")
-        if case is not None and "evidence_material" in case:
+        if case is not None and case["operationId"] == "rejectReturnReceivingHold":
+            if "evidence_material" not in case:
+                raise ValueError(f"{label}: rejectReturnReceivingHold must include evidence_material")
+            req_body = case["request"]["body"]
             mat = case["evidence_material"]
             check_value("#/components/schemas/ReceivingHoldRejectionEvidenceMaterial", mat, label + " evidence_material")
-            if snap["sha256"] != canonical_sha256(mat):
-                raise ValueError(f"{label}: hold rejection sha256 mismatch")
+            expected_mat = {
+                "chapter_id": hold["chapter_id"],
+                "hold_id": hold["id"],
+                "material_version": req_body["expected_material_version"],
+                "reason": rej["reason"],
+                "recipient_or_carrier_name": rej["recipient_or_carrier_name"],
+            }
+            if (
+                mat != expected_mat
+                or snap["sha256"] != canonical_sha256(mat)
+                or ack["bytes"] != req_body["evidence"]
+                or ack["acknowledged_at"] != req_body["signed_at"]
+            ):
+                raise ValueError(f"{label}: hold rejection evidence/material mismatch")
 
 
 def check_prepare_receiving_invariants(inp, out, label):
-    """Verify Efren prepareReceivingInventory exact lot conservation, allocatability, and discrepancy seeds."""
+    """Verify Efren prepareReceivingInventory exact lot conservation, allocatability, movements, and source updates."""
     zero = Decimal("0")
     total_accepted = zero
     total_damaged = zero
     total_rejected = zero
     expected_discrepant_lines = 0
+    lines_by_source = {}
     for idx, ln in enumerate(inp["lines"]):
         d, a, dmg, rej = (
             Decimal(ln["delivered_quantity"]),
@@ -525,30 +620,65 @@ def check_prepare_receiving_invariants(inp, out, label):
         )
         if a + dmg + rej != d:
             raise ValueError(f"{label}.input.lines[{idx}]: delivered != accepted + damaged + rejected")
+        if inp["source_kind"] == "po_rm" and not is_unrestricted(ln["restrictions"]):
+            raise ValueError(f"{label}.input.lines[{idx}]: po_rm line must be unrestricted")
+        if inp["source_kind"] == "da_rm" and ln["resolves_discrepancy_id"] is not None:
+            raise ValueError(f"{label}.input.lines[{idx}]: da_rm line cannot set resolves_discrepancy_id")
         total_accepted += a
         total_damaged += dmg
         total_rejected += rej
         if dmg > zero or rej > zero:
             expected_discrepant_lines += 1
+        lines_by_source[ln["source_line_id"]] = (a, dmg + rej)
     if out["outcome"] != "ready":
         return
+    if out["stock_version"] <= inp["current_stock_version"]:
+        raise ValueError(f"{label}: output stock_version must exceed current_stock_version")
     usable_sum = sum((Decimal(lot["quantity"]) for lot in out["usable_lots"]), zero)
-    quar_sum = sum((Decimal(lot["quantity"]) for lot in out["quarantined_or_rejected_lots"]), zero)
+    quar_only_sum = sum((Decimal(lot["quantity"]) for lot in out["quarantined_or_rejected_lots"] if lot["condition"] == "quarantined"), zero)
+    rej_only_sum = sum((Decimal(lot["quantity"]) for lot in out["quarantined_or_rejected_lots"] if lot["condition"] == "rejected"), zero)
     if usable_sum != total_accepted:
         raise ValueError(f"{label}: usable_lots quantity sum does not equal accepted total")
-    if quar_sum != total_damaged + total_rejected:
-        raise ValueError(f"{label}: quarantined_or_rejected_lots sum does not equal damaged + rejected total")
+    if quar_only_sum != total_damaged:
+        raise ValueError(f"{label}: quarantined lots sum does not equal damaged total")
+    if rej_only_sum != total_rejected:
+        raise ValueError(f"{label}: rejected lots sum does not equal rejected total")
     for lot in out["usable_lots"]:
         if lot["condition"] != "usable" or lot["source_kind"] != inp["source_kind"]:
             raise ValueError(f"{label}: usable lot condition/source_kind mismatch")
         expected_alloc = lot["restrictions"]["state"] != "uninterpreted"
         if lot["immediately_allocatable"] != expected_alloc:
             raise ValueError(f"{label}: usable lot immediately_allocatable violates ADR 0004 / RCV-04")
+    quar_lot_ids = set()
+    rej_lot_ids = set()
     for lot in out["quarantined_or_rejected_lots"]:
-        if lot["condition"] not in {"quarantined", "rejected"} or lot["immediately_allocatable"] is not False:
+        if lot["condition"] == "quarantined":
+            quar_lot_ids.add(lot["lot_id"])
+        elif lot["condition"] == "rejected":
+            rej_lot_ids.add(lot["lot_id"])
+        else:
+            raise ValueError(f"{label}: unexpected condition in quarantined_or_rejected_lots")
+        if lot["immediately_allocatable"] is not False:
             raise ValueError(f"{label}: quarantined/rejected lot must be non-allocatable")
+    for idx, mov in enumerate(out["movements"]):
+        check_receiving_movement_invariants(mov, f"{label}.movements[{idx}]")
     if len(out["created_discrepancies"]) != expected_discrepant_lines:
         raise ValueError(f"{label}: created_discrepancies count mismatch")
+    for idx, seed in enumerate(out["created_discrepancies"]):
+        dmg, rej, tot = Decimal(seed["damaged_quantity"]), Decimal(seed["rejected_quantity"]), Decimal(seed["total_discrepant_quantity"])
+        if dmg + rej != tot:
+            raise ValueError(f"{label}.created_discrepancies[{idx}]: damaged + rejected != total")
+        if (dmg > zero) != (seed["quarantined_lot_id"] is not None) or (seed["quarantined_lot_id"] and seed["quarantined_lot_id"] not in quar_lot_ids):
+            raise ValueError(f"{label}.created_discrepancies[{idx}]: quarantined_lot_id mismatch")
+        if (rej > zero) != (seed["rejected_lot_id"] is not None) or (seed["rejected_lot_id"] and seed["rejected_lot_id"] not in rej_lot_ids):
+            raise ValueError(f"{label}.created_discrepancies[{idx}]: rejected_lot_id mismatch")
+    valid_statuses = {"issued", "partially_received", "receiving_complete"} if inp["source_kind"] == "po_rm" else {"acknowledged", "partially_received", "received"}
+    for idx, upd in enumerate(out["source_line_updates"]):
+        if upd["new_source_status"] not in valid_statuses:
+            raise ValueError(f"{label}.source_line_updates[{idx}]: new_source_status incompatible with {inp['source_kind']}")
+        exp_a, exp_disc = lines_by_source.get(upd["source_line_id"], (None, None))
+        if exp_a is None or Decimal(upd["accepted_delta"]) != exp_a or Decimal(upd["rejected_or_disputed_delta"]) != exp_disc:
+            raise ValueError(f"{label}.source_line_updates[{idx}]: delta mismatch against input lines")
 
 
 def main():
@@ -816,6 +946,9 @@ def main():
                 elif case["operationId"] == "listReceivingReports":
                     for idx, rm in enumerate(body_data):
                         check_receiving_report_invariants(rm, f"{name}[{idx}]")
+                elif case["operationId"] == "listReceivingReportMovements":
+                    for idx, mov in enumerate(body_data):
+                        check_receiving_movement_invariants(mov, f"{name}[{idx}]")
                 elif case["operationId"] == "readReceivingDiscrepancy":
                     check_receiving_discrepancy_invariants(body_data, name, check_value, case)
                 elif case["operationId"] in {"listReceivingDiscrepancies", "listReceivingReportDiscrepancies"}:
@@ -830,7 +963,7 @@ def main():
                     if isinstance(body_data, dict):
                         rk = body_data.get("resource_kind")
                         if rk == "receiving_report":
-                            check_receiving_report_invariants(body_data["result"], name, check_value, case)
+                            check_receiving_report_invariants(body_data["result"], name, check_value, case, body_data.get("posting"))
                         elif rk == "receiving_discrepancy":
                             check_receiving_discrepancy_invariants(body_data["result"], name, check_value, case)
                         elif rk == "receiving_hold":
@@ -921,11 +1054,16 @@ def main():
                 check_value(header_pointer + "/schema", value, name + " response header")
         if status == "422" and "requestBody" in operation:
             _, schema = dereference(request_schema)
+            allowed_props = set(schema.get("properties", {}))
+            for branch_key in ("oneOf", "anyOf", "allOf"):
+                for branch in schema.get(branch_key, []):
+                    resolved = dereference(branch["$ref"])[1] if "$ref" in branch else branch
+                    allowed_props.update(resolved.get("properties", {}))
             for field in response["body"]["error"]["fields"]:
                 field_pointer = field["pointer"]
                 if field_pointer and field["code"] != "unexpected_field":
                     key = field_pointer.split("/")[1].replace("~1", "/").replace("~0", "~")
-                    if key not in schema.get("properties", {}):
+                    if key not in allowed_props:
                         raise ValueError(f"{name}: feedback points outside operation body")
 
     if covered != operations.keys():

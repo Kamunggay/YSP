@@ -3175,8 +3175,7 @@ paths:
       summary: Record receiving inspection and freeze canonical snapshot material
       description: >-
         Transitions a Receiving Report from draft to inspected. Records inspector
-        (current actor with receiving.inspect, independent of PO preparer/approver
-        for PO-RM per GOV-05..07), optional technical or requesting-unit
+        (current actor with receiving.inspect), optional technical or requesting-unit
         representative, inspection timestamp, inspection notes, and verified exact-scale
         line counts (delivered == accepted + damaged + rejected), unit valuations, and
         discrepancy notes. Computes and persists the canonical EvidenceSnapshot
@@ -3911,8 +3910,9 @@ paths:
       summary: Advance a receiving discrepancy to under_review or record evidence-backed resolution
       description: >-
         Advances an open or supplier_notified discrepancy to under_review
-        (action: start_review) or resolves an open, supplier_notified, or
-        under_review discrepancy to resolved (action: resolve). Final resolution
+        (action: start_review) or resolves a supplier_notified or under_review
+        discrepancy to resolved (action: resolve), preserving the explicit state
+        flow open -> supplier_notified | under_review -> resolved. Final resolution
         requires resolution_kind (supplier_replacement_received, returned_to_supplier,
         or credit_or_short_closed for source_kind po; donated_declined_or_disposed
         for source_kind da), mandatory reason, quarantined_lot_disposition, and exact
@@ -10397,6 +10397,13 @@ components:
         - returned_to_supplier
         - credit_or_short_closed
         - donated_declined_or_disposed
+    QuarantinedLotDisposition:
+      type: string
+      enum:
+        - retained_in_quarantine
+        - returned_to_supplier_physically
+        - disposed_per_policy
+      description: Physical disposition of quarantined/rejected lots; never silently converts quarantined units into usable stock (RCV-06, INV-14).
     ReceivingHoldStatus:
       type: string
       enum:
@@ -11045,6 +11052,20 @@ components:
           maxItems: 100
           items:
             $ref: '#/components/schemas/ReceivingReportLineInput'
+      allOf:
+        - if:
+            properties:
+              supplier_dr_reference:
+                type: 'null'
+          then:
+            properties:
+              supplier_dr_date:
+                type: 'null'
+          else:
+            properties:
+              supplier_dr_date:
+                type: string
+                format: date
     InspectReceivingReportRequest:
       type: object
       additionalProperties: false
@@ -11267,6 +11288,31 @@ components:
             properties:
               posting:
                 $ref: '#/components/schemas/ReceivingPostingSummary'
+            allOf:
+              - if:
+                  properties:
+                    result:
+                      properties:
+                        source_kind:
+                          const: po
+                then:
+                  properties:
+                    posting:
+                      properties:
+                        source_status_after:
+                          enum:
+                            - issued
+                            - partially_received
+                            - receiving_complete
+                else:
+                  properties:
+                    posting:
+                      properties:
+                        source_status_after:
+                          enum:
+                            - acknowledged
+                            - partially_received
+                            - received
           else:
             properties:
               posting:
@@ -11411,6 +11457,40 @@ components:
                 const: rejected
               immediately_allocatable:
                 const: false
+        - if:
+            properties:
+              restrictions:
+                properties:
+                  state:
+                    const: uninterpreted
+          then:
+            properties:
+              immediately_allocatable:
+                const: false
+        - if:
+            properties:
+              source_kind:
+                const: po_rm
+          then:
+            properties:
+              restrictions:
+                properties:
+                  state:
+                    const: unrestricted
+                  allowed_uses:
+                    const: []
+                  event_ids:
+                    const: []
+                  requesting_unit_ids:
+                    const: []
+                  effective_from:
+                    type: 'null'
+                  effective_until:
+                    type: 'null'
+                  interpretation_id:
+                    type: 'null'
+                  source_condition_reference:
+                    type: 'null'
     ReceivingMovementList:
       type: object
       additionalProperties: false
@@ -11622,12 +11702,7 @@ components:
               pattern: '\S'
             - type: 'null'
         quarantined_lot_disposition:
-          type: string
-          enum:
-            - retained_in_quarantine
-            - returned_to_supplier_physically
-            - disposed_per_policy
-          description: Physical disposition of quarantined/rejected lots; never silently converts quarantined units into usable stock (RCV-06, INV-14).
+          $ref: '#/components/schemas/QuarantinedLotDisposition'
         evidence_acknowledgment:
           $ref: '#/components/schemas/EvidenceMatchAcknowledgment'
       allOf:
@@ -11682,11 +11757,20 @@ components:
             - $ref: '#/components/schemas/Uuid'
             - type: 'null'
         quarantined_lot_disposition:
-          type: string
-          enum:
-            - retained_in_quarantine
-            - returned_to_supplier_physically
-            - disposed_per_policy
+          $ref: '#/components/schemas/QuarantinedLotDisposition'
+      allOf:
+        - if:
+            properties:
+              resolution_kind:
+                const: supplier_replacement_received
+          then:
+            properties:
+              replacement_rm_id:
+                $ref: '#/components/schemas/Uuid'
+          else:
+            properties:
+              replacement_rm_id:
+                type: 'null'
     ReceivingDiscrepancy:
       type: object
       additionalProperties: false
@@ -11813,6 +11897,21 @@ components:
         updated_at:
           $ref: '#/components/schemas/UtcInstant'
       allOf:
+        - anyOf:
+            - properties:
+                quarantined_lot_id:
+                  $ref: '#/components/schemas/Uuid'
+            - properties:
+                rejected_lot_id:
+                  $ref: '#/components/schemas/Uuid'
+        - if:
+            properties:
+              source_kind:
+                const: da
+          then:
+            properties:
+              supplier_notification:
+                type: 'null'
         - if:
             properties:
               status:
@@ -11839,6 +11938,12 @@ components:
                 const: po
               supplier_notification:
                 $ref: '#/components/schemas/DiscrepancySupplierNotification'
+              review_started_by:
+                type: 'null'
+              review_started_at:
+                type: 'null'
+              review_notes:
+                type: 'null'
               resolution:
                 type: 'null'
         - if:
@@ -11866,6 +11971,26 @@ components:
             properties:
               resolution:
                 $ref: '#/components/schemas/ReceivingDiscrepancyResolution'
+            allOf:
+              - if:
+                  properties:
+                    source_kind:
+                      const: po
+                then:
+                  properties:
+                    resolution:
+                      properties:
+                        resolution_kind:
+                          enum:
+                            - supplier_replacement_received
+                            - returned_to_supplier
+                            - credit_or_short_closed
+                else:
+                  properties:
+                    resolution:
+                      properties:
+                        resolution_kind:
+                          const: donated_declined_or_disposed
     ReceivingDiscrepancyResult:
       type: object
       additionalProperties: false
@@ -11981,11 +12106,7 @@ components:
                 - $ref: '#/components/schemas/Uuid'
                 - type: 'null'
             quarantined_lot_disposition:
-              type: string
-              enum:
-                - retained_in_quarantine
-                - returned_to_supplier_physically
-                - disposed_per_policy
+              $ref: '#/components/schemas/QuarantinedLotDisposition'
             evidence:
               $ref: '#/components/schemas/EvidenceByteBinding'
             signed_at:
@@ -13089,6 +13210,51 @@ components:
         immediately_allocatable:
           type: boolean
           description: True for usable stockroom lots whose restrictions.state is unrestricted or bounded (RCV-04, INV-09); false for quarantined/rejected lots (INV-14) and ADR 0004 uninterpreted DA lots.
+      allOf:
+        - if:
+            properties:
+              condition:
+                enum:
+                  - quarantined
+                  - rejected
+          then:
+            properties:
+              immediately_allocatable:
+                const: false
+        - if:
+            properties:
+              restrictions:
+                properties:
+                  state:
+                    const: uninterpreted
+          then:
+            properties:
+              immediately_allocatable:
+                const: false
+        - if:
+            properties:
+              source_kind:
+                const: po_rm
+          then:
+            properties:
+              restrictions:
+                properties:
+                  state:
+                    const: unrestricted
+                  allowed_uses:
+                    const: []
+                  event_ids:
+                    const: []
+                  requesting_unit_ids:
+                    const: []
+                  effective_from:
+                    type: 'null'
+                  effective_until:
+                    type: 'null'
+                  interpretation_id:
+                    type: 'null'
+                  source_condition_reference:
+                    type: 'null'
     ReceivingDiscrepancySeed:
       type: object
       additionalProperties: false
@@ -13128,6 +13294,14 @@ components:
           oneOf:
             - $ref: '#/components/schemas/Uuid'
             - type: 'null'
+      allOf:
+        - anyOf:
+            - properties:
+                quarantined_lot_id:
+                  $ref: '#/components/schemas/Uuid'
+            - properties:
+                rejected_lot_id:
+                  $ref: '#/components/schemas/Uuid'
     ReceivingSourceLineUpdate:
       type: object
       additionalProperties: false
@@ -13651,9 +13825,7 @@ components:
     ReceivingAccessDenied:
       description: >-
         origin_denied for missing/foreign Origin, mfa_incomplete for limited session,
-        duty_denied for insufficient receiving/discrepancy/hold duty, or
-        independence_required when a PO-RM inspector/poster is the PO preparer or
-        approver (GOV-05..07).
+        or duty_denied for insufficient receiving/discrepancy/hold duty.
       headers:
         Cache-Control:
           $ref: '#/components/headers/NoStore'
@@ -13670,7 +13842,6 @@ components:
                           - origin_denied
                           - mfa_incomplete
                           - duty_denied
-                          - independence_required
     ReceivingReportConflict:
       description: >-
         Uncommitted Receiving Report conflict: version_conflict, action_key_conflict,
@@ -14226,7 +14397,6 @@ x-stage2-discrepancy-transitions:
   resolveReceivingDiscrepancy:
     open:
       - under_review
-      - resolved
     supplier_notified:
       - under_review
       - resolved

@@ -7196,6 +7196,44 @@ cases:
     before_status: draft
     before: 'Receiving officer + technical rep inspect PO-RM: delivered 50 == 40 accepted + 0 damaged + 10 rejected; freezes
       canonical snapshot.'
+    evidence_material:
+      chapter_id: 60000000-0000-4000-8000-000000000001
+      rm_id: 97000000-0000-4000-8000-000000000001
+      material_version: 1
+      source_kind: po
+      source_id: 96000000-0000-4000-8000-000000000101
+      source_reference: PO-2026-0001
+      source_material_version: 2
+      supplier_dr_reference: DR-SUP-2026-881
+      supplier_dr_date: '2026-11-26'
+      location_id: 61000000-0000-4000-8000-000000000001
+      accepted_total_value_php: '9600.00'
+      inspector_id: 10000000-0000-4000-8000-000000000007
+      technical_or_requesting_representative_id: 10000000-0000-4000-8000-000000000008
+      inspected_at: '2026-11-26T08:15:00.000000Z'
+      lines:
+      - id: 97000000-0000-4000-8000-000000000011
+        source_line_id: 96000000-0000-4000-8000-000000000102
+        variant_id: 95000000-0000-4000-8000-000000000051
+        unit_id: 95000000-0000-4000-8000-000000000052
+        quantity_scale: 0
+        delivered_quantity: '50'
+        accepted_quantity: '40'
+        damaged_quantity: '0'
+        rejected_quantity: '10'
+        unit_valuation_php: '240.00'
+        accepted_value_php: '9600.00'
+        restrictions:
+          state: unrestricted
+          allowed_uses: []
+          event_ids: []
+          requesting_unit_ids: []
+          effective_from: null
+          effective_until: null
+          interpretation_id: null
+          source_condition_reference: null
+        discrepancy_notes: 10 shirts rejected for misaligned chapter emblem print.
+        resolves_discrepancy_id: null
     request:
       path:
         chapter_id: 60000000-0000-4000-8000-000000000001
@@ -9374,7 +9412,7 @@ cases:
             updated_at: '2026-11-27T09:30:00.000000Z'
   - name: stage2-05-discrepancy-resolve-da-disposed
     operationId: resolveReceivingDiscrepancy
-    before_status: open
+    before_status: under_review
     evidence_material:
       chapter_id: 60000000-0000-4000-8000-000000000001
       discrepancy_id: 97100000-0000-4000-8000-000000000002
@@ -9391,7 +9429,7 @@ cases:
         X-Action-Key: 40000000-0000-4000-8000-000000000511
       body:
         action: resolve
-        expected_version: 1
+        expected_version: 2
         expected_material_version: 1
         resolution_kind: donated_declined_or_disposed
         reason: 2 water-stained donated shirts disposed per chapter sanitation policy with witness sign-off.
@@ -9415,7 +9453,7 @@ cases:
           action_key: 40000000-0000-4000-8000-000000000511
           resource_kind: receiving_discrepancy
           resource_id: 97100000-0000-4000-8000-000000000002
-          committed_version: 2
+          committed_version: 3
           committed_material_version: 2
           status_code: 200
           committed_at: '2026-11-27T11:00:00.000000Z'
@@ -9424,7 +9462,7 @@ cases:
             id: 97100000-0000-4000-8000-000000000002
             chapter_id: 60000000-0000-4000-8000-000000000001
             status: resolved
-            version: 2
+            version: 3
             material_version: 2
             source_kind: da
             source_id: 80000000-0000-4000-8000-000000000004
@@ -9444,9 +9482,11 @@ cases:
             quarantined_lots_auto_cleared_on_source_close: false
             discrepancy_notes: 2 donated shirts water-stained during transit; placed in quarantine.
             supplier_notification: null
-            review_started_by: null
-            review_started_at: null
-            review_notes: null
+            review_started_by:
+              user_id: 10000000-0000-4000-8000-000000000007
+              display_name: Elena Receiving
+            review_started_at: '2026-11-27T10:40:00.000000Z'
+            review_notes: Confirmed water damage beyond restoration; queued for policy-approved sanitation disposal.
             resolution:
               resolution_kind: donated_declined_or_disposed
               resolved_by:
