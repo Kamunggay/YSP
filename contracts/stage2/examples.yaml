@@ -10693,7 +10693,7 @@ cases:
             severity: warning
             record_kind: purchase_order
             record_id: 94000000-0000-4000-8000-000000000001
-            record_reference: PO-DRAFT-0001
+            record_reference: null
             responsible_duty: BUDGET_APPROVER
             summary: Purchase Order draft for PHP 24000.00 is awaiting approval and PO reference issuance.
             target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/purchase-orders/94000000-0000-4000-8000-000000000001
@@ -10703,7 +10703,7 @@ cases:
             severity: info
             record_kind: donation
             record_id: 92000000-0000-4000-8000-000000000001
-            record_reference: DA-DRAFT-0001
+            record_reference: null
             responsible_duty: CHAPTER_HEAD
             summary: Submitted in-kind Donation Acknowledgment is awaiting signed acknowledgment.
             target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/donations/92000000-0000-4000-8000-000000000001
@@ -10733,7 +10733,7 @@ cases:
             severity: warning
             record_kind: receiving_hold
             record_id: 97200000-0000-4000-8000-000000000001
-            record_reference: HOLD-2026-0001
+            record_reference: null
             responsible_duty: RECEIVING
             summary: Undocumented delivery held outside usable stock awaiting PO/DA linkage or refusal.
             target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/receiving-holds/97200000-0000-4000-8000-000000000001
@@ -10785,7 +10785,7 @@ cases:
             severity: warning
             record_kind: receiving_hold
             record_id: 97200000-0000-4000-8000-000000000001
-            record_reference: HOLD-2026-0001
+            record_reference: null
             responsible_duty: RECEIVING
             summary: Undocumented delivery held outside usable stock awaiting PO/DA linkage or refusal.
             target_route_hint: /api/v1/chapters/60000000-0000-4000-8000-000000000001/receiving-holds/97200000-0000-4000-8000-000000000001
@@ -10866,7 +10866,7 @@ cases:
           so_reserved: SO-reserved
           booth_custody: Booth custody
           quarantined_rejected: Quarantined/rejected
-          inbound_open_po: Inbound / open PO
+          inbound_open_po: Inbound open PO
           views_are_additive: false
         data:
           - item_id: 95000000-0000-4000-8000-000000000050
@@ -10994,7 +10994,7 @@ cases:
         Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action
           'none'
         X-Content-Type-Options: nosniff
-      body: '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Inventory Report - YSP Metro Chapter</title></head><body><h1>Stage 2 Inventory Report (RPT-03)</h1><p>Chapter: YSP Metro Chapter | Period: 2026-11-01 to 2026-11-27 | Currency: PHP | Generated: 2026-11-27T10:10:00.000000Z</p><p>Stock categories are non-additive: Usable stockroom on-hand 40 PCS (Available-to-allocate 30 PCS, RF-reserved 10 PCS), Blocked uninterpreted 10 PCS, Quarantined/rejected 10 PCS, Inbound / open PO 60 PCS | Total Usable Valuation: PHP 12000.00</p></body></html>'
+      body: '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Inventory Report - YSP Metro Chapter</title></head><body><h1>Stage 2 Inventory Report (RPT-03)</h1><p>Chapter: YSP Metro Chapter | Period: 2026-11-01 to 2026-11-27 | Currency: PHP | Generated: 2026-11-27T10:10:00.000000Z</p><p>Stock categories are non-additive: Usable stockroom on-hand 40 PCS (Available-to-allocate 30 PCS, RF-reserved 10 PCS), Blocked uninterpreted 10 PCS, Quarantined/rejected 10 PCS, Inbound open PO 60 PCS | Total Usable Valuation: PHP 12000.00</p></body></html>'
 
   - name: stage2-06-report-inventory-invalid-selector
     operationId: readInventoryReport
@@ -11090,7 +11090,9 @@ cases:
           - repf_id: 90000000-0000-4000-8000-000000000010
             repf_reference: REPF-2026-0001
             status: ordered
-            trigger_kind: rf_shortage
+            trigger_kinds:
+              - rf_shortage
+              - rop_replenishment
             urgency: urgent
             linked_demand_canceled: false
             requested_total_php: '24000.00'
@@ -11100,6 +11102,7 @@ cases:
             supplier_selected: true
         purchase_order_summary:
           - po_id: 94000000-0000-4000-8000-000000000001
+            po_line_id: 94000000-0000-4000-8000-000000000101
             po_reference: PO-2026-0001
             repf_id: 90000000-0000-4000-8000-000000000010
             status: partially_received
@@ -11271,6 +11274,19 @@ cases:
               display_name: Chapter Head
             resolved_at: '2026-11-26T14:00:00.000000Z'
             reason: Donor signed clarification restricting 15 shirts to Event 0001 internal volunteers.
+          - resolution_id: 92500000-0000-4000-8000-000000000002
+            da_id: 92000000-0000-4000-8000-000000000001
+            da_reference: DA-2026-0001
+            da_line_id: 92000000-0000-4000-8000-000000000012
+            previous_state: uninterpreted
+            resolved_state: uninterpreted
+            affected_lot_count: 1
+            evidence_id: 92400000-0000-4000-8000-000000000012
+            actor:
+              user_id: 10000000-0000-4000-8000-000000000001
+              display_name: Chapter Head
+            resolved_at: '2026-11-26T15:00:00.000000Z'
+            reason: Audit review recorded; remaining 10 shirts stay uninterpreted and blocked per ADR 0004 pending written donor amendment.
         overdue_exceptions:
           - exception_kind: overdue_receiving_discrepancy
             record_id: 97100000-0000-4000-8000-000000000001
@@ -11295,7 +11311,7 @@ cases:
         totals:
           donation_row_count: 2
           uninterpreted_donation_count: 1
-          resolution_count: 1
+          resolution_count: 2
           overdue_exception_count: 1
           audit_entry_count: 1
           total_declared_donation_value_php: '6000.00'

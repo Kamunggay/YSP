@@ -4579,7 +4579,7 @@ paths:
         - $ref: '#/components/parameters/ReportDateTo'
         - $ref: '#/components/parameters/ReplenishmentItemFilter'
         - $ref: '#/components/parameters/ReplenishmentVariantFilter'
-        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ReportLocationFilter'
         - $ref: '#/components/parameters/InventoryReportStatusFilter'
         - $ref: '#/components/parameters/PageLimit'
         - $ref: '#/components/parameters/SnapshotCursor'
@@ -4637,7 +4637,7 @@ paths:
         - $ref: '#/components/parameters/ReportDateTo'
         - $ref: '#/components/parameters/ReplenishmentItemFilter'
         - $ref: '#/components/parameters/ReplenishmentVariantFilter'
-        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ReportLocationFilter'
         - $ref: '#/components/parameters/InventoryReportStatusFilter'
       responses:
         '200':
@@ -4699,7 +4699,7 @@ paths:
         - $ref: '#/components/parameters/ReportDateTo'
         - $ref: '#/components/parameters/ReplenishmentItemFilter'
         - $ref: '#/components/parameters/ReplenishmentVariantFilter'
-        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ReportLocationFilter'
         - $ref: '#/components/parameters/ProcurementReportStatusFilter'
         - $ref: '#/components/parameters/PageLimit'
         - $ref: '#/components/parameters/SnapshotCursor'
@@ -4756,7 +4756,7 @@ paths:
         - $ref: '#/components/parameters/ReportDateTo'
         - $ref: '#/components/parameters/ReplenishmentItemFilter'
         - $ref: '#/components/parameters/ReplenishmentVariantFilter'
-        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ReportLocationFilter'
         - $ref: '#/components/parameters/ProcurementReportStatusFilter'
       responses:
         '200':
@@ -4819,7 +4819,7 @@ paths:
         - $ref: '#/components/parameters/ReportDateTo'
         - $ref: '#/components/parameters/ReplenishmentItemFilter'
         - $ref: '#/components/parameters/ReplenishmentVariantFilter'
-        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ReportLocationFilter'
         - $ref: '#/components/parameters/ControlReportStatusFilter'
         - $ref: '#/components/parameters/PageLimit'
         - $ref: '#/components/parameters/SnapshotCursor'
@@ -4877,7 +4877,7 @@ paths:
         - $ref: '#/components/parameters/ReportDateTo'
         - $ref: '#/components/parameters/ReplenishmentItemFilter'
         - $ref: '#/components/parameters/ReplenishmentVariantFilter'
-        - $ref: '#/components/parameters/ReceivingLocationFilter'
+        - $ref: '#/components/parameters/ReportLocationFilter'
         - $ref: '#/components/parameters/ControlReportStatusFilter'
       responses:
         '200':
@@ -5393,6 +5393,13 @@ components:
       schema:
         $ref: '#/components/schemas/IsoDate'
       example: '2026-11-27'
+    ReportLocationFilter:
+      in: query
+      name: location_id
+      required: false
+      description: Optional chapter-owned location UUID filter for report queries; unknown or foreign location yields uniform 404 resource_not_found.
+      schema:
+        $ref: '#/components/schemas/Uuid'
     InventoryReportStatusFilter:
       in: query
       name: status
@@ -14293,10 +14300,13 @@ components:
         record_id:
           $ref: '#/components/schemas/Uuid'
         record_reference:
-          type: string
-          minLength: 1
-          maxLength: 80
-          pattern: '\S'
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
+          description: Allocated human document reference or variant code; null for unnumbered drafts or missing-source holds.
         responsible_duty:
           $ref: '#/components/schemas/Duty'
         summary:
@@ -14435,10 +14445,20 @@ components:
         caller_matched_duties:
           type: array
           minItems: 1
-          maxItems: 14
+          maxItems: 9
           uniqueItems: true
           items:
-            $ref: '#/components/schemas/Duty'
+            type: string
+            enum:
+              - INVENTORY
+              - DISPATCH
+              - PURCHASING
+              - BUDGET_APPROVER
+              - RECEIVING
+              - RF_APPROVER
+              - FINANCE
+              - CHAPTER_HEAD
+              - INDEPENDENT_REVIEWER
         persisted_ack_supported:
           const: false
         observed_at:
@@ -14571,7 +14591,7 @@ components:
         quarantined_rejected:
           const: Quarantined/rejected
         inbound_open_po:
-          const: Inbound / open PO
+          const: Inbound open PO
         views_are_additive:
           const: false
     InventoryReportRow:
@@ -14727,6 +14747,8 @@ components:
                   - blocked_uninterpreted
                   - held
                   - quarantined_or_rejected
+              available_to_allocate:
+                pattern: '^0(\.0+)?$'
         - if:
             properties:
               condition:
@@ -14737,6 +14759,10 @@ components:
             properties:
               eligibility_status:
                 const: quarantined_or_rejected
+              usable_stockroom_on_hand:
+                pattern: '^0(\.0+)?$'
+              available_to_allocate:
+                pattern: '^0(\.0+)?$'
     InventoryReportTotals:
       type: object
       additionalProperties: false
@@ -14878,7 +14904,7 @@ components:
         - repf_id
         - repf_reference
         - status
-        - trigger_kind
+        - trigger_kinds
         - urgency
         - linked_demand_canceled
         - requested_total_php
@@ -14898,8 +14924,13 @@ components:
             - type: 'null'
         status:
           $ref: '#/components/schemas/RepfStatus'
-        trigger_kind:
-          $ref: '#/components/schemas/RepfTriggerKind'
+        trigger_kinds:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/RepfTriggerKind'
         urgency:
           $ref: '#/components/schemas/RepfUrgency'
         linked_demand_canceled:
@@ -14925,6 +14956,7 @@ components:
       additionalProperties: false
       required:
         - po_id
+        - po_line_id
         - po_reference
         - repf_id
         - status
@@ -14946,6 +14978,8 @@ components:
         - resolved_discrepancy_count
       properties:
         po_id:
+          $ref: '#/components/schemas/Uuid'
+        po_line_id:
           $ref: '#/components/schemas/Uuid'
         po_reference:
           anyOf:
@@ -15187,6 +15221,8 @@ components:
           enum:
             - unrestricted
             - bounded
+            - uninterpreted
+          description: Includes uninterpreted for ADR 0004 audit_review records when a donor condition remains inexpressible.
         affected_lot_count:
           type: integer
           minimum: 0
@@ -15228,10 +15264,12 @@ components:
         record_id:
           $ref: '#/components/schemas/Uuid'
         record_reference:
-          type: string
-          minLength: 1
-          maxLength: 80
-          pattern: '\S'
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
         location_id:
           anyOf:
             - $ref: '#/components/schemas/Uuid'
@@ -15282,10 +15320,12 @@ components:
         record_id:
           $ref: '#/components/schemas/Uuid'
         record_reference:
-          type: string
-          minLength: 1
-          maxLength: 80
-          pattern: '\S'
+          anyOf:
+            - type: string
+              minLength: 1
+              maxLength: 80
+              pattern: '\S'
+            - type: 'null'
         action:
           type: string
           minLength: 1
@@ -16532,8 +16572,8 @@ x-stage1-compatibility:
       - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/release
       - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/reservations/{reservation_id}/reallocate
       - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/actual-issues
-      - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/actual-issues/{issue_id}/acknowledgments
-      - POST /api/v1/chapters/{chapter_id}/internal-rfs/{rf_id}/actual-issues/{issue_id}/post
+      - POST /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/acknowledgments
+      - POST /api/v1/chapters/{chapter_id}/actual-issues/{issue_id}/post
     allocation_queue_owner: Glenn
     actual_issue_owner: Efren
     receiving_orchestrator: Leader

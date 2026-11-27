@@ -2,6 +2,7 @@
 
 import argparse
 import json
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from hashlib import sha256
 from importlib.metadata import version
@@ -743,10 +744,12 @@ def check_allocation_queue_invariants(body, label):
         prev_key = order_key
 
 
-def check_officer_alerts_invariants(body, label):
+def check_officer_alerts_invariants(body, label, alerts_read_duties):
     if body["persisted_ack_supported"] is not False:
         raise ValueError(f"{label}: persisted_ack_supported must be false")
     allowed_duties = set(body["caller_matched_duties"])
+    if not allowed_duties <= set(alerts_read_duties):
+        raise ValueError(f"{label}: caller_matched_duties contains duty outside alerts.read")
     seen_keys = set()
     for idx, alert in enumerate(body["data"]):
         if alert["responsible_duty"] not in allowed_duties:
@@ -761,8 +764,12 @@ def check_officer_alerts_invariants(body, label):
 
 def check_report_date_range(metadata, label):
     f = metadata["filters"]
-    if f["date_from"] > f["date_to"]:
+    start = date.fromisoformat(f["date_from"])
+    end = date.fromisoformat(f["date_to"])
+    if start > end:
         raise ValueError(f"{label}: report date_from must be <= date_to")
+    if (end - start).days > 366:
+        raise ValueError(f"{label}: report date span exceeds 366 days")
 
 
 def check_inventory_report_invariants(body, label):
@@ -830,11 +837,12 @@ def check_procurement_report_invariants(body, label):
         total_ordered += Decimal(po["ordered_total_php"])
         total_accepted += Decimal(po["accepted_value_php"])
         open_disc += po["open_discrepancy_count"]
+    distinct_po_ids = {po["po_id"] for po in body["purchase_order_summary"]}
     totals = body["totals"]
     if (
         totals["open_rf_lines_count"] != open_rf_lines
         or totals["repf_count"] != len(body["repf_summary"])
-        or totals["po_count"] != len(body["purchase_order_summary"])
+        or totals["po_count"] != len(distinct_po_ids)
         or Decimal(totals["total_ordered_php"]) != total_ordered
         or Decimal(totals["total_accepted_value_php"]) != total_accepted
         or totals["open_discrepancy_count"] != open_disc
@@ -1060,10 +1068,19 @@ def main():
         p_ptr, p_def = operations[print_op]
         if j_def.get("x-required-action") != p_def.get("x-required-action"):
             raise ValueError(f"Report pair {json_op}/{print_op} must enforce identical x-required-action")
-        j_params = {dereference(j_ptr + f"/parameters/{i}")[1]["name"] for i in range(len(j_def.get("parameters", [])))}
-        p_params = {dereference(p_ptr + f"/parameters/{i}")[1]["name"] for i in range(len(p_def.get("parameters", [])))}
-        if not required_report_filters <= j_params or not required_report_filters <= p_params:
+        j_params = {
+            dereference(j_ptr + f"/parameters/{i}")[1]["name"]: dereference(j_ptr + f"/parameters/{i}")[1]
+            for i in range(len(j_def.get("parameters", [])))
+        }
+        p_params = {
+            dereference(p_ptr + f"/parameters/{i}")[1]["name"]: dereference(p_ptr + f"/parameters/{i}")[1]
+            for i in range(len(p_def.get("parameters", [])))
+        }
+        if not required_report_filters <= j_params.keys() or not required_report_filters <= p_params.keys():
             raise ValueError(f"Report pair {json_op}/{print_op} missing explicit required filters")
+        for req_date in ("date_from", "date_to"):
+            if j_params[req_date].get("required") is not True or p_params[req_date].get("required") is not True:
+                raise ValueError(f"Report pair {json_op}/{print_op} must require explicit {req_date}")
         _, p_ok = dereference(p_ptr + "/responses/200")
         if not {"Cache-Control", "Content-Security-Policy", "X-Content-Type-Options"} <= set(p_ok.get("headers", {})):
             raise ValueError(f"Printable report {print_op} 200 response missing required security/cache headers")
@@ -1188,7 +1205,7 @@ def main():
                 elif case["operationId"] == "listAllocationQueue":
                     check_allocation_queue_invariants(response["body"], name)
                 elif case["operationId"] == "listOfficerAlerts":
-                    check_officer_alerts_invariants(response["body"], name)
+                    check_officer_alerts_invariants(response["body"], name, action_duties["alerts.read"])
                 elif case["operationId"] == "readInventoryReport":
                     check_inventory_report_invariants(response["body"], name)
                 elif case["operationId"] == "readProcurementReport":
