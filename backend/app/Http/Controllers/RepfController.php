@@ -22,7 +22,7 @@ class RepfController
 {
     public function index(Request $request, string $chapterId): JsonResponse
     {
-        $selectors = OpeningDraftInput::selectors($request, ['status', 'trigger_kind', 'rf_id', 'linked_demand_canceled', 'q', 'limit', 'cursor']);
+        $selectors = RepfInput::selectors($request, ['status', 'trigger_kind', 'rf_id', 'linked_demand_canceled', 'q', 'limit', 'cursor']);
         $query = Repf::where('chapter_id', $chapterId)->with(RepfWorkflow::RELATIONS);
         if (isset($selectors['status'])) {
             $query->where('status', $this->oneOf($selectors['status'], RepfInput::STATUSES));
@@ -64,7 +64,7 @@ class RepfController
 
     public function show(Request $request, string $chapterId, string $id): JsonResponse
     {
-        OpeningDraftInput::selectors($request);
+        RepfInput::selectors($request);
         $repf = $this->find($chapterId, $id)->load(RepfWorkflow::RELATIONS);
 
         return (new RepfResource($repf))->response();
@@ -72,7 +72,7 @@ class RepfController
 
     public function history(Request $request, string $chapterId, string $id): JsonResponse
     {
-        $selectors = OpeningDraftInput::selectors($request, ['limit', 'cursor']);
+        $selectors = RepfInput::selectors($request, ['limit', 'cursor']);
         $repf = $this->find($chapterId, $id);
         $history = RepfWorkflow::history($repf)->orderBy('version')->orderBy('id')->get();
         $actors = User::whereIn('id', $history->pluck('actor_user_id')->unique())->get()->keyBy('id');
@@ -94,7 +94,7 @@ class RepfController
 
     public function version(Request $request, string $chapterId, string $id, string $version): JsonResponse
     {
-        OpeningDraftInput::selectors($request);
+        RepfInput::selectors($request);
         $version = OpeningDraftInput::requireRevision($version);
         $repf = $this->find($chapterId, $id);
         $row = RepfWorkflow::history($repf)->where('version', $version)->where('is_version_snapshot', true)
@@ -105,7 +105,7 @@ class RepfController
 
     public function related(Request $request, string $chapterId, string $id): JsonResponse
     {
-        $selectors = OpeningDraftInput::selectors($request, ['limit', 'cursor']);
+        $selectors = RepfInput::selectors($request, ['limit', 'cursor']);
         $repf = $this->find($chapterId, $id)->load('lines');
         $rfs = InternalRf::where('chapter_id', $chapterId)->whereIn('id', $repf->lines->pluck('rf_id')->filter())
             ->get()->keyBy('id');
@@ -131,7 +131,7 @@ class RepfController
 
     public function print(Request $request, string $chapterId, string $id): Response
     {
-        OpeningDraftInput::selectors($request);
+        RepfInput::selectors($request);
         $repf = $this->find($chapterId, $id)->load(RepfWorkflow::RELATIONS);
 
         return response()->view('procurement.repf', [

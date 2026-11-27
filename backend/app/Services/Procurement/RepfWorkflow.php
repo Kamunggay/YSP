@@ -44,7 +44,7 @@ final class RepfWorkflow
 
     private const POST_APPROVAL = ['approved', 'partially_ordered'];
 
-    public const RELATIONS = ['preparer', 'lines.variant.item', 'lines.variant.unit'];
+    public const RELATIONS = ['preparer', 'lines.variant.item', 'lines.unit'];
 
     public function __construct(
         private readonly RepfNetNeed $netNeed,
@@ -110,6 +110,9 @@ final class RepfWorkflow
                 $action = $this->transition($repf, $operation, $decision, $authority);
                 $newMaterial = isset($input['lines']);
                 $enforceNeed = $newMaterial || $operation === 'submitRepf' || $decision === 'approve';
+                if ($enforceNeed && ($input['funding_source'] ?? $repf->funding_source) !== 'chapter_funds') {
+                    throw OpeningDraftInput::invalidInput([RepfInput::field('', 'The RepF must use chapter funds.')]);
+                }
                 $identities = $enforceNeed ? $this->validateSources($chapter, $lines, $rfs) : [];
                 $breakdowns = $this->netNeed->snapshot($chapter, $scope['user_id'], $id, $lines, $enforceNeed);
                 $now = now('UTC');
@@ -223,6 +226,19 @@ final class RepfWorkflow
 
     private function validateSources(string $chapter, array $lines, Collection $rfs): array
     {
+        $seen = [];
+        foreach ($lines as $index => $line) {
+            $trigger = $line['trigger_kind'];
+            if (! in_array($trigger, RepfInput::TRIGGERS, true)) {
+                throw OpeningDraftInput::invalidInput([RepfInput::field('', 'RepF lines must use an approved Stage 2 trigger.')]);
+            }
+            $key = $trigger === 'rf_shortage' ? 'rf_line_id' : 'variant_id';
+            if (isset($seen[$trigger][$line[$key]])) {
+                throw OpeningDraftInput::invalidInput([RepfInput::field("/lines/$index/$key", 'This source is already included.')]);
+            }
+            $seen[$trigger][$line[$key]] = true;
+        }
+
         $variants = CatalogueVariant::where('chapter_id', $chapter)->whereIn('id', array_column($lines, 'variant_id'))
             ->orderBy('id')->sharedLock()->get()->keyBy('id');
         $items = CatalogueItem::where('chapter_id', $chapter)->whereIn('id', $variants->pluck('item_id'))

@@ -31,4 +31,9 @@ class RepfLine extends Model
     {
         return $this->belongsTo(CatalogueVariant::class);
     }
+
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(CatalogueUnit::class);
+    }
 }

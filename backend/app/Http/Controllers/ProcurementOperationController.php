@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ContractException;
 use App\Http\Requests\OpeningDraftInput;
+use App\Http\Requests\RepfInput;
 use App\Models\ActionReceipt;
 use App\Services\Authority\ChapterAuthority;
 use App\Services\Procurement\RepfWorkflow;
@@ -21,7 +22,7 @@ class ProcurementOperationController
 
     public function byKey(Request $request, string $chapterId): JsonResponse
     {
-        $selectors = OpeningDraftInput::selectors($request, ['operation_name', 'action_key']);
+        $selectors = RepfInput::selectors($request, ['operation_name', 'action_key']);
         $operation = $selectors['operation_name'] ?? '';
         $key = OpeningDraftInput::requireUuid($selectors['action_key'] ?? '', 'action key');
         if (! in_array($operation, [...array_keys(RepfWorkflow::ACTIONS), ...self::OPERATIONS], true)) {
@@ -33,7 +34,7 @@ class ProcurementOperationController
 
     public function show(Request $request, string $chapterId, string $id): JsonResponse
     {
-        OpeningDraftInput::selectors($request);
+        RepfInput::selectors($request);
 
         return $this->recover($request, $chapterId, ['id' => OpeningDraftInput::requireUuid($id, 'operation identifier')]);
     }

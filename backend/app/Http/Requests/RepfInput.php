@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Exceptions\ContractException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,15 @@ final class RepfInput
         'draft', 'pending_budget_review', 'approved', 'held', 'returned_for_revision',
         'rejected', 'partially_ordered', 'ordered', 'canceled',
     ];
+
+    public static function selectors(Request $request, array $allowed = []): array
+    {
+        if (preg_match('/%(?![0-9a-f]{2})/i', (string) $request->server('QUERY_STRING', ''))) {
+            throw new ContractException(400, 'invalid_selector', 'Invalid query selector encoding.');
+        }
+
+        return OpeningDraftInput::selectors($request, $allowed);
+    }
 
     public static function write(Request $request, string $operation): array
     {
@@ -53,7 +63,6 @@ final class RepfInput
                     $errors[] = self::field('/lines', 'An array of line objects is required.');
                 }
 
-                $seen = [];
                 foreach (is_array($raw->lines ?? null) ? array_slice($raw->lines, 0, 100) : [] as $i => $line) {
                     if (! $line instanceof stdClass) {
                         $errors[] = self::field("/lines/$i", 'A line object is required.');
@@ -68,16 +77,10 @@ final class RepfInput
                             $errors[] = self::field("/lines/$i/$link", 'RF linkage must match the trigger.');
                         }
                     }
-                    $uniqueId = $rf ? ($line->rf_line_id ?? null) : ($line->variant_id ?? null);
-                    if (($rf || $rop) && is_string($uniqueId)) {
-                        if (isset($seen[$trigger][$uniqueId])) {
-                            $errors[] = self::field("/lines/$i/".($rf ? 'rf_line_id' : 'variant_id'), 'This source is already included.');
+                    foreach (['rf_id', 'rf_line_id', 'needed_by', 'additional_purchase_reason', 'notes'] as $field) {
+                        if (is_string($line->$field ?? null) && ! preg_match('/\S/u', $line->$field)) {
+                            $errors[] = self::field("/lines/$i/$field", 'Use null or a non-blank value of the expected type.');
                         }
-                        $seen[$trigger][$uniqueId] = true;
-                    }
-
-                    if (is_string($line->notes ?? null) && ! preg_match('/\S/u', $line->notes)) {
-                        $errors[] = self::field("/lines/$i/notes", 'Use null or non-blank notes.');
                     }
                     $reason = $line->additional_purchase_reason ?? null;
                     if ($reason !== null) {
@@ -109,20 +112,27 @@ final class RepfInput
 
             $payload = json_decode(json_encode($raw, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
             foreach (array_diff(array_keys($payload), array_keys($rules)) as $key) {
-                $errors[] = self::field('/'.str_replace(['~', '/'], ['~0', '~1'], $key), 'This field is not accepted.');
+                $errors[] = self::field('/'.str_replace(['~', '/'], ['~0', '~1'], $key), 'This field is not accepted.', 'unexpected_field');
             }
 
             $validator = Validator::make($payload, $rules);
             foreach ($validator->errors()->messages() as $field => $messages) {
-                $errors[] = self::field('/'.str_replace('.', '/', $field), $messages[0]);
+                $rule = array_key_first($validator->failed()[$field]);
+                $code = match ($rule) {
+                    'Required', 'Present' => 'required',
+                    'String', 'Integer', 'Array', 'List' => 'invalid_type',
+                    'Max' => 'too_long',
+                    default => 'invalid_format',
+                };
+                $errors[] = self::field('/'.str_replace('.', '/', $field), $messages[0], $code);
             }
 
             return $payload;
         });
     }
 
-    public static function field(string $pointer, string $message): array
+    public static function field(string $pointer, string $message, string $code = 'invalid_format'): array
     {
-        return ['pointer' => $pointer, 'code' => 'invalid_value', 'message' => $message];
+        return compact('pointer', 'code', 'message');
     }
 }

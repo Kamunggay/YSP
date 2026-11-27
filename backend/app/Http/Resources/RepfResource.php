@@ -62,7 +62,7 @@ class RepfResource extends JsonResource
             'variant_code' => $variant->code ?? $variant->sku,
             'display_name' => $variant->name ?? $variant->label ?? $variant->item->name,
             'unit_id' => $line->unit_id,
-            'unit_code' => $variant->unit->code,
+            'unit_code' => $line->unit->code,
             'quantity_scale' => $line->quantity_scale,
             'rf_id' => $line->rf_id,
             'rf_reference' => $line->rf_reference,
@@ -90,7 +90,7 @@ class RepfResource extends JsonResource
 
     public static function actor(User $user): array
     {
-        return ['user_id' => $user->id, 'display_name' => $user->name];
+        return ['user_id' => $user->id, 'display_name' => mb_substr(trim($user->name), 0, 120)];
     }
 
     public static function instant(?DateTimeInterface $at): ?string

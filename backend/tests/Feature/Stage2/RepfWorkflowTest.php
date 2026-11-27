@@ -46,10 +46,13 @@ class RepfWorkflowTest extends TestCase
                 'estimated_unit_cost_php' => '10.00',
                 'needed_by' => null, 'additional_purchase_reason' => null, 'notes' => null,
             ]],
-        ])->assertUnprocessable()->assertJsonPath('error.code', 'invalid_input');
+        ])->assertUnprocessable()->assertJsonPath('error.code', 'invalid_input')
+            ->assertJsonPath('error.fields.0.pointer', '/lines/0/trigger_kind')
+            ->assertJsonPath('error.fields.0.code', 'invalid_format');
 
         $this->asBrowserOfficer($actor->id)->get($url.'?trigger_kind=so_shortage')
             ->assertBadRequest()->assertJsonPath('error.code', 'invalid_selector')->assertHeader('Cache-Control', 'no-store');
+        $this->asBrowserOfficer($actor->id)->get($url.'?q=%ZZ')->assertBadRequest()->assertJsonPath('error.code', 'invalid_selector');
     }
 
     public function test_repf_lifecycle_recovers_exact_receipts_and_retains_one_reference(): void
@@ -151,6 +154,11 @@ class RepfWorkflowTest extends TestCase
     {
         [$chapter, $actor, $url, $body, $shortage] = $this->scenario();
         $body['lines'][0]['requested_quantity'] = '4.01';
+        foreach (['needed_by', 'additional_purchase_reason'] as $field) {
+            $invalid = $body;
+            $invalid['lines'][0][$field] = ' ';
+            $this->write($actor, $url, $invalid)->assertUnprocessable()->assertJsonPath('error.fields.0.pointer', "/lines/0/$field");
+        }
         $this->write($actor, $url, $body)->assertConflict()
             ->assertJsonPath('error.code', 'duplicate_supply_coverage')->assertJsonPath('current', null)
             ->assertJsonPath('failed_intent_committed', false)->assertJsonPath('coverage_conflicts.0.live_uncovered_need', '4.00')
@@ -219,16 +227,49 @@ class RepfWorkflowTest extends TestCase
 
         $this->write($actor, $url, array_replace($body, ['lines' => [$links[0], $links[0]]]))->assertUnprocessable();
         $this->write($actor, $url, array_replace($body, ['lines' => [$rop, $rop]]))->assertUnprocessable();
+        $this->write($actor, $url, array_replace($body, ['lines' => [array_replace($links[0], ['requested_quantity' => '1.51'])]]))
+            ->assertConflict()->assertJsonPath('coverage_conflicts.0.live_uncovered_need', '1.50');
         $this->write($actor, $url, array_replace($body, ['lines' => $links]))->assertConflict()
             ->assertJsonPath('error.code', 'duplicate_supply_coverage')->assertJsonCount(2, 'coverage_conflicts');
 
         $draft = $this->write($actor, $url, array_replace($body, ['lines' => [$links[0], $rop]]))->assertCreated()
             ->assertJsonPath('data.result.lines.0.rf_reference', 'RF-001')
-            ->assertJsonPath('data.result.lines.0.net_need_breakdown.uncovered_need', '1.50');
+            ->assertJsonPath('data.result.lines.0.net_need_breakdown.uncovered_need', '2.00');
         $id = $draft->json('data.resource_id');
         $this->asBrowserOfficer($actor->id)->get("$url?rf_id={$rf->id}")->assertOk()->assertJsonCount(1, 'data');
         $this->asBrowserOfficer($actor->id)->get("$url/$id/related")->assertOk()
             ->assertJsonPath('data.0.kind', 'internal_rf')->assertJsonPath('data.0.id', $rf->id);
+
+        $otherVariant = CatalogueVariant::findOrFail($rop['variant_id'])->replicate()->fill(['code' => 'SYN-SUPPLIES-B']);
+        $otherVariant->save();
+        $mixed = $this->write($actor, $url, array_replace($body, ['lines' => [$links[0], array_replace($rop, ['variant_id' => $otherVariant->id])]]))
+            ->assertCreated()->json('data.resource_id');
+        [$rfCall, $ropCall] = array_slice($shortage->calls, -2);
+        $this->assertSame([$rop['variant_id']], $rfCall['variant_ids']);
+        $this->assertFalse($rfCall['require_rop_and_target_policies']);
+        $this->assertSame([$otherVariant->id], $ropCall['variant_ids']);
+        $this->assertTrue($ropCall['require_rop_and_target_policies']);
+
+        $excess = array_replace($links[0], [
+            'requested_quantity' => '2.01',
+            'additional_purchase_reason' => [
+                'category' => 'disputed_supply', 'referenced_source_ids' => [], 'explanation' => 'The supplier disputes delivery.',
+            ],
+        ]);
+        $override = $this->write($actor, $url, array_replace($body, ['lines' => [$excess, array_replace($rop, ['requested_quantity' => '5.00'])]]))
+            ->assertCreated()->assertJsonPath('data.result.lines.0.net_need_breakdown.exceeds_uncovered_need', true)
+            ->assertJsonPath('data.result.lines.1.net_need_breakdown.exceeds_uncovered_need', false)->json('data.resource_id');
+
+        $reviewer = $this->officer($chapter, ['CHAPTER_HEAD'], '100.00');
+        $this->series($chapter, $reviewer);
+        $this->write($actor, "$url/$override/submit", $this->version(1, 1))->assertOk();
+        $this->write($reviewer, "$url/$override/budget-review", $this->version(2, 1) + ['decision' => 'approve', 'reason' => null])
+            ->assertOk()->assertJsonPath('data.result.approved_budget_php', '70.10');
+        $this->assertDatabaseHas('internal_rfs', ['id' => $rf->id, 'status' => 'approved', 'fulfillment_status' => 'outstanding']);
+
+        $this->write($actor, "$url/$mixed/submit", $this->version(1, 1))->assertOk();
+        $this->write($reviewer, "$url/$mixed/budget-review", $this->version(2, 1) + ['decision' => 'reject', 'reason' => 'Budget reassigned'])
+            ->assertOk()->assertJsonPath('data.result.status', 'rejected')->assertJsonPath('data.result.approved_budget_php', null);
 
         $rf->update(['status' => 'canceled', 'closed_at' => now()]);
         $this->write($actor, "$url/$id/submit", $this->version(1, 1))->assertConflict()->assertJsonPath('error.code', 'source_not_eligible');
