@@ -11,11 +11,15 @@ use App\Http\Controllers\InternalRfController;
 use App\Http\Controllers\NotificationSubscriptionController;
 use App\Http\Controllers\OpeningInventoryController;
 use App\Http\Controllers\PaperEvidenceController;
+use App\Http\Controllers\ProcurementOperationController;
+use App\Http\Controllers\RepfController;
+use App\Http\Controllers\RepfMutationController;
 use App\Http\Controllers\ReservationAndHoldController;
 use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\StockQueryController;
 use App\Http\PaperEvidenceDownload;
+use App\Services\Procurement\RepfWorkflow;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -54,6 +58,32 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidenc
 
 Route::post('/v1/chapters/{chapter_id}/notification-subscriptions/authorize', [NotificationSubscriptionController::class, 'authorizeChapter'])
     ->middleware('browser.authority:notifications');
+
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads', 'stage-one.chapter', 'stage-one.action:repf.read')->group(function () {
+    Route::get('/repfs', [RepfController::class, 'index']);
+    Route::get('/repfs/{repf_id}', [RepfController::class, 'show']);
+    Route::get('/repfs/{repf_id}/history', [RepfController::class, 'history']);
+    Route::get('/repfs/{repf_id}/versions/{version}', [RepfController::class, 'version']);
+    Route::get('/repfs/{repf_id}/related', [RepfController::class, 'related']);
+    Route::get('/repfs/{repf_id}/print', [RepfController::class, 'print']);
+    Route::get('/procurement-operations/by-key', [ProcurementOperationController::class, 'byKey']);
+    Route::get('/procurement-operations/{operation_id}', [ProcurementOperationController::class, 'show']);
+});
+
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads,read_committed', 'stage-one.chapter')->group(function () {
+    foreach ([
+        'createRepf' => ['POST', '/repfs'],
+        'replaceRepf' => ['PUT', '/repfs/{repf_id}'],
+        'submitRepf' => ['POST', '/repfs/{repf_id}/submit'],
+        'reviewRepfBudget' => ['POST', '/repfs/{repf_id}/budget-review'],
+        'resumeRepfReview' => ['POST', '/repfs/{repf_id}/resume-review'],
+        'reviseRepf' => ['POST', '/repfs/{repf_id}/revise'],
+        'cancelRepf' => ['POST', '/repfs/{repf_id}/cancel'],
+    ] as $operation => [$method, $path]) {
+        Route::match([$method], $path, RepfMutationController::class)
+            ->name($operation)->middleware('stage-one.action:'.RepfWorkflow::ACTIONS[$operation]);
+    }
+});
 
 Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stage-one.chapter')->group(function () {
     // Catalogue Operations (static paths before dynamic {operation_id})

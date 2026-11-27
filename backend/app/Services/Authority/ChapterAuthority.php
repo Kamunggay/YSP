@@ -210,7 +210,7 @@ final class ChapterAuthority
                 'ipc.authorize' => ['ipc_authorization'],
                 'opening_rm.post' => ['ipc_authorization', 'quantity_scale'],
                 'issue.prepare', 'issue.post', 'rf.reserve', 'rf.reallocate' => ['quantity_scale', 'reference_series', 'allocation_priority'],
-                'repf.draft', 'repf.submit', 'repf.budget_review', 'replenishment.read' => ['quantity_scale', 'rop', 'target_level'],
+                'repf.draft', 'repf.submit', 'repf.budget_review', 'repf.cancel', 'replenishment.read' => ['quantity_scale', 'rop', 'target_level'],
                 'po.approve' => ['purchasing_quotation_policy', 'reference_series'],
                 'da.acknowledge' => ['quantity_scale', 'reference_series', 'valuation_rounding'],
                 'po.draft', 'po.amend_propose', 'da.draft', 'da.submit', 'receiving.draft', 'receiving.inspect', 'receiving.post', 'allocation_queue.read' => ['quantity_scale'],

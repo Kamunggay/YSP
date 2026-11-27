@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnforceBrowserAuthority
 {
-    public function handle(Request $request, Closure $next, ?string $budget = null): Response
+    public function handle(Request $request, Closure $next, ?string $budget = null, ?string $isolation = null): Response
     {
         if ($request->isMethod('GET') && DB::transactionLevel() > 0 && ($user = $request->attributes->get(NotificationSubjectRead::class)) instanceof User) {
             $request->setUserResolver(fn () => $user);
@@ -41,6 +41,10 @@ class EnforceBrowserAuthority
                 $admission = $this->authorize($request, fn () => new Response('', 204), $budget, $ipDelay, $namespace);
 
                 return $admission->getStatusCode() === 204 ? BrowserSessionHttp::noStore($next($request)) : $admission;
+            }
+            if ($isolation === 'read_committed' && DB::getDriverName() === 'mysql' && DB::transactionLevel() === 0) {
+                // A procurement write must see supply committed while it waited on the variant guard.
+                DB::statement('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
             }
             if ($budget !== 'evidence' || $request->route()?->getActionMethod() !== 'retrieveAttachment') {
                 return $this->authorize($request, $next, $budget, $ipDelay, $namespace);

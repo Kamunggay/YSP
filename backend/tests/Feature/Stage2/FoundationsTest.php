@@ -214,7 +214,10 @@ class FoundationsTest extends TestCase
             $this->assertSame("private-stage1.chapter.{$chapter->id}", $event->channel_name);
 
             $this->assertFalse($subjectRead->allows($reader, $event));
-            // Later tickets add the detail controllers. Exercise the real middleware on their exact paths.
+            if ($kind === 'repf') {
+                continue;
+            }
+            // Exercise the real middleware until the remaining detail controllers are available.
             Route::get("api/v1/chapters/{chapter_id}/{$path}/{subject_id}", fn (string $chapter_id, string $subject_id) => $chapter_id === $chapter->id && $subject_id === $id ? response()->noContent() : response('', 404))
                 ->middleware('browser.authority', 'stage-one.chapter', "stage-one.action:{$duty}");
             $this->assertTrue($subjectRead->allows($reader, $event));

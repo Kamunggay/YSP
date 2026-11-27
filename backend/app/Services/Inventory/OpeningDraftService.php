@@ -30,16 +30,15 @@ use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\BcMath;
 use App\Services\Shared\CanonicalJson;
 use App\Services\Shared\ReferenceSequenceService;
+use App\Services\Shared\SnapshotPage;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -1836,59 +1835,7 @@ final class OpeningDraftService
         array $items,
         int $snapshotVersion,
     ): JsonResponse {
-        $authority = $this->authority($request);
-        $userId = $request->user()->id;
-        $snapshotHash = hash('sha256', CanonicalJson::encode([$snapshotVersion, $items]));
-        $offset = 0;
-        $expires = now('UTC')->addMinutes(5)->timestamp;
-
-        if ($rawCursor !== null) {
-            if (strlen($rawCursor) > 1024) {
-                throw new ContractException(400, 'invalid_selector', 'Invalid cursor.');
-            }
-            try {
-                $decoded = json_decode(Crypt::decryptString($rawCursor), true, flags: JSON_THROW_ON_ERROR);
-            } catch (DecryptException|\JsonException) {
-                throw new ContractException(400, 'invalid_selector', 'Invalid cursor.');
-            }
-            if (($decoded['scope'] ?? null) !== $scope
-                || ($decoded['user'] ?? null) !== $userId
-                || ($decoded['chapter'] ?? null) !== $chapterId
-                || ($decoded['limit'] ?? null) !== $limit
-                || ($decoded['filters'] ?? null) !== $filters) {
-                throw new ContractException(400, 'invalid_selector', 'Cursor does not match request selectors.');
-            }
-            if (($decoded['expires'] ?? 0) <= now('UTC')->timestamp
-                || ($decoded['authority_version'] ?? null) !== $authority->version
-                || ($decoded['snapshot'] ?? null) !== $snapshotHash) {
-                throw new ContractException(409, 'snapshot_stale', 'List snapshot is stale; restart pagination.');
-            }
-            $offset = (int) $decoded['offset'];
-            $expires = (int) $decoded['expires'];
-        }
-
-        $slice = array_slice($items, $offset, $limit);
-        $nextCursor = $offset + $limit < count($items)
-            ? Crypt::encryptString(json_encode([
-                'scope' => $scope,
-                'user' => $userId,
-                'chapter' => $chapterId,
-                'authority_version' => $authority->version,
-                'filters' => $filters,
-                'limit' => $limit,
-                'snapshot' => $snapshotHash,
-                'offset' => $offset + $limit,
-                'expires' => $expires,
-            ], JSON_THROW_ON_ERROR))
-            : null;
-
-        return response()->json([
-            'data' => $slice,
-            'page' => [
-                'next_cursor' => $nextCursor,
-                'snapshot_version' => max(1, $snapshotVersion),
-            ],
-        ]);
+        return SnapshotPage::response($request, $chapterId, $scope, $filters, $limit, $rawCursor, $items, $snapshotVersion);
     }
 
     private function formatIpc(OpeningCount $ipc): array
