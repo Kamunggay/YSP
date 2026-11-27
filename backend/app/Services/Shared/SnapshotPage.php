@@ -23,7 +23,10 @@ final class SnapshotPage
     ): JsonResponse {
         $authority = $request->attributes->get(ChapterAuthority::class);
         $userId = $request->user()->id;
-        $snapshotHash = hash('sha256', CanonicalJson::encode([$snapshotVersion, $items]));
+        $grants = $authority->grants->map(fn ($grant) => [
+            'id' => $grant->id, 'duty' => $grant->duty_code, 'version' => (int) $grant->version, 'scope' => $grant->scope,
+        ])->all();
+        $snapshotHash = hash('sha256', CanonicalJson::encode([$snapshotVersion, $grants, $items]));
         $offset = 0;
         $expires = now('UTC')->addMinutes(5)->timestamp;
 

@@ -13,6 +13,8 @@ use App\Http\Controllers\NotificationSubscriptionController;
 use App\Http\Controllers\OpeningInventoryController;
 use App\Http\Controllers\PaperEvidenceController;
 use App\Http\Controllers\ProcurementOperationController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RepfController;
 use App\Http\Controllers\RepfMutationController;
 use App\Http\Controllers\ReservationAndHoldController;
@@ -20,6 +22,8 @@ use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
 use App\Http\Controllers\StockQueryController;
 use App\Http\PaperEvidenceDownload;
+use App\Services\Procurement\PurchaseOrderWorkflow;
+use App\Services\Procurement\QuotationWorkflow;
 use App\Services\Procurement\RepfWorkflow;
 use Illuminate\Support\Facades\Route;
 
@@ -75,6 +79,16 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads',
     Route::get('/procurement-operations/{operation_id}', [ProcurementOperationController::class, 'show']);
 });
 
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads', 'stage-one.chapter')->group(function () {
+    Route::get('/repfs/{repf_id}/quotations', [QuotationController::class, 'index'])->middleware('stage-one.action:quotation.read');
+    Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->middleware('stage-one.action:po.read');
+    Route::get('/purchase-orders/{po_id}', [PurchaseOrderController::class, 'show'])->middleware('stage-one.action:po.read');
+    Route::get('/purchase-orders/{po_id}/history', [PurchaseOrderController::class, 'history'])->middleware('stage-one.action:po.read,history.read');
+    Route::get('/purchase-orders/{po_id}/versions/{version}', [PurchaseOrderController::class, 'version'])->middleware('stage-one.action:po.read,history.read');
+    Route::get('/purchase-orders/{po_id}/related', [PurchaseOrderController::class, 'related'])->middleware('stage-one.action:po.read');
+    Route::get('/purchase-orders/{po_id}/print', [PurchaseOrderController::class, 'print'])->middleware('stage-one.action:po.read');
+});
+
 Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads,read_committed', 'stage-one.chapter')->group(function () {
     foreach ([
         'createRepf' => ['POST', '/repfs'],
@@ -87,6 +101,31 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads,r
     ] as $operation => [$method, $path]) {
         Route::match([$method], $path, RepfMutationController::class)
             ->name($operation)->middleware('stage-one.action:'.RepfWorkflow::ACTIONS[$operation]);
+    }
+    foreach ([
+        'createRepfQuotation' => ['POST', '/repfs/{repf_id}/quotations'],
+        'replaceRepfQuotation' => ['PUT', '/repfs/{repf_id}/quotations/{quotation_id}'],
+        'deleteRepfQuotation' => ['DELETE', '/repfs/{repf_id}/quotations/{quotation_id}'],
+        'recordSupplierSelection' => ['POST', '/repfs/{repf_id}/supplier-selection'],
+    ] as $operation => [$method, $path]) {
+        Route::match([$method], $path, [QuotationController::class, 'mutate'])
+            ->name($operation)->middleware('stage-one.action:'.QuotationWorkflow::ACTIONS[$operation]);
+    }
+    foreach ([
+        'createPurchaseOrder' => ['POST', '/purchase-orders'],
+        'replacePurchaseOrder' => ['PUT', '/purchase-orders/{po_id}'],
+        'submitPurchaseOrder' => ['POST', '/purchase-orders/{po_id}/submit'],
+        'approvePurchaseOrder' => ['POST', '/purchase-orders/{po_id}/approve'],
+        'returnPurchaseOrder' => ['POST', '/purchase-orders/{po_id}/return'],
+        'rejectPurchaseOrder' => ['POST', '/purchase-orders/{po_id}/reject'],
+        'recordPurchaseOrderAcknowledgment' => ['POST', '/purchase-orders/{po_id}/acknowledgment'],
+        'proposePurchaseOrderAmendment' => ['POST', '/purchase-orders/{po_id}/amendments'],
+        'approvePurchaseOrderAmendment' => ['POST', '/purchase-orders/{po_id}/amendments/{amendment_id}/approve'],
+        'closeShortPurchaseOrder' => ['POST', '/purchase-orders/{po_id}/close-short'],
+        'cancelPurchaseOrder' => ['POST', '/purchase-orders/{po_id}/cancel'],
+    ] as $operation => [$method, $path]) {
+        Route::match([$method], $path, [PurchaseOrderController::class, 'mutate'])
+            ->name($operation)->middleware('stage-one.action:'.PurchaseOrderWorkflow::ACTIONS[$operation]);
     }
 });
 

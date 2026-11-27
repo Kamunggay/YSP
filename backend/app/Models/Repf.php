@@ -20,13 +20,24 @@ class Repf extends Model
         return [
             'version' => 'integer', 'material_version' => 'integer',
             'estimated_total_php' => 'decimal:2', 'approved_budget_php' => 'decimal:2',
-            'linked_demand_canceled' => 'boolean', 'review_json' => 'array',
+            'linked_demand_canceled' => 'boolean', 'linked_demand_canceled_at' => 'immutable_datetime',
+            'review_json' => 'array', 'supplier_selection_json' => 'array',
         ];
     }
 
     public function lines(): HasMany
     {
         return $this->hasMany(RepfLine::class)->orderBy('line_number');
+    }
+
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(RepfQuotation::class);
+    }
+
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class);
     }
 
     public function preparer(): BelongsTo
