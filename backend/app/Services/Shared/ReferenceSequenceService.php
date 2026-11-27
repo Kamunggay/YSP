@@ -2,17 +2,29 @@
 
 namespace App\Services\Shared;
 
+use App\Exceptions\ContractException;
 use App\Models\Chapter;
 use App\Models\PolicyRecord;
 use App\Models\ReferenceSequence;
+use App\Services\Authority\ChapterAuthority;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ReferenceSequenceService
 {
+    public const NUMBERED_SERIES_SCHEMAS = [
+        'RF' => 'RfReferenceSeriesPolicyValue',
+        'IS_AR' => 'IssueReferenceSeriesPolicyValue',
+        'REPF' => 'RepfReferenceSeriesPolicyValue',
+        'PO' => 'PoReferenceSeriesPolicyValue',
+        'DA' => 'DaReferenceSeriesPolicyValue',
+    ];
+
+    private const STAGE_2_SERIES = ['REPF', 'PO', 'DA'];
+
     /**
      * Allocate a strictly monotonic, non-reusable reference number scoped by
-     * chapter, document_kind (IPC|RM|RF|IS_AR), and Asia/Manila sequence year.
+     * chapter, document_kind (IPC|RM|RF|IS_AR|REPF|PO|DA), and Asia/Manila sequence year.
      *
      * @param  ?array{prefix: string, width: ?int, policy_id: ?string, policy_version: ?int}  $policyOverride
      * @return array{reference: string, sequence: int, year: int, prefix: string, policy_id: ?string, policy_version: ?int}
@@ -25,27 +37,14 @@ class ReferenceSequenceService
             $prefix = $policy['prefix'];
             $effectiveWidth = $policy['width'] ?? $width;
 
-            $sequenceRow = ReferenceSequence::where('chapter_id', $chapterId)
-                ->where('document_kind', $documentKind)
-                ->where('sequence_year', $year)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $sequenceRow) {
-                $sequenceRow = ReferenceSequence::create([
-                    'id' => (string) Str::uuid(),
-                    'chapter_id' => $chapterId,
-                    'document_kind' => $documentKind,
-                    'sequence_year' => $year,
-                    'prefix' => $prefix,
-                    'last_sequence' => 0,
-                    'sequence_width' => $effectiveWidth,
-                ]);
-                // Re-lock newly created row under the active transaction
-                $sequenceRow = ReferenceSequence::where('id', $sequenceRow->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-            }
+            $coordinate = ['chapter_id' => $chapterId, 'document_kind' => $documentKind, 'sequence_year' => $year];
+            ReferenceSequence::upsert([$coordinate + [
+                'id' => (string) Str::uuid(),
+                'prefix' => $prefix,
+                'last_sequence' => 0,
+                'sequence_width' => $effectiveWidth,
+            ]], array_keys($coordinate), ['sequence_year']);
+            $sequenceRow = ReferenceSequence::where($coordinate)->lockForUpdate()->firstOrFail();
 
             $nextSeq = (int) $sequenceRow->last_sequence + 1;
             $sequenceRow->last_sequence = $nextSeq;
@@ -79,29 +78,30 @@ class ReferenceSequenceService
     }
 
     /**
-     * Resolve chapter reference series policy if present, else compute deterministic chapter code prefix.
+     * Resolve an approved series. Stage 2 numbering requires a current policy.
+     * PO-RM and DA-RM callers resolve 'RM' with $required before allocating the shared counter.
      *
      * @return array{prefix: string, width: ?int, policy_id: ?string, policy_version: ?int}
      */
-    public function resolveSeriesPolicy(string $chapterId, string $documentKind): array
+    public function resolveSeriesPolicy(string $chapterId, string $documentKind, bool $required = false): array
     {
-        $now = now()->format('Y-m-d H:i:s.u');
-        $policies = PolicyRecord::where('chapter_id', $chapterId)
-            ->where('policy_code', 'reference_series')
-            ->where(function ($q) use ($now) {
-                $q->whereNull('effective_from')->orWhere('effective_from', '<=', $now);
-            })
-            ->where(function ($q) use ($now) {
-                $q->whereNull('effective_until')->orWhere('effective_until', '>', $now);
-            })
-            ->orderByDesc('policy_version')->orderBy('id')->sharedLock()->get();
-        $schema = match ($documentKind) {
-            'IPC', 'RM' => 'OpeningReferencePolicyValue',
-            'RF' => 'RfReferenceSeriesPolicyValue',
-            'IS_AR' => 'IssueReferenceSeriesPolicyValue',
-            default => null,
-        };
-        if ($schema && $approved = $policies->first(function (PolicyRecord $row) use ($schema) {
+        $required = $required || in_array($documentKind, self::STAGE_2_SERIES, true);
+        $schema = in_array($documentKind, ['IPC', 'RM'], true)
+            ? 'OpeningReferencePolicyValue'
+            : (self::NUMBERED_SERIES_SCHEMAS[$documentKind] ?? null);
+        $at = now();
+        $now = $at->format('Y-m-d H:i:s.u');
+        $query = PolicyRecord::where('chapter_id', $chapterId)->where('policy_code', 'reference_series');
+        if (! $required) {
+            $query->where(fn ($q) => $q->whereNull('effective_from')->orWhere('effective_from', '<=', $now))
+                ->where(fn ($q) => $q->whereNull('effective_until')->orWhere('effective_until', '>', $now));
+        }
+        $policies = $query->orderBy('id')->sharedLock()->get()->sortByDesc('policy_version');
+        if ($schema && $approved = $policies->first(function (PolicyRecord $row) use ($schema, $required, $at) {
+            if ($required) {
+                return ChapterAuthority::policyState($row, 'CHAPTER_HEAD', $schema, at: $at) === 'effective';
+            }
+
             $evidence = $row->setupEvidence();
 
             return ($evidence['value_schema_reference'] ?? null) === '#/components/schemas/'.$schema
@@ -118,6 +118,20 @@ class ReferenceSequenceService
                 'policy_id' => $approved->aggregate_id ?? $approved->id,
                 'policy_version' => (int) $approved->policy_version,
             ];
+        }
+
+        if ($required && $schema === null) {
+            throw new \InvalidArgumentException('Unknown required reference series.');
+        }
+
+        if ($required) {
+            $blocker = ChapterAuthority::policyBlocker($policies, 'reference_series', 'CHAPTER_HEAD', $schema, at: $at);
+            throw new ContractException(409, 'setup_blocked', 'Current approved setup is required for this action.', [
+                'error' => [
+                    'code' => 'setup_blocked', 'message' => 'Current approved setup is required for this action.',
+                    'blockers' => [$blocker],
+                ],
+            ]);
         }
 
         $policy = $policies->first(fn (PolicyRecord $row) => $row->aggregate_id === null

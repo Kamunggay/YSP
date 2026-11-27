@@ -10,6 +10,7 @@ use App\Models\InternalRf;
 use App\Models\PolicyRecord;
 use App\Models\User;
 use Brick\Math\BigDecimal;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,71 @@ final class ChapterAuthority
         'ipc.count' => ['INVENTORY', 'INDEPENDENT_REVIEWER'],
         'opening_rm.read' => ['INVENTORY', 'RECEIVING'],
         'opening.result.read' => ['INVENTORY', 'INDEPENDENT_REVIEWER', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE'],
+        'replenishment.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD'],
+        'da.read' => ['INVENTORY', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE'],
+        'da.history_read' => ['INVENTORY', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE'],
+        'da.draft' => ['INVENTORY', 'RECEIVING'],
+        'da.submit' => ['INVENTORY', 'RECEIVING'],
+        'da.acknowledge' => ['INVENTORY', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE'],
+        'da.cancel' => ['INVENTORY', 'RECEIVING'],
+        'da.restriction_resolve' => ['INVENTORY', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE'],
+        'repf.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD', 'FINANCE', 'INDEPENDENT_REVIEWER'],
+        'repf.draft' => ['INVENTORY', 'PURCHASING'],
+        'repf.submit' => ['INVENTORY', 'PURCHASING'],
+        'repf.budget_review' => ['BUDGET_APPROVER', 'CHAPTER_HEAD'],
+        'repf.cancel' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD'],
+        'quotation.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD', 'FINANCE', 'INDEPENDENT_REVIEWER'],
+        'quotation.manage' => ['PURCHASING'],
+        'quotation.select' => ['PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD'],
+        'po.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE', 'INDEPENDENT_REVIEWER'],
+        'po.draft' => ['PURCHASING'],
+        'po.submit' => ['PURCHASING'],
+        'po.approve' => ['BUDGET_APPROVER', 'CHAPTER_HEAD'],
+        'po.acknowledge' => ['PURCHASING'],
+        'po.amend_propose' => ['PURCHASING'],
+        'po.amend_approve' => ['BUDGET_APPROVER', 'CHAPTER_HEAD'],
+        'po.close_short' => ['BUDGET_APPROVER', 'CHAPTER_HEAD'],
+        'po.cancel' => ['PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD'],
+        'receiving.read' => ['RECEIVING', 'INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD', 'FINANCE', 'INDEPENDENT_REVIEWER'],
+        'receiving.draft' => ['RECEIVING', 'INVENTORY'],
+        'receiving.inspect' => ['RECEIVING'],
+        'receiving.match_evidence' => ['RECEIVING'],
+        'receiving.post' => ['RECEIVING'],
+        'receiving.cancel' => ['RECEIVING', 'CHAPTER_HEAD'],
+        'discrepancy.manage' => ['RECEIVING', 'PURCHASING'],
+        'discrepancy.resolve' => ['RECEIVING', 'PURCHASING', 'INVENTORY', 'CHAPTER_HEAD'],
+        'receiving.hold_manage' => ['RECEIVING', 'INVENTORY', 'CHAPTER_HEAD'],
+        'allocation_queue.read' => ['INVENTORY', 'DISPATCH', 'RF_APPROVER', 'CHAPTER_HEAD'],
+        'alerts.read' => ['INVENTORY', 'DISPATCH', 'PURCHASING', 'BUDGET_APPROVER', 'RECEIVING', 'RF_APPROVER', 'FINANCE', 'CHAPTER_HEAD', 'INDEPENDENT_REVIEWER'],
+        'reports.inventory.read' => ['INVENTORY', 'DISPATCH', 'PURCHASING', 'BUDGET_APPROVER', 'RECEIVING', 'FINANCE', 'CHAPTER_HEAD', 'INDEPENDENT_REVIEWER'],
+        'reports.procurement.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'RECEIVING', 'FINANCE', 'CHAPTER_HEAD', 'INDEPENDENT_REVIEWER'],
+        'reports.control.read' => ['INVENTORY', 'RECEIVING', 'BUDGET_APPROVER', 'FINANCE', 'CHAPTER_HEAD', 'INDEPENDENT_REVIEWER'],
+    ];
+
+    private const QUOTATION_POLICY = ['purchasing_quotation_policy' => ['CHAPTER_HEAD', 'PurchasingQuotationPolicyValue']];
+
+    private const DONATION_AUTHORIZATION = ['da_authorization' => ['CHAPTER_HEAD', 'DaAuthorizationPolicyValue']];
+
+    private const VALUATION_POLICY = ['valuation_rounding' => ['FINANCE', 'OpeningValuationPolicyValue']];
+
+    private const RM_SERIES = ['reference_series' => ['CHAPTER_HEAD', 'OpeningReferencePolicyValue']];
+
+    private const CHAPTER_POLICIES = [
+        'rf.submit' => ['rf_approval_route' => ['CHAPTER_HEAD', 'RfApprovalRoutePolicyValue']],
+        'rf.approve' => ['rf_approval_route' => ['CHAPTER_HEAD', 'RfApprovalRoutePolicyValue']],
+        'opening_rm.post' => self::RM_SERIES + self::VALUATION_POLICY,
+        'repf.submit' => ['reference_series' => ['CHAPTER_HEAD', 'RepfReferenceSeriesPolicyValue']],
+        'quotation.select' => self::QUOTATION_POLICY,
+        'po.draft' => self::QUOTATION_POLICY,
+        'po.submit' => self::QUOTATION_POLICY,
+        'po.approve' => self::QUOTATION_POLICY + ['reference_series' => ['CHAPTER_HEAD', 'PoReferenceSeriesPolicyValue']],
+        'po.amend_approve' => self::QUOTATION_POLICY,
+        'da.draft' => self::VALUATION_POLICY,
+        'da.submit' => self::VALUATION_POLICY,
+        'da.acknowledge' => self::DONATION_AUTHORIZATION + self::VALUATION_POLICY + ['reference_series' => ['CHAPTER_HEAD', 'DaReferenceSeriesPolicyValue']],
+        'da.restriction_resolve' => self::DONATION_AUTHORIZATION,
+        'receiving.inspect' => self::VALUATION_POLICY,
+        'receiving.post' => self::RM_SERIES + self::VALUATION_POLICY,
     ];
 
     public const DUTIES = [
@@ -136,16 +202,34 @@ final class ChapterAuthority
 
     public function lockPoliciesFor(array $actions): void
     {
-        $keys = collect($actions)->flatMap(fn ($action) => match ($action) {
-            'rf.submit', 'rf.approve' => ['rf_approval_route', 'quantity_scale', 'reference_series'],
-            'ipc.authorize' => ['ipc_authorization'],
-            'opening_rm.post' => ['ipc_authorization', 'quantity_scale', 'reference_series', 'valuation_rounding'],
-            'issue.prepare', 'issue.post', 'rf.reserve', 'rf.reallocate' => ['quantity_scale', 'reference_series', 'allocation_priority'],
-            default => [],
-        })->unique()->sort()->values();
+        $keys = collect($actions)->flatMap(fn ($action) => [
+            ...array_keys(self::CHAPTER_POLICIES[$action] ?? []),
+            ...match ($action) {
+                'rf.submit', 'rf.approve' => ['quantity_scale', 'reference_series'],
+                'ipc.authorize' => ['ipc_authorization'],
+                'opening_rm.post' => ['ipc_authorization', 'quantity_scale'],
+                'issue.prepare', 'issue.post', 'rf.reserve', 'rf.reallocate' => ['quantity_scale', 'reference_series', 'allocation_priority'],
+                'repf.draft', 'repf.submit', 'repf.budget_review', 'replenishment.read' => ['quantity_scale', 'rop', 'target_level'],
+                'po.draft', 'po.amend_propose', 'da.draft', 'da.submit', 'da.acknowledge',
+                'receiving.draft', 'receiving.inspect', 'receiving.post', 'allocation_queue.read' => ['quantity_scale'],
+                default => [],
+            },
+        ])->unique()->sort()->values();
         if ($keys->isNotEmpty()) {
             $this->chapter->policyRecords()->whereIn('policy_code', $keys)->orderBy('policy_code')->orderBy('id')->sharedLock()->get();
         }
+    }
+
+    public static function chapterPolicyBlockers(string $action, Collection $policies): array
+    {
+        $blockers = [];
+        foreach (self::CHAPTER_POLICIES[$action] ?? [] as $key => [$owner, $schema]) {
+            if ($blocker = self::policyBlocker($policies, $key, $owner, $schema)) {
+                $blockers[] = $blocker;
+            }
+        }
+
+        return $blockers;
     }
 
     public function routedRfApprover(InternalRf $rf): ?DutyGrant
@@ -156,7 +240,7 @@ final class ChapterAuthority
 
         $policy = $this->chapter->policyRecords()->where('policy_code', 'rf_approval_route')
             ->orderByDesc('policy_version')->sharedLock()->get()
-            ->first(fn (PolicyRecord $record) => $this->policyState($record, 'CHAPTER_HEAD', 'RfApprovalRoutePolicyValue') === 'effective');
+            ->first(fn (PolicyRecord $record) => self::policyState($record, 'CHAPTER_HEAD', 'RfApprovalRoutePolicyValue') === 'effective');
         $route = collect($policy?->rules_json['routes'] ?? [])->firstWhere('requesting_unit_id', $rf->requesting_unit_id);
         if (! $route) {
             return null;
@@ -185,7 +269,7 @@ final class ChapterAuthority
         return $grant ? ($this->alternateScopes[$grant->id] ?? null) : null;
     }
 
-    public function policyState(PolicyRecord $policy, string $owner, string $schema, ?string $allowedSubjectId = null): ?string
+    public static function policyState(PolicyRecord $policy, string $owner, string $schema, ?string $allowedSubjectId = null, ?CarbonInterface $at = null): ?string
     {
         $evidence = $policy->setupEvidence();
         $subject = $evidence['subject_id'] ?? null;
@@ -197,11 +281,12 @@ final class ChapterAuthority
             || ! collect($evidence['approvals'] ?? [])->contains('authority', $owner)) {
             return 'unapproved';
         }
-        if (! $policy->effective_from || $policy->effective_from->isFuture()) {
+        $at ??= now();
+        if (! $policy->effective_from || $policy->effective_from > $at) {
             return 'not_effective';
         }
 
-        return $policy->effective_until && ! $policy->effective_until->isFuture() ? 'expired' : 'effective';
+        return $policy->effective_until && $policy->effective_until <= $at ? 'expired' : 'effective';
     }
 
     public static function setupBlocker(string $setting, string $owner, string $state): array
@@ -216,12 +301,13 @@ final class ChapterAuthority
     {
         $policies = $this->chapter->policyRecords()->where('policy_code', 'rf_approval_route')->sharedLock()->get();
 
-        return $this->policyBlocker($policies, 'rf_approval_route', 'CHAPTER_HEAD', 'RfApprovalRoutePolicyValue');
+        return self::policyBlocker($policies, 'rf_approval_route', 'CHAPTER_HEAD', 'RfApprovalRoutePolicyValue');
     }
 
-    public function policyBlocker(Collection $policies, string $key, string $owner, string $schema): ?array
+    public static function policyBlocker(Collection $policies, string $key, string $owner, string $schema, ?CarbonInterface $at = null): ?array
     {
-        $states = $policies->where('policy_code', $key)->map(fn (PolicyRecord $policy) => $this->policyState($policy, $owner, $schema));
+        $at ??= now();
+        $states = $policies->where('policy_code', $key)->map(fn (PolicyRecord $policy) => self::policyState($policy, $owner, $schema, at: $at));
         foreach (['effective', 'not_effective', 'expired', 'unapproved'] as $state) {
             if ($states->containsStrict($state)) {
                 return $state === 'effective' ? null : self::setupBlocker($key, $owner, $state);

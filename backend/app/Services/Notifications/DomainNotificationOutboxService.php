@@ -11,7 +11,7 @@ use InvalidArgumentException;
 class DomainNotificationOutboxService
 {
     /**
-     * Authoritative Stage 1 event contract map (contracts/stage1/events.yaml).
+     * Event contracts in contracts/stage1/events.yaml and contracts/stage2/events.yaml.
      *
      * @var array<string, array{channel: string, resource_kind: string}>
      */
@@ -32,6 +32,12 @@ class DomainNotificationOutboxService
         'stage1.actual-issue.changed.v1' => ['channel' => 'chapter', 'resource_kind' => 'actual_issue'],
         'stage1.stock-lot.changed.v1' => ['channel' => 'chapter', 'resource_kind' => 'stock_lot'],
         'stage1.opening-baseline.changed.v1' => ['channel' => 'chapter', 'resource_kind' => 'opening_baseline'],
+        'stage2.repf.changed.v1' => ['channel' => 'chapter', 'resource_kind' => 'repf'],
+        'stage2.purchase-order.changed.v1' => ['channel' => 'chapter', 'resource_kind' => 'purchase_order'],
+        'stage2.donation.changed.v1' => ['channel' => 'chapter', 'resource_kind' => 'donation'],
+        'stage2.receiving-report.changed.v1' => ['channel' => 'chapter', 'resource_kind' => 'receiving_report'],
+        'stage2.receiving-discrepancy.changed.v1' => ['channel' => 'chapter', 'resource_kind' => 'receiving_discrepancy'],
+        'stage2.receiving-hold.changed.v1' => ['channel' => 'chapter', 'resource_kind' => 'receiving_hold'],
     ];
 
     /**
@@ -47,7 +53,16 @@ class DomainNotificationOutboxService
         ?string $targetUserId = null
     ): DomainNotificationOutbox {
         if (! isset(self::EVENT_MAP[$eventName])) {
-            throw new InvalidArgumentException("Unsupported Stage 1 notification event: {$eventName}");
+            throw new InvalidArgumentException("Unsupported notification event: {$eventName}");
+        }
+
+        if (str_starts_with($eventName, 'stage2.') && (
+            DB::transactionLevel() === 0 || $targetUserId !== null
+            || ! $this->isLowercaseUuidV4($chapterId) || ! $this->isLowercaseUuidV4($resourceId)
+            || $resourceVersion === null || $resourceVersion < 1 || $resourceVersion > 2147483647
+            || $materialVersion === null || $materialVersion < 1 || $materialVersion > 2147483647
+        )) {
+            throw new InvalidArgumentException('Invalid Stage 2 notification intent.');
         }
 
         $meta = self::EVENT_MAP[$eventName];
@@ -73,7 +88,6 @@ class DomainNotificationOutboxService
             $effectiveChapterId = $chapterId;
         }
 
-        // Strict 8-field public envelope per contracts/stage1/events.yaml
         $payload = [
             'event_name' => $eventName,
             'event_id' => $eventId,
@@ -100,6 +114,11 @@ class DomainNotificationOutboxService
             'dispatched_at' => null,
             'created_at' => $committedAt,
         ]);
+    }
+
+    private function isLowercaseUuidV4(?string $id): bool
+    {
+        return $id !== null && $id === strtolower($id) && Str::isUuid($id, 4);
     }
 
     /**

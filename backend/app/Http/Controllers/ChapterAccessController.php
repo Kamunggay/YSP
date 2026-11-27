@@ -79,19 +79,7 @@ class ChapterAccessController extends Controller
                 $state = $authority->allows($action) && in_array($action, ['catalogue.read', 'catalogue.maintain', 'rf.draft', 'ipc.draft'], true)
                     ? 'allowed' : 'context_required';
 
-                $settings = match ($action) {
-                    'rf.submit', 'rf.approve' => ['rf_approval_route' => ['CHAPTER_HEAD', 'RfApprovalRoutePolicyValue']],
-                    'opening_rm.post' => [
-                        'reference_series' => ['CHAPTER_HEAD', 'OpeningReferencePolicyValue'],
-                        'valuation_rounding' => ['FINANCE', 'OpeningValuationPolicyValue'],
-                    ],
-                    default => [],
-                };
-                foreach ($settings as $key => [$owner, $schema]) {
-                    if ($blocker = $authority->policyBlocker($policies, $key, $owner, $schema)) {
-                        $blockers[] = $blocker;
-                    }
-                }
+                $blockers = ChapterAuthority::chapterPolicyBlockers($action, $policies);
                 if ($blockers) {
                     $state = 'setup_blocked';
                 }

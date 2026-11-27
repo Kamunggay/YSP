@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Exceptions\ContractException;
+use App\Services\Evidence\StageTwoEvidenceTarget;
 use Illuminate\Http\Request;
 
 final class PaperEvidenceUpload
@@ -122,7 +123,8 @@ final class PaperEvidenceUpload
 
             return new self($keys[0], null, null, $files, $version, $reason);
         }
-        if (! in_array($metadata['purpose'], ['opening_receipt', 'hold_clearance', 'actual_issue'], true)) {
+        if (! in_array($metadata['purpose'], ['opening_receipt', 'hold_clearance', 'actual_issue'], true)
+            && ! StageTwoEvidenceTarget::supports($metadata['purpose'])) {
             throw self::invalid('/purpose', 'invalid_target', 'Select a valid evidence purpose.');
         }
         if (! preg_match(AuthInput::UUID, $metadata['record_id'])) {

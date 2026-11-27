@@ -9,6 +9,7 @@ use App\Models\InternalRfLine;
 use App\Models\OpeningCount;
 use App\Models\PolicyRecord;
 use App\Services\Shared\CanonicalJson;
+use App\Services\Shared\ReferenceSequenceService;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use DomainException;
@@ -28,8 +29,12 @@ final class SetupPolicy
         'valuation_rounding' => ['OpeningValuationPolicyValue'],
         'rf_approval_route' => ['RfApprovalRoutePolicyValue'],
         'allocation_priority' => ['AllocationPriorityPolicyValue'],
-        'reference_series' => ['OpeningReferencePolicyValue', 'RfReferenceSeriesPolicyValue', 'IssueReferenceSeriesPolicyValue'],
+        'purchasing_quotation_policy' => ['PurchasingQuotationPolicyValue'],
+        'da_authorization' => ['DaAuthorizationPolicyValue'],
+        'reference_series' => ['OpeningReferencePolicyValue', ...ReferenceSequenceService::NUMBERED_SERIES_SCHEMAS],
     ];
+
+    private const DA_DUTIES = ['CHAPTER_HEAD', 'FINANCE', 'INVENTORY', 'RECEIVING'];
 
     public static function record(array $payload, Collection $users): array
     {
@@ -152,11 +157,35 @@ final class SetupPolicy
                 'ipc_prefix' => 'required|string|max:40', 'rm_prefix' => 'required|string|max:40',
                 'minimum_digits' => 'required|integer:strict|between:1,12',
             ],
-            'RfReferenceSeriesPolicyValue', 'IssueReferenceSeriesPolicyValue' => [
-                'document_kind' => 'required|in:'.($schema === 'RfReferenceSeriesPolicyValue' ? 'RF' : 'IS_AR'),
+            'RfReferenceSeriesPolicyValue', 'IssueReferenceSeriesPolicyValue',
+            'RepfReferenceSeriesPolicyValue', 'PoReferenceSeriesPolicyValue', 'DaReferenceSeriesPolicyValue' => [
+                'document_kind' => 'required|in:'.array_search($schema, ReferenceSequenceService::NUMBERED_SERIES_SCHEMAS, true),
                 'prefix' => 'required|string|regex:/\A[A-Z0-9]{1,12}\z/',
                 'year_basis' => 'required|in:Asia/Manila',
                 'sequence_width' => 'required|integer:strict|between:6,12',
+            ],
+            'PurchasingQuotationPolicyValue' => [
+                'currency' => 'required|in:PHP',
+                'tiers' => 'required|array|list|between:1,10',
+                'tiers.*' => 'required|array:min_amount_php,max_amount_php,minimum_comparable_quotes',
+                'tiers.*.min_amount_php' => $money,
+                'tiers.*.max_amount_php' => ['present', 'nullable', 'string', ControlledSetupInput::MONEY],
+                'tiers.*.minimum_comparable_quotes' => 'required|integer:strict|between:1,10',
+                'emergency_waiver' => 'required|array:permitted,require_reason,minimum_quotes_when_waived,approving_duties',
+                'emergency_waiver.permitted' => 'required|boolean:strict',
+                'emergency_waiver.require_reason' => 'required|boolean:strict',
+                'emergency_waiver.minimum_quotes_when_waived' => 'present|nullable|integer:strict|between:1,5',
+                'emergency_waiver.approving_duties' => 'present|array|list|max:2',
+                'emergency_waiver.approving_duties.*' => 'required|distinct:strict|in:BUDGET_APPROVER,CHAPTER_HEAD',
+            ],
+            'DaAuthorizationPolicyValue' => [
+                'acknowledge_duties' => 'required|array|list|between:1,4',
+                'acknowledge_duties.*' => 'required|distinct:strict|in:'.implode(',', self::DA_DUTIES),
+                'restriction_resolve_duties' => 'required|array|list|between:1,4',
+                'restriction_resolve_duties.*' => 'required|distinct:strict|in:'.implode(',', self::DA_DUTIES),
+                'require_preparer_independence' => 'required|boolean:strict',
+                'require_signed_acknowledgment_evidence' => 'required|boolean:strict|accepted',
+                'require_signed_resolution_evidence' => 'required|boolean:strict|accepted',
             ],
             'RfApprovalRoutePolicyValue' => [
                 'routes' => 'required|array|list|between:1,20',
@@ -191,7 +220,32 @@ final class SetupPolicy
             throw new DomainException('invalid_input');
         }
 
+        if ($schema === 'PurchasingQuotationPolicyValue') {
+            self::verifyQuotationTiers($value);
+        }
+
         return $value;
+    }
+
+    private static function verifyQuotationTiers(array $value): void
+    {
+        $expectedMinimum = BigDecimal::of('0.00');
+        foreach ($value['tiers'] as $tier) {
+            $maximum = $tier['max_amount_php'];
+            if ($expectedMinimum === null || ! $expectedMinimum->isEqualTo($tier['min_amount_php'])
+                || ($maximum !== null && (trim($maximum) === '' || $expectedMinimum->isGreaterThan($maximum)))) {
+                throw new DomainException('invalid_input');
+            }
+            $expectedMinimum = $maximum === null ? null : BigDecimal::of($maximum)->plus('0.01');
+        }
+
+        $waiver = $value['emergency_waiver'];
+        $valid = $waiver['permitted']
+            ? $waiver['require_reason'] && is_int($waiver['minimum_quotes_when_waived']) && $waiver['approving_duties'] !== []
+            : ! $waiver['require_reason'] && $waiver['minimum_quotes_when_waived'] === null && $waiver['approving_duties'] === [];
+        if (! $valid) {
+            throw new DomainException('invalid_input');
+        }
     }
 
     private static function verifyScope(string $chapter, string $target, string $key, ?string $subject, array $value, CarbonImmutable $from, ?CarbonImmutable $until, Collection $users): void

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Stage1A;
 
+use App\Exceptions\ContractException;
 use App\Models\AuditLog;
 use App\Models\Chapter;
 use App\Models\DutyGrant;
@@ -314,6 +315,163 @@ class ControlledSetupTest extends TestCase
             $series->resolveSeriesPolicy($chapter->id, 'RF'));
         $this->assertSame(['prefix' => 'SYIPC', 'width' => 7, 'policy_id' => $opening['target_id'], 'policy_version' => 1],
             $series->resolveSeriesPolicy($chapter->id, 'IPC'));
+    }
+
+    public function test_stage2_policy_families_use_controlled_approval_and_manila_yearly_sequences(): void
+    {
+        $chapter = Chapter::create(['code' => 'SYN-STG2', 'name' => 'Synthetic chapter']);
+        $operator = $this->officer();
+        $head = $this->officer();
+        $head->memberships()->create(['chapter_id' => $chapter->id]);
+        $head->dutyGrants()->create(['chapter_id' => $chapter->id, 'duty_code' => 'CHAPTER_HEAD']);
+        DB::table('chapter_setup_entitlements')->insert([
+            'user_id' => $operator->id, 'chapter_id' => $chapter->id, 'procedure_id' => 'recordPolicy', 'starts_at' => now(),
+        ]);
+        $token = $this->operatorToken($operator);
+        $makePolicy = fn (string $key, string $schema, array $value, ?string $target = null, int $version = 0) => $this->intent(
+            'recordPolicy', $operator, $target ?? self::id(), [
+                'setting_key' => $key, 'subject_id' => null, 'ownership' => 'operational',
+                'value_schema_reference' => '#/components/schemas/'.$schema,
+                'value' => CanonicalJson::encode($value),
+                'effective_from' => now()->toISOString(), 'effective_until' => null,
+            ], $chapter->id, $version,
+        );
+
+        $quotation = [
+            'currency' => 'PHP',
+            'tiers' => [
+                ['min_amount_php' => '0.00', 'max_amount_php' => '10000.00', 'minimum_comparable_quotes' => 2],
+                ['min_amount_php' => '10000.01', 'max_amount_php' => null, 'minimum_comparable_quotes' => 3],
+            ],
+            'emergency_waiver' => [
+                'permitted' => true, 'require_reason' => true, 'minimum_quotes_when_waived' => 1,
+                'approving_duties' => ['BUDGET_APPROVER', 'CHAPTER_HEAD'],
+            ],
+        ];
+        $policy = $makePolicy('purchasing_quotation_policy', 'PurchasingQuotationPolicyValue', $quotation);
+        $this->approve($policy, $head, 'CHAPTER_HEAD', retain: false);
+        $this->assertSame('approval_required', $this->execute('record-policy', $policy, $token)['code']);
+        $this->approve($policy, $head, 'CHAPTER_HEAD');
+        $this->assertSame('committed', $this->execute('record-policy', $policy, $token)['outcome']);
+        $this->assertSame('replayed', $this->execute('record-policy', $policy, $token)['outcome']);
+
+        $this->travel(1)->minute();
+        $changed = $quotation;
+        $changed['tiers'][1]['min_amount_php'] = '10000.00';
+        $invalid = $makePolicy('purchasing_quotation_policy', 'PurchasingQuotationPolicyValue', $changed, $policy['target_id'], 1);
+        $this->approve($invalid, $head, 'CHAPTER_HEAD');
+        $this->assertSame('invalid_input', $this->execute('record-policy', $invalid, $token)['code']);
+        $changed = $quotation;
+        $changed['emergency_waiver']['require_reason'] = false;
+        $invalid = $makePolicy('purchasing_quotation_policy', 'PurchasingQuotationPolicyValue', $changed, $policy['target_id'], 1);
+        $this->approve($invalid, $head, 'CHAPTER_HEAD');
+        $this->assertSame('invalid_input', $this->execute('record-policy', $invalid, $token)['code']);
+        $changed = $quotation;
+        $changed['emergency_waiver'] = [
+            'permitted' => false, 'require_reason' => false, 'minimum_quotes_when_waived' => null, 'approving_duties' => [],
+        ];
+        $next = $makePolicy('purchasing_quotation_policy', 'PurchasingQuotationPolicyValue', $changed, $policy['target_id'], 1);
+        $this->approve($next, $head, 'CHAPTER_HEAD');
+        $this->assertSame(2, $this->execute('record-policy', $next, $token)['version']);
+        $this->assertDatabaseHas('policy_records', ['aggregate_id' => $policy['target_id'], 'policy_version' => 2]);
+
+        $da = $makePolicy('da_authorization', 'DaAuthorizationPolicyValue', [
+            'acknowledge_duties' => ['RECEIVING'], 'restriction_resolve_duties' => ['CHAPTER_HEAD', 'FINANCE'],
+            'require_preparer_independence' => false, 'require_signed_acknowledgment_evidence' => true,
+            'require_signed_resolution_evidence' => true,
+        ]);
+        $this->approve($da, $head, 'CHAPTER_HEAD');
+        $this->assertSame('committed', $this->execute('record-policy', $da, $token)['outcome']);
+
+        $series = app(ReferenceSequenceService::class);
+        try {
+            $series->nextReference($chapter->id, 'PO');
+            $this->fail('An unconfigured Stage 2 reference series allocated a number.');
+        } catch (ContractException $exception) {
+            $this->assertSame(409, $exception->statusCode);
+            $this->assertSame('missing', $exception->extra['error']['blockers'][0]['state']);
+        }
+        $opening = $makePolicy('reference_series', 'OpeningReferencePolicyValue', [
+            'ipc_prefix' => 'SYIPC', 'rm_prefix' => 'SYRM', 'minimum_digits' => 7,
+        ]);
+        $this->approve($opening, $head, 'CHAPTER_HEAD');
+        $this->assertSame('committed', $this->execute('record-policy', $opening, $token)['outcome']);
+        $this->assertSame(1, $series->nextReference($chapter->id, 'RM')['sequence']);
+        foreach (['REPF' => 'Repf', 'PO' => 'Po', 'DA' => 'Da'] as $kind => $name) {
+            $record = $makePolicy('reference_series', $name.'ReferenceSeriesPolicyValue', [
+                'document_kind' => $kind, 'prefix' => 'SY'.$kind, 'sequence_width' => 8, 'year_basis' => 'Asia/Manila',
+            ]);
+            $this->approve($record, $head, 'CHAPTER_HEAD');
+            $this->assertSame('committed', $this->execute('record-policy', $record, $token)['outcome']);
+            $number = $series->nextReference($chapter->id, $kind);
+            $this->assertSame($record['target_id'], $number['policy_id']);
+            $this->assertSame(sprintf('SY%s-%d-00000001', $kind, now('Asia/Manila')->year), $number['reference']);
+        }
+        $policyOverride = $series->resolveSeriesPolicy($chapter->id, 'RM', required: true);
+        $this->assertSame(2, $series->nextReference($chapter->id, 'RM', policyOverride: $policyOverride)['sequence']);
+        $this->assertSame(3, $series->nextReference($chapter->id, 'RM')['sequence']);
+
+        $this->travelTo(now('Asia/Manila')->addYear()->startOfYear()->subSecond());
+        $oldYear = $series->nextReference($chapter->id, 'PO');
+        $this->travel(1)->second();
+        $newYear = $series->nextReference($chapter->id, 'PO');
+        $this->assertSame($oldYear['year'] + 1, $newYear['year']);
+        $this->assertSame(2, $oldYear['sequence']);
+        $this->assertSame(1, $newYear['sequence']);
+    }
+
+    public function test_access_reports_stage2_chapter_policy_blockers_by_family_and_effectivity(): void
+    {
+        $chapter = Chapter::create(['code' => 'SYN-POLICIES', 'name' => 'Synthetic chapter']);
+        $operator = $this->officer();
+        $head = $this->officer();
+        foreach ([[$operator, 'PURCHASING'], [$head, 'CHAPTER_HEAD']] as [$user, $duty]) {
+            $user->memberships()->create(['chapter_id' => $chapter->id]);
+            $user->dutyGrants()->create(['chapter_id' => $chapter->id, 'duty_code' => $duty]);
+        }
+        DB::table('chapter_setup_entitlements')->insert([
+            'user_id' => $operator->id, 'chapter_id' => $chapter->id, 'procedure_id' => 'recordPolicy', 'starts_at' => now(),
+        ]);
+        $token = $this->operatorToken($operator);
+        $access = fn () => collect($this->read('/chapters/'.$chapter->id.'/access', $token)
+            ->assertOk()->assertHeader('Cache-Control', 'no-store')->json('data.actions'))->keyBy('action');
+        $read = fn () => $access()['quotation.select'];
+        $this->assertCount(63, $access());
+        $this->assertSame('duty_denied', $access()['po.approve']['state']);
+        $this->assertSame('context_required', $access()['quotation.manage']['state']);
+        $this->assertSame('setup_blocked', $read()['state']);
+        $this->assertSame('missing', $read()['blockers'][0]['state']);
+
+        $chapter->policyRecords()->create([
+            'policy_code' => 'purchasing_quotation_policy',
+            'rules_json' => ['synthetic_unapproved' => true],
+            'effective_from' => now()->subMinute(),
+        ]);
+        $this->assertSame('unapproved', $read()['blockers'][0]['state']);
+
+        $approved = $this->intent('recordPolicy', $operator, self::id(), [
+            'setting_key' => 'purchasing_quotation_policy', 'ownership' => 'operational', 'subject_id' => null,
+            'value_schema_reference' => '#/components/schemas/PurchasingQuotationPolicyValue',
+            'value' => CanonicalJson::encode([
+                'currency' => 'PHP',
+                'tiers' => [['min_amount_php' => '0.00', 'max_amount_php' => null, 'minimum_comparable_quotes' => 1]],
+                'emergency_waiver' => [
+                    'permitted' => false, 'require_reason' => false, 'minimum_quotes_when_waived' => null, 'approving_duties' => [],
+                ],
+            ]),
+            'effective_from' => now()->addMinute()->toISOString(),
+            'effective_until' => now()->addMinutes(2)->toISOString(),
+        ], $chapter->id);
+        $this->approve($approved, $head, 'CHAPTER_HEAD');
+        $this->assertSame('committed', $this->execute('record-policy', $approved, $token)['outcome']);
+        $this->assertSame('not_effective', $read()['blockers'][0]['state']);
+        $this->travel(1)->minute();
+        $this->assertSame('context_required', $read()['state']);
+        $this->assertSame([], $read()['blockers']);
+        $this->assertSame('missing', $access()['repf.submit']['blockers'][0]['state']);
+        $this->travel(1)->minute();
+        $this->assertSame('expired', $read()['blockers'][0]['state']);
+        $this->get(self::ORIGIN.'/api/v1/chapters/'.$chapter->id.'/policies')->assertNotFound();
     }
 
     private function valuationBlocker(Chapter $chapter, string $token): ?string

@@ -39,13 +39,25 @@ final class NotificationSubjectRead
             'stage1.actual-issue.changed.v1' => "actual-issues/{$id}",
             'stage1.stock-lot.changed.v1' => "stock/lots/{$id}",
             'stage1.opening-baseline.changed.v1' => $id === $event->chapter_id ? 'opening-baseline' : null,
+            'stage2.repf.changed.v1' => "repfs/{$id}",
+            'stage2.purchase-order.changed.v1' => "purchase-orders/{$id}",
+            'stage2.donation.changed.v1' => "donations/{$id}",
+            'stage2.receiving-report.changed.v1' => "receiving-reports/{$id}",
+            'stage2.receiving-discrepancy.changed.v1' => "receiving-discrepancies/{$id}",
+            'stage2.receiving-hold.changed.v1' => "receiving-holds/{$id}",
             default => null,
         };
         if ($path === null || ! preg_match(AuthInput::UUID, $event->chapter_id ?? '')) {
             return false;
         }
 
-        $request = Request::create(rtrim(config('app.url'), '/')."/api/v1/chapters/{$event->chapter_id}/{$path}");
+        return $this->canReadPath($user, $event->chapter_id, $path)
+            || ($event->event_name === 'stage2.repf.changed.v1' && $this->canReadPath($user, $event->chapter_id, "{$path}/quotations"));
+    }
+
+    private function canReadPath(User $user, string $chapterId, string $path): bool
+    {
+        $request = Request::create(rtrim(config('app.url'), '/')."/api/v1/chapters/{$chapterId}/{$path}");
         $request->attributes->set(self::class, $user);
         $previous = app('request');
         try {

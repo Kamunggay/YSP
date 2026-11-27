@@ -11,6 +11,7 @@ use App\Models\InternalRf;
 use App\Models\OpeningRm;
 use App\Models\StockHold;
 use App\Services\Authority\ChapterAuthority;
+use App\Services\Evidence\StageTwoEvidenceTarget;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,7 +22,7 @@ class EnforceStageOneAction
     {
         $authority = $request->attributes->get(ChapterAuthority::class);
         foreach ($actions as $action) {
-            if (! array_intersect($authority->duties(), ChapterAuthority::ACTION_DUTIES[$action])) {
+            if (! array_intersect($authority->duties(), (ChapterAuthority::ACTION_DUTIES[$action] ?? []))) {
                 throw new ContractException(403, 'duty_denied', 'Current duty does not permit this action.');
             }
         }
@@ -115,9 +116,11 @@ class EnforceStageOneAction
         $targetId = $upload?->recordId ?? $evidence?->record_id;
         $editing = ! $request->isMethodSafe();
         $unit = null;
-        $target = null;
+        $editable = null;
 
-        if ($targetId !== null) {
+        if ($targetId !== null && $purpose !== null && StageTwoEvidenceTarget::supports($purpose)) {
+            $editable = StageTwoEvidenceTarget::authorize($authority, $purpose, $targetId, $editing, $evidence);
+        } elseif ($targetId !== null) {
             $model = match ($purpose) {
                 'opening_receipt' => OpeningRm::class,
                 'hold_clearance' => StockHold::class,
@@ -142,10 +145,17 @@ class EnforceStageOneAction
             }
             if ($allowed) {
                 $target = ($editing ? $query->lockForUpdate() : $query->sharedLock())->first();
+                if ($target) {
+                    $editable = match ($purpose) {
+                        'opening_receipt' => in_array(strtolower((string) $target->status), ['draft', 'inspected', 'matched', 'evidence_matched'], true),
+                        'hold_clearance' => $target->status === 'active',
+                        'actual_issue' => in_array($target->status, ['prepared', 'acknowledged'], true),
+                    };
+                }
             }
         }
 
-        if (! $target || ! $authority->allows($editing ? 'evidence.prepare' : 'evidence.read', $unit)
+        if ($editable === null || ! $authority->allows($editing ? 'evidence.prepare' : 'evidence.read', $unit)
             || (in_array('history.read', $actions, true) && ! $authority->allows('history.read', $unit))) {
             throw new ContractException(404, 'evidence_not_found', 'Evidence not found.');
         }
@@ -160,7 +170,7 @@ class EnforceStageOneAction
 
         $request->attributes->set(EvidenceRecord::class, $evidence);
         $request->attributes->set(PaperEvidenceUpload::class, $upload);
-        $request->attributes->set('paper_evidence_target', $target);
+        $request->attributes->set('paper_evidence_target_editable', $editable);
     }
 
     private function response(Request $request, Closure $next): Response

@@ -96,13 +96,7 @@ class PaperEvidenceController extends Controller
                 return response()->json($receipt->result, $receipt->status, ['X-Action-Replayed' => 'true']);
             }
 
-            $target = $request->attributes->get('paper_evidence_target');
-            $editable = match ($record->purpose) {
-                'opening_receipt' => in_array(strtolower((string) $target->status), ['draft', 'inspected', 'matched', 'evidence_matched'], true),
-                'hold_clearance' => $target->status === 'active',
-                'actual_issue' => in_array($target->status, ['prepared', 'acknowledged'], true),
-            };
-            if (! $editable) {
+            if (! $request->attributes->get('paper_evidence_target_editable')) {
                 throw new ContractException(409, 'target_locked', 'The evidence target is no longer editable.');
             }
 
