@@ -74,7 +74,7 @@ class RepfController
     {
         $selectors = RepfInput::selectors($request, ['limit', 'cursor']);
         $repf = $this->find($chapterId, $id);
-        $history = RepfWorkflow::history($repf)->orderBy('version')->orderBy('id')->get();
+        $history = RepfWorkflow::history($repf)->where('is_version_snapshot', true)->orderBy('version')->orderBy('id')->get();
         $actors = User::whereIn('id', $history->pluck('actor_user_id')->unique())->get()->keyBy('id');
         $items = $history->map(fn (Stage2RecordHistory $row) => [
             'id' => $row->id,

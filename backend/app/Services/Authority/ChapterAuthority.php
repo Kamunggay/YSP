@@ -213,8 +213,10 @@ final class ChapterAuthority
                 'issue.prepare', 'issue.post', 'rf.reserve', 'rf.reallocate' => ['quantity_scale', 'reference_series', 'allocation_priority'],
                 'repf.draft', 'repf.submit', 'repf.budget_review', 'repf.cancel', 'replenishment.read' => ['quantity_scale', 'rop', 'target_level'],
                 'po.approve' => ['purchasing_quotation_policy', 'reference_series'],
+                'po.amend_propose' => ['purchasing_quotation_policy', 'quantity_scale'],
+                'po.amend_approve' => ['purchasing_quotation_policy', 'quantity_scale'],
                 'da.acknowledge' => ['quantity_scale', 'reference_series', 'valuation_rounding'],
-                'po.draft', 'po.amend_propose', 'da.draft', 'da.submit', 'receiving.draft', 'receiving.inspect', 'receiving.post', 'allocation_queue.read' => ['quantity_scale'],
+                'po.draft', 'da.draft', 'da.submit', 'receiving.draft', 'receiving.inspect', 'receiving.post', 'allocation_queue.read' => ['quantity_scale'],
                 default => [],
             },
         ])->unique()->sort()->values();

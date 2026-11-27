@@ -214,7 +214,7 @@ class FoundationsTest extends TestCase
             $this->assertSame("private-stage1.chapter.{$chapter->id}", $event->channel_name);
 
             $this->assertFalse($subjectRead->allows($reader, $event));
-            if (in_array($kind, ['repf', 'donation'], true)) {
+            if (in_array($kind, ['repf', 'purchase_order', 'donation'], true)) {
                 continue;
             }
             // Exercise the real middleware until the remaining detail controllers are available.
