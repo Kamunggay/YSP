@@ -6,6 +6,7 @@ use App\Exceptions\ContractException;
 use App\Http\Requests\OpeningDraftInput;
 use App\Http\Requests\RepfInput;
 use App\Http\Resources\PurchaseOrderResource;
+use App\Http\Resources\QuotationResource;
 use App\Models\ActionReceipt;
 use App\Services\Authority\ChapterAuthority;
 use App\Services\Procurement\PurchaseOrderWorkflow;
@@ -55,8 +56,8 @@ class ProcurementOperationController
         $body = $receipt->result;
         if (! $authority->allows('evidence.read')) {
             $kind = $body['data']['resource_kind'] ?? null;
-            if ($kind === 'quotation' && isset($body['data']['result']['evidence_binding'])) {
-                $body['data']['result']['evidence_binding'] = null;
+            if ($kind === 'quotation' && isset($body['data']['result'])) {
+                $body['data']['result'] = QuotationResource::redactEvidence($body['data']['result'], $authority);
             } elseif ($kind === 'purchase_order' && isset($body['data']['result'])) {
                 $body['data']['result'] = PurchaseOrderResource::redactEvidence($body['data']['result'], $authority);
             } elseif ($kind === 'purchase_order_amendment' && isset($body['data']['result']['purchase_order'])) {

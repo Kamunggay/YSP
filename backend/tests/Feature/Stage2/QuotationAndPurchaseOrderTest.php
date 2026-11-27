@@ -193,6 +193,17 @@ class QuotationAndPurchaseOrderTest extends TestCase
             ->assertOk()->assertExactJson($q1Resp->json());
         $this->asBrowserOfficer($purchasing->id)->get("$base/procurement-operations/{$selResp->json('data.operation_id')}")
             ->assertOk()->assertExactJson($selResp->json());
+
+        // Review regressions: JSON object-as-list on comparable_quotation_ids returns 422; replay redacts evidence_binding after evidence.read revocation.
+        $this->postWrite($purchasing, $selUrl, [
+            'expected_repf_version' => 1, 'expected_repf_material_version' => 1,
+            'selected_quotation_id' => $q1Id, 'comparable_quotation_ids' => (object) ['0' => $q1Id],
+            'selection_rationale' => 'Object instead of list', 'emergency_waiver' => null,
+        ])->assertUnprocessable()->assertJsonPath('error.fields.0.pointer', '/comparable_quotation_ids');
+        $purchasing->dutyGrants()->where('duty_code', 'INVENTORY')->update(['status' => 'revoked']);
+        $this->postWrite($purchasing, $quotesUrl, $this->quotePayload($repfLine, '40.00', '240.00', $binding, 'Visayas Apparel Wholesalers'), $q1Key)
+            ->assertCreated()->assertHeader('X-Action-Replayed', 'true')
+            ->assertJsonPath('data.result.evidence_binding', null);
     }
 
     public function test_purchase_order_lifecycle_independence_ceilings_waivers_acknowledgment_amendments_close_short_cancel_and_recovery(): void
@@ -428,6 +439,24 @@ class QuotationAndPurchaseOrderTest extends TestCase
             ->assertJsonPath('data.result.lines.0.canceled_quantity', '20.00')
             ->assertJsonPath('data.result.lines.0.outstanding_quantity', '0.00');
         $this->assertSame('40.00', (string) BigDecimal::of($repfLine->fresh()->remaining_to_order_quantity)->toScale(2));
+
+        // Review regressions: Unicode NBSP-only q selector -> 400; amendment matching accepted_quantity transitions partially_received -> receiving_complete.
+        $this->asBrowserOfficer($chapterHead->id)->get("$poUrl?q=".rawurlencode("\u{00A0}"))
+            ->assertBadRequest()->assertJsonPath('error.code', 'invalid_selector');
+
+        $po3Id = $this->postWrite($purchasing, $poUrl, $this->poPayload($repf->id, $selWaiver['id'], $repfLine->id, $qWaiver['lines'][0]['id'], $ctx['variant']->id, $ctx['unit']->id, '20.00', '100.00'))
+            ->assertCreated()->json('data.resource_id');
+        $this->postWrite($purchasing, "$poUrl/$po3Id/submit", ['expected_version' => 1, 'expected_material_version' => 1])->assertOk();
+        $this->postWrite($chapterHead, "$poUrl/$po3Id/approve", ['expected_version' => 2, 'expected_material_version' => 1, 'approval_notes' => null])->assertOk();
+        $po3Line = PurchaseOrderLine::where('po_id', $po3Id)->firstOrFail();
+        DB::table('purchase_orders')->where('id', $po3Id)->update(['status' => 'partially_received']);
+        DB::table('purchase_order_lines')->where('id', $po3Line->id)->update(['accepted_quantity' => '15.00', 'outstanding_quantity' => '5.00']);
+        $completeAmendId = $this->postWrite($proposer, "$poUrl/$po3Id/amendments", $this->amendmentPayload(3, 1, $po3Line, '15.00', '100.00'))
+            ->assertCreated()->json('data.resource_id');
+        $this->postWrite($chapterHead, "$poUrl/$po3Id/amendments/$completeAmendId/approve", [
+            'expected_version' => 4, 'expected_material_version' => 1, 'approval_notes' => 'Match accepted quantity.',
+        ])->assertOk()->assertJsonPath('data.result.purchase_order.status', 'receiving_complete')
+            ->assertJsonPath('data.result.purchase_order.lines.0.outstanding_quantity', '0.00');
     }
 
     private function setupProcurementContext(string $approvedBudget = '10000.00', string $requestedQty = '40.00'): array

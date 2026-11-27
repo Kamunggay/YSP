@@ -25,6 +25,7 @@ use App\Services\Shared\CanonicalJson;
 use App\Services\Shared\ReferenceSequenceService;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -143,14 +144,14 @@ final class PurchaseOrderWorkflow
                         break;
 
                     case 'approvePurchaseOrder':
-                        $this->approveAndIssue($po, $repf, $selection, $input, $authority, $actor, $now);
+                        $this->approveAndIssue($po, $repf, $selection, $authority, $actor, $now);
                         $historyReason = $input['approval_notes'];
                         $repfChanged = true;
                         break;
 
                     case 'returnPurchaseOrder':
                     case 'rejectPurchaseOrder':
-                        $this->reviewDecision($po, $repf, $operation, $input['reason'], $authority, $actor, $now);
+                        $this->reviewDecision($po, $repf, $operation, $input['reason'], $authority, $now);
                         $historyReason = $input['reason'];
                         break;
 
@@ -167,7 +168,7 @@ final class PurchaseOrderWorkflow
 
                     case 'approvePurchaseOrderAmendment':
                         [$amendmentModel, $repfChanged] = $this->approveAmendment(
-                            $po, $repf, $selection, $amendmentId, $input, $authority, $scope['user_id'], $now
+                            $po, $repf, $selection, $amendmentId, $authority, $scope['user_id'], $now
                         );
                         $resourceKind = 'purchase_order_amendment';
                         $historyReason = $input['approval_notes'] ?? $amendmentModel->reason;
@@ -331,7 +332,7 @@ final class PurchaseOrderWorkflow
         return $po;
     }
 
-    private function replaceDraft(PurchaseOrder $po, Repf $repf, array $selection, array $input, $now): void
+    private function replaceDraft(PurchaseOrder $po, Repf $repf, array $selection, array $input, CarbonInterface $now): void
     {
         if (! in_array($po->status, ['draft', 'returned_for_revision'], true)) {
             throw QuotationPolicy::conflict('invalid_transition', 'Only draft or returned_for_revision Purchase Orders may be replaced.');
@@ -352,6 +353,7 @@ final class PurchaseOrderWorkflow
         );
         $this->checkBudgetCeiling($repf, $po->id, $total);
 
+        [$anyLineCanceled, $canceledAt] = $this->canceledHeader($builtLines);
         $po->fill([
             'status' => 'draft',
             'version' => $po->version + 1,
@@ -360,6 +362,8 @@ final class PurchaseOrderWorkflow
             'expected_delivery_date' => $input['expected_delivery_date'],
             'payment_and_delivery_terms' => $input['payment_and_delivery_terms'],
             'total_amount_php' => $total,
+            'linked_demand_canceled' => $anyLineCanceled,
+            'linked_demand_canceled_at' => $canceledAt,
             'review_json' => [],
         ]);
         $po->updated_at = $now;
@@ -371,7 +375,7 @@ final class PurchaseOrderWorkflow
         }
     }
 
-    private function submitDraft(PurchaseOrder $po, Repf $repf, array $selection, array $actor, $now): void
+    private function submitDraft(PurchaseOrder $po, Repf $repf, array $selection, array $actor, CarbonInterface $now): void
     {
         if ($po->status !== 'draft') {
             throw QuotationPolicy::conflict('invalid_transition', 'Only draft Purchase Orders may be submitted.');
@@ -400,10 +404,9 @@ final class PurchaseOrderWorkflow
         PurchaseOrder $po,
         Repf $repf,
         array $selection,
-        array $input,
         ChapterAuthority $authority,
         array $actor,
-        $now,
+        CarbonInterface $now,
     ): void {
         $this->requireIndependence($authority, [$po->prepared_by, $repf->prepared_by], 'PO approval requires an officer independent of both the PO preparer and the originating RepF preparer.');
         if ($po->status !== 'pending_approval') {
@@ -455,8 +458,7 @@ final class PurchaseOrderWorkflow
         string $operation,
         string $reason,
         ChapterAuthority $authority,
-        array $actor,
-        $now,
+        CarbonInterface $now,
     ): void {
         $this->requireIndependence($authority, [$po->prepared_by, $repf->prepared_by], 'PO review requires an officer independent of both the PO preparer and the originating RepF preparer.');
         if ($po->status !== 'pending_approval') {
@@ -473,7 +475,7 @@ final class PurchaseOrderWorkflow
         $po->save();
     }
 
-    private function recordAcknowledgment(PurchaseOrder $po, array $input, array $actor, $now): void
+    private function recordAcknowledgment(PurchaseOrder $po, array $input, array $actor, CarbonInterface $now): void
     {
         if (! in_array($po->status, ['issued', 'partially_received'], true)) {
             throw QuotationPolicy::conflict('invalid_transition', 'Supplier acknowledgment requires an issued or partially_received Purchase Order.');
@@ -507,7 +509,7 @@ final class PurchaseOrderWorkflow
         array $selection,
         array $input,
         string $userId,
-        $now,
+        CarbonInterface $now,
     ): PurchaseOrderAmendment {
         if (! in_array($po->status, ['issued', 'partially_received'], true)) {
             throw QuotationPolicy::conflict('invalid_transition', 'Amendments require an issued or partially_received Purchase Order.');
@@ -560,10 +562,9 @@ final class PurchaseOrderWorkflow
         Repf $repf,
         array $selection,
         string $amendmentId,
-        array $input,
         ChapterAuthority $authority,
         string $userId,
-        $now,
+        CarbonInterface $now,
     ): array {
         $amendment = PurchaseOrderAmendment::where('chapter_id', $po->chapter_id)->where('po_id', $po->id)
             ->whereKey($amendmentId)->lockForUpdate()->first() ?? throw RepfWorkflow::notFound();
@@ -593,15 +594,21 @@ final class PurchaseOrderWorkflow
 
         $existingById = $po->lines()->get()->keyBy('id');
         $keptIds = [];
+        $allOutstandingZero = true;
         foreach ($resolvedLines as $resolved) {
             if ($resolved['po_line_id'] !== null) {
                 $existing = $existingById->get($resolved['po_line_id']);
                 $keptIds[] = $existing->id;
-                $sameItem = $existing->variant_id === $resolved['variant_id'] && $existing->unit_id === $resolved['unit_id'];
+                $sameItem = $existing->repf_line_id === $resolved['repf_line_id']
+                    && $existing->variant_id === $resolved['variant_id']
+                    && $existing->unit_id === $resolved['unit_id'];
                 $outstanding = BigDecimal::of($resolved['ordered_quantity'])
                     ->minus($existing->accepted_quantity)
                     ->minus($existing->closed_short_quantity)
                     ->minus($existing->canceled_quantity);
+                if ($outstanding->isGreaterThan(0)) {
+                    $allOutstandingZero = false;
+                }
                 $existing->update([
                     'repf_line_id' => $resolved['repf_line_id'],
                     'quotation_line_id' => $sameItem ? $existing->quotation_line_id : null,
@@ -614,8 +621,11 @@ final class PurchaseOrderWorkflow
                     'line_total_php' => $resolved['line_total_php'],
                     'specifications' => $resolved['specifications'],
                     'notes' => $resolved['notes'],
+                    'linked_demand_canceled' => $resolved['linked_demand_canceled'],
+                    'linked_demand_canceled_at' => $resolved['linked_demand_canceled_at'],
                 ]);
             } else {
+                $allOutstandingZero = false;
                 $created = $po->lines()->create([
                     'id' => (string) Str::uuid(),
                     'po_id' => $po->id,
@@ -643,12 +653,18 @@ final class PurchaseOrderWorkflow
         }
         $po->lines()->whereNotIn('id', $keptIds)->delete();
 
+        [$anyLineCanceled, $canceledAt] = $this->canceledHeader($resolvedLines);
+        if ($po->status === 'partially_received' && $allOutstandingZero) {
+            $po->status = 'receiving_complete';
+        }
         $po->version++;
         $po->material_version++;
         $po->delivery_location = $amendment->delivery_location;
         $po->expected_delivery_date = $amendment->expected_delivery_date;
         $po->payment_and_delivery_terms = $amendment->payment_and_delivery_terms;
         $po->total_amount_php = $proposedTotal;
+        $po->linked_demand_canceled = $anyLineCanceled;
+        $po->linked_demand_canceled_at = $canceledAt;
         $po->updated_at = $now;
         $po->save();
 
@@ -674,7 +690,7 @@ final class PurchaseOrderWorkflow
         string $reason,
         ChapterAuthority $authority,
         array $actor,
-        $now,
+        CarbonInterface $now,
     ): void {
         $this->requireIndependence($authority, [$po->prepared_by, $repf->prepared_by], 'Closing short a PO requires an officer independent of both the PO preparer and the originating RepF preparer.');
         if (! in_array($po->status, ['issued', 'partially_received'], true)) {
@@ -711,7 +727,7 @@ final class PurchaseOrderWorkflow
         string $reason,
         ChapterAuthority $authority,
         array $actor,
-        $now,
+        CarbonInterface $now,
     ): bool {
         $lines = $po->lines()->get();
         $hasAccepted = $po->status === 'partially_received'
@@ -722,14 +738,14 @@ final class PurchaseOrderWorkflow
         if (! in_array($po->status, ['draft', 'returned_for_revision', 'issued'], true)) {
             throw QuotationPolicy::conflict('invalid_transition', 'The current Purchase Order status cannot be canceled.');
         }
-        if ($po->amendments()->where('status', 'pending_approval')->exists()) {
-            throw QuotationPolicy::conflict('invalid_transition', 'Resolve the pending amendment before canceling this Purchase Order.');
-        }
 
         $wasIssued = $po->status === 'issued';
         if ($wasIssued) {
             $authority->requireAction('po.approve');
             $this->requireIndependence($authority, [$po->prepared_by, $repf->prepared_by], 'Canceling an issued PO requires an officer independent of both the PO preparer and the originating RepF preparer.');
+        }
+        if ($po->amendments()->where('status', 'pending_approval')->exists()) {
+            throw QuotationPolicy::conflict('invalid_transition', 'Resolve the pending amendment before canceling this Purchase Order.');
         }
 
         $deltas = [];
@@ -787,8 +803,9 @@ final class PurchaseOrderWorkflow
             $unit = $units->get($line['unit_id']) ?? throw RepfWorkflow::notFound();
 
             if ($unit->id !== $variant->unit_id || $unit->state !== 'active' || $variant->state !== 'active'
-                || ! $variant->is_active || $item->state !== 'active' || ! $item->is_active) {
-                throw QuotationPolicy::conflict('source_not_eligible', 'The selected variant and unit must be active and compatible.');
+                || ! $variant->is_active || $item->state !== 'active' || ! $item->is_active
+                || (int) $variant->quantity_scale !== (int) $repfLine->quantity_scale) {
+                throw QuotationPolicy::conflict('source_not_eligible', 'The selected variant and unit must be active and compatible with the RepF line scale.');
             }
             if ($quoteLine['repf_line_id'] !== $repfLine->id || $line['variant_id'] !== $repfLine->variant_id
                 || $line['unit_id'] !== $repfLine->unit_id || $quoteLine['variant_id'] !== $variant->id
@@ -884,8 +901,9 @@ final class PurchaseOrderWorkflow
             }
 
             if ($unit->id !== $variant->unit_id || $unit->state !== 'active' || $variant->state !== 'active'
-                || ! $variant->is_active || $item->state !== 'active' || ! $item->is_active) {
-                throw QuotationPolicy::conflict('source_not_eligible', 'The selected variant and unit must be active and compatible.');
+                || ! $variant->is_active || $item->state !== 'active' || ! $item->is_active
+                || (int) $variant->quantity_scale !== (int) $repfLine->quantity_scale) {
+                throw QuotationPolicy::conflict('source_not_eligible', 'The selected variant and unit must be active and compatible with the RepF line scale.');
             }
             if (BigDecimal::of($line['ordered_quantity'])->getScale() !== (int) $variant->quantity_scale) {
                 throw OpeningDraftInput::invalidInput([RepfInput::field("/lines/$i/ordered_quantity", 'Use the approved variant quantity scale.')]);
@@ -964,6 +982,7 @@ final class PurchaseOrderWorkflow
             ->where('repf_id', $repf->id)
             ->whereIn('status', self::COMMITTED_BUDGET_STATUSES)
             ->when($excludePoId !== null, fn ($q) => $q->where('id', '!=', $excludePoId))
+            ->orderBy('id')
             ->sharedLock()
             ->pluck('total_amount_php');
 
@@ -978,7 +997,7 @@ final class PurchaseOrderWorkflow
     }
 
     /** @param array<string, BigDecimal> $deltas */
-    private function applyRepfOrderedDeltas(Repf $repf, array $deltas, $now): void
+    private function applyRepfOrderedDeltas(Repf $repf, array $deltas, CarbonInterface $now): void
     {
         $repfLines = $repf->lines()->get();
         foreach ($repfLines as $repfLine) {
@@ -1058,6 +1077,15 @@ final class PurchaseOrderWorkflow
         }
     }
 
+    /** @return array{bool, mixed} */
+    private function canceledHeader(array $lines): array
+    {
+        $any = collect($lines)->contains('linked_demand_canceled', true);
+        $at = $any ? collect($lines)->pluck('linked_demand_canceled_at')->filter()->sort()->first() : null;
+
+        return [$any, $at];
+    }
+
     private function replay(ActionReceipt $receipt, string $fingerprint, ChapterAuthority $authority): JsonResponse
     {
         if (! hash_equals($receipt->fingerprint, $fingerprint)) {
@@ -1067,7 +1095,15 @@ final class PurchaseOrderWorkflow
             $authority->requireAction('po.approve');
         }
 
-        return response()->json($receipt->result, $receipt->status, ['X-Action-Replayed' => 'true']);
+        $body = $receipt->result;
+        $kind = $body['data']['resource_kind'] ?? null;
+        if ($kind === 'purchase_order' && isset($body['data']['result'])) {
+            $body['data']['result'] = PurchaseOrderResource::redactEvidence($body['data']['result'], $authority);
+        } elseif ($kind === 'purchase_order_amendment' && isset($body['data']['result']['purchase_order'])) {
+            $body['data']['result']['purchase_order'] = PurchaseOrderResource::redactEvidence($body['data']['result']['purchase_order'], $authority);
+        }
+
+        return response()->json($body, $receipt->status, ['X-Action-Replayed' => 'true']);
     }
 
     public static function history(PurchaseOrder $po): Builder

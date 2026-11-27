@@ -48,8 +48,9 @@ class PurchaseOrderController
 
         $search = null;
         if (isset($selectors['q'])) {
-            $search = strtolower(trim($selectors['q'], ' '));
-            if ($search === '' || ! mb_check_encoding($search, 'UTF-8') || mb_strlen($search) > 80 || preg_match('/[\x00-\x1f\x7f]/', $search)) {
+            $search = mb_strtolower(trim($selectors['q'], ' '), 'UTF-8');
+            if ($search === '' || ! preg_match('/\S/u', $search) || ! mb_check_encoding($search, 'UTF-8')
+                || mb_strlen($search) > 80 || preg_match('/[\x00-\x1f\x7f]/', $search)) {
                 throw new ContractException(400, 'invalid_selector', 'Invalid search selector.');
             }
             $selectors['q'] = $search;
@@ -64,9 +65,9 @@ class PurchaseOrderController
                 $variantCode = (string) ($variant?->code ?? $variant?->sku ?? '');
                 $displayName = (string) ($variant?->name ?? $variant?->label ?? $variant?->item?->name ?? '');
 
-                return str_starts_with(strtolower($itemCode), $search)
-                    || str_starts_with(strtolower($variantCode), $search)
-                    || str_starts_with(strtolower($displayName), $search);
+                return str_starts_with(mb_strtolower($itemCode, 'UTF-8'), $search)
+                    || str_starts_with(mb_strtolower($variantCode, 'UTF-8'), $search)
+                    || str_starts_with(mb_strtolower($displayName, 'UTF-8'), $search);
             }));
         }
 
@@ -134,8 +135,9 @@ class PurchaseOrderController
 
         if ($authority->allows('quotation.read')) {
             if ($po->selected_quotation_id && ($quote = RepfQuotation::where('chapter_id', $chapterId)->whereKey($po->selected_quotation_id)->first())) {
+                $supplierRef = $quote->supplier['supplier_reference'] ?? null;
                 $links[] = $this->link(
-                    'quotation', $quote->id, null, $quote->supplier['supplier_reference'] ?? null,
+                    'quotation', $quote->id, null, is_string($supplierRef) ? mb_substr($supplierRef, 0, 80) : null,
                     (int) $quote->material_version, $quote->is_selected ? 'selected' : 'recorded', false
                 );
             }

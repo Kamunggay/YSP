@@ -18,6 +18,7 @@ use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\CanonicalJson;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Carbon\CarbonInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,7 +54,7 @@ final class QuotationWorkflow
         $receipts = ActionReceipt::where($scope);
 
         if ($existing = (clone $receipts)->first()) {
-            return $this->replay($existing, $fingerprint);
+            return $this->replay($existing, $fingerprint, $authority);
         }
 
         $before = null;
@@ -64,7 +65,7 @@ final class QuotationWorkflow
                     ?? throw RepfWorkflow::notFound();
 
                 if ($existing = (clone $receipts)->sharedLock()->first()) {
-                    return $this->replay($existing, $fingerprint);
+                    return $this->replay($existing, $fingerprint, $authority);
                 }
 
                 $now = now('UTC');
@@ -75,12 +76,14 @@ final class QuotationWorkflow
                     [$status, $resourceKind, $resourceId, $committedVersion, $committedMaterial, $payload] = $this->selectSupplier(
                         $repf, $input, $actor, $now
                     );
+                    $historySnapshot = $payload;
                 } elseif ($operation === 'deleteRepfQuotation') {
                     [$status, $resourceKind, $resourceId, $committedVersion, $committedMaterial, $payload] = $this->deleteQuotation(
                         $repf, $quotationId, $input, $actor, $now, $authority, $before
                     );
+                    $historySnapshot = $payload;
                 } else {
-                    [$status, $resourceKind, $resourceId, $committedVersion, $committedMaterial, $payload] = $this->saveQuotation(
+                    [$status, $resourceKind, $resourceId, $committedVersion, $committedMaterial, $payload, $historySnapshot] = $this->saveQuotation(
                         $repf, $quotationId, $input, $scope['user_id'], $now, $authority, $before
                     );
                 }
@@ -117,7 +120,7 @@ final class QuotationWorkflow
                     'event_type' => $operation,
                     'actor_user_id' => $scope['user_id'],
                     'reason' => $input['emergency_waiver']['reason'] ?? ($input['selection_rationale'] ?? null),
-                    'snapshot_json' => $payload,
+                    'snapshot_json' => $historySnapshot,
                     'operation_json' => ['operation_id' => $operationId, 'resource_kind' => $resourceKind, 'resource_id' => $resourceId, 'actor' => $actor],
                     'recorded_at' => $now,
                 ]);
@@ -132,7 +135,7 @@ final class QuotationWorkflow
                 throw $exception;
             }
 
-            return $this->replay($existing, $fingerprint);
+            return $this->replay($existing, $fingerprint, $authority);
         } catch (ContractException $exception) {
             if ($exception->statusCode !== 409 || $exception->errorCode === 'action_key_conflict') {
                 throw $exception;
@@ -153,7 +156,7 @@ final class QuotationWorkflow
         ?string $quotationId,
         array $input,
         string $userId,
-        $now,
+        CarbonInterface $now,
         ChapterAuthority $authority,
         ?array &$before,
     ): array {
@@ -258,9 +261,10 @@ final class QuotationWorkflow
         }
 
         $quote->load('recorder');
-        $formatted = QuotationResource::format($quote, $authority, enforceEvidenceRead: true);
+        $snapshot = QuotationResource::format($quote, $authority, enforceEvidenceRead: false);
+        $formatted = QuotationResource::redactEvidence($snapshot, $authority);
 
-        return [$status, 'quotation', $quote->id, (int) $quote->version, (int) $quote->material_version, $formatted];
+        return [$status, 'quotation', $quote->id, (int) $quote->version, (int) $quote->material_version, $formatted, $snapshot];
     }
 
     private function deleteQuotation(
@@ -268,7 +272,7 @@ final class QuotationWorkflow
         string $quotationId,
         array $input,
         array $actor,
-        $now,
+        CarbonInterface $now,
         ChapterAuthority $authority,
         ?array &$before,
     ): array {
@@ -308,7 +312,7 @@ final class QuotationWorkflow
         return [200, 'quotation_deletion', $quotationId, $prevVersion + 1, $prevMaterial, $summary];
     }
 
-    private function selectSupplier(Repf $repf, array $input, array $actor, $now): array
+    private function selectSupplier(Repf $repf, array $input, array $actor, CarbonInterface $now): array
     {
         if ($repf->version !== $input['expected_repf_version'] || $repf->material_version !== $input['expected_repf_material_version']) {
             throw QuotationPolicy::conflict('version_conflict', 'Read the current RepF before recording supplier selection.');
@@ -368,12 +372,17 @@ final class QuotationWorkflow
         return [201, 'supplier_selection', $selectionId, 1, 1, $selection];
     }
 
-    private function replay(ActionReceipt $receipt, string $fingerprint): JsonResponse
+    private function replay(ActionReceipt $receipt, string $fingerprint, ChapterAuthority $authority): JsonResponse
     {
         if (! hash_equals($receipt->fingerprint, $fingerprint)) {
             throw QuotationPolicy::conflict('action_key_conflict', 'Use a new action key for changed input.');
         }
 
-        return response()->json($receipt->result, $receipt->status, ['X-Action-Replayed' => 'true']);
+        $body = $receipt->result;
+        if (($body['data']['resource_kind'] ?? null) === 'quotation' && isset($body['data']['result'])) {
+            $body['data']['result'] = QuotationResource::redactEvidence($body['data']['result'], $authority);
+        }
+
+        return response()->json($body, $receipt->status, ['X-Action-Replayed' => 'true']);
     }
 }

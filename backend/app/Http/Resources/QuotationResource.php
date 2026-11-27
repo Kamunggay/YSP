@@ -37,4 +37,13 @@ final class QuotationResource
             'updated_at' => RepfResource::instant($quotation->updated_at),
         ];
     }
+
+    public static function redactEvidence(array $quotation, ?ChapterAuthority $authority): array
+    {
+        if (isset($quotation['evidence_binding']) && ! ($authority?->allows('evidence.read') ?? false)) {
+            $quotation['evidence_binding'] = null;
+        }
+
+        return $quotation;
+    }
 }

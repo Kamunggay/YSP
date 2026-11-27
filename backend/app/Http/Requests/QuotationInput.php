@@ -41,6 +41,9 @@ final class QuotationInput
                         'emergency_waiver' => ['present', 'nullable', 'array:reason'],
                     ];
                     self::rejectBlankNullable($raw, ['emergency_waiver'], '', $errors);
+                    if (isset($raw->comparable_quotation_ids) && ! is_array($raw->comparable_quotation_ids)) {
+                        $errors[] = RepfInput::field('/comparable_quotation_ids', 'An array of quotation UUIDs is required.', 'invalid_type');
+                    }
                     if (isset($raw->emergency_waiver) && $raw->emergency_waiver !== null) {
                         if (! $raw->emergency_waiver instanceof stdClass) {
                             $errors[] = RepfInput::field('/emergency_waiver', 'An emergency waiver object is required.', 'invalid_type');
@@ -198,6 +201,9 @@ final class QuotationInput
             $errors[] = RepfInput::field($pointer, 'An evidence binding object is required.', 'invalid_type');
 
             return;
+        }
+        if (isset($val->attachments) && ! is_array($val->attachments)) {
+            $errors[] = RepfInput::field("$pointer/attachments", 'An array of attachment objects is required.', 'invalid_type');
         }
         $uuid = ['required', 'string', 'regex:'.AuthInput::UUID];
         $rules += [
