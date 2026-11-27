@@ -1,0 +1,257 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://ysp.example.invalid/contracts/stage2/events.schema.json
+title: Minimal committed Stage 2 notices v1
+oneOf:
+- $ref: '#/$defs/repf'
+- $ref: '#/$defs/purchase-order'
+- $ref: '#/$defs/donation'
+- $ref: '#/$defs/receiving-report'
+- $ref: '#/$defs/receiving-discrepancy'
+- $ref: '#/$defs/receiving-hold'
+$defs:
+  repf:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage2.repf.changed.v1
+      event_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_kind:
+        const: repf
+      resource_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+      material_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+  purchase-order:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage2.purchase-order.changed.v1
+      event_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_kind:
+        const: purchase_order
+      resource_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+      material_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+  donation:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage2.donation.changed.v1
+      event_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_kind:
+        const: donation
+      resource_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+      material_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+  receiving-report:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage2.receiving-report.changed.v1
+      event_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_kind:
+        const: receiving_report
+      resource_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+      material_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+  receiving-discrepancy:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage2.receiving-discrepancy.changed.v1
+      event_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_kind:
+        const: receiving_discrepancy
+      resource_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+      material_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+  receiving-hold:
+    type: object
+    additionalProperties: false
+    required:
+    - event_name
+    - event_id
+    - committed_at
+    - chapter_id
+    - resource_kind
+    - resource_id
+    - resource_version
+    - material_version
+    properties:
+      event_name:
+        const: stage2.receiving-hold.changed.v1
+      event_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      committed_at:
+        type: string
+        format: date-time
+        pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      chapter_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_kind:
+        const: receiving_hold
+      resource_id:
+        type: string
+        format: uuid
+        pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+      resource_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647
+      material_version:
+        type: integer
+        minimum: 1
+        maximum: 2147483647

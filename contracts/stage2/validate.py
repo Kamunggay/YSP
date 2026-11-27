@@ -874,6 +874,217 @@ def check_control_report_invariants(body, label):
         raise ValueError(f"{label}: control report totals mismatch")
 
 
+def validate_notifications(root, document, examples, operations, dereference):
+    """Validate Stage 2 committed event schemas, dispositions, refresh mappings, and examples."""
+    agreement = read_yaml(root / "events.yaml")
+    schema = read_yaml(root / "events.schema.yaml")
+    Draft202012Validator.check_schema(schema)
+    event_validator = Draft202012Validator(schema, format_checker=FormatChecker())
+
+    expected_events = {
+        "stage2.repf.changed.v1",
+        "stage2.purchase-order.changed.v1",
+        "stage2.donation.changed.v1",
+        "stage2.receiving-report.changed.v1",
+        "stage2.receiving-discrepancy.changed.v1",
+        "stage2.receiving-hold.changed.v1",
+    }
+    expected_envelope_fields = {
+        "event_name",
+        "event_id",
+        "committed_at",
+        "chapter_id",
+        "resource_kind",
+        "resource_id",
+        "resource_version",
+        "material_version",
+    }
+
+    definitions = agreement["definitions"]
+    if definitions.keys() != expected_events:
+        raise ValueError(f"Stage 2 event definitions mismatch: {sorted(definitions.keys())}")
+    schema_names = {part["$ref"].removeprefix("#/$defs/") for part in schema["oneOf"]}
+    if {item["schema"].removeprefix("#/$defs/") for item in definitions.values()} != schema_names:
+        raise ValueError("Stage 2 event registry/schema coverage differs")
+
+    methods = {
+        operation["operationId"]: method
+        for item in document["paths"].values()
+        for method, operation in item.items()
+        if isinstance(operation, dict) and "operationId" in operation
+    }
+
+    for name, definition in definitions.items():
+        if "alert" in name:
+            raise ValueError(f"Synthetic alert-only event forbidden: {name}")
+        short = definition["schema"].removeprefix("#/$defs/")
+        event_def = schema["$defs"][short]
+        if event_def.get("additionalProperties") is not False:
+            raise ValueError(f"Event schema must be closed (additionalProperties: false): {name}")
+        if set(event_def.get("required", [])) != expected_envelope_fields:
+            raise ValueError(f"Event schema must require exact 8-field envelope: {name}")
+        payload_props = event_def["properties"]
+        if set(payload_props.keys()) != expected_envelope_fields:
+            raise ValueError(f"Event schema properties must match exact 8-field envelope: {name}")
+        if payload_props["event_name"] != {"const": name} or not name.endswith(".changed.v1"):
+            raise ValueError(f"Event name/version mismatch: {name}")
+        if "alert" in payload_props["resource_kind"].get("const", ""):
+            raise ValueError(f"Synthetic alert resource_kind forbidden: {name}")
+        if definition["channel"] != "chapter" or definition.get("logical_channel") != "private-stage1.chapter.{chapter_id}":
+            raise ValueError(f"Stage 2 event must use private-stage1.chapter.{{chapter_id}}: {name}")
+        if not definition["refresh_operations"]:
+            raise ValueError(f"Event must map at least one safe GET refresh operation: {name}")
+        for operation_id in definition["refresh_operations"]:
+            if methods.get(operation_id) != "get":
+                raise ValueError(f"Event refresh is not a canonical safe GET read: {operation_id}")
+        subject_name = definition["subject_schema"]
+        if subject_name is None or subject_name not in document["components"]["schemas"]:
+            raise ValueError(f"Missing OpenAPI subject_schema for event: {name}")
+        subject = document["components"]["schemas"][subject_name]
+        for field in ("id_field", "resource_version_field", "material_version_field"):
+            path = definition[field]
+            if path is None:
+                raise ValueError(f"Stage 2 subject must bind non-null {field}: {name}")
+            node = subject
+            for part in path.split("."):
+                node = node["properties"][part]
+                if isinstance(node, dict) and "$ref" in node:
+                    _, node = dereference(node["$ref"])
+            if field != "id_field" and node.get("type") != "integer":
+                raise ValueError(f"Event version field differs from OpenAPI subject schema: {name}.{field}")
+
+    co_emitted = agreement.get("co_emitted_stage1_events", {})
+    for required_s1 in ("stage1.stock-lot.changed.v1", "stage1.internal-rf.changed.v1"):
+        if required_s1 not in co_emitted:
+            raise ValueError(f"Missing required co-emitted Stage 1 event documentation: {required_s1}")
+    for s1_name, s1_def in co_emitted.items():
+        if not s1_name.startswith("stage1.") or not s1_name.endswith(".changed.v1") or "alert" in s1_name:
+            raise ValueError(f"Invalid co-emitted Stage 1 event name: {s1_name}")
+        for operation_id in s1_def.get("stage2_refresh_operations", []):
+            if methods.get(operation_id) != "get":
+                raise ValueError(f"Co-emitted Stage 1 event refresh is not a canonical safe GET read: {operation_id}")
+
+    all_known_events = definitions.keys() | co_emitted.keys()
+    dispositions = agreement["operation_disposition"]
+    procedures = agreement["procedure_disposition"]
+    compat_dispositions = agreement.get("stage1_compatibility_disposition", {})
+    if dispositions.keys() != operations.keys():
+        raise ValueError(
+            "Event operation_disposition does not cover 100% of Stage 2 HTTP operations: "
+            f"missing={sorted(operations.keys() - dispositions.keys())} "
+            f"extra={sorted(dispositions.keys() - operations.keys())}"
+        )
+    if procedures.keys() != document.get("x-controlled-procedures", {}).keys():
+        raise ValueError("Event procedure_disposition does not cover controlled procedure inventory")
+    if "cancelInternalRf" not in compat_dispositions:
+        raise ValueError("Missing Stage 1 cancelInternalRf compatibility disposition")
+    if "stage1.internal-rf.changed.v1" not in compat_dispositions["cancelInternalRf"]["events"]:
+        raise ValueError("cancelInternalRf must preserve stage1.internal-rf.changed.v1")
+    for op_id in ("postReceivingReport", "resolveDonationRestriction"):
+        if "stage1.stock-lot.changed.v1" not in dispositions[op_id]["events"]:
+            raise ValueError(f"{op_id} must co-emit stage1.stock-lot.changed.v1")
+
+    emitted_stage2 = set()
+    for operation_id, disposition in (dispositions | procedures | compat_dispositions).items():
+        for name in disposition["events"]:
+            if name not in all_known_events:
+                raise ValueError(f"Undefined emitted event in {operation_id}: {name}")
+            if name in definitions:
+                emitted_stage2.add(name)
+        if not disposition["events"] and not (disposition.get("reason") or disposition.get("when")):
+            raise ValueError(f"Missing no-notification reason: {operation_id}")
+        if methods.get(operation_id) == "get":
+            if disposition["events"]:
+                raise ValueError(f"Safe GET read cannot emit a committed change: {operation_id}")
+            if not disposition.get("reason"):
+                raise ValueError(f"Safe GET read requires explicit zero-event reason: {operation_id}")
+        elif operation_id in operations:
+            if not disposition["events"]:
+                raise ValueError(f"Stage 2 mutation must declare emitted events: {operation_id}")
+            when_text = (disposition.get("when") or "").lower()
+            for token in ("rollback", "rejection", "no-op", "replay"):
+                if token not in when_text:
+                    raise ValueError(f"Mutation disposition missing '{token}' non-emission guard: {operation_id}")
+
+    if emitted_stage2 != definitions.keys():
+        raise ValueError(f"Event definitions include an undispositioned Stage 2 subject: {sorted(definitions.keys() - emitted_stage2)}")
+
+    http_cases = {case["name"]: case for case in examples["cases"]}
+    positive, negative, bound, example_names = set(), set(), set(), set()
+    for case in agreement["examples"]:
+        case_name = case["name"]
+        if case_name in example_names:
+            raise ValueError(f"Duplicate event example: {case_name}")
+        example_names.add(case_name)
+        name = case["definition"]
+        if name not in definitions or case["payload"].get("event_name") != name:
+            raise ValueError(f"Event example identity mismatch: {case_name}")
+        valid = event_validator.is_valid(case["payload"])
+        if valid != case["valid"]:
+            raise ValueError(f"Event example validation mismatch: {case_name}")
+        if "current_http_case" in case:
+            current = http_cases[case["current_http_case"]]
+            if (
+                not current["response"]["status"].startswith("2")
+                or current["operationId"] not in definitions[name]["refresh_operations"]
+            ):
+                raise ValueError(f"Notice binding is not an authorized current GET read: {case_name}")
+            subject_data = current["response"]["body"]["data"]
+            for payload_field, subject_field in (
+                ("resource_id", "id_field"),
+                ("resource_version", "resource_version_field"),
+                ("material_version", "material_version_field"),
+            ):
+                field_path = definitions[name][subject_field]
+                node = subject_data
+                for part in field_path.split("."):
+                    node = node[part]
+                if case["payload"][payload_field] != node:
+                    raise ValueError(f"Notice {payload_field} differs from current GET read: {case_name}")
+            if case["payload"]["chapter_id"] != subject_data["chapter_id"]:
+                raise ValueError(f"Notice chapter_id differs from current GET read: {case_name}")
+            bound.add(name)
+        (positive if valid else negative).add(name)
+
+    if positive != definitions.keys() or negative != definitions.keys():
+        raise ValueError("Every Stage 2 event needs both valid and rejected examples")
+    if bound != definitions.keys():
+        raise ValueError(f"Every Stage 2 event needs a current_http_case binding: missing={sorted(definitions.keys() - bound)}")
+
+    case_names = set(http_cases.keys())
+    scenarios = set()
+    for scenario in agreement["scenarios"]:
+        s_name = scenario["name"]
+        if s_name in scenarios:
+            raise ValueError(f"Duplicate notification scenario: {s_name}")
+        scenarios.add(s_name)
+        if not set(scenario["http_cases"]) <= case_names or not set(scenario["events"]) <= all_known_events:
+            raise ValueError(f"Unknown scenario HTTP case or event: {s_name}")
+        if not set(scenario.get("notice_examples", [])) <= example_names:
+            raise ValueError(f"Unknown scenario notice example: {s_name}")
+
+    required_scenarios = {
+        "committed-change",
+        "donation-restriction-resolution",
+        "failed-command",
+        "duplicate-or-delayed",
+        "missed-event-reconnect",
+        "chapter-change",
+        "revocation",
+        "disabled-or-other-user",
+        "preserved-edit",
+    }
+    if not required_scenarios <= scenarios:
+        raise ValueError(f"Missing required notification scenarios: {sorted(required_scenarios - scenarios)}")
+
+    print(
+        f"PASS {len(definitions)} Stage 2 events; {len(co_emitted)} co-emitted Stage 1 events; "
+        f"{len(example_names)} event examples; {len(dispositions)} HTTP/{len(procedures)} procedure/"
+        f"{len(compat_dispositions)} compatibility dispositions; {len(scenarios)} notification scenarios"
+    )
+    return event_validator
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--invalid-example", action="store_true")
@@ -1394,6 +1605,8 @@ def main():
     if participant_coverage != participants.keys():
         raise ValueError(f"Missing worked participant success: {sorted(participants.keys() - participant_coverage)}")
 
+    event_validator = validate_notifications(root, document, examples, operations, dereference)
+
     print(
         "Versions: "
         + ", ".join(
@@ -1600,6 +1813,52 @@ def main():
                 rejections.append(str(err))
             else:
                 raise ValueError(f"Invalid-example probe unexpectedly passed: {probe_label}")
+        event_probes = [
+            (
+                {
+                    "event_name": "stage2.purchase-order.changed.v1",
+                    "event_id": "99200000-0000-4000-8001-000000000099",
+                    "committed_at": "2026-11-26T05:15:00.000000Z",
+                    "chapter_id": "60000000-0000-4000-8000-000000000001",
+                    "resource_kind": "purchase_order",
+                    "resource_id": "94000000-0000-4000-8000-000000000001",
+                    "resource_version": 6,
+                },
+                "deliberately invalid Stage 2 event envelope missing material_version",
+            ),
+            (
+                {
+                    "event_name": "stage2.repf.changed.v1",
+                    "event_id": "99200000-0000-4000-8001-000000000098",
+                    "committed_at": "2026-11-26T04:10:00.000000Z",
+                    "chapter_id": "60000000-0000-4000-8000-000000000001",
+                    "resource_kind": "repf",
+                    "resource_id": "90000000-0000-4000-8000-000000000010",
+                    "resource_version": 11,
+                    "material_version": 4,
+                    "total_amount_php": "12500.00",
+                },
+                "deliberately invalid Stage 2 event leaking private domain payload",
+            ),
+            (
+                {
+                    "event_name": "stage2.alert.changed.v1",
+                    "event_id": "99200000-0000-4000-8001-000000000097",
+                    "committed_at": "2026-11-26T10:00:00.000000Z",
+                    "chapter_id": "60000000-0000-4000-8000-000000000001",
+                    "resource_kind": "alert",
+                    "resource_id": "90000000-0000-4000-8000-000000000099",
+                    "resource_version": 1,
+                    "material_version": 1,
+                },
+                "deliberately invalid synthetic alert-only Stage 2 event",
+            ),
+        ]
+        for payload, probe_label in event_probes:
+            errors = list(event_validator.iter_errors(payload))
+            if not errors:
+                raise ValueError(f"Invalid-example probe unexpectedly passed: {probe_label}")
+            rejections.append(f"{probe_label}: rejected ({errors[0].validator})")
         raise ValueError("; ".join(rejections))
 
 

@@ -1,0 +1,888 @@
+contract_version: 2.0.0
+status: candidate; specified only, no Stage 2 WebSocket runtime
+channel_conventions:
+  logical_chapter_channel: private-stage1.chapter.{chapter_id}
+  delivery_chapter_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+  delivery_session_channel: private-stage1.user.{user_id}
+  authorization_operations:
+  - authorizeSessionNotifications
+  - authorizeChapterNotifications
+  synthetic_alert_events_allowed: false
+definitions:
+  stage2.repf.changed.v1:
+    schema: '#/$defs/repf'
+    subject_schema: Repf
+    id_field: id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Leader
+    channel: chapter
+    logical_channel: private-stage1.chapter.{chapter_id}
+    delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+    audience: Current enabled full-session user with active URL-chapter membership AND exact repf.read (or quotation.read
+      for nested quotations) scope; derived alert/replenishment/report refreshes still require their own GET duties.
+      Re-evaluate before each recipient dispatch.
+    refresh_operations:
+    - readRepf
+    - listRepfs
+    - listRepfHistory
+    - listRepfRelatedRecords
+    - listRepfQuotations
+    - listReplenishmentNeeds
+    - listOfficerAlerts
+    - readProcurementReport
+    - readControlReport
+  stage2.purchase-order.changed.v1:
+    schema: '#/$defs/purchase-order'
+    subject_schema: PurchaseOrder
+    id_field: id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Leader
+    channel: chapter
+    logical_channel: private-stage1.chapter.{chapter_id}
+    delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+    audience: Current enabled full-session user with active URL-chapter membership AND exact po.read scope; derived
+      replenishment/alert/report and Stage 1 inbound_open_po stock refreshes still require their own GET duties.
+      Re-evaluate before each recipient dispatch.
+    refresh_operations:
+    - readPurchaseOrder
+    - listPurchaseOrders
+    - listPurchaseOrderHistory
+    - listPurchaseOrderRelatedRecords
+    - listReplenishmentNeeds
+    - listOfficerAlerts
+    - readInventoryReport
+    - readProcurementReport
+    - readControlReport
+    dependent_refresh_rule: Mounted Stage 1 stock screens (listStockSummaries, readVariantStock) also refresh live
+      inbound_open_po commitments without modifying usable_stockroom_on_hand or available_to_allocate (PRC-07, PRC-09).
+  stage2.donation.changed.v1:
+    schema: '#/$defs/donation'
+    subject_schema: Donation
+    id_field: da_id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Leader
+    channel: chapter
+    logical_channel: private-stage1.chapter.{chapter_id}
+    delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+    audience: Current enabled full-session user with active URL-chapter membership AND exact da.read scope (plus
+      Stage 1 history.read for history queries); derived alert and control report refreshes require their own GET
+      duties. Re-evaluate before each recipient dispatch.
+    refresh_operations:
+    - readDonation
+    - listDonations
+    - listDonationHistory
+    - listDonationRelated
+    - listOfficerAlerts
+    - readControlReport
+  stage2.receiving-report.changed.v1:
+    schema: '#/$defs/receiving-report'
+    subject_schema: ReceivingReport
+    id_field: id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Leader
+    channel: chapter
+    logical_channel: private-stage1.chapter.{chapter_id}
+    delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+    audience: Current enabled full-session user with active URL-chapter membership AND exact receiving.read scope;
+      replenishment, allocation queue, alert, and report refreshes still require their own GET duties. Re-evaluate
+      before each recipient dispatch.
+    refresh_operations:
+    - readReceivingReport
+    - listReceivingReports
+    - listReceivingReportMovements
+    - listReceivingReportDiscrepancies
+    - listReceivingReportHistory
+    - listReceivingReportRelated
+    - listReplenishmentNeeds
+    - listAllocationQueue
+    - listOfficerAlerts
+    - readInventoryReport
+    - readProcurementReport
+    - readControlReport
+  stage2.receiving-discrepancy.changed.v1:
+    schema: '#/$defs/receiving-discrepancy'
+    subject_schema: ReceivingDiscrepancy
+    id_field: id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Leader
+    channel: chapter
+    logical_channel: private-stage1.chapter.{chapter_id}
+    delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+    audience: Current enabled full-session user with active URL-chapter membership AND exact receiving.read scope;
+      replenishment, alert, and report refreshes still require their own GET duties. Re-evaluate before each
+      recipient dispatch.
+    refresh_operations:
+    - readReceivingDiscrepancy
+    - listReceivingDiscrepancies
+    - listReceivingReportDiscrepancies
+    - listReplenishmentNeeds
+    - listOfficerAlerts
+    - readProcurementReport
+    - readControlReport
+  stage2.receiving-hold.changed.v1:
+    schema: '#/$defs/receiving-hold'
+    subject_schema: ReceivingHold
+    id_field: id
+    resource_version_field: version
+    material_version_field: material_version
+    owner: Leader
+    channel: chapter
+    logical_channel: private-stage1.chapter.{chapter_id}
+    delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+    audience: Current enabled full-session user with active URL-chapter membership AND exact receiving.read scope;
+      alert and control report refreshes still require their own GET duties. Re-evaluate before each recipient
+      dispatch.
+    refresh_operations:
+    - readReceivingHold
+    - listReceivingHolds
+    - listReceivingHoldHistory
+    - listOfficerAlerts
+    - readControlReport
+co_emitted_stage1_events:
+  stage1.stock-lot.changed.v1:
+    canonical_contract: contracts/stage1/events.yaml
+    owner: Efren
+    channel: chapter
+    logical_channel: private-stage1.chapter.{chapter_id}
+    delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+    co_emitted_by:
+    - postReceivingReport
+    - resolveDonationRestriction
+    stage2_refresh_operations:
+    - listReplenishmentNeeds
+    - listAllocationQueue
+    - listOfficerAlerts
+    - readInventoryReport
+    - readControlReport
+    rule: Reused verbatim from Stage 1 (8-field envelope, StockLot id/stock_version/material_version). Co-emitted
+      on postReceivingReport for every posted usable/quarantined/rejected lot created by prepareReceivingInventory
+      and on resolveDonationRestriction only when resolution_kind is apply and applyLotRestrictionResolution updates
+      remaining posted stockroom lot segments (never on audit_review or zero existing segments). Stage 1 /stock*
+      refreshes remain governed by contracts/stage1/events.yaml.
+  stage1.internal-rf.changed.v1:
+    canonical_contract: contracts/stage1/events.yaml
+    owner: Glenn
+    channel: chapter
+    logical_channel: private-stage1.chapter.{chapter_id}
+    delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+    co_emitted_by:
+    - cancelInternalRf
+    stage2_refresh_operations:
+    - listReplenishmentNeeds
+    - listAllocationQueue
+    - listOfficerAlerts
+    - readProcurementReport
+    rule: Preserved unchanged on Stage 1 cancelInternalRf (and all other Stage 1 RF mutations). When cancelInternalRf
+      cancels an unissued RF remainder with linked open RepFs or POs, it flags linked_demand_canceled=true in the
+      same transaction and co-emits stage2.repf.changed.v1 and stage2.purchase-order.changed.v1 so demand_changed
+      alerts and procurement views refresh automatically without blocking RF cancellation.
+  stage1.chapter-setup.changed.v1:
+    canonical_contract: contracts/stage1/events.yaml
+    owner: Leader
+    channel: chapter
+    logical_channel: private-stage1.chapter.{chapter_id}
+    delivery_channel: private-stage1.chapter.{chapter_id}.user.{user_id}
+    co_emitted_by:
+    - recordPolicy
+    stage2_refresh_operations:
+    - listReplenishmentNeeds
+    - listAllocationQueue
+    - listOfficerAlerts
+    - readInventoryReport
+    - readProcurementReport
+    - readControlReport
+    rule: Emitted on committed CLI recordPolicy changes for Stage 2 policies (purchasing_quotation_policy,
+      da_authorization, reference_series REPF/PO/DA) and reused Stage 1 policies (rop, target_level, quantity_scale,
+      valuation_rounding, allocation_priority, shared RM series). Refreshes only permitted mounted screens; grants
+      no read authority.
+  stage1.authority.changed.v1:
+    canonical_contract: contracts/stage1/events.yaml
+    owner: Leader
+    channel: session
+    logical_channel: private-stage1.user.{user_id}
+    delivery_channel: private-stage1.user.{user_id}
+    co_emitted_by:
+    - recordPolicy
+    stage2_refresh_operations: []
+    rule: Reused verbatim from Stage 1 on the user's private session channel when membership, duty grants, limits,
+      or authority policies change. Clients re-verify Stage 1 readCurrentSession, listMyChapterMemberships,
+      readChapterContext, and readChapterAccess and immediately purge forbidden Stage 2 projections and edit buffers.
+operation_disposition:
+  listReplenishmentNeeds:
+    events: []
+    reason: Safe GET read has no domain change.
+  listDonations:
+    events: []
+    reason: Safe GET read has no domain change.
+  createDonation:
+    events:
+    - stage2.donation.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented DA state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  readDonation:
+    events: []
+    reason: Safe GET read has no domain change.
+  replaceDonation:
+    events:
+    - stage2.donation.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented DA state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  listDonationHistory:
+    events: []
+    reason: Safe GET read has no domain change.
+  readDonationVersion:
+    events: []
+    reason: Safe GET read has no domain change.
+  listDonationRelated:
+    events: []
+    reason: Safe GET read has no domain change.
+  printDonation:
+    events: []
+    reason: Safe GET printable view has no domain change.
+  submitDonation:
+    events:
+    - stage2.donation.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented DA state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  acknowledgeDonation:
+    events:
+    - stage2.donation.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented DA state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  returnDonation:
+    events:
+    - stage2.donation.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented DA state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  declineDonation:
+    events:
+    - stage2.donation.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented DA state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  reviseDonation:
+    events:
+    - stage2.donation.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented DA state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  closeShortDonation:
+    events:
+    - stage2.donation.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented DA state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  cancelDonation:
+    events:
+    - stage2.donation.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented DA state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  resolveDonationRestriction:
+    events:
+    - stage2.donation.changed.v1
+    - stage1.stock-lot.changed.v1
+    when: Persist outbox intents inside the committed transaction only for affected subjects whose represented
+      state/version changes. Emit stage2.donation.changed.v1 on every committed resolution or audit_review; co-emit
+      stage1.stock-lot.changed.v1 only when resolution_kind is apply and applyLotRestrictionResolution updates
+      remaining posted stockroom lot segments. Never emit on rollback, rejection, no-op, or identical replay.
+  findDonationOperation:
+    events: []
+    reason: Safe GET action-receipt recovery lookup has no domain change.
+  readDonationOperation:
+    events: []
+    reason: Safe GET action-receipt recovery lookup has no domain change.
+  listRepfs:
+    events: []
+    reason: Safe GET read has no domain change.
+  createRepf:
+    events:
+    - stage2.repf.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RepF state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  readRepf:
+    events: []
+    reason: Safe GET read has no domain change.
+  replaceRepf:
+    events:
+    - stage2.repf.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RepF state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  submitRepf:
+    events:
+    - stage2.repf.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RepF state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  reviewRepfBudget:
+    events:
+    - stage2.repf.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RepF state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  resumeRepfReview:
+    events:
+    - stage2.repf.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RepF state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  reviseRepf:
+    events:
+    - stage2.repf.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RepF state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  cancelRepf:
+    events:
+    - stage2.repf.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RepF state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  listRepfHistory:
+    events: []
+    reason: Safe GET read has no domain change.
+  readRepfVersion:
+    events: []
+    reason: Safe GET read has no domain change.
+  listRepfRelatedRecords:
+    events: []
+    reason: Safe GET read has no domain change.
+  printRepf:
+    events: []
+    reason: Safe GET printable view has no domain change.
+  listRepfQuotations:
+    events: []
+    reason: Safe GET read has no domain change.
+  createRepfQuotation:
+    events:
+    - stage2.repf.changed.v1
+    when: Quotations are nested under an approved/partially_ordered RepF; persist parent stage2.repf.changed.v1
+      outbox intent inside the committed transaction (refreshing listRepfQuotations and readRepf). Never emit on
+      rollback, rejection, no-op, or identical X-Action-Key replay.
+  replaceRepfQuotation:
+    events:
+    - stage2.repf.changed.v1
+    when: Quotations are nested under an approved/partially_ordered RepF; persist parent stage2.repf.changed.v1
+      outbox intent inside the committed transaction (refreshing listRepfQuotations and readRepf). Never emit on
+      rollback, rejection, no-op, or identical X-Action-Key replay.
+  deleteRepfQuotation:
+    events:
+    - stage2.repf.changed.v1
+    when: Quotations are nested under an approved/partially_ordered RepF; persist parent stage2.repf.changed.v1
+      outbox intent inside the committed transaction (refreshing listRepfQuotations and readRepf). Never emit on
+      rollback, rejection, no-op, or identical X-Action-Key replay.
+  recordSupplierSelection:
+    events:
+    - stage2.repf.changed.v1
+    when: Supplier selection is recorded against the approved RepF; persist parent stage2.repf.changed.v1 outbox
+      intent inside the committed transaction (refreshing listRepfQuotations, readRepf, and procurement reports).
+      Never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  listPurchaseOrders:
+    events: []
+    reason: Safe GET read has no domain change.
+  createPurchaseOrder:
+    events:
+    - stage2.purchase-order.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented PO state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  readPurchaseOrder:
+    events: []
+    reason: Safe GET read has no domain change.
+  replacePurchaseOrder:
+    events:
+    - stage2.purchase-order.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented PO state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  submitPurchaseOrder:
+    events:
+    - stage2.purchase-order.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented PO state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  approvePurchaseOrder:
+    events:
+    - stage2.purchase-order.changed.v1
+    - stage2.repf.changed.v1
+    when: Persist outbox intents inside the committed transaction for the newly issued PO and the originating RepF
+      whose ordered_quantity/status progressed atomically; never emit on rollback, rejection, no-op, or identical
+      X-Action-Key replay.
+  returnPurchaseOrder:
+    events:
+    - stage2.purchase-order.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented PO state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  rejectPurchaseOrder:
+    events:
+    - stage2.purchase-order.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented PO state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  recordPurchaseOrderAcknowledgment:
+    events:
+    - stage2.purchase-order.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented PO state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  proposePurchaseOrderAmendment:
+    events:
+    - stage2.purchase-order.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented PO state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  approvePurchaseOrderAmendment:
+    events:
+    - stage2.purchase-order.changed.v1
+    - stage2.repf.changed.v1
+    when: Persist outbox intents inside the committed transaction for the amended PO and (when ordered quantities
+      changed) the originating RepF; never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  closeShortPurchaseOrder:
+    events:
+    - stage2.purchase-order.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented PO state/version changes
+      (closing outstanding inbound without altering quarantined lots or discrepancies); never emit on rollback,
+      rejection, no-op, or identical X-Action-Key replay.
+  cancelPurchaseOrder:
+    events:
+    - stage2.purchase-order.changed.v1
+    - stage2.repf.changed.v1
+    when: Persist outbox intents inside the committed transaction for the canceled PO and (when post-issuance
+      cancellation restores unreceived ordered quantities) the originating RepF; never emit on rollback, rejection,
+      no-op, or identical X-Action-Key replay.
+  listPurchaseOrderHistory:
+    events: []
+    reason: Safe GET read has no domain change.
+  readPurchaseOrderVersion:
+    events: []
+    reason: Safe GET read has no domain change.
+  listPurchaseOrderRelatedRecords:
+    events: []
+    reason: Safe GET read has no domain change.
+  printPurchaseOrder:
+    events: []
+    reason: Safe GET printable view has no domain change.
+  findProcurementOperationByKey:
+    events: []
+    reason: Safe GET action-receipt recovery lookup has no domain change.
+  readProcurementOperation:
+    events: []
+    reason: Safe GET action-receipt recovery lookup has no domain change.
+  listReceivingReports:
+    events: []
+    reason: Safe GET read has no domain change.
+  createReceivingReport:
+    events:
+    - stage2.receiving-report.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RM state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  readReceivingReport:
+    events: []
+    reason: Safe GET read has no domain change.
+  replaceReceivingReport:
+    events:
+    - stage2.receiving-report.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RM state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  inspectReceivingReport:
+    events:
+    - stage2.receiving-report.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RM state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  matchReceivingReportEvidence:
+    events:
+    - stage2.receiving-report.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RM state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  postReceivingReport:
+    events:
+    - stage2.receiving-report.changed.v1
+    - stage1.stock-lot.changed.v1
+    - stage2.purchase-order.changed.v1
+    - stage2.donation.changed.v1
+    - stage2.receiving-discrepancy.changed.v1
+    when: 'Persist outbox intents inside the committed transaction strictly for affected subjects whose represented
+      state/version changes: always stage2.receiving-report.changed.v1; co-emit stage1.stock-lot.changed.v1 for
+      every usable/quarantined/rejected lot posted by prepareReceivingInventory; emit stage2.purchase-order.changed.v1
+      for source_kind po OR stage2.donation.changed.v1 for source_kind da; emit stage2.receiving-discrepancy.changed.v1
+      when damaged or rejected quantities open discrepancy records. Never emit on rollback, rejection, no-op, or
+      identical X-Action-Key replay.'
+  cancelReceivingReport:
+    events:
+    - stage2.receiving-report.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented RM state/version changes;
+      never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  listReceivingReportMovements:
+    events: []
+    reason: Safe GET read has no domain change.
+  listReceivingReportDiscrepancies:
+    events: []
+    reason: Safe GET read has no domain change.
+  listReceivingReportHistory:
+    events: []
+    reason: Safe GET read has no domain change.
+  readReceivingReportVersion:
+    events: []
+    reason: Safe GET read has no domain change.
+  listReceivingReportRelated:
+    events: []
+    reason: Safe GET read has no domain change.
+  printReceivingReport:
+    events: []
+    reason: Safe GET printable view has no domain change.
+  listReceivingDiscrepancies:
+    events: []
+    reason: Safe GET read has no domain change.
+  readReceivingDiscrepancy:
+    events: []
+    reason: Safe GET read has no domain change.
+  notifySupplierOfReceivingDiscrepancy:
+    events:
+    - stage2.receiving-discrepancy.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented discrepancy state/version
+      changes; never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  resolveReceivingDiscrepancy:
+    events:
+    - stage2.receiving-discrepancy.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented discrepancy state/version
+      changes; never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  listReceivingHolds:
+    events: []
+    reason: Safe GET read has no domain change.
+  createReceivingHold:
+    events:
+    - stage2.receiving-hold.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented missing-source hold
+      state/version changes; never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  readReceivingHold:
+    events: []
+    reason: Safe GET read has no domain change.
+  linkReceivingHoldSource:
+    events:
+    - stage2.receiving-hold.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented missing-source hold
+      state/version changes; never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  rejectReturnReceivingHold:
+    events:
+    - stage2.receiving-hold.changed.v1
+    when: Persist outbox intent inside the committed transaction only when represented missing-source hold
+      state/version changes; never emit on rollback, rejection, no-op, or identical X-Action-Key replay.
+  listReceivingHoldHistory:
+    events: []
+    reason: Safe GET read has no domain change.
+  findReceivingOperationByKey:
+    events: []
+    reason: Safe GET action-receipt recovery lookup has no domain change.
+  readReceivingOperation:
+    events: []
+    reason: Safe GET action-receipt recovery lookup has no domain change.
+  listAllocationQueue:
+    events: []
+    reason: Safe GET read-only INV-09 queue has no domain change.
+  listOfficerAlerts:
+    events: []
+    reason: Safe GET live derived alert feed has no domain change and emits zero synthetic alert-only events.
+  readInventoryReport:
+    events: []
+    reason: Safe GET report read has no domain change.
+  printInventoryReport:
+    events: []
+    reason: Safe GET printable report has no domain change.
+  readProcurementReport:
+    events: []
+    reason: Safe GET report read has no domain change.
+  printProcurementReport:
+    events: []
+    reason: Safe GET printable report has no domain change.
+  readControlReport:
+    events: []
+    reason: Safe GET report read has no domain change.
+  printControlReport:
+    events: []
+    reason: Safe GET printable report has no domain change.
+procedure_disposition:
+  recordPolicy:
+    events:
+    - stage1.chapter-setup.changed.v1
+    - stage1.authority.changed.v1
+    when: Committed CLI policy updates (purchasing_quotation_policy, da_authorization, Stage 2 reference_series
+      REPF/PO/DA, and reused Stage 1 policies) emit stage1.chapter-setup.changed.v1 to admitted chapter members
+      and stage1.authority.changed.v1 to affected identities when authority rules change. Never emit on rollback,
+      rejection, no-op, or identical replay.
+stage1_compatibility_disposition:
+  cancelInternalRf:
+    events:
+    - stage1.internal-rf.changed.v1
+    - stage2.repf.changed.v1
+    - stage2.purchase-order.changed.v1
+    when: Preserves Stage 1 cancelInternalRf events verbatim (stage1.internal-rf.changed.v1 plus Stage 1
+      reservation/stock-lot/preparation notices per contracts/stage1/events.yaml) without deadlocking on open Stage 2
+      records; additionally co-emits stage2.repf.changed.v1 and stage2.purchase-order.changed.v1 inside the same
+      commit strictly for linked open RepFs and POs flagged with linked_demand_canceled=true. Never emits on
+      rollback, rejection, no-op, or identical replay.
+examples:
+- name: repf-committed
+  definition: stage2.repf.changed.v1
+  payload:
+    event_name: stage2.repf.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000001
+    committed_at: '2026-11-26T04:10:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: repf
+    resource_id: 90000000-0000-4000-8000-000000000010
+    resource_version: 11
+    material_version: 4
+  valid: true
+  current_http_case: stage2-02-repf-read-linked-demand-canceled
+- name: repf-private-payload-rejected
+  definition: stage2.repf.changed.v1
+  payload:
+    event_name: stage2.repf.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000001
+    committed_at: '2026-11-26T04:10:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: repf
+    resource_id: 90000000-0000-4000-8000-000000000010
+    resource_version: 11
+    material_version: 4
+    approved_budget_php: '12500.00'
+  valid: false
+- name: purchase-order-committed
+  definition: stage2.purchase-order.changed.v1
+  payload:
+    event_name: stage2.purchase-order.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000002
+    committed_at: '2026-11-26T05:15:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: purchase_order
+    resource_id: 94000000-0000-4000-8000-000000000001
+    resource_version: 6
+    material_version: 2
+  valid: true
+  current_http_case: stage2-03-po-read
+- name: purchase-order-missing-material-version-rejected
+  definition: stage2.purchase-order.changed.v1
+  payload:
+    event_name: stage2.purchase-order.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000002
+    committed_at: '2026-11-26T05:15:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: purchase_order
+    resource_id: 94000000-0000-4000-8000-000000000001
+    resource_version: 6
+  valid: false
+- name: donation-committed
+  definition: stage2.donation.changed.v1
+  payload:
+    event_name: stage2.donation.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000003
+    committed_at: '2026-11-26T06:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: donation
+    resource_id: 80000000-0000-4000-8000-000000000004
+    resource_version: 4
+    material_version: 2
+  valid: true
+  current_http_case: stage2-04-read-acknowledged-da
+- name: donation-private-donor-name-rejected
+  definition: stage2.donation.changed.v1
+  payload:
+    event_name: stage2.donation.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000003
+    committed_at: '2026-11-26T06:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: donation
+    resource_id: 80000000-0000-4000-8000-000000000004
+    resource_version: 4
+    material_version: 2
+    donor_name: Youth Civic Foundation
+  valid: false
+- name: receiving-report-committed
+  definition: stage2.receiving-report.changed.v1
+  payload:
+    event_name: stage2.receiving-report.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000004
+    committed_at: '2026-11-26T08:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: receiving_report
+    resource_id: 97000000-0000-4000-8000-000000000001
+    resource_version: 4
+    material_version: 1
+  valid: true
+  current_http_case: stage2-05-rm-read
+- name: receiving-report-non-utc-timestamp-rejected
+  definition: stage2.receiving-report.changed.v1
+  payload:
+    event_name: stage2.receiving-report.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000004
+    committed_at: '2026-11-26T16:00:00.000000+08:00'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: receiving_report
+    resource_id: 97000000-0000-4000-8000-000000000001
+    resource_version: 4
+    material_version: 1
+  valid: false
+- name: receiving-discrepancy-committed
+  definition: stage2.receiving-discrepancy.changed.v1
+  payload:
+    event_name: stage2.receiving-discrepancy.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000005
+    committed_at: '2026-11-26T08:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: receiving_discrepancy
+    resource_id: 97100000-0000-4000-8000-000000000001
+    resource_version: 1
+    material_version: 1
+  valid: true
+  current_http_case: stage2-05-discrepancy-read
+- name: receiving-discrepancy-zero-version-rejected
+  definition: stage2.receiving-discrepancy.changed.v1
+  payload:
+    event_name: stage2.receiving-discrepancy.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000005
+    committed_at: '2026-11-26T08:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: receiving_discrepancy
+    resource_id: 97100000-0000-4000-8000-000000000001
+    resource_version: 0
+    material_version: 1
+  valid: false
+- name: receiving-hold-committed
+  definition: stage2.receiving-hold.changed.v1
+  payload:
+    event_name: stage2.receiving-hold.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000006
+    committed_at: '2026-11-26T09:00:00.000000Z'
+    chapter_id: 60000000-0000-4000-8000-000000000001
+    resource_kind: receiving_hold
+    resource_id: 97200000-0000-4000-8000-000000000001
+    resource_version: 1
+    material_version: 1
+  valid: true
+  current_http_case: stage2-05-hold-read
+- name: receiving-hold-null-chapter-rejected
+  definition: stage2.receiving-hold.changed.v1
+  payload:
+    event_name: stage2.receiving-hold.changed.v1
+    event_id: 99200000-0000-4000-8001-000000000006
+    committed_at: '2026-11-26T09:00:00.000000Z'
+    chapter_id: null
+    resource_kind: receiving_hold
+    resource_id: 97200000-0000-4000-8000-000000000001
+    resource_version: 1
+    material_version: 1
+  valid: false
+scenarios:
+- name: committed-change
+  http_cases:
+  - stage2-05-rm-post-po-partial-40-accepted-10-rejected
+  - stage2-05-rm-read
+  - stage2-05-discrepancy-read
+  - stage2-06-allocation-queue-inv09-mixed-sku
+  - stage2-01-combined-rf-shortage-and-rop
+  - stage2-06-alerts-multi-duty-all-categories
+  - stage2-06-report-inventory-json
+  - stage2-06-report-procurement-json
+  events:
+  - stage2.receiving-report.changed.v1
+  - stage1.stock-lot.changed.v1
+  - stage2.purchase-order.changed.v1
+  - stage2.receiving-discrepancy.changed.v1
+  notice_examples:
+  - receiving-report-committed
+  - purchase-order-committed
+  - receiving-discrepancy-committed
+  expectation: Posting partial PO-RM (40 accepted, 10 rejected) persists outbox intents inside the same commit
+    for the RM, affected stock lots (stage1.stock-lot.changed.v1), PO progress, and opened discrepancy. Mounted
+    permitted reads refresh allocation queue, replenishment needs, alerts, and reports without counting quantities
+    from events or emitting synthetic alert-only events.
+- name: donation-restriction-resolution
+  http_cases:
+  - stage2-04-resolve-uninterpreted-to-bounded
+  - stage2-04-audit-inexpressible-condition
+  - stage2-04-read-acknowledged-da
+  - stage2-06-allocation-queue-inv09-mixed-sku
+  - stage2-06-report-control-json
+  events:
+  - stage2.donation.changed.v1
+  - stage1.stock-lot.changed.v1
+  notice_examples:
+  - donation-committed
+  expectation: Applied donor-restriction resolution co-emits stage2.donation.changed.v1 and stage1.stock-lot.changed.v1
+    only for stockroom lot segments actually updated by applyLotRestrictionResolution. Audit-only review emits
+    only stage2.donation.changed.v1 and keeps ADR 0004 uninterpreted stock blocked.
+- name: failed-command
+  http_cases:
+  - stage2-05-rm-overdelivery-blocked-conflict
+  - stage2-02-repf-duplicate-supply-coverage-conflict
+  - stage2-03-selection-quotation-policy-unmet
+  events: []
+  expectation: Rejected or rolled-back mutations (overdelivery/substitution, duplicate supply coverage, unmet
+    quotation policy, stale versions, or action-key conflicts) persist zero outbox rows and emit zero events;
+    existing authoritative server state and unsaved form input remain intact.
+- name: duplicate-or-delayed
+  http_cases:
+  - stage2-02-repf-read-linked-demand-canceled
+  - stage2-03-po-read
+  events:
+  - stage2.repf.changed.v1
+  - stage2.purchase-order.changed.v1
+  notice_examples:
+  - repf-committed
+  - purchase-order-committed
+  expectation: Redelivered event_id or an older resource_version arriving after a newer version is deduplicated
+    or reconciled via current safe GET; slow older GET responses are discarded by generation; no mutation is
+    replayed.
+- name: missed-event-reconnect
+  http_cases:
+  - stage2-02-procurement-operation-recover-by-key
+  - stage2-04-find-committed-resolution
+  - stage2-05-recovery-by-key-post-rm
+  - stage2-01-combined-rf-shortage-and-rop
+  - stage2-06-allocation-queue-inv09-mixed-sku
+  - stage2-06-alerts-multi-duty-all-categories
+  events: []
+  expectation: After disconnect or focus return, suspend consequential commands, re-verify Stage 1 session/MFA/
+    membership/context/access, obtain a fresh owned socket subscription acknowledgment via Stage 1
+    authorizeSessionNotifications/authorizeChapterNotifications, buffer incoming hints, refresh mounted permitted
+    Stage 2 GET screens, and recover pending same-person mutations via /procurement-operations/by-key,
+    /donation-operations/by-key, and /receiving-operations/by-key without replaying any write.
+- name: chapter-change
+  http_cases:
+  - stage2-01-chapter-not-found
+  - stage2-05-hold-read
+  events: []
+  notice_examples:
+  - receiving-hold-committed
+  expectation: On explicit chapter switch, increment context generation, cancel in-flight old-chapter GETs,
+    unsubscribe old private-stage1.chapter.{old_chapter_id}.user.{user_id}, park permitted same-person drafts
+    under their origin chapter/resource/base material_version, admit and sweep the new chapter, and deny
+    unadmitted chapters uniformly with 404 chapter_not_found. Late old-chapter notices never affect the new chapter.
+- name: revocation
+  http_cases:
+  - stage2-01-unauthorized-duty-denied
+  - stage2-06-alerts-duty-denied
+  - stage2-06-report-control-duty-denied
+  - stage2-04-find-uncommitted-resolution
+  events:
+  - stage1.authority.changed.v1
+  expectation: Membership or duty revocation fences server recipient dispatch before any subsequent delivery and
+    closes affected subscriptions. Re-evaluation on each recipient dispatch prevents disclosing Stage 2 resource
+    UUIDs to revoked users; subsequent HTTP reads return uniform 403 duty_denied or 404 without reversing
+    already-committed records.
+- name: disabled-or-other-user
+  http_cases:
+  - stage2-01-chapter-not-found
+  - stage2-02-procurement-operation-not-found
+  events: []
+  expectation: Disabling an account, signing out, or replacing the authenticated identity disconnects sockets and
+    purges all Stage 2 cached projections, private action keys, and identity-bound in-memory edit buffers; another
+    user never inherits retained edits or operation results.
+- name: preserved-edit
+  http_cases:
+  - stage2-02-repf-read-linked-demand-canceled
+  - stage2-03-po-read
+  - stage2-05-rm-read
+  events:
+  - stage2.repf.changed.v1
+  - stage2.purchase-order.changed.v1
+  - stage2.receiving-report.changed.v1
+  notice_examples:
+  - repf-committed
+  - purchase-order-committed
+  - receiving-report-committed
+  expectation: 'For the same enabled authorized user in the same permitted chapter, unsaved form text (RepF lines,
+    PO terms, DA lines, RM inspection counts, discrepancy or hold notes) and original base material_version stay
+    in memory when a newer committed notice triggers a background GET. Fresh server data stages beside the dirty
+    form with a stale/conflict indicator requiring explicit review; background refresh never overwrites inputs or
+    auto-submits.'
