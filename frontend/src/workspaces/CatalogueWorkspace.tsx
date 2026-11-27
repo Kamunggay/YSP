@@ -33,12 +33,20 @@ interface CatalogueWorkspaceProps {
   chapterId: string;
   refreshSignal: number;
   chapterAccess: ChapterAccessSnapshot | null;
+  onBackToDashboard?: () => void;
 }
 
-export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: CatalogueWorkspaceProps) {
+export function CatalogueWorkspace({
+  userId,
+  chapterId,
+  refreshSignal,
+  chapterAccess,
+  onBackToDashboard,
+}: CatalogueWorkspaceProps) {
   const maintainReason = actionBlockReason(chapterAccess, 'catalogue.maintain');
   const historyReason = actionBlockReason(chapterAccess, 'history.read');
   const [entity, setEntity] = useState<CatalogueEntity>('items');
+  const [viewTab, setViewTab] = useState<'records' | 'audit'>('records');
   const [stateFilter, setStateFilter] = useState<'active' | 'retired' | 'all'>('active');
   const [queryText, setQueryText] = useState('');
   const [rows, setRows] = useState<CatalogueRecord[]>([]);
@@ -139,7 +147,7 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
       pendingActionKey: null,
       payloadJson: JSON.stringify({ code, titleField, parentItemId, unitId, reason }),
     });
-    setStatusMessage('Unsaved form kept in chapter-scoped RAM only (cleared on sign-out).');
+    setStatusMessage('Unsaved form changes saved as a temporary draft for this session (cleared when you sign out).');
   }
 
   function startEdit(row: CatalogueRecord) {
@@ -241,7 +249,8 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
       const opEntity = entity === 'items' ? 'Item' : entity === 'variants' ? 'Variant' : entity === 'units' ? 'Unit' : 'Location';
       memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setReplayed(result.replayed);
-      setStatusMessage(`${isReplace ? 'Replaced' : 'Created'} ${entity} ${record.code} (v${record.material_version}). Key: ${key}`);
+      const entityNoun = entity === 'items' ? 'item' : entity === 'variants' ? 'item variant' : entity === 'units' ? 'unit' : 'location';
+      setStatusMessage(`${isReplace ? 'Updated' : 'Added'} ${entityNoun} ${record.code} (rev. ${record.material_version}). Reference: ${key}`);
       setOpName(`${opPrefix}${opEntity}`);
       setLookupKey(key);
       if (payload.operation_id) {
@@ -320,258 +329,582 @@ export function CatalogueWorkspace({ userId, chapterId, refreshSignal, chapterAc
     }
   }
 
+  const entityHeading =
+    entity === 'items'
+      ? 'Item'
+      : entity === 'variants'
+        ? 'Item Variant'
+        : entity === 'units'
+          ? 'Unit'
+          : 'Location';
+
   return (
-    <div>
-      <div className="card">
-        <h2>Stage 1 Catalogue (PUT Versioned + Sticky Precision)</h2>
-        <div className="tabs">
-          {(['items', 'variants', 'units', 'locations'] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={`tab-btn ${entity === tab ? 'active' : ''}`}
-              onClick={() => switchEntity(tab)}
-            >
-              {tab.toUpperCase()}
-            </button>
-          ))}
-        </div>
+    <main className="p03-workspace-shell">
+      <div className="p03-workspace-inner">
+        <header className="p03-top-header surface-card">
+          <div className="p03-header-search-row">
+            <div className="p03-search-input-wrap">
+              <svg
+                className="p03-search-icon"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                id="cat-q"
+                className="form-control p03-search-input"
+                value={queryText}
+                onChange={(e) => setQueryText(e.target.value)}
+                placeholder="Search catalogue by code or name..."
+                aria-label="Search catalogue by code or name"
+              />
+            </div>
 
-        <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
-
-        <div className="row" style={{ marginBottom: '0.85rem' }}>
-          <div className="field">
-            <label htmlFor="cat-state">State filter</label>
-            <select id="cat-state" value={stateFilter} onChange={(e) => setStateFilter(e.target.value as 'active' | 'retired' | 'all')}>
-              <option value="active">active</option>
-              <option value="retired">retired</option>
-              <option value="all">all</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="cat-q">Prefix search (q)</label>
-            <input id="cat-q" value={queryText} onChange={(e) => setQueryText(e.target.value)} placeholder="Code or label prefix" />
-          </div>
-          <button type="button" className="btn secondary" onClick={() => void loadList()}>
-            Reload
-          </button>
-        </div>
-
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Name / Description</th>
-                <th>State</th>
-                <th>Material v</th>
-                <th>Details</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="muted">
-                    No {entity} records returned.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((r) => (
-                  <tr key={r.id}>
-                    <td className="mono">{r.code}</td>
-                    <td>{r.description ?? r.label ?? r.name}</td>
-                    <td>{r.state}</td>
-                    <td>v{r.material_version}</td>
-                    <td className="mono">
-                      {r.id}
-                      {r.quantity_scale !== undefined ? ` · scale=${r.quantity_scale}` : ''}
-                      {r.quantity_identity_locked ? ' [LOCKED]' : ''}
-                    </td>
-                    <td>
-                      <div className="row">
-                        <button type="button" className="btn secondary" onClick={() => void inspectRecord(r.id)}>
-                          Read Record
-                        </button>
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          disabled={maintainReason !== null}
-                          title={maintainReason ?? undefined}
-                          onClick={() => startEdit(r)}
-                        >
-                          Replace (`PUT`)
-                        </button>
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          disabled={historyReason !== null}
-                          title={historyReason ?? undefined}
-                          onClick={() => void inspectHistory(r.id)}
-                        >
-                          History
-                        </button>
-                        <button
-                          type="button"
-                          className="btn secondary"
-                          disabled={historyReason !== null}
-                          title={historyReason ?? undefined}
-                          onClick={() => void inspectVersion(r.id, r.material_version)}
-                        >
-                          Current Snapshot
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+            <div className="p03-search-meta">
+              {queryText.trim().length > 0 && (
+                <>
+                  <span className="p03-version-pill">{rows.length} Loaded</span>
+                  <button
+                    type="button"
+                    className="p03-search-clear-btn"
+                    onClick={() => setQueryText('')}
+                  >
+                    Clear
+                  </button>
+                </>
               )}
-            </tbody>
-          </table>
-        </div>
-        {nextCursor && (
-          <div style={{ marginTop: '0.6rem' }}>
-            <button type="button" className="btn secondary" onClick={() => void loadList(nextCursor)}>
-              Load Next Page
-            </button>
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                disabled={busy}
+                onClick={() => void loadList()}
+              >
+                {busy ? 'Loading...' : 'Reload'}
+              </button>
+            </div>
           </div>
-        )}
-      </div>
 
-      <div className="grid-2">
-        <div className="card">
-          <h3>{selected ? `Replace ${entity.slice(0, -1)} ${selected.code} (v${selected.material_version})` : `Create ${entity.slice(0, -1)}`}</h3>
-          <form onSubmit={handleSubmit}>
-            {!selected && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-code">Uppercase ASCII Code</label>
-                <input id="cat-code" required value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-              </div>
-            )}
-            <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="cat-title">{entity === 'items' ? 'Description' : entity === 'variants' ? 'Label' : 'Name'}</label>
-              <input id="cat-title" required value={titleField} onChange={(e) => setTitleField(e.target.value)} />
+          <div className="p03-header-nav-row">
+            <div className="p03-header-left">
+              <h1 className="p03-main-title">Item &amp; Location Catalogue</h1>
             </div>
-            {entity === 'variants' && !selected && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-item">Parent Item UUID</label>
-                <input id="cat-item" required value={parentItemId} onChange={(e) => setParentItemId(e.target.value)} />
+            <div className="p03-header-controls">
+              <div className="p03-filter-pill-bar" role="tablist" aria-label="Catalogue sections">
+                {(['items', 'variants', 'units', 'locations'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={viewTab === 'records' && entity === tab}
+                    className={`p03-filter-pill ${viewTab === 'records' && entity === tab ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setViewTab('records');
+                      switchEntity(tab);
+                    }}
+                  >
+                    {tab === 'items' ? 'Items' : tab === 'variants' ? 'Variants' : tab === 'units' ? 'Units' : 'Locations'}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'audit'}
+                  className={`p03-filter-pill ${viewTab === 'audit' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('audit')}
+                >
+                  History &amp; Lookup
+                </button>
               </div>
-            )}
-            {(entity === 'items' || entity === 'variants') && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-unit">Unit UUID</label>
-                <input id="cat-unit" required value={unitId} onChange={(e) => setUnitId(e.target.value)} />
-              </div>
-            )}
-            {entity === 'units' && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-qkind">Quantity Kind</label>
-                <select id="cat-qkind" value={qtyKind} onChange={(e) => setQtyKind(e.target.value as 'count' | 'weight' | 'volume' | 'length')}>
-                  <option value="count">count</option>
-                  <option value="weight">weight</option>
-                  <option value="volume">volume</option>
-                  <option value="length">length</option>
-                </select>
-              </div>
-            )}
-            {(entity === 'units' || entity === 'variants') && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-qscale">Quantity Scale (0..6)</label>
-                <input id="cat-qscale" type="number" min={0} max={6} required value={qtyScale} onChange={(e) => setQtyScale(e.target.value)} />
-              </div>
-            )}
-            {entity === 'locations' && (
-              <>
-                <div className="field" style={{ marginBottom: '0.6rem' }}>
-                  <label htmlFor="cat-lkind">Location Kind</label>
-                  <input id="cat-lkind" required value={locKind} onChange={(e) => setLocKind(e.target.value)} />
-                </div>
-                <div className="field" style={{ marginBottom: '0.6rem' }}>
-                  <label htmlFor="cat-cust">Custodian UUID (optional)</label>
-                  <input id="cat-cust" value={custodianId} onChange={(e) => setCustodianId(e.target.value)} />
-                </div>
-              </>
-            )}
-            {selected && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label htmlFor="cat-rstate">Target State</label>
-                <select id="cat-rstate" value={replaceState} onChange={(e) => setReplaceState(e.target.value as 'active' | 'retired')}>
-                  <option value="active">active</option>
-                  <option value="retired">retired</option>
-                </select>
-              </div>
-            )}
-            <div className="field" style={{ marginBottom: '0.75rem' }}>
-              <label htmlFor="cat-reason">Audit Reason</label>
-              <input id="cat-reason" required value={reason} onChange={(e) => setReason(e.target.value)} />
-            </div>
-            {maintainReason && <div className="alert info">{maintainReason}</div>}
-            <div className="row">
-              <button className="btn" type="submit" disabled={busy || maintainReason !== null} title={maintainReason ?? undefined}>
-                {selected ? 'Submit PUT Replace' : 'Create (POST)'}
-              </button>
-              <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
-              </button>
-              {selected && (
-                <button className="btn secondary" type="button" onClick={() => setSelected(null)}>
-                  Cancel Edit
+              {onBackToDashboard && (
+                <button
+                  type="button"
+                  className="btn-batcave-secondary p03-shrink-btn p04-back-btn"
+                  onClick={onBackToDashboard}
+                >
+                  ← Back to My Work
                 </button>
               )}
             </div>
-          </form>
-        </div>
+          </div>
+        </header>
 
-        <div className="card">
-          <h3>Operation Outcome Lookup (Ticket 03)</h3>
-          <form onSubmit={lookupOperation}>
-            <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="op-name">operation_name</label>
-              <input id="op-name" required value={opName} onChange={(e) => setOpName(e.target.value)} />
+        <section className="p03-card surface-card form-stack" aria-label="Catalogue workspace summary">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">{entityHeading} Overview</h2>
+              <p className="form-card-subtitle">
+                Manage chapter {entity} definitions, revisions, and lookup history.
+              </p>
             </div>
-            <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="op-key">action_key (X-Action-Key UUID)</label>
-              <input id="op-key" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">{rows.length} {entity}</span>
+              <span className="p03-version-pill">Filter: {stateFilter}</span>
+              {selected && <span className="p03-version-pill p03-mono-inline">Editing {selected.code}</span>}
             </div>
-            <button className="btn secondary" type="submit">
-              Lookup by Key
-            </button>
-          </form>
-          <form onSubmit={lookupOperationById} style={{ marginTop: '0.65rem' }}>
-            <div className="row">
-              <div className="field">
-                <label htmlFor="op-id">operation_id UUID</label>
-                <input id="op-id" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
-              </div>
-              <button className="btn secondary" type="submit">
-                Lookup by Operation ID
-              </button>
+          </div>
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
+
+        {viewTab === 'records' ? (
+          <div className="p02-members-grid">
+            <div className="p02-column-stack">
+              <section className="p03-card surface-card form-stack" aria-label="Catalogue records list">
+                <div className="p03-card-header-row">
+                  <div>
+                    <h2 className="p03-section-title">{entityHeading} Directory</h2>
+                    <p className="form-card-subtitle">
+                      {rows.length} {entity} record{rows.length === 1 ? '' : 's'} loaded
+                    </p>
+                  </div>
+                  <div className="p03-filter-pill-bar" role="group" aria-label="Filter record status">
+                    {(['active', 'retired', 'all'] as const).map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        className={`p03-filter-pill ${stateFilter === st ? 'is-active' : ''}`}
+                        onClick={() => setStateFilter(st)}
+                      >
+                        {st === 'active' ? 'Active' : st === 'retired' ? 'Retired' : 'All'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {rows.length === 0 ? (
+                  <p className="p03-muted-copy">
+                    No {entity} records found. Add a new {entityHeading.toLowerCase()} using the form, or change the status filter above.
+                  </p>
+                ) : (
+                  <div className="p03-history-list">
+                    {rows.map((r) => (
+                      <article
+                        key={r.id}
+                        className={`p03-history-card ${selected?.id === r.id ? 'is-search-match' : ''} ${
+                          r.state === 'retired' ? 'is-superseded' : ''
+                        }`}
+                      >
+                        <div className="p03-history-head">
+                          <div className="p03-history-title-group">
+                            <span className="p03-version-pill p03-id-pill p03-mono-inline">{r.code}</span>
+                            <strong>{r.description ?? r.label ?? r.name}</strong>
+                            <span className={`s02-status-tag ${r.state === 'active' ? 'is-ready' : 'is-uncertain'}`}>
+                              {r.state}
+                            </span>
+                            <span className="p03-version-pill">rev. {r.material_version}</span>
+                            {r.quantity_scale !== undefined && (
+                              <span className="p03-version-pill">{r.quantity_scale} decimals</span>
+                            )}
+                            {r.quantity_identity_locked && (
+                              <span className="s02-status-tag is-overdue">In Use</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="p02-compact-actions">
+                          <div className="p02-compact-btn-group">
+                            <button
+                              type="button"
+                              className="p02-compact-btn"
+                              disabled={maintainReason !== null}
+                              title={maintainReason ?? undefined}
+                              onClick={() => startEdit(r)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="p02-compact-btn"
+                              onClick={() => {
+                                void inspectRecord(r.id);
+                                setViewTab('audit');
+                              }}
+                            >
+                              Details
+                            </button>
+                            <button
+                              type="button"
+                              className="p02-compact-btn"
+                              disabled={historyReason !== null}
+                              title={historyReason ?? undefined}
+                              onClick={() => {
+                                void inspectHistory(r.id);
+                                setViewTab('audit');
+                              }}
+                            >
+                              History
+                            </button>
+                            <button
+                              type="button"
+                              className="p02-compact-btn"
+                              disabled={historyReason !== null}
+                              title={historyReason ?? undefined}
+                              onClick={() => {
+                                void inspectVersion(r.id, r.material_version);
+                                setViewTab('audit');
+                              }}
+                            >
+                              Snapshot
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                {nextCursor && (
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary"
+                    onClick={() => void loadList(nextCursor)}
+                  >
+                    Load Next Page
+                  </button>
+                )}
+              </section>
             </div>
-          </form>
-          {selected && (
-            <div className="row" style={{ marginTop: '0.65rem' }}>
-              <div className="field" style={{ maxWidth: '8rem' }}>
-                <label htmlFor="cat-ver-n">Material Ver</label>
-                <input id="cat-ver-n" type="number" min={1} value={lookupVersion} onChange={(e) => setLookupVersion(e.target.value)} />
-              </div>
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => void inspectVersion(selected.id, Number.parseInt(lookupVersion, 10) || selected.material_version)}
-              >
-                Read Exact Version
-              </button>
+
+            <div className="p02-column-stack">
+              <section className="p03-card surface-card form-stack" aria-label="Catalogue record editor">
+                <h2 className="p03-section-title">
+                  {selected ? `Edit ${selected.code} (rev. ${selected.material_version})` : `Add New ${entityHeading}`}
+                </h2>
+
+                {maintainReason && (
+                  <div className="callout-banner is-warning">
+                    <span className="callout-dot dot-warning" aria-hidden="true" />
+                    <span>{maintainReason}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="form-stack">
+                  {!selected && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-code">
+                        Short Code (Letters &amp; Numbers)
+                      </label>
+                      <input
+                        id="cat-code"
+                        className="form-control"
+                        required
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.toUpperCase())}
+                      />
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cat-title">
+                      {entity === 'items' ? 'Description' : entity === 'variants' ? 'Label' : 'Name'}
+                    </label>
+                    <input
+                      id="cat-title"
+                      className="form-control"
+                      required
+                      value={titleField}
+                      onChange={(e) => setTitleField(e.target.value)}
+                    />
+                  </div>
+
+                  {entity === 'variants' && !selected && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-item">
+                        Parent Item Reference
+                      </label>
+                      <input
+                        id="cat-item"
+                        className="form-control"
+                        required
+                        value={parentItemId}
+                        onChange={(e) => setParentItemId(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {(entity === 'items' || entity === 'variants') && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-unit">
+                        Unit of Measure Reference
+                      </label>
+                      <input
+                        id="cat-unit"
+                        className="form-control"
+                        required
+                        value={unitId}
+                        onChange={(e) => setUnitId(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {entity === 'units' && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-qkind">
+                        Measurement Type
+                      </label>
+                      <select
+                        id="cat-qkind"
+                        className="form-control"
+                        value={qtyKind}
+                        onChange={(e) => setQtyKind(e.target.value as 'count' | 'weight' | 'volume' | 'length')}
+                      >
+                        <option value="count">Count (pieces)</option>
+                        <option value="weight">Weight</option>
+                        <option value="volume">Volume</option>
+                        <option value="length">Length</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {(entity === 'units' || entity === 'variants') && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-qscale">
+                        Decimal Places (0–6)
+                      </label>
+                      <input
+                        id="cat-qscale"
+                        className="form-control"
+                        type="number"
+                        min={0}
+                        max={6}
+                        required
+                        value={qtyScale}
+                        onChange={(e) => setQtyScale(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {entity === 'locations' && (
+                    <div className="p03-two-col">
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="cat-lkind">
+                          Location Type
+                        </label>
+                        <input
+                          id="cat-lkind"
+                          className="form-control"
+                          required
+                          value={locKind}
+                          onChange={(e) => setLocKind(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="cat-cust">
+                          Assigned Custodian (optional)
+                        </label>
+                        <input
+                          id="cat-cust"
+                          className="form-control"
+                          value={custodianId}
+                          onChange={(e) => setCustodianId(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {selected && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="cat-rstate">
+                        Status
+                      </label>
+                      <select
+                        id="cat-rstate"
+                        className="form-control"
+                        value={replaceState}
+                        onChange={(e) => setReplaceState(e.target.value as 'active' | 'retired')}
+                      >
+                        <option value="active">Active</option>
+                        <option value="retired">Retired</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="cat-reason">
+                      Reason for Change
+                    </label>
+                    <input
+                      id="cat-reason"
+                      className="form-control"
+                      required
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </div>
+
+                  {selected ? (
+                    <div className="form-stack">
+                      <button
+                        className="btn-batcave-primary"
+                        type="submit"
+                        disabled={busy || maintainReason !== null}
+                        title={maintainReason ?? undefined}
+                      >
+                        Save Changes
+                      </button>
+                      <div className="p03-guard-buttons">
+                        <button
+                          className="btn-batcave-secondary"
+                          type="button"
+                          onClick={parkDraftInMemory}
+                        >
+                          Save Temporary Draft
+                        </button>
+                        <button
+                          className="btn-batcave-secondary"
+                          type="button"
+                          onClick={() => setSelected(null)}
+                        >
+                          Cancel Edit
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p03-guard-buttons">
+                      <button
+                        className="btn-batcave-primary"
+                        type="submit"
+                        disabled={busy || maintainReason !== null}
+                        title={maintainReason ?? undefined}
+                      >
+                        Add Record
+                      </button>
+                      <button
+                        className="btn-batcave-secondary"
+                        type="button"
+                        onClick={parkDraftInMemory}
+                      >
+                        Save Temporary Draft
+                      </button>
+                    </div>
+                  )}
+                </form>
+              </section>
             </div>
-          )}
-          {lookupResult !== null && <pre className="json-box">{JSON.stringify(lookupResult, null, 2)}</pre>}
-          {historyJson !== null && (
-            <>
-              <h4 style={{ marginBottom: '0.3rem' }}>Version History / Snapshot</h4>
-              <pre className="json-box">{JSON.stringify(historyJson, null, 2)}</pre>
-            </>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Change submission lookup">
+              <h2 className="p03-section-title">
+                Check Submitted Change Status
+              </h2>
+              <form onSubmit={lookupOperation} className="form-stack">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="op-name">
+                    Change Type
+                  </label>
+                  <select
+                    id="op-name"
+                    className="form-control"
+                    value={opName}
+                    onChange={(e) => setOpName(e.target.value)}
+                  >
+                    <option value="createCatalogueItem">Add Item</option>
+                    <option value="replaceCatalogueItem">Edit Item</option>
+                    <option value="createCatalogueVariant">Add Item Variant</option>
+                    <option value="replaceCatalogueVariant">Edit Item Variant</option>
+                    <option value="createCatalogueUnit">Add Unit of Measure</option>
+                    <option value="replaceCatalogueUnit">Edit Unit of Measure</option>
+                    <option value="createCatalogueLocation">Add Storage Location</option>
+                    <option value="replaceCatalogueLocation">Edit Storage Location</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="op-key">
+                    Submission Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="op-key"
+                      className="form-control"
+                      required
+                      value={lookupKey}
+                      onChange={(e) => setLookupKey(e.target.value)}
+                    />
+                    <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                      Check Reference
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              <form onSubmit={lookupOperationById} className="form-stack">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="op-id">
+                    Change Record Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="op-id"
+                      className="form-control"
+                      required
+                      value={lookupOpId}
+                      onChange={(e) => setLookupOpId(e.target.value)}
+                    />
+                    <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                      View Record
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {selected && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="cat-ver-n">
+                    Read Revision for {selected.code}
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="cat-ver-n"
+                      className="form-control"
+                      type="number"
+                      min={1}
+                      value={lookupVersion}
+                      onChange={(e) => setLookupVersion(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="btn-batcave-secondary p03-shrink-btn"
+                      onClick={() =>
+                        void inspectVersion(selected.id, Number.parseInt(lookupVersion, 10) || selected.material_version)
+                      }
+                    >
+                      Read Version
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="p03-card surface-card form-stack" aria-label="Change inspection output">
+              <h2 className="p03-section-title">
+                Record History &amp; Lookup Output
+              </h2>
+              {lookupResult === null && historyJson === null ? (
+                <p className="p03-muted-copy">
+                  No inspection selected. Choose Details, History, or Snapshot on any record card, or check a submission reference on the left.
+                </p>
+              ) : (
+                <div className="form-stack">
+                  {lookupResult !== null && <pre className="json-box">{JSON.stringify(lookupResult, null, 2)}</pre>}
+                  {historyJson !== null && <pre className="json-box">{JSON.stringify(historyJson, null, 2)}</pre>}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

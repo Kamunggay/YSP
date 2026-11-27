@@ -96,6 +96,7 @@ interface OpeningBaselineWorkspaceProps {
   chapterId: string;
   refreshSignal: number;
   chapterAccess: ChapterAccessSnapshot | null;
+  onBackToDashboard?: () => void;
 }
 
 const OPENING_REQUIRED_ACTIONS: Record<OpeningEndpoint, string[]> = {
@@ -137,7 +138,15 @@ function emptyIpcLine(): IpcLineInput {
   };
 }
 
-export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: OpeningBaselineWorkspaceProps) {
+export function OpeningBaselineWorkspace({
+  userId,
+  chapterId,
+  refreshSignal,
+  chapterAccess,
+  onBackToDashboard,
+}: OpeningBaselineWorkspaceProps) {
+  const [viewTab, setViewTab] = useState<'workflow' | 'records' | 'status'>('workflow');
+  const [searchQuery, setSearchQuery] = useState('');
   const formKey = 'opening_baseline_editor';
 
   function readSavedDraft(): {
@@ -253,7 +262,7 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
         acknowledgmentId,
       }),
     });
-    setStatusMessage('Opening draft inputs held in chapter-scoped RAM only.');
+    setStatusMessage('Opening inventory changes saved as a temporary draft for this session.');
   }
 
   const loadAll = useCallback(async () => {
@@ -534,7 +543,19 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
       if (ackId) {
         setAcknowledgmentId(ackId);
       }
-      setStatusMessage(`${actionEndpoint} succeeded. Action key: ${key}`);
+      const openingActionLabels: Record<OpeningEndpoint, string> = {
+        createIpc: 'Opening inventory count created',
+        replaceIpc: 'Opening inventory count updated',
+        saveCount: 'Physical count quantities saved',
+        submitIpc: 'Opening inventory count submitted',
+        authorizeIpc: 'Opening inventory count authorized',
+        createRm: 'Opening receipt memo prepared',
+        replaceRm: 'Opening receipt memo updated',
+        inspectRm: 'Physical inspection recorded',
+        matchRm: 'Signed paper receipt matched',
+        postRm: 'Opening stock balances posted',
+      };
+      setStatusMessage(`${openingActionLabels[actionEndpoint]}. Reference: ${key}`);
       await loadAll();
     } catch (err) {
       setError(err);
@@ -599,586 +620,1259 @@ export function OpeningBaselineWorkspace({ userId, chapterId, refreshSignal, cha
     }
   }
 
+  const searchNeedle = searchQuery.trim().toLowerCase();
+  const filteredIpcs = searchNeedle
+    ? ipcs.filter(
+        (i) =>
+          (i.reference ?? '').toLowerCase().includes(searchNeedle) ||
+          (i.state ?? i.status ?? '').toLowerCase().includes(searchNeedle) ||
+          i.id.toLowerCase().includes(searchNeedle),
+      )
+    : ipcs;
+  const filteredRms = searchNeedle
+    ? rms.filter(
+        (r) =>
+          (r.reference ?? '').toLowerCase().includes(searchNeedle) ||
+          (r.state ?? r.status ?? '').toLowerCase().includes(searchNeedle) ||
+          r.id.toLowerCase().includes(searchNeedle),
+      )
+    : rms;
+
   return (
-    <div>
-      <div className="card">
-        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>Opening Inventory (`Ticket 05` · IPC → Inspected RM Baseline)</h2>
-          <button type="button" className="btn secondary" onClick={() => void loadAll()}>
-            Refresh Opening State
-          </button>
-        </div>
-        <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
+    <main className="p03-workspace-shell">
+      <div className="p03-workspace-inner">
+        <header className="p03-top-header surface-card">
+          <div className="p03-header-search-row">
+            <div className="p03-search-input-wrap">
+              <svg
+                className="p03-search-icon"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                id="op-search"
+                className="form-control p03-search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter opening counts or receipt memos by reference or state..."
+                aria-label="Filter opening counts or receipt memos"
+              />
+            </div>
 
-        <h4>Chapter Opening Baseline (`GET /opening-baseline`)</h4>
-        <pre className="json-box">{JSON.stringify(baseline, null, 2)}</pre>
+            <div className="p03-search-meta">
+              {searchQuery.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setSearchQuery('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                onClick={() => void loadAll()}
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
 
-        <div className="grid-2">
-          <div>
-            <h4>IPCs ({ipcs.length})</h4>
-            <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="ipc-sel">Selected IPC</label>
-              <select id="ipc-sel" value={selectedIpcId} onChange={(e) => setSelectedIpcId(e.target.value)}>
-                <option value="">-- select IPC --</option>
+          <div className="p03-header-nav-row">
+            <div className="p03-header-left">
+              <h1 className="p03-main-title">Opening Inventory Count &amp; Receipt</h1>
+            </div>
+            <div className="p03-header-controls">
+              <div className="p03-filter-pill-bar" role="tablist" aria-label="Opening workspace views">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'workflow'}
+                  className={`p03-filter-pill ${viewTab === 'workflow' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('workflow')}
+                >
+                  Workflow
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'records'}
+                  className={`p03-filter-pill ${viewTab === 'records' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('records')}
+                >
+                  Baseline &amp; Forms ({filteredIpcs.length + filteredRms.length})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'status'}
+                  className={`p03-filter-pill ${viewTab === 'status' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('status')}
+                >
+                  History &amp; Print
+                </button>
+              </div>
+              {onBackToDashboard && (
+                <button
+                  type="button"
+                  className="btn-batcave-secondary p03-shrink-btn p04-back-btn"
+                  onClick={onBackToDashboard}
+                >
+                  ← Back to My Work
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <section className="p03-card surface-card form-stack" aria-label="Opening inventory context selectors">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Active Opening Context</h2>
+              <p className="form-card-subtitle">
+                Choose the opening count form and receipt memo to work with across steps.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">{baseline ? 'Baseline Active' : 'Pending Baseline'}</span>
+            </div>
+          </div>
+
+          <div className="p03-two-col">
+            <div className="form-group">
+              <label className="form-label" htmlFor="ipc-sel">
+                Selected Count Form ({ipcs.length})
+              </label>
+              <select
+                id="ipc-sel"
+                className="form-control"
+                value={selectedIpcId}
+                onChange={(e) => setSelectedIpcId(e.target.value)}
+              >
+                <option value="">-- Select Count Form ({ipcs.length}) --</option>
                 {ipcs.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {i.reference ?? i.id} ({i.state ?? i.status ?? '?'} r{i.revision ?? '?'} m{i.material_version ?? '?'})
+                    {i.reference ?? 'Count Form'} ({i.state ?? i.status ?? '?'} · rev. {i.revision ?? '?'}, content v{i.material_version ?? '?'})
                   </option>
                 ))}
               </select>
             </div>
-            <div className="row">
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('ipc', 'detail')} disabled={!selectedIpcId}>
-                Read
-              </button>
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('ipc', 'history')} disabled={!selectedIpcId}>
-                History
-              </button>
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('ipc', 'related')} disabled={!selectedIpcId}>
-                Related
-              </button>
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('ipc', 'version')} disabled={!selectedIpcId}>
-                Revision #{exactRev}
-              </button>
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('ipc', 'print')} disabled={!selectedIpcId}>
-                Print HTML
-              </button>
-            </div>
-          </div>
 
-          <div>
-            <h4>Opening RMs ({rms.length})</h4>
-            <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="rm-sel">Selected Opening RM</label>
-              <select id="rm-sel" value={selectedRmId} onChange={(e) => setSelectedRmId(e.target.value)}>
-                <option value="">-- select RM --</option>
+            <div className="form-group">
+              <label className="form-label" htmlFor="rm-sel">
+                Selected Receipt Memo ({rms.length})
+              </label>
+              <select
+                id="rm-sel"
+                className="form-control"
+                value={selectedRmId}
+                onChange={(e) => setSelectedRmId(e.target.value)}
+              >
+                <option value="">-- Select Opening Receipt ({rms.length}) --</option>
                 {rms.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.reference ?? r.id} ({r.state ?? r.status ?? '?'} r{r.revision ?? '?'} m{r.material_version ?? '?'})
+                    {r.reference ?? 'Opening Receipt'} ({r.state ?? r.status ?? '?'} · rev. {r.revision ?? '?'}, content v{r.material_version ?? '?'})
                   </option>
                 ))}
               </select>
             </div>
-            <div className="row">
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('rm', 'detail')} disabled={!selectedRmId}>
-                Read
-              </button>
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('rm', 'history')} disabled={!selectedRmId}>
-                History
-              </button>
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('rm', 'related')} disabled={!selectedRmId}>
-                Related
-              </button>
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('rm', 'movements')} disabled={!selectedRmId}>
-                Movements
-              </button>
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('rm', 'findings')} disabled={!selectedRmId}>
-                Findings
-              </button>
-              <button type="button" className="btn secondary" onClick={() => void loadOpeningRead('rm', 'print')} disabled={!selectedRmId}>
-                Print HTML
-              </button>
-            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="grid-2">
-        <div className="card">
-          <h3>Execute Opening Transition (`X-Action-Key`)</h3>
-          <form onSubmit={runOpeningAction}>
-            <div className="row" style={{ marginBottom: '0.5rem' }}>
-              <div className="field">
-                <label htmlFor="op-act">Operation</label>
-                <select id="op-act" value={actionEndpoint} onChange={(e) => setActionEndpoint(e.target.value as OpeningEndpoint)}>
-                  <option value="createIpc">POST /ipcs (createIpc)</option>
-                  <option value="replaceIpc">PUT /ipcs/:id (replaceIpc)</option>
-                  <option value="saveCount">PUT /ipcs/:id/my-count (saveMyIpcCount)</option>
-                  <option value="submitIpc">POST /ipcs/:id/submit (submitIpc)</option>
-                  <option value="authorizeIpc">POST /ipcs/:id/authorizations (authorizeIpc)</option>
-                  <option value="createRm">POST /opening-rms (createOpeningRm)</option>
-                  <option value="replaceRm">PUT /opening-rms/:id (replaceOpeningRm)</option>
-                  <option value="inspectRm">POST /opening-rms/:id/inspection (inspectOpeningRm)</option>
-                  <option value="matchRm">POST /opening-rms/:id/evidence-match (matchOpeningRmEvidence)</option>
-                  <option value="postRm">POST /opening-rms/:id/post (postOpeningRm)</option>
-                </select>
-              </div>
-              {actionEndpoint !== 'createIpc' && actionEndpoint !== 'createRm' && (
-                <div className="field" style={{ maxWidth: '8rem' }}>
-                  <label>expected_revision</label>
-                  <input type="number" min={1} required value={expectedRevision} onChange={(e) => setExpectedRevision(e.target.value)} />
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
+
+        {viewTab === 'workflow' && (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Record or update opening inventory">
+              <h2 className="p03-section-title">
+                Record or Update Opening Inventory
+              </h2>
+
+              {opBlockReason && (
+                <div className="callout-banner is-warning">
+                  <span className="callout-dot dot-warning" aria-hidden="true" />
+                  <span>{opBlockReason}</span>
                 </div>
               )}
-              {(actionEndpoint === 'saveCount' ||
-                actionEndpoint === 'submitIpc' ||
-                actionEndpoint === 'authorizeIpc' ||
-                actionEndpoint === 'matchRm' ||
-                actionEndpoint === 'postRm') && (
-                <div className="field" style={{ maxWidth: '8rem' }}>
-                  <label>material_version</label>
-                  <input type="number" min={1} required value={materialVersion} onChange={(e) => setMaterialVersion(e.target.value)} />
-                </div>
-              )}
-              {(actionEndpoint === 'createRm' ||
-                actionEndpoint === 'replaceRm' ||
-                actionEndpoint === 'inspectRm' ||
-                actionEndpoint === 'postRm') && (
-                <div className="field" style={{ maxWidth: '8.5rem' }}>
-                  <label>ipc_material_version</label>
-                  <input type="number" min={1} required value={ipcMaterialVersion} onChange={(e) => setIpcMaterialVersion(e.target.value)} />
-                </div>
-              )}
-            </div>
 
-            {(actionEndpoint === 'replaceIpc' || actionEndpoint === 'replaceRm') && (
-              <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>Replacement Reason</label>
-                <input value={reason} onChange={(e) => setReason(e.target.value)} />
-              </div>
-            )}
-
-            {(actionEndpoint === 'createIpc' || actionEndpoint === 'replaceIpc') && (
-              <div>
-                <div className="row" style={{ marginBottom: '0.5rem' }}>
-                  <div className="field">
-                    <label>cutoff_at (UTC microsecond or blank for null)</label>
-                    <input value={cutoffAt} placeholder="2026-11-26T00:00:00.000000Z" onChange={(e) => setCutoffAt(e.target.value)} />
-                  </div>
-                  <label className="row" style={{ alignItems: 'center' }}>
-                    <input type="checkbox" checked={suspended} onChange={(e) => setSuspended(e.target.checked)} />
-                    <span>Informal movements suspended</span>
-                  </label>
-                </div>
-
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <strong>Count Team</strong>
-                    <button type="button" className="btn secondary" onClick={() => setTeam((p) => [...p, { user_id: '', regular_custodian: false }])}>
-                      + Counter
-                    </button>
-                  </div>
-                  {team.map((t, idx) => (
-                    <div key={idx} className="row" style={{ marginBottom: '0.3rem' }}>
-                      <div className="field">
-                        <input
-                          placeholder="counter user_id UUID"
-                          value={t.user_id}
-                          onChange={(e) => setTeam((p) => p.map((x, i) => (i === idx ? { ...x, user_id: e.target.value } : x)))}
-                        />
-                      </div>
-                      <label className="row" style={{ alignItems: 'center' }}>
-                        <input
-                          type="checkbox"
-                          checked={t.regular_custodian}
-                          onChange={(e) => setTeam((p) => p.map((x, i) => (i === idx ? { ...x, regular_custodian: e.target.checked } : x)))}
-                        />
-                        <span>regular_custodian</span>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <strong>Pinned Policies (optional in draft)</strong>
-                    <button
-                      type="button"
-                      className="btn secondary"
-                      onClick={() => setPolicies((p) => [...p, { setting_key: 'ipc_authorization', policy_id: '', version: '1' }])}
-                    >
-                      + Policy Binding
-                    </button>
-                  </div>
-                  {policies.map((p, idx) => (
-                    <div key={idx} className="row" style={{ marginBottom: '0.3rem' }}>
-                      <select
-                        value={p.setting_key}
-                        onChange={(e) => setPolicies((prev) => prev.map((x, i) => (i === idx ? { ...x, setting_key: e.target.value } : x)))}
-                      >
-                        <option value="ipc_authorization">ipc_authorization</option>
-                        <option value="reference_series">reference_series</option>
-                        <option value="valuation_rounding">valuation_rounding</option>
-                        <option value="quantity_scale">quantity_scale</option>
-                      </select>
-                      <input
-                        placeholder="policy_id UUID"
-                        value={p.policy_id}
-                        onChange={(e) => setPolicies((prev) => prev.map((x, i) => (i === idx ? { ...x, policy_id: e.target.value } : x)))}
-                      />
-                      <input
-                        style={{ maxWidth: '5rem' }}
-                        type="number"
-                        min={1}
-                        value={p.version}
-                        onChange={(e) => setPolicies((prev) => prev.map((x, i) => (i === idx ? { ...x, version: e.target.value } : x)))}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <strong>IPC Lines</strong>
-                    <button type="button" className="btn secondary" onClick={() => setIpcLines((p) => [...p, emptyIpcLine()])}>
-                      + IPC Line
-                    </button>
-                  </div>
-                  {ipcLines.map((ln, idx) => (
-                    <div key={idx} style={{ padding: '0.45rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem', marginBottom: '0.4rem' }}>
-                      <div className="row" style={{ marginBottom: '0.35rem' }}>
-                        <div className="field">
-                          <label>Variant</label>
-                          {catVariants.length > 0 ? (
-                            <select value={ln.variant_id} onChange={(e) => updateIpcLine(idx, { variant_id: e.target.value })}>
-                              <option value="">-- pick variant --</option>
-                              {catVariants.map((v) => (
-                                <option key={v.id} value={v.id}>
-                                  {v.code} — {v.label} (v{v.material_version})
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input value={ln.variant_id} onChange={(e) => updateIpcLine(idx, { variant_id: e.target.value })} />
-                          )}
-                        </div>
-                        <div className="field">
-                          <label>Item</label>
-                          {catItems.length > 0 ? (
-                            <select value={ln.item_id} onChange={(e) => updateIpcLine(idx, { item_id: e.target.value })}>
-                              <option value="">-- pick item --</option>
-                              {catItems.map((it) => (
-                                <option key={it.id} value={it.id}>
-                                  {it.code} — {it.description}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input value={ln.item_id} onChange={(e) => updateIpcLine(idx, { item_id: e.target.value })} />
-                          )}
-                        </div>
-                        <div className="field">
-                          <label>Location</label>
-                          {catLocations.length > 0 ? (
-                            <select value={ln.location_id} onChange={(e) => updateIpcLine(idx, { location_id: e.target.value })}>
-                              <option value="">-- pick location --</option>
-                              {catLocations.map((loc) => (
-                                <option key={loc.id} value={loc.id}>
-                                  {loc.code} — {loc.name} (v{loc.material_version})
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input value={ln.location_id} onChange={(e) => updateIpcLine(idx, { location_id: e.target.value })} />
-                          )}
-                        </div>
-                      </div>
-                      <div className="row" style={{ marginBottom: '0.35rem' }}>
-                        <div className="field">
-                          <label>line_id UUID</label>
-                          <input required value={ln.line_id} onChange={(e) => updateIpcLine(idx, { line_id: e.target.value })} />
-                        </div>
-                        <div className="field">
-                          <label>historical_variant_label</label>
-                          <input required value={ln.historical_variant_label} onChange={(e) => updateIpcLine(idx, { historical_variant_label: e.target.value })} />
-                        </div>
-                        <div className="field">
-                          <label>regular_custodian_ids (CSV UUIDs)</label>
-                          <input required value={ln.regular_custodian_ids_csv} onChange={(e) => updateIpcLine(idx, { regular_custodian_ids_csv: e.target.value })} />
-                        </div>
-                      </div>
-                      <div className="row">
-                        <div className="field" style={{ maxWidth: '8rem' }}>
-                          <label>condition</label>
-                          <select
-                            value={ln.condition}
-                            onChange={(e) => updateIpcLine(idx, { condition: e.target.value as 'usable' | 'damaged' | 'rejected' })}
-                          >
-                            <option value="usable">usable</option>
-                            <option value="damaged">damaged</option>
-                            <option value="rejected">rejected</option>
-                          </select>
-                        </div>
-                        <div className="field" style={{ maxWidth: '8rem' }}>
-                          <label>counted_quantity</label>
-                          <input value={ln.counted_quantity} placeholder="e.g. 15" onChange={(e) => updateIpcLine(idx, { counted_quantity: e.target.value })} />
-                        </div>
-                        <div className="field" style={{ maxWidth: '7rem' }}>
-                          <label>unit_value (PHP)</label>
-                          <input value={ln.unit_value} placeholder="25.00" onChange={(e) => updateIpcLine(idx, { unit_value: e.target.value })} />
-                        </div>
-                        <div className="field">
-                          <label>valuation_basis</label>
-                          <input value={ln.valuation_basis} onChange={(e) => updateIpcLine(idx, { valuation_basis: e.target.value })} />
-                        </div>
-                        <div className="field" style={{ maxWidth: '8rem' }}>
-                          <label>restrictions.state</label>
-                          <select
-                            value={ln.restriction_state}
-                            onChange={(e) => updateIpcLine(idx, { restriction_state: e.target.value as 'unrestricted' | 'bounded' | 'uninterpreted' })}
-                          >
-                            <option value="unrestricted">unrestricted</option>
-                            <option value="bounded">bounded</option>
-                            <option value="uninterpreted">uninterpreted</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="field" style={{ marginBottom: '0.5rem' }}>
-                  <label>Notes (optional)</label>
-                  <input value={notes} onChange={(e) => setNotes(e.target.value)} />
-                </div>
-              </div>
-            )}
-
-            {actionEndpoint === 'saveCount' && (
-              <div>
-                <div className="row" style={{ marginBottom: '0.5rem' }}>
-                  <div className="field">
-                    <label>counted_at</label>
-                    <input value={countedAt} onChange={(e) => setCountedAt(e.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label>signed_at</label>
-                    <input value={signedAt} onChange={(e) => setSignedAt(e.target.value)} />
-                  </div>
-                  <label className="row" style={{ alignItems: 'center' }}>
-                    <input type="checkbox" checked={countCompleted} onChange={(e) => setCountCompleted(e.target.checked)} />
-                    <span>completed</span>
-                  </label>
-                </div>
-                <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                  <strong>Count Entries</strong>
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    onClick={() => setCountEntries((p) => [...p, { ipc_line_id: '', quantity: '1', condition: 'usable', notes: '' }])}
-                  >
-                    + Entry
-                  </button>
-                </div>
-                {countEntries.map((ce, idx) => (
-                  <div key={idx} className="row" style={{ marginBottom: '0.4rem' }}>
-                    <div className="field">
-                      <label>ipc_line_id</label>
-                      <input
-                        required
-                        value={ce.ipc_line_id}
-                        onChange={(e) => setCountEntries((p) => p.map((x, i) => (i === idx ? { ...x, ipc_line_id: e.target.value } : x)))}
-                      />
-                    </div>
-                    <div className="field" style={{ maxWidth: '7rem' }}>
-                      <label>quantity</label>
-                      <input
-                        value={ce.quantity}
-                        onChange={(e) => setCountEntries((p) => p.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))}
-                      />
-                    </div>
+              <form onSubmit={runOpeningAction} className="form-stack">
+                <div className="p03-two-col">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="op-act">
+                      Workflow Step
+                    </label>
                     <select
-                      value={ce.condition}
-                      onChange={(e) =>
-                        setCountEntries((p) =>
-                          p.map((x, i) => (i === idx ? { ...x, condition: e.target.value as 'usable' | 'damaged' | 'rejected' } : x)),
-                        )
-                      }
+                      id="op-act"
+                      className="form-control"
+                      value={actionEndpoint}
+                      onChange={(e) => setActionEndpoint(e.target.value as OpeningEndpoint)}
                     >
-                      <option value="usable">usable</option>
-                      <option value="damaged">damaged</option>
-                      <option value="rejected">rejected</option>
+                      <option value="createIpc">1. Start Opening Inventory Count</option>
+                      <option value="replaceIpc">Edit Opening Count Form</option>
+                      <option value="saveCount">2. Enter Physical Count Quantities</option>
+                      <option value="submitIpc">3. Submit Signed Count Form</option>
+                      <option value="authorizeIpc">4. Authorize Count Form</option>
+                      <option value="createRm">5. Prepare Opening Receipt Memo</option>
+                      <option value="replaceRm">Edit Opening Receipt Memo</option>
+                      <option value="inspectRm">6. Record Physical Inspection</option>
+                      <option value="matchRm">7. Match Signed Receipt Document</option>
+                      <option value="postRm">8. Post Opening Stock Balances</option>
                     </select>
                   </div>
-                ))}
-              </div>
-            )}
 
-            {(actionEndpoint === 'submitIpc' || actionEndpoint === 'matchRm') && (
-              <>
-                {actionEndpoint === 'matchRm' && (
-                  <div className="row" style={{ marginBottom: '0.5rem' }}>
-                    <div className="field">
-                      <label>snapshot_sha256</label>
-                      <input required value={snapshotSha256} onChange={(e) => setSnapshotSha256(e.target.value)} />
+                  {actionEndpoint !== 'createIpc' && actionEndpoint !== 'createRm' && (
+                    <div className="form-group">
+                      <label className="form-label">Current Revision</label>
+                      <input
+                        className="form-control"
+                        type="number"
+                        min={1}
+                        required
+                        value={expectedRevision}
+                        onChange={(e) => setExpectedRevision(e.target.value)}
+                      />
                     </div>
-                    <div className="field">
-                      <label>acknowledged_at</label>
-                      <input required value={acknowledgedAt} onChange={(e) => setAcknowledgedAt(e.target.value)} />
+                  )}
+                </div>
+
+                {(actionEndpoint === 'saveCount' ||
+                  actionEndpoint === 'submitIpc' ||
+                  actionEndpoint === 'authorizeIpc' ||
+                  actionEndpoint === 'matchRm' ||
+                  actionEndpoint === 'postRm' ||
+                  actionEndpoint === 'createRm' ||
+                  actionEndpoint === 'replaceRm' ||
+                  actionEndpoint === 'inspectRm') && (
+                  <div className="p03-two-col">
+                    {(actionEndpoint === 'saveCount' ||
+                      actionEndpoint === 'submitIpc' ||
+                      actionEndpoint === 'authorizeIpc' ||
+                      actionEndpoint === 'matchRm' ||
+                      actionEndpoint === 'postRm') && (
+                      <div className="form-group">
+                        <label className="form-label">Content Version</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min={1}
+                          required
+                          value={materialVersion}
+                          onChange={(e) => setMaterialVersion(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    {(actionEndpoint === 'createRm' ||
+                      actionEndpoint === 'replaceRm' ||
+                      actionEndpoint === 'inspectRm' ||
+                      actionEndpoint === 'postRm') && (
+                      <div className="form-group">
+                        <label className="form-label">Count Form Content Version</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min={1}
+                          required
+                          value={ipcMaterialVersion}
+                          onChange={(e) => setIpcMaterialVersion(e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(actionEndpoint === 'replaceIpc' || actionEndpoint === 'replaceRm') && (
+                  <div className="form-group">
+                    <label className="form-label">Reason for Edit</label>
+                    <input
+                      className="form-control"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {(actionEndpoint === 'createIpc' || actionEndpoint === 'replaceIpc') && (
+                  <div className="form-stack">
+                    <div className="form-group">
+                      <label className="form-label">Count Cutoff Date &amp; Time (optional)</label>
+                      <input
+                        className="form-control"
+                        value={cutoffAt}
+                        placeholder="2026-11-26T00:00:00.000000Z"
+                        onChange={(e) => setCutoffAt(e.target.value)}
+                      />
+                    </div>
+                    <label className={`p03-checkbox-row ${suspended ? 'is-checked' : ''}`}>
+                      <input
+                        type="checkbox"
+                        className="p03-sr-checkbox"
+                        checked={suspended}
+                        onChange={(e) => setSuspended(e.target.checked)}
+                      />
+                      <span className={`p03-check-indicator ${suspended ? 'is-checked' : ''}`} aria-hidden="true">
+                        ✓
+                      </span>
+                      <span className="p03-checkbox-main">Informal movements suspended</span>
+                    </label>
+
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
+                          Count Team
+                        </span>
+                        <button
+                          type="button"
+                          className="p02-compact-btn"
+                          onClick={() => setTeam((p) => [...p, { user_id: '', regular_custodian: false }])}
+                        >
+                          + Counter
+                        </button>
+                      </div>
+                      <div className="p04-lines-list">
+                        {team.map((t, idx) => (
+                          <div key={idx} className="p04-line-card">
+                            <div className="p03-two-col">
+                              <input
+                                className="form-control"
+                                placeholder="Team Member Reference"
+                                value={t.user_id}
+                                onChange={(e) =>
+                                  setTeam((p) => p.map((x, i) => (i === idx ? { ...x, user_id: e.target.value } : x)))
+                                }
+                              />
+                              <label className={`p03-checkbox-row ${t.regular_custodian ? 'is-checked' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  className="p03-sr-checkbox"
+                                  checked={t.regular_custodian}
+                                  onChange={(e) =>
+                                    setTeam((p) =>
+                                      p.map((x, i) => (i === idx ? { ...x, regular_custodian: e.target.checked } : x)),
+                                    )
+                                  }
+                                />
+                                <span
+                                  className={`p03-check-indicator ${t.regular_custodian ? 'is-checked' : ''}`}
+                                  aria-hidden="true"
+                                >
+                                  ✓
+                                </span>
+                                <span className="p03-checkbox-main">Regular Stock Custodian</span>
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
+                          Pinned Policies (optional in draft)
+                        </span>
+                        <button
+                          type="button"
+                          className="p02-compact-btn"
+                          onClick={() =>
+                            setPolicies((p) => [...p, { setting_key: 'ipc_authorization', policy_id: '', version: '1' }])
+                          }
+                        >
+                          + Policy Binding
+                        </button>
+                      </div>
+                      {policies.length > 0 && (
+                        <div className="p04-lines-list">
+                          {policies.map((p, idx) => (
+                            <div key={idx} className="p04-line-card">
+                              <div className="p02-three-col-grid">
+                                <select
+                                  className="form-control"
+                                  value={p.setting_key}
+                                  onChange={(e) =>
+                                    setPolicies((prev) =>
+                                      prev.map((x, i) => (i === idx ? { ...x, setting_key: e.target.value } : x)),
+                                    )
+                                  }
+                                >
+                                  <option value="ipc_authorization">Count Authorization Rule</option>
+                                  <option value="reference_series">Reference Numbering Rule</option>
+                                  <option value="valuation_rounding">Valuation Rounding Rule</option>
+                                  <option value="quantity_scale">Quantity Decimal Precision Rule</option>
+                                </select>
+                                <input
+                                  className="form-control"
+                                  placeholder="Policy Reference"
+                                  value={p.policy_id}
+                                  onChange={(e) =>
+                                    setPolicies((prev) =>
+                                      prev.map((x, i) => (i === idx ? { ...x, policy_id: e.target.value } : x)),
+                                    )
+                                  }
+                                />
+                                <input
+                                  className="form-control"
+                                  type="number"
+                                  min={1}
+                                  value={p.version}
+                                  onChange={(e) =>
+                                    setPolicies((prev) =>
+                                      prev.map((x, i) => (i === idx ? { ...x, version: e.target.value } : x)),
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
+                          Inventory Count Lines
+                        </span>
+                        <button
+                          type="button"
+                          className="p02-compact-btn"
+                          onClick={() => setIpcLines((p) => [...p, emptyIpcLine()])}
+                        >
+                          + Add Count Line
+                        </button>
+                      </div>
+                      <div className="p04-lines-list">
+                        {ipcLines.map((ln, idx) => (
+                          <div key={idx} className="p04-line-card">
+                            <div className="p02-three-col-grid">
+                              <div className="form-group">
+                                <label className="form-label">Item Variant</label>
+                                {catVariants.length > 0 ? (
+                                  <select
+                                    className="form-control"
+                                    value={ln.variant_id}
+                                    onChange={(e) => updateIpcLine(idx, { variant_id: e.target.value })}
+                                  >
+                                    <option value="">-- Select Variant --</option>
+                                    {catVariants.map((v) => (
+                                      <option key={v.id} value={v.id}>
+                                        {v.code} — {v.label} (v{v.material_version})
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    className="form-control"
+                                    value={ln.variant_id}
+                                    onChange={(e) => updateIpcLine(idx, { variant_id: e.target.value })}
+                                  />
+                                )}
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Item</label>
+                                {catItems.length > 0 ? (
+                                  <select
+                                    className="form-control"
+                                    value={ln.item_id}
+                                    onChange={(e) => updateIpcLine(idx, { item_id: e.target.value })}
+                                  >
+                                    <option value="">-- Select Item --</option>
+                                    {catItems.map((it) => (
+                                      <option key={it.id} value={it.id}>
+                                        {it.code} — {it.description}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    className="form-control"
+                                    value={ln.item_id}
+                                    onChange={(e) => updateIpcLine(idx, { item_id: e.target.value })}
+                                  />
+                                )}
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Location</label>
+                                {catLocations.length > 0 ? (
+                                  <select
+                                    className="form-control"
+                                    value={ln.location_id}
+                                    onChange={(e) => updateIpcLine(idx, { location_id: e.target.value })}
+                                  >
+                                    <option value="">-- Select Location --</option>
+                                    {catLocations.map((loc) => (
+                                      <option key={loc.id} value={loc.id}>
+                                        {loc.code} — {loc.name} (v{loc.material_version})
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    className="form-control"
+                                    value={ln.location_id}
+                                    onChange={(e) => updateIpcLine(idx, { location_id: e.target.value })}
+                                  />
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="p02-three-col-grid">
+                              <div className="form-group">
+                                <label className="form-label">Count Line Reference</label>
+                                <input
+                                  className="form-control"
+                                  required
+                                  value={ln.line_id}
+                                  onChange={(e) => updateIpcLine(idx, { line_id: e.target.value })}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Recorded Item Description</label>
+                                <input
+                                  className="form-control"
+                                  required
+                                  value={ln.historical_variant_label}
+                                  onChange={(e) => updateIpcLine(idx, { historical_variant_label: e.target.value })}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Custodians (comma-separated)</label>
+                                <input
+                                  className="form-control"
+                                  required
+                                  value={ln.regular_custodian_ids_csv}
+                                  onChange={(e) => updateIpcLine(idx, { regular_custodian_ids_csv: e.target.value })}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="p02-three-col-grid">
+                              <div className="form-group">
+                                <label className="form-label">Item Condition</label>
+                                <select
+                                  className="form-control"
+                                  value={ln.condition}
+                                  onChange={(e) =>
+                                    updateIpcLine(idx, { condition: e.target.value as 'usable' | 'damaged' | 'rejected' })
+                                  }
+                                >
+                                  <option value="usable">Usable</option>
+                                  <option value="damaged">Damaged</option>
+                                  <option value="rejected">Rejected</option>
+                                </select>
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Counted Quantity</label>
+                                <input
+                                  className="form-control"
+                                  value={ln.counted_quantity}
+                                  placeholder="e.g. 15"
+                                  onChange={(e) => updateIpcLine(idx, { counted_quantity: e.target.value })}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Unit Value (PHP)</label>
+                                <input
+                                  className="form-control"
+                                  value={ln.unit_value}
+                                  placeholder="25.00"
+                                  onChange={(e) => updateIpcLine(idx, { unit_value: e.target.value })}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="p03-two-col">
+                              <div className="form-group">
+                                <label className="form-label">Valuation Basis</label>
+                                <input
+                                  className="form-control"
+                                  value={ln.valuation_basis}
+                                  onChange={(e) => updateIpcLine(idx, { valuation_basis: e.target.value })}
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Usage Restriction</label>
+                                <select
+                                  className="form-control"
+                                  value={ln.restriction_state}
+                                  onChange={(e) =>
+                                    updateIpcLine(idx, {
+                                      restriction_state: e.target.value as 'unrestricted' | 'bounded' | 'uninterpreted',
+                                    })
+                                  }
+                                >
+                                  <option value="unrestricted">Unrestricted</option>
+                                  <option value="bounded">Restricted</option>
+                                  <option value="uninterpreted">Pending Review</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Notes (optional)</label>
+                      <input
+                        className="form-control"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                      />
                     </div>
                   </div>
                 )}
-                <EvidenceBindingFields
-                  label={actionEndpoint === 'submitIpc' ? 'signed_ipc Evidence Binding' : 'bytes Evidence Binding'}
-                  value={evidenceBinding}
-                  onChange={setEvidenceBinding}
-                />
-              </>
-            )}
 
-            {actionEndpoint === 'authorizeIpc' && (
-              <div className="row" style={{ marginBottom: '0.5rem' }}>
-                <div className="field">
-                  <label>Authorization Duty</label>
-                  <select value={authDuty} onChange={(e) => setAuthDuty(e.target.value as 'CHAPTER_HEAD' | 'FINANCE')}>
-                    <option value="CHAPTER_HEAD">CHAPTER_HEAD</option>
-                    <option value="FINANCE">FINANCE</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label>signed_at</label>
-                  <input required value={signedAt} onChange={(e) => setSignedAt(e.target.value)} />
-                </div>
-              </div>
-            )}
+                {actionEndpoint === 'saveCount' && (
+                  <div className="form-stack">
+                    <div className="p03-two-col">
+                      <div className="form-group">
+                        <label className="form-label">Date &amp; Time Counted</label>
+                        <input
+                          className="form-control"
+                          value={countedAt}
+                          onChange={(e) => setCountedAt(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Date &amp; Time Signed</label>
+                        <input
+                          className="form-control"
+                          value={signedAt}
+                          onChange={(e) => setSignedAt(e.target.value)}
+                        />
+                      </div>
+                    </div>
 
-            {(actionEndpoint === 'createRm' || actionEndpoint === 'replaceRm') && (
-              <div>
-                <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                  <strong>Opening RM Inspection Lines</strong>
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    onClick={() =>
-                      setRmLines((p) => [
-                        ...p,
-                        { ipc_line_id: '', accepted_quantity: '0', damaged_quantity: '0', rejected_quantity: '0', accepted_value: '0.00', finding_reason: '' },
-                      ])
-                    }
-                  >
-                    + RM Line
-                  </button>
-                </div>
-                {rmLines.map((rl, idx) => (
-                  <div key={idx} className="row" style={{ marginBottom: '0.4rem', padding: '0.4rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div className="field">
-                      <label>ipc_line_id</label>
+                    <label className={`p03-checkbox-row ${countCompleted ? 'is-checked' : ''}`}>
                       <input
+                        type="checkbox"
+                        className="p03-sr-checkbox"
+                        checked={countCompleted}
+                        onChange={(e) => setCountCompleted(e.target.checked)}
+                      />
+                      <span className={`p03-check-indicator ${countCompleted ? 'is-checked' : ''}`} aria-hidden="true">
+                        ✓
+                      </span>
+                      <span className="p03-checkbox-main">Physical count completed</span>
+                    </label>
+
+                    <div className="p04-line-top">
+                      <span className="form-label">
+                        Count Entries
+                      </span>
+                      <button
+                        type="button"
+                        className="p02-compact-btn"
+                        onClick={() =>
+                          setCountEntries((p) => [...p, { ipc_line_id: '', quantity: '1', condition: 'usable', notes: '' }])
+                        }
+                      >
+                        + Entry
+                      </button>
+                    </div>
+                    <div className="p04-lines-list">
+                      {countEntries.map((ce, idx) => (
+                        <div key={idx} className="p04-line-card">
+                          <div className="p02-three-col-grid">
+                            <div className="form-group">
+                              <label className="form-label">Count Line Reference</label>
+                              <input
+                                className="form-control"
+                                required
+                                value={ce.ipc_line_id}
+                                onChange={(e) =>
+                                  setCountEntries((p) =>
+                                    p.map((x, i) => (i === idx ? { ...x, ipc_line_id: e.target.value } : x)),
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Quantity</label>
+                              <input
+                                className="form-control"
+                                value={ce.quantity}
+                                onChange={(e) =>
+                                  setCountEntries((p) => p.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))
+                                }
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Condition</label>
+                              <select
+                                className="form-control"
+                                value={ce.condition}
+                                onChange={(e) =>
+                                  setCountEntries((p) =>
+                                    p.map((x, i) =>
+                                      i === idx
+                                        ? { ...x, condition: e.target.value as 'usable' | 'damaged' | 'rejected' }
+                                        : x,
+                                    ),
+                                  )
+                                }
+                              >
+                                <option value="usable">Usable</option>
+                                <option value="damaged">Damaged</option>
+                                <option value="rejected">Rejected</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(actionEndpoint === 'submitIpc' || actionEndpoint === 'matchRm') && (
+                  <>
+                    {actionEndpoint === 'matchRm' && (
+                      <div className="p03-two-col">
+                        <div className="form-group">
+                          <label className="form-label">Signed Document Verification Tag</label>
+                          <input
+                            className="form-control"
+                            required
+                            value={snapshotSha256}
+                            onChange={(e) => setSnapshotSha256(e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Date &amp; Time Acknowledged</label>
+                          <input
+                            className="form-control"
+                            required
+                            value={acknowledgedAt}
+                            onChange={(e) => setAcknowledgedAt(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <EvidenceBindingFields
+                      label={actionEndpoint === 'submitIpc' ? 'Signed Inventory Count Document' : 'Signed Opening Receipt Document'}
+                      value={evidenceBinding}
+                      onChange={setEvidenceBinding}
+                    />
+                  </>
+                )}
+
+                {actionEndpoint === 'authorizeIpc' && (
+                  <div className="p03-two-col">
+                    <div className="form-group">
+                      <label className="form-label">Authorizing Role</label>
+                      <select
+                        className="form-control"
+                        value={authDuty}
+                        onChange={(e) => setAuthDuty(e.target.value as 'CHAPTER_HEAD' | 'FINANCE')}
+                      >
+                        <option value="CHAPTER_HEAD">Chapter Head</option>
+                        <option value="FINANCE">Finance Officer</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Date &amp; Time Signed</label>
+                      <input
+                        className="form-control"
                         required
-                        value={rl.ipc_line_id}
-                        onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, ipc_line_id: e.target.value } : x)))}
-                      />
-                    </div>
-                    <div className="field" style={{ maxWidth: '6.5rem' }}>
-                      <label>accepted</label>
-                      <input
-                        value={rl.accepted_quantity}
-                        onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, accepted_quantity: e.target.value } : x)))}
-                      />
-                    </div>
-                    <div className="field" style={{ maxWidth: '6.5rem' }}>
-                      <label>damaged</label>
-                      <input
-                        value={rl.damaged_quantity}
-                        onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, damaged_quantity: e.target.value } : x)))}
-                      />
-                    </div>
-                    <div className="field" style={{ maxWidth: '6.5rem' }}>
-                      <label>rejected</label>
-                      <input
-                        value={rl.rejected_quantity}
-                        onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, rejected_quantity: e.target.value } : x)))}
-                      />
-                    </div>
-                    <div className="field" style={{ maxWidth: '7rem' }}>
-                      <label>accepted_value</label>
-                      <input
-                        value={rl.accepted_value}
-                        onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, accepted_value: e.target.value } : x)))}
-                      />
-                    </div>
-                    <div className="field">
-                      <label>finding_reason</label>
-                      <input
-                        value={rl.finding_reason}
-                        onChange={(e) => setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, finding_reason: e.target.value } : x)))}
+                        value={signedAt}
+                        onChange={(e) => setSignedAt(e.target.value)}
                       />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {actionEndpoint === 'inspectRm' && (
-              <div className="row" style={{ marginBottom: '0.5rem' }}>
-                <div className="field">
-                  <label>inspected_at</label>
-                  <input required value={inspectedAt} onChange={(e) => setInspectedAt(e.target.value)} />
+                {(actionEndpoint === 'createRm' || actionEndpoint === 'replaceRm') && (
+                  <div className="form-stack">
+                    <div className="p04-line-top">
+                      <span className="form-label">
+                        Inspection Results by Line
+                      </span>
+                      <button
+                        type="button"
+                        className="p02-compact-btn"
+                        onClick={() =>
+                          setRmLines((p) => [
+                            ...p,
+                            {
+                              ipc_line_id: '',
+                              accepted_quantity: '0',
+                              damaged_quantity: '0',
+                              rejected_quantity: '0',
+                              accepted_value: '0.00',
+                              finding_reason: '',
+                            },
+                          ])
+                        }
+                      >
+                        + Add Inspection Line
+                      </button>
+                    </div>
+                    <div className="p04-lines-list">
+                      {rmLines.map((rl, idx) => (
+                        <div key={idx} className="p04-line-card">
+                          <div className="p03-two-col">
+                            <div className="form-group">
+                              <label className="form-label">Count Line Reference</label>
+                              <input
+                                className="form-control"
+                                required
+                                value={rl.ipc_line_id}
+                                onChange={(e) =>
+                                  setRmLines((p) => p.map((x, i) => (i === idx ? { ...x, ipc_line_id: e.target.value } : x)))
+                                }
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Finding / Notes</label>
+                              <input
+                                className="form-control"
+                                value={rl.finding_reason}
+                                onChange={(e) =>
+                                  setRmLines((p) =>
+                                    p.map((x, i) => (i === idx ? { ...x, finding_reason: e.target.value } : x)),
+                                  )
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="p02-three-col-grid">
+                            <div className="form-group">
+                              <label className="form-label">Accepted Qty</label>
+                              <input
+                                className="form-control"
+                                value={rl.accepted_quantity}
+                                onChange={(e) =>
+                                  setRmLines((p) =>
+                                    p.map((x, i) => (i === idx ? { ...x, accepted_quantity: e.target.value } : x)),
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Damaged Qty</label>
+                              <input
+                                className="form-control"
+                                value={rl.damaged_quantity}
+                                onChange={(e) =>
+                                  setRmLines((p) =>
+                                    p.map((x, i) => (i === idx ? { ...x, damaged_quantity: e.target.value } : x)),
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Rejected Qty</label>
+                              <input
+                                className="form-control"
+                                value={rl.rejected_quantity}
+                                onChange={(e) =>
+                                  setRmLines((p) =>
+                                    p.map((x, i) => (i === idx ? { ...x, rejected_quantity: e.target.value } : x)),
+                                  )
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Accepted Value</label>
+                            <input
+                              className="form-control"
+                              value={rl.accepted_value}
+                              onChange={(e) =>
+                                setRmLines((p) =>
+                                  p.map((x, i) => (i === idx ? { ...x, accepted_value: e.target.value } : x)),
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {actionEndpoint === 'inspectRm' && (
+                  <div className="p02-three-col-grid">
+                    <div className="form-group">
+                      <label className="form-label">Date &amp; Time Inspected</label>
+                      <input
+                        className="form-control"
+                        required
+                        value={inspectedAt}
+                        onChange={(e) => setInspectedAt(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Technical Representative (optional)</label>
+                      <input
+                        className="form-control"
+                        value={techRepId}
+                        onChange={(e) => setTechRepId(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Inspection Notes</label>
+                      <input
+                        className="form-control"
+                        required
+                        value={inspectionNotes}
+                        onChange={(e) => setInspectionNotes(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {actionEndpoint === 'postRm' && (
+                  <div className="form-group">
+                    <label className="form-label">Signed Acknowledgment Reference</label>
+                    <input
+                      className="form-control"
+                      required
+                      value={acknowledgmentId}
+                      onChange={(e) => setAcknowledgmentId(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="p03-guard-buttons">
+                  <button
+                    className="btn-batcave-primary"
+                    type="submit"
+                    disabled={busy || opBlockReason !== null}
+                    title={opBlockReason ?? undefined}
+                  >
+                    Submit Opening Action
+                  </button>
+                  <button
+                    className="btn-batcave-secondary"
+                    type="button"
+                    onClick={parkDraftInMemory}
+                  >
+                    Save Temporary Draft
+                  </button>
                 </div>
-                <div className="field">
-                  <label>technical_representative_id (optional)</label>
-                  <input value={techRepId} onChange={(e) => setTechRepId(e.target.value)} />
+              </form>
+            </section>
+
+            <section className="p03-card surface-card form-stack" aria-label="Opening inspection actions">
+              <h2 className="p03-section-title">
+                Quick Read &amp; Print Controls
+              </h2>
+              <div className="form-stack">
+                <div className="form-group">
+                  <span className="form-label">Inventory Count Form ({ipcs.length})</span>
+                  <div className="p02-compact-btn-group">
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('ipc', 'detail');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedIpcId}
+                    >
+                      Details
+                    </button>
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('ipc', 'history');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedIpcId}
+                    >
+                      History
+                    </button>
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('ipc', 'related');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedIpcId}
+                    >
+                      Related
+                    </button>
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('ipc', 'version');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedIpcId}
+                    >
+                      Revision #{exactRev}
+                    </button>
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('ipc', 'print');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedIpcId}
+                    >
+                      Print Preview
+                    </button>
+                  </div>
                 </div>
-                <div className="field">
-                  <label>inspection_notes</label>
-                  <input required value={inspectionNotes} onChange={(e) => setInspectionNotes(e.target.value)} />
+
+                <div className="form-group">
+                  <span className="form-label">Opening Receipt Memo ({rms.length})</span>
+                  <div className="p02-compact-btn-group">
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('rm', 'detail');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedRmId}
+                    >
+                      Details
+                    </button>
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('rm', 'history');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedRmId}
+                    >
+                      History
+                    </button>
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('rm', 'movements');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedRmId}
+                    >
+                      Movements
+                    </button>
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('rm', 'findings');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedRmId}
+                    >
+                      Findings
+                    </button>
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => {
+                        void loadOpeningRead('rm', 'print');
+                        setViewTab('status');
+                      }}
+                      disabled={!selectedRmId}
+                    >
+                      Print Preview
+                    </button>
+                  </div>
                 </div>
               </div>
-            )}
-
-            {actionEndpoint === 'postRm' && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label>acknowledgment_id UUID</label>
-                <input required value={acknowledgmentId} onChange={(e) => setAcknowledgmentId(e.target.value)} />
-              </div>
-            )}
-
-            {opBlockReason && <div className="alert info">{opBlockReason}</div>}
-            <div className="row">
-              <button className="btn" type="submit" disabled={busy || opBlockReason !== null} title={opBlockReason ?? undefined}>
-                Execute Opening Action
-              </button>
-              <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <div className="card">
-          <h3>Opening Outcome Lookup, Exact Revision &amp; Inspection</h3>
-          <div className="row" style={{ marginBottom: '0.5rem' }}>
-            <div className="field" style={{ maxWidth: '8rem' }}>
-              <label htmlFor="op-rev-n">Revision #</label>
-              <input id="op-rev-n" type="number" min={1} value={exactRev} onChange={(e) => setExactRev(e.target.value)} />
-            </div>
-            <button type="button" className="btn secondary" disabled={!selectedRmId} onClick={() => void loadOpeningRead('rm', 'version')}>
-              Read RM Revision
-            </button>
+            </section>
           </div>
-          <form onSubmit={lookupByKey}>
-            <div className="row" style={{ marginBottom: '0.5rem' }}>
-              <div className="field">
-                <label htmlFor="op-lkp-name">operation_name</label>
-                <input id="op-lkp-name" value={opName} onChange={(e) => setOpName(e.target.value)} required />
+        )}
+
+        {viewTab === 'records' && (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Opening baseline summary">
+              <h2 className="p03-section-title">
+                Current Opening Baseline Summary
+              </h2>
+              {baseline === null ? (
+                <p className="p03-muted-copy">
+                  No opening baseline posted. Complete and post an opening count and receipt memo to establish the chapter opening balance.
+                </p>
+              ) : (
+                <pre className="json-box">{JSON.stringify(baseline, null, 2)}</pre>
+              )}
+            </section>
+
+            <section className="p03-card surface-card form-stack" aria-label="Opening counts and receipts">
+              <h2 className="p03-section-title">
+                Counts ({filteredIpcs.length}) &amp; Receipts ({filteredRms.length})
+              </h2>
+              {filteredIpcs.length === 0 && filteredRms.length === 0 ? (
+                <p className="p03-muted-copy">
+                  {searchNeedle
+                    ? 'No opening records match your current search filter.'
+                    : 'No opening records yet. Start an opening inventory count from the Workflow tab.'}
+                </p>
+              ) : (
+                <div className="p03-history-list">
+                  {filteredIpcs.map((i) => (
+                    <article key={i.id} className={`p03-history-card ${selectedIpcId === i.id ? 'is-search-match' : ''}`}>
+                      <div className="p03-history-head">
+                        <div className="p03-history-title-group">
+                          <span className="p03-version-pill p03-id-pill p03-mono-inline">{i.reference ?? 'Count'}</span>
+                          <span className="s02-status-tag">{i.state ?? i.status ?? 'draft'}</span>
+                          <span className="p03-version-pill">rev. {i.revision ?? '?'}</span>
+                        </div>
+                        <button type="button" className="p02-compact-btn" onClick={() => setSelectedIpcId(i.id)}>
+                          Select
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                  {filteredRms.map((r) => (
+                    <article key={r.id} className={`p03-history-card ${selectedRmId === r.id ? 'is-search-match' : ''}`}>
+                      <div className="p03-history-head">
+                        <div className="p03-history-title-group">
+                          <span className="p03-version-pill p03-id-pill p03-mono-inline">{r.reference ?? 'Receipt'}</span>
+                          <span className="s02-status-tag">{r.state ?? r.status ?? 'draft'}</span>
+                          <span className="p03-version-pill">rev. {r.revision ?? '?'}</span>
+                        </div>
+                        <button type="button" className="p02-compact-btn" onClick={() => setSelectedRmId(r.id)}>
+                          Select
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {viewTab === 'status' && (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Check status and past revisions">
+              <h2 className="p03-section-title">
+                Check Status &amp; Revisions
+              </h2>
+              <div className="form-stack">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="op-rev-n">
+                    Revision Number
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="op-rev-n"
+                      className="form-control"
+                      type="number"
+                      min={1}
+                      value={exactRev}
+                      onChange={(e) => setExactRev(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="btn-batcave-secondary p03-shrink-btn"
+                      disabled={!selectedRmId}
+                      onClick={() => void loadOpeningRead('rm', 'version')}
+                    >
+                      View Receipt Revision
+                    </button>
+                  </div>
+                </div>
+
+                <form onSubmit={lookupByKey} className="form-stack">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="op-lkp-name">
+                      Action Type
+                    </label>
+                    <select
+                      id="op-lkp-name"
+                      className="form-control"
+                      value={opName}
+                      onChange={(e) => setOpName(e.target.value)}
+                    >
+                      <option value="createIpc">Start Opening Inventory Count</option>
+                      <option value="replaceIpc">Edit Opening Count Form</option>
+                      <option value="saveMyIpcCount">Enter Physical Count Quantities</option>
+                      <option value="submitIpc">Submit Signed Count Form</option>
+                      <option value="authorizeIpc">Authorize Count Form</option>
+                      <option value="createOpeningRm">Prepare Opening Receipt Memo</option>
+                      <option value="replaceOpeningRm">Edit Opening Receipt Memo</option>
+                      <option value="inspectOpeningRm">Record Physical Inspection</option>
+                      <option value="matchOpeningRmEvidence">Match Signed Receipt Document</option>
+                      <option value="postOpeningRm">Post Opening Stock Balances</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="op-lkp-key">
+                      Submission Reference
+                    </label>
+                    <div className="p03-input-action-row">
+                      <input
+                        id="op-lkp-key"
+                        className="form-control"
+                        value={lookupKey}
+                        onChange={(e) => setLookupKey(e.target.value)}
+                        required
+                      />
+                      <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                        Check Reference
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                <form onSubmit={lookupByOpId} className="form-group">
+                  <label className="form-label" htmlFor="op-lkp-id">
+                    Change Record Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="op-lkp-id"
+                      className="form-control"
+                      value={lookupOpId}
+                      onChange={(e) => setLookupOpId(e.target.value)}
+                      required
+                    />
+                    <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                      View Record
+                    </button>
+                  </div>
+                </form>
               </div>
-              <div className="field">
-                <label htmlFor="op-lkp-key">X-Action-Key UUID</label>
-                <input id="op-lkp-key" value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} required />
-              </div>
-              <button className="btn secondary" type="submit">
-                Lookup by Key
-              </button>
-            </div>
-          </form>
-          <form onSubmit={lookupByOpId}>
-            <div className="row" style={{ marginBottom: '0.65rem' }}>
-              <div className="field">
-                <label htmlFor="op-lkp-id">operation_id UUID</label>
-                <input id="op-lkp-id" value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} required />
-              </div>
-              <button className="btn secondary" type="submit">
-                Read Operation ID
-              </button>
-            </div>
-          </form>
-          {detailJson !== null && <pre className="json-box">{JSON.stringify(detailJson, null, 2)}</pre>}
-          {printHtml !== null && (
-            <div style={{ marginTop: '0.65rem' }}>
-              <h4>Printable Document Preview (sandboxed)</h4>
-              <iframe title="Opening Print Preview" sandbox="" srcDoc={printHtml} style={{ width: '100%', height: '240px', border: '1px solid #cbd5e1' }} />
-            </div>
-          )}
-        </div>
+            </section>
+
+            <section className="p03-card surface-card form-stack" aria-label="Details and printable preview">
+              <h2 className="p03-section-title">
+                Inspection &amp; Printable Form
+              </h2>
+              {detailJson === null && printHtml === null ? (
+                <p className="p03-muted-copy">
+                  No opening record inspected. Choose Details, History, or Print Preview on a selected count form or opening receipt.
+                </p>
+              ) : (
+                <div className="form-stack">
+                  {detailJson !== null && <pre className="json-box">{JSON.stringify(detailJson, null, 2)}</pre>}
+                  {printHtml !== null && (
+                    <iframe title="Opening Print Preview" sandbox="" srcDoc={printHtml} className="stage1-print-frame" />
+                  )}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

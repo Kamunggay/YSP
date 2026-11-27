@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiGet, checkHealth, ContractApiError, formatManilaTime } from './api/client.ts';
+import { apiGet, apiMutate, checkHealth, ContractApiError } from './api/client.ts';
 import type {
   ChapterAccessSnapshot,
   ChapterContext,
@@ -10,10 +10,13 @@ import type {
   WorkspaceTab,
 } from './api/types.ts';
 import { AuthGate } from './components/AuthGate.tsx';
-import { ChapterAuthorityBar } from './components/ChapterAuthorityBar.tsx';
+import { BatCaveShell } from './components/BatCaveShell.tsx';
+import { useBatCaveToast } from './components/batcaveToast.ts';
 import { OperationBanner } from './components/OperationBanner.tsx';
+import { S02Dashboard } from './components/S02Dashboard.tsx';
 import { Stage1ReverbClient, type RealtimeStatus } from './realtime/reverbClient.ts';
 import { memoryDraftStore, type MemoryDraftEntry } from './state/memoryDraftStore.ts';
+import { getInitialSoundsEnabled, playClickPen, playOutageSwitch } from './theme/batcaveAudio.ts';
 import { ActualIssueWorkspace } from './workspaces/ActualIssueWorkspace.tsx';
 import { CatalogueWorkspace } from './workspaces/CatalogueWorkspace.tsx';
 import { OpeningBaselineWorkspace } from './workspaces/OpeningBaselineWorkspace.tsx';
@@ -21,22 +24,12 @@ import { PaperEvidenceWorkspace } from './workspaces/PaperEvidenceWorkspace.tsx'
 import { RequisitionWorkspace } from './workspaces/RequisitionWorkspace.tsx';
 import { ReservationAndHoldWorkspace } from './workspaces/ReservationAndHoldWorkspace.tsx';
 import { StockWorkspace } from './workspaces/StockWorkspace.tsx';
-import './styles/stage1.css';
-
-const NAV_ITEMS: Array<{ id: WorkspaceTab; code: string; label: string; section: string }> = [
-  { id: 'my_work', code: 'S-02', label: 'My Work & Notices', section: 'Command Center' },
-  { id: 'requisitions', code: 'S-03/04', label: 'Internal RFs', section: 'Demand & Allocation' },
-  { id: 'reservations_holds', code: 'S-07/09', label: 'Reservations & Holds', section: 'Demand & Allocation' },
-  { id: 'actual_issues', code: 'S-07/08', label: 'Signed Actual Issues', section: 'Demand & Allocation' },
-  { id: 'stock', code: 'S-08', label: '7 Stock Views & Eligibility', section: 'Inventory & Baseline' },
-  { id: 'catalogue', code: 'P05', label: 'Catalogue & Precision', section: 'Inventory & Baseline' },
-  { id: 'opening', code: 'S-13', label: 'Opening IPC / RM', section: 'Inventory & Baseline' },
-  { id: 'evidence', code: 'DOC-08', label: 'Paper Evidence', section: 'Inventory & Baseline' },
-];
 
 export function App() {
   const [connection, setConnection] = useState<ConnectionState>('checking');
   const [healthAttempt, setHealthAttempt] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => getInitialSoundsEnabled());
+  const { toast, isExiting, showToast, dismissToast } = useBatCaveToast();
 
   const [session, setSession] = useState<SessionProjection | null>(null);
   const [sessionBooting, setSessionBooting] = useState(true);
@@ -69,6 +62,7 @@ export function App() {
   }, [healthAttempt]);
 
   function retryHealth() {
+    playClickPen(soundEnabled);
     setConnection('checking');
     setHealthAttempt((a) => a + 1);
   }
@@ -209,6 +203,7 @@ export function App() {
           setRealtimeDetail(detail);
         },
         onNotice: (notice) => {
+          playOutageSwitch(soundEnabled);
           setRecentNotices((prev) => [notice, ...prev].slice(0, 25));
           if (notice.event_name === 'stage1.authority.changed.v1') {
             void loadMemberships().catch((err: unknown) => setGlobalError(err));
@@ -237,7 +232,7 @@ export function App() {
     return () => {
       reverbRef.current?.disconnect();
     };
-  }, [session, selectedChapterId, loadMemberships, loadChapterState, clearProtectedState]);
+  }, [session, selectedChapterId, loadMemberships, loadChapterState, clearProtectedState, soundEnabled]);
 
   function handleSessionUpdated(next: SessionProjection | null) {
     const prevUserId = session?.user.id;
@@ -251,155 +246,139 @@ export function App() {
     }
   }
 
+  function handleNotify(tone: 'success' | 'warning' | 'error' | 'info', text: string) {
+    showToast({ tone, text });
+  }
+
+  function handleSelectTab(nextTab: WorkspaceTab) {
+    playClickPen(soundEnabled);
+    setActiveTab(nextTab);
+  }
+
+  function handleBackToDashboard() {
+    playClickPen(soundEnabled);
+    setActiveTab('my_work');
+  }
+
+  async function handleSignOut() {
+    playClickPen(soundEnabled);
+    try {
+      await apiMutate<void>('POST', '/api/v1/auth/sign-out', null);
+    } catch {
+      // Clear local session state even if server session already expired
+    }
+    handleSessionUpdated(null);
+    handleNotify('info', 'Signed out. Temporary session drafts cleared.');
+  }
+
   if (sessionBooting) {
     return (
-      <main style={{ maxWidth: '48rem', margin: '10vh auto', padding: '2rem' }}>
-        <h1>YSP Stage 1 Workspace</h1>
-        <p role="status" className={`connection ${connection}`}>
-          {connection === 'checking'
-            ? 'Checking connection...'
-            : connection === 'connected'
-              ? 'Laravel and MySQL are connected.'
-              : 'Connection unavailable. Check that the local services are running, then try again.'}
-        </p>
-      </main>
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+        >
+        <main className="status-shell">
+          <div className="surface-card status-card">
+            <div className="eyebrow">YSP Chapter Portal</div>
+            <h1>YSP Chapter Operations</h1>
+            <p role="status" className={`message connection ${connection}`}>
+              {connection === 'checking'
+                ? 'Checking server connection...'
+                : connection === 'connected'
+                  ? 'System ready and connected.'
+                  : 'Connection unavailable. Check that the local services are running, then try again.'}
+            </p>
+            <div className="button-group">
+              <button
+                type="button"
+                className="retry-button"
+                disabled={connection === 'checking'}
+                onClick={retryHealth}
+              >
+                Check connection
+              </button>
+            </div>
+          </div>
+        </main>
+      </BatCaveShell>
     );
   }
 
   if (!session || session.state !== 'authenticated') {
     return (
-      <div className="stage1-app">
-        <header className="topbar">
-          <div className="topbar-brand">
-            <h1>YSP Chapter Operations</h1>
-            <span className="topbar-sub">Stage 1 Connected Operations</span>
-          </div>
-          <span className={`status-pill ${connection === 'connected' ? 'ok' : connection === 'unavailable' ? 'bad' : ''}`}>
-            DB: {connection}
-          </span>
-        </header>
+      <BatCaveShell
+        soundEnabled={soundEnabled}
+        onToggleSound={setSoundEnabled}
+        toast={toast}
+        toastExiting={isExiting}
+        onDismissToast={dismissToast}
+        >
         <AuthGate
           connection={connection}
           onRetryHealth={retryHealth}
           session={session}
           onSessionUpdated={handleSessionUpdated}
+          soundEnabled={soundEnabled}
+          onNotify={handleNotify}
         />
-      </div>
+      </BatCaveShell>
     );
   }
 
   return (
-    <div className="stage1-app">
-      <header className="topbar">
-        <div className="topbar-brand">
-          <h1>YSP Chapter Operations</h1>
-          <span className="topbar-sub">Stage 1 ({session.user.display_name})</span>
-        </div>
-        <div className="topbar-meta">
-          <span className={`status-pill ${connection === 'connected' ? 'ok' : 'bad'}`}>DB: {connection}</span>
-          <span
-            className={`status-pill ${
-              realtimeStatus === 'connected' ? 'ok' : realtimeStatus === 'stale_reconnect' ? 'warn' : 'bad'
-            }`}
-            title={realtimeDetail}
-          >
-            Reverb WS: {realtimeStatus}
-          </span>
-          <span className="status-pill">Auth: {session.authentication_method}</span>
-        </div>
-      </header>
-
-      <div className="shell-grid">
-        <nav className="sidenav" aria-label="Stage 1 destinations">
-          {(['Command Center', 'Demand & Allocation', 'Inventory & Baseline'] as const).map((sec) => (
-            <div key={sec}>
-              <div className="nav-section-label">{sec}</div>
-              {NAV_ITEMS.filter((item) => item.section === sec).map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`nav-btn ${activeTab === item.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(item.id)}
-                >
-                  <span>{item.label}</span>
-                  <span className="nav-code">{item.code}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        <main className="workspace-main">
+    <BatCaveShell
+      soundEnabled={soundEnabled}
+      onToggleSound={setSoundEnabled}
+      toast={toast}
+      toastExiting={isExiting}
+      onDismissToast={dismissToast}
+    >
+      {activeTab === 'my_work' ? (
+        <S02Dashboard
+          session={session}
+          connection={connection}
+          realtimeStatus={realtimeStatus}
+          realtimeDetail={realtimeDetail ?? null}
+          memberships={memberships}
+          membershipCursor={membershipCursor}
+          selectedChapterId={selectedChapterId}
+          chapterContext={chapterContext}
+          chapterAccess={chapterAccess}
+          recentNotices={recentNotices}
+          drafts={drafts}
+          refreshSignal={refreshSignal}
+          globalError={globalError}
+          onSelectTab={handleSelectTab}
+          onSelectChapter={(cid) => {
+            playClickPen(soundEnabled);
+            setGlobalError(null);
+            setChapterContext(null);
+            setChapterAccess(null);
+            setSelectedChapterId(cid);
+          }}
+          onLoadMoreMemberships={() => void loadMemberships(membershipCursor)}
+          onRefreshAccess={() => {
+            playClickPen(soundEnabled);
+            if (selectedChapterId) {
+              void loadChapterState(selectedChapterId, contextGenRef.current);
+            }
+          }}
+          onTriggerRefresh={() => {
+            playClickPen(soundEnabled);
+            setRefreshSignal((s) => s + 1);
+          }}
+          onRetryHealth={retryHealth}
+          onSessionUpdated={handleSessionUpdated}
+          onNotify={handleNotify}
+          soundEnabled={soundEnabled}
+          onSignOut={() => void handleSignOut()}
+        />
+      ) : (
+        <>
           <OperationBanner error={globalError} />
-
-          <ChapterAuthorityBar
-            memberships={memberships}
-            selectedChapterId={selectedChapterId}
-            context={chapterContext}
-            access={chapterAccess}
-            nextCursor={membershipCursor}
-            drafts={drafts}
-            onSelectChapter={(cid) => {
-              setGlobalError(null);
-              setChapterContext(null);
-              setChapterAccess(null);
-              setSelectedChapterId(cid);
-            }}
-            onLoadMoreMemberships={() => void loadMemberships(membershipCursor)}
-            onRefreshAccess={() => {
-              if (selectedChapterId) {
-                void loadChapterState(selectedChapterId, contextGenRef.current);
-              }
-            }}
-          />
-
-          {activeTab === 'my_work' && (
-            <div className="grid-2">
-              <div className="card">
-                <h2>My Work &amp; Realtime Invalidations (`S-02` / `Ticket 09`)</h2>
-                <p className="muted">
-                  Authorized channel events trigger fresh permitted HTTP reads—events never broadcast protected secrets or authorize mutations.
-                </p>
-                {recentNotices.length === 0 ? (
-                  <p className="muted">No committed change notices received in this session yet.</p>
-                ) : (
-                  <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
-                    {recentNotices.map((n) => (
-                      <li key={n.event_id} style={{ marginBottom: '0.35rem' }}>
-                        <span className="mono">{n.event_name}</span> · {n.resource_kind} <span className="mono">{n.resource_id}</span> @{' '}
-                        {formatManilaTime(n.committed_at)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div className="card">
-                <h2>Quarantined In-Memory Drafts (No localStorage)</h2>
-                {drafts.length === 0 ? (
-                  <p className="muted">No unsaved form buffers held in RAM.</p>
-                ) : (
-                  <ul style={{ paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
-                    {drafts.map((d) => (
-                      <li key={`${d.chapterId}-${d.formKey}`}>
-                        <strong>{d.label}</strong> (Chapter <span className="mono">{d.chapterId}</span>, saved {formatManilaTime(d.updatedAtIso)})
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'my_work' && (
-            <AuthGate
-              connection={connection}
-              onRetryHealth={retryHealth}
-              session={session}
-              onSessionUpdated={handleSessionUpdated}
-            />
-          )}
-
           {selectedChapterId ? (
             <>
               {activeTab === 'catalogue' && (
@@ -409,6 +388,7 @@ export function App() {
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
                   chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
                 />
               )}
               {activeTab === 'stock' && (
@@ -416,6 +396,7 @@ export function App() {
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
                   chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
                 />
               )}
               {activeTab === 'evidence' && (
@@ -425,6 +406,7 @@ export function App() {
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
                   chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
                 />
               )}
               {activeTab === 'opening' && (
@@ -434,6 +416,7 @@ export function App() {
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
                   chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
                 />
               )}
               {activeTab === 'requisitions' && (
@@ -443,6 +426,7 @@ export function App() {
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
                   chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
                 />
               )}
               {activeTab === 'reservations_holds' && (
@@ -452,6 +436,7 @@ export function App() {
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
                   chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
                 />
               )}
               {activeTab === 'actual_issues' && (
@@ -461,17 +446,36 @@ export function App() {
                   chapterId={selectedChapterId}
                   refreshSignal={refreshSignal}
                   chapterAccess={chapterAccess}
+                  onBackToDashboard={handleBackToDashboard}
                 />
               )}
             </>
           ) : (
-            activeTab !== 'my_work' && (
-              <div className="alert info">Select an authorized chapter above before loading chapter operations.</div>
-            )
+            <main className="p03-workspace-shell">
+              <div className="p03-workspace-inner">
+                <section className="p03-card surface-card">
+                  <div className="p03-card-header-row">
+                    <div>
+                      <h1 className="p03-main-title">Select a Chapter</h1>
+                      <p className="form-card-subtitle">
+                        Choose an authorized chapter in My Work before opening chapter operations.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-batcave-secondary p03-shrink-btn"
+                      onClick={handleBackToDashboard}
+                    >
+                      Back to Chapter Workspace
+                    </button>
+                  </div>
+                </section>
+              </div>
+            </main>
           )}
-        </main>
-      </div>
-    </div>
+        </>
+      )}
+    </BatCaveShell>
   );
 }
 

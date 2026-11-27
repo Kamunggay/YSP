@@ -48,13 +48,22 @@ interface RequisitionWorkspaceProps {
   chapterId: string;
   refreshSignal: number;
   chapterAccess: ChapterAccessSnapshot | null;
+  onBackToDashboard?: () => void;
 }
 
 function emptyRfLine(): RfLineRow {
   return { line_id: null, variant_id: null, unit_id: null, requested_quantity: null };
 }
 
-export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: RequisitionWorkspaceProps) {
+export function RequisitionWorkspace({
+  userId,
+  chapterId,
+  refreshSignal,
+  chapterAccess,
+  onBackToDashboard,
+}: RequisitionWorkspaceProps) {
+  const [viewTab, setViewTab] = useState<'workspace' | 'history'>('workspace');
+  const [searchText, setSearchText] = useState('');
   const formKey = 'internal_rf_editor';
   const draftReason = actionBlockReason(chapterAccess, 'rf.draft');
   const submitReason = actionBlockReason(chapterAccess, 'rf.submit');
@@ -193,7 +202,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
       pendingActionKey: null,
       payloadJson: JSON.stringify({ requestingUnitId, eventId, neededAt, justification, lines, reason }),
     });
-    setStatusMessage('RF edits held in chapter-scoped memory only (quarantined per user + chapter).');
+    setStatusMessage('Requisition changes saved as a temporary draft for this chapter during your current session.');
   }
 
   async function selectRf(id: string) {
@@ -303,7 +312,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
           key,
         );
       } else {
-        throw new Error('Select an RF first.');
+        throw new Error('Select a requisition first.');
       }
 
       const { record, operationId } = unwrapMutationData<InternalRfRecord & Record<string, unknown>>(resp.result.data);
@@ -315,7 +324,7 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
       if (operationId) {
         setLookupOpId(operationId);
       }
-      setStatusMessage(`RF ${record.reference ?? record.id} saved (v${record.version}). Key: ${key}`);
+      setStatusMessage(`Requisition ${record.reference ?? record.id} saved (rev. ${record.version}). Reference: ${key}`);
       await loadRfs();
     } catch (err) {
       setError(err);
@@ -358,7 +367,9 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
       if (operationId) {
         setLookupOpId(operationId);
       }
-      setStatusMessage(`RF transition '${kind}' completed. Status: ${record.status}. Key: ${key}`);
+      const actionWord =
+        kind === 'submit' ? 'submitted' : kind === 'approve' ? 'approved' : kind === 'return' ? 'returned for revision' : 'cancelled';
+      setStatusMessage(`Requisition ${actionWord}. Current status: ${record.status}. Reference: ${key}`);
       await loadRfs();
     } catch (err) {
       setError(err);
@@ -394,292 +405,589 @@ export function RequisitionWorkspace({ userId, chapterId, refreshSignal, chapter
     }
   }
 
+  const filteredRfs = searchText.trim()
+    ? rfs.filter((r) => {
+        const needle = searchText.trim().toLowerCase();
+        return (
+          (r.reference ?? '').toLowerCase().includes(needle) ||
+          (r.purpose ?? '').toLowerCase().includes(needle) ||
+          r.status.toLowerCase().includes(needle)
+        );
+      })
+    : rfs;
+
   return (
-    <div>
-      <div className="card">
-        <h2>Internal Requisition Forms (`Ticket 06` · S-03 &amp; S-04)</h2>
-        <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
+    <main className="p03-workspace-shell">
+      <div className="p03-workspace-inner">
+        <header className="p03-top-header surface-card">
+          <div className="p03-header-search-row">
+            <div className="p03-search-input-wrap">
+              <svg
+                className="p03-search-icon"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                className="form-control p03-search-input"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Search requisitions by reference or status..."
+                aria-label="Search requisitions by reference or status"
+              />
+            </div>
 
-        <div className="row" style={{ marginBottom: '0.75rem' }}>
-          <div className="field" style={{ maxWidth: '16rem' }}>
-            <label htmlFor="rf-status-f">Status Filter</label>
-            <select id="rf-status-f" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="">All visible states</option>
-              <option value="draft">draft</option>
-              <option value="submitted">submitted</option>
-              <option value="approved">approved</option>
-              <option value="returned">returned</option>
-              <option value="canceled">canceled</option>
-            </select>
-          </div>
-          <button type="button" className="btn secondary" onClick={() => void loadRfs()}>
-            Reload List
-          </button>
-        </div>
-
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Reference</th>
-                <th>Status</th>
-                <th>Fulfillment</th>
-                <th>Versions</th>
-                <th>Needed At</th>
-                <th>Inspect</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rfs.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="muted">
-                    No internal RFs visible in this chapter.
-                  </td>
-                </tr>
-              ) : (
-                rfs.map((r) => (
-                  <tr key={r.id}>
-                    <td className="mono">{r.reference ?? r.id}</td>
-                    <td>{r.status}</td>
-                    <td>{r.fulfillment_status}</td>
-                    <td className="mono">
-                      v{r.version}/m{r.material_version}/p{r.progress_version}
-                    </td>
-                    <td>{formatManilaTime(r.needed_at)}</td>
-                    <td>
-                      <button type="button" className="btn secondary" onClick={() => void selectRf(r.id)}>
-                        Open Workspace
-                      </button>
-                    </td>
-                  </tr>
-                ))
+            <div className="p03-search-meta">
+              {searchText.trim().length > 0 && (
+                <>
+                  <span className="p03-version-pill">{filteredRfs.length} Matching</span>
+                  <button
+                    type="button"
+                    className="p03-search-clear-btn"
+                    onClick={() => setSearchText('')}
+                  >
+                    Clear
+                  </button>
+                </>
               )}
-            </tbody>
-          </table>
-        </div>
-        {nextCursor && (
-          <button type="button" className="btn secondary" style={{ marginTop: '0.5rem' }} onClick={() => void loadRfs(nextCursor)}>
-            Load Next Page
-          </button>
-        )}
-      </div>
-
-      <div className="grid-2">
-        <div className="card">
-          <h3>{selectedRf ? `RF Workspace: ${selectedRf.reference ?? selectedRf.id}` : 'Create Incomplete/Complete RF Draft'}</h3>
-          <div className="field" style={{ marginBottom: '0.45rem' }}>
-            <label htmlFor="rf-unit">requesting_unit_id UUID (nullable in draft)</label>
-            <input id="rf-unit" value={requestingUnitId} onChange={(e) => setRequestingUnitId(e.target.value)} />
-          </div>
-          <div className="row" style={{ marginBottom: '0.45rem' }}>
-            <div className="field">
-              <label htmlFor="rf-event">event_id UUID (optional)</label>
-              <input id="rf-event" value={eventId} onChange={(e) => setEventId(e.target.value)} />
-            </div>
-            <div className="field">
-              <label htmlFor="rf-needed">needed_at (UTC microsecond)</label>
-              <input id="rf-needed" value={neededAt} onChange={(e) => setNeededAt(e.target.value)} placeholder="2026-12-01T08:00:00.000000Z" />
-            </div>
-          </div>
-          <div className="field" style={{ marginBottom: '0.6rem' }}>
-            <label htmlFor="rf-just">Justification</label>
-            <input id="rf-just" value={justification} onChange={(e) => setJustification(e.target.value)} />
-          </div>
-
-          <div style={{ marginBottom: '0.65rem' }}>
-            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <strong>Requested Lines (`requested_quantity`)</strong>
-              <button type="button" className="btn secondary" onClick={() => setLines((prev) => [...prev, emptyRfLine()])}>
-                + Add Line
+              <button type="button" className="p03-search-action-btn" onClick={() => void loadRfs()}>
+                Reload
               </button>
             </div>
-            {lines.map((line, idx) => (
-              <div
-                key={idx}
-                className="row"
-                style={{ marginBottom: '0.4rem', padding: '0.45rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem' }}
-              >
-                <div className="field">
-                  <label>Variant {line.line_id ? `(retained ${line.line_id.slice(0, 8)})` : '(new)'}</label>
-                  {variants.length > 0 ? (
-                    <select value={line.variant_id ?? ''} onChange={(e) => updateLine(idx, { variant_id: e.target.value || null })}>
-                      <option value="">(unset)</option>
-                      {variants.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.code} — {v.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      value={line.variant_id ?? ''}
-                      placeholder="variant_id UUID"
-                      onChange={(e) => updateLine(idx, { variant_id: e.target.value || null })}
-                    />
-                  )}
+          </div>
+
+          <div className="p03-header-nav-row">
+            <div className="p03-header-left">
+              <h1 className="p03-main-title">Internal Requisitions</h1>
+            </div>
+            <div className="p03-header-controls">
+              <div className="p03-filter-pill-bar" role="tablist" aria-label="Requisition workspace tabs">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'workspace'}
+                  className={`p03-filter-pill ${viewTab === 'workspace' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('workspace')}
+                >
+                  Queue &amp; Editor ({filteredRfs.length})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'history'}
+                  className={`p03-filter-pill ${viewTab === 'history' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('history')}
+                >
+                  History &amp; Status
+                </button>
+              </div>
+              {onBackToDashboard && (
+                <button
+                  type="button"
+                  className="btn-batcave-secondary p03-shrink-btn p04-back-btn"
+                  onClick={onBackToDashboard}
+                >
+                  ← Back to My Work
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <section className="p03-card surface-card form-stack" aria-label="Requisition workspace overview">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Requisition Processing</h2>
+              <p className="form-card-subtitle">
+                Draft, submit, approve, or revise internal chapter stock requests.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">{filteredRfs.length} Visible</span>
+              {selectedRf && (
+                <span className="p03-version-pill p03-mono-inline">
+                  {selectedRf.reference ?? 'Draft'} · rev. {selectedRf.version}
+                </span>
+              )}
+            </div>
+          </div>
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
+
+        {viewTab === 'workspace' ? (
+          <div className="p02-members-grid">
+            <div className="p02-column-stack">
+              <section className="p03-card surface-card form-stack" aria-label="Requisitions queue">
+                <div className="p03-card-header-row">
+                  <div>
+                    <h2 className="p03-section-title">Requisition Queue</h2>
+                    <p className="form-card-subtitle">
+                      Select a requisition to edit or submit, or start a new request on the right.
+                    </p>
+                  </div>
                 </div>
-                <div className="field">
-                  <label>Unit</label>
-                  {units.length > 0 ? (
-                    <select value={line.unit_id ?? ''} onChange={(e) => updateLine(idx, { unit_id: e.target.value || null })}>
-                      <option value="">(unset)</option>
-                      {units.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.code} (scale {u.quantity_scale})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      value={line.unit_id ?? ''}
-                      placeholder="unit_id UUID"
-                      onChange={(e) => updateLine(idx, { unit_id: e.target.value || null })}
-                    />
-                  )}
+
+                <div className="p03-filter-pill-bar" role="group" aria-label="Filter requisition status">
+                  {[
+                    { value: '', label: 'All' },
+                    { value: 'draft', label: 'Draft' },
+                    { value: 'submitted', label: 'Submitted' },
+                    { value: 'approved', label: 'Approved' },
+                    { value: 'returned', label: 'Returned' },
+                    { value: 'canceled', label: 'Cancelled' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value || 'all'}
+                      type="button"
+                      className={`p03-filter-pill ${statusFilter === opt.value ? 'is-active' : ''}`}
+                      onClick={() => setStatusFilter(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
-                <div className="field" style={{ maxWidth: '8.5rem' }}>
-                  <label>requested_quantity</label>
-                  <input
-                    value={line.requested_quantity ?? ''}
-                    placeholder="e.g. 5"
-                    onChange={(e) => updateLine(idx, { requested_quantity: e.target.value || null })}
-                  />
-                </div>
-                {lines.length > 1 && (
-                  <button type="button" className="btn secondary" onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}>
-                    Remove
+
+                {filteredRfs.length === 0 ? (
+                  <p className="p03-muted-copy">
+                    No requisitions found. Create a new requisition draft on the right or adjust your filter criteria above.
+                  </p>
+                ) : (
+                  <div className="p03-history-list">
+                    {filteredRfs.map((r) => (
+                      <article
+                        key={r.id}
+                        className={`p03-history-card ${selectedRf?.id === r.id ? 'is-search-match' : ''}`}
+                      >
+                        <div className="p03-history-head">
+                          <div className="p03-history-title-group">
+                            <span className="p03-version-pill p03-id-pill p03-mono-inline">{r.reference ?? 'Draft'}</span>
+                            <span
+                              className={`s02-status-tag ${
+                                r.status === 'approved'
+                                  ? 'is-ready'
+                                  : r.status === 'canceled' || r.status === 'returned'
+                                    ? 'is-uncertain'
+                                    : 'is-overdue'
+                              }`}
+                            >
+                              {r.status}
+                            </span>
+                            <span className="p03-version-pill">rev. {r.version}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="p02-compact-btn"
+                            onClick={() => void selectRf(r.id)}
+                          >
+                            Open
+                          </button>
+                        </div>
+                        <div className="p03-history-meta">
+                          <span>Fulfillment: {r.fulfillment_status.replace(/_/g, ' ')}</span>
+                          <span>Needed: {formatManilaTime(r.needed_at)}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                {nextCursor && (
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary"
+                    onClick={() => void loadRfs(nextCursor)}
+                  >
+                    Load Next Page
                   </button>
                 )}
-              </div>
-            ))}
-          </div>
-
-          <div className="field" style={{ marginBottom: '0.65rem' }}>
-            <label htmlFor="rf-reason">Reason (required for replace / return / revise / cancel)</label>
-            <input id="rf-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-          </div>
-
-          <div className="row">
-            <button
-              type="button"
-              className="btn"
-              disabled={busy || draftReason !== null}
-              title={draftReason ?? undefined}
-              onClick={() => void submitDraftOrReplace('create')}
-            >
-              Create Draft
-            </button>
-            <button
-              type="button"
-              className="btn secondary"
-              disabled={busy || !selectedRf || draftReason !== null}
-              title={draftReason ?? undefined}
-              onClick={() => void submitDraftOrReplace('replace')}
-            >
-              Save Draft (`PUT`)
-            </button>
-            <button type="button" className="btn secondary" onClick={saveMemoryBuffer}>
-              Park in RAM
-            </button>
-            {selectedRf && (
-              <>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={busy || submitReason !== null}
-                  title={submitReason ?? undefined}
-                  onClick={() => void runTransition('submit')}
-                >
-                  Submit
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={busy || approveReason !== null}
-                  title={approveReason ?? undefined}
-                  onClick={() => void runTransition('approve')}
-                >
-                  Approve (Independent)
-                </button>
-                <button
-                  type="button"
-                  className="btn secondary"
-                  disabled={busy || approveReason !== null}
-                  title={approveReason ?? undefined}
-                  onClick={() => void runTransition('return')}
-                >
-                  Return
-                </button>
-                <button
-                  type="button"
-                  className="btn secondary"
-                  disabled={busy || draftReason !== null}
-                  title={draftReason ?? undefined}
-                  onClick={() => void submitDraftOrReplace('revise')}
-                >
-                  Revise to Draft
-                </button>
-                <button
-                  type="button"
-                  className="btn danger"
-                  disabled={busy || draftReason !== null}
-                  title={draftReason ?? undefined}
-                  onClick={() => void runTransition('cancel')}
-                >
-                  Cancel Remainder
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <h3>Connected RF Tabs, Exact Version &amp; Operation Lookup</h3>
-          <div className="tabs">
-            {(['summary', 'history', 'related'] as const).map((t) => (
-              <button key={t} type="button" className={`tab-btn ${activeSubTab === t ? 'active' : ''}`} onClick={() => void openSubTab(t)}>
-                {t.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          {selectedRf && (
-            <form onSubmit={readExactRfVersion} className="row" style={{ marginBottom: '0.6rem' }}>
-              <div className="field" style={{ maxWidth: '8rem' }}>
-                <label htmlFor="rf-exact-ver">Exact Version</label>
-                <input id="rf-exact-ver" type="number" min={1} value={exactVersion} onChange={(e) => setExactVersion(e.target.value)} />
-              </div>
-              <button type="submit" className="btn secondary">
-                Read Version
-              </button>
-            </form>
-          )}
-          {subData !== null && <pre className="json-box">{JSON.stringify(subData, null, 2)}</pre>}
-
-          <form onSubmit={lookupByKey} style={{ marginTop: '0.75rem' }}>
-            <div className="row">
-              <div className="field">
-                <label htmlFor="rf-op-k">Lookup Operation by Action Key</label>
-                <input id="rf-op-k" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
-              </div>
-              <button type="submit" className="btn secondary">
-                Find by Key
-              </button>
+              </section>
             </div>
-          </form>
-          <form onSubmit={lookupByOpId} style={{ marginTop: '0.5rem' }}>
-            <div className="row">
-              <div className="field">
-                <label htmlFor="rf-op-id">Lookup by operation_id UUID</label>
-                <input id="rf-op-id" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
-              </div>
-              <button type="submit" className="btn secondary">
-                Read Operation ID
-              </button>
+
+            <div className="p02-column-stack">
+              <section className="p03-card surface-card form-stack" aria-label="Requisition editor">
+                <div className="p04-line-top">
+                  <h2 className="p03-section-title">
+                    {selectedRf ? `Requisition: ${selectedRf.reference ?? 'Draft'}` : 'New Requisition'}
+                  </h2>
+                  {selectedRf && (
+                    <button
+                      type="button"
+                      className="p02-compact-btn"
+                      onClick={() => setSelectedRf(null)}
+                    >
+                      New Draft
+                    </button>
+                  )}
+                </div>
+
+                <div className="form-stack">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="rf-unit">
+                      Requesting Unit (optional for draft)
+                    </label>
+                    <input
+                      id="rf-unit"
+                      className="form-control"
+                      value={requestingUnitId}
+                      onChange={(e) => setRequestingUnitId(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="p03-two-col">
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="rf-event">
+                        Event Reference (optional)
+                      </label>
+                      <input
+                        id="rf-event"
+                        className="form-control"
+                        value={eventId}
+                        onChange={(e) => setEventId(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="rf-needed">
+                        Date &amp; Time Needed
+                      </label>
+                      <input
+                        id="rf-needed"
+                        className="form-control"
+                        value={neededAt}
+                        onChange={(e) => setNeededAt(e.target.value)}
+                        placeholder="2026-12-01T08:00:00.000000Z"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="rf-just">
+                      Justification
+                    </label>
+                    <input
+                      id="rf-just"
+                      className="form-control"
+                      value={justification}
+                      onChange={(e) => setJustification(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-stack">
+                    <div className="p04-line-top">
+                      <span className="form-label">Requested Items &amp; Quantities</span>
+                      <button
+                        type="button"
+                        className="p02-compact-btn"
+                        onClick={() => setLines((prev) => [...prev, emptyRfLine()])}
+                      >
+                        + Add Line
+                      </button>
+                    </div>
+
+                    <div className="p04-lines-list">
+                      {lines.map((line, idx) => (
+                        <div key={idx} className="p04-line-card">
+                          <div className="p04-line-top">
+                            <span className="p03-version-pill">
+                              Line #{idx + 1}{line.line_id ? ' (saved)' : ' (new)'}
+                            </span>
+                            {lines.length > 1 && (
+                              <button
+                                type="button"
+                                className="p02-compact-btn is-subtle-danger"
+                                onClick={() => setLines((prev) => prev.filter((_, i) => i !== idx))}
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="p03-two-col">
+                            <div className="form-group">
+                              <label className="form-label">Item Variant</label>
+                              {variants.length > 0 ? (
+                                <select
+                                  className="form-control"
+                                  value={line.variant_id ?? ''}
+                                  onChange={(e) => updateLine(idx, { variant_id: e.target.value || null })}
+                                >
+                                  <option value="">-- Select --</option>
+                                  {variants.map((v) => (
+                                    <option key={v.id} value={v.id}>
+                                      {v.code} — {v.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  className="form-control"
+                                  value={line.variant_id ?? ''}
+                                  placeholder="Item Variant Reference"
+                                  onChange={(e) => updateLine(idx, { variant_id: e.target.value || null })}
+                                />
+                              )}
+                            </div>
+
+                            <div className="form-group">
+                              <label className="form-label">Unit</label>
+                              {units.length > 0 ? (
+                                <select
+                                  className="form-control"
+                                  value={line.unit_id ?? ''}
+                                  onChange={(e) => updateLine(idx, { unit_id: e.target.value || null })}
+                                >
+                                  <option value="">-- Select --</option>
+                                  {units.map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                      {u.code} — {u.name} ({u.quantity_scale} decimals)
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  className="form-control"
+                                  value={line.unit_id ?? ''}
+                                  placeholder="Unit Reference"
+                                  onChange={(e) => updateLine(idx, { unit_id: e.target.value || null })}
+                                />
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label">Requested Quantity</label>
+                            <input
+                              className="form-control"
+                              value={line.requested_quantity ?? ''}
+                              placeholder="e.g. 5"
+                              onChange={(e) => updateLine(idx, { requested_quantity: e.target.value || null })}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="rf-reason">
+                      Reason (required when editing, returning, revising, or cancelling)
+                    </label>
+                    <input
+                      id="rf-reason"
+                      className="form-control"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </div>
+
+                  {!selectedRf ? (
+                    <div className="p03-guard-buttons">
+                      <button
+                        type="button"
+                        className="btn-batcave-primary"
+                        disabled={busy || draftReason !== null}
+                        title={draftReason ?? undefined}
+                        onClick={() => void submitDraftOrReplace('create')}
+                      >
+                        Create Draft
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-batcave-secondary"
+                        onClick={saveMemoryBuffer}
+                      >
+                        Save Temporary Draft
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="form-stack">
+                      <div className="p03-guard-buttons">
+                        <button
+                          type="button"
+                          className="btn-batcave-primary"
+                          disabled={busy || draftReason !== null}
+                          title={draftReason ?? undefined}
+                          onClick={() => void submitDraftOrReplace('replace')}
+                        >
+                          Save Draft
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-batcave-primary"
+                          disabled={busy || submitReason !== null}
+                          title={submitReason ?? undefined}
+                          onClick={() => void runTransition('submit')}
+                        >
+                          Submit
+                        </button>
+                      </div>
+                      <div className="p03-next-actions-row">
+                        <button
+                          type="button"
+                          className="btn-batcave-secondary"
+                          disabled={busy || approveReason !== null}
+                          title={approveReason ?? undefined}
+                          onClick={() => void runTransition('approve')}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-batcave-secondary"
+                          disabled={busy || approveReason !== null}
+                          title={approveReason ?? undefined}
+                          onClick={() => void runTransition('return')}
+                        >
+                          Return
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-batcave-secondary"
+                          disabled={busy || draftReason !== null}
+                          title={draftReason ?? undefined}
+                          onClick={() => void submitDraftOrReplace('revise')}
+                        >
+                          Revise to Draft
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-batcave-secondary"
+                          disabled={busy || draftReason !== null}
+                          title={draftReason ?? undefined}
+                          onClick={() => void runTransition('cancel')}
+                        >
+                          Cancel Remainder
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-batcave-secondary"
+                          disabled={busy || draftReason !== null}
+                          title={draftReason ?? undefined}
+                          onClick={() => void submitDraftOrReplace('create')}
+                        >
+                          Create Draft
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-batcave-secondary"
+                          onClick={saveMemoryBuffer}
+                        >
+                          Save Temporary Draft
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
             </div>
-          </form>
-          {lookupResult !== null && <pre className="json-box">{JSON.stringify(lookupResult, null, 2)}</pre>}
-        </div>
+          </div>
+        ) : (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Requisition history and related records">
+              <div className="p03-card-header-row">
+                <h2 className="p03-section-title">History &amp; Related Records</h2>
+                <div className="p03-filter-pill-bar">
+                  {(['summary', 'history', 'related'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      className={`p03-filter-pill ${activeSubTab === t ? 'is-active' : ''}`}
+                      onClick={() => void openSubTab(t)}
+                    >
+                      {t === 'summary' ? 'Summary' : t === 'history' ? 'History' : 'Related'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedRf && (
+                <form onSubmit={readExactRfVersion} className="form-group">
+                  <label className="form-label" htmlFor="rf-exact-ver">
+                    Read Revision Number
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="rf-exact-ver"
+                      className="form-control"
+                      type="number"
+                      min={1}
+                      value={exactVersion}
+                      onChange={(e) => setExactVersion(e.target.value)}
+                    />
+                    <button type="submit" className="btn-batcave-secondary p03-shrink-btn">
+                      Read Version
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {subData === null ? (
+                <p className="p03-muted-copy">
+                  No requisition selected. Open a requisition from the Queue &amp; Editor tab to inspect its revision history and linked records.
+                </p>
+              ) : (
+                <pre className="json-box">{JSON.stringify(subData, null, 2)}</pre>
+              )}
+            </section>
+
+            <section className="p03-card surface-card form-stack" aria-label="Check submitted requisition change">
+              <h2 className="p03-section-title">
+                Check Submission Status
+              </h2>
+              <div className="form-stack">
+                <form onSubmit={lookupByKey} className="form-group">
+                  <label className="form-label" htmlFor="rf-op-k">
+                    Submission Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="rf-op-k"
+                      className="form-control"
+                      required
+                      value={lookupKey}
+                      onChange={(e) => setLookupKey(e.target.value)}
+                    />
+                    <button type="submit" className="btn-batcave-secondary p03-shrink-btn">
+                      Check Status
+                    </button>
+                  </div>
+                </form>
+
+                <form onSubmit={lookupByOpId} className="form-group">
+                  <label className="form-label" htmlFor="rf-op-id">
+                    Change Record Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="rf-op-id"
+                      className="form-control"
+                      required
+                      value={lookupOpId}
+                      onChange={(e) => setLookupOpId(e.target.value)}
+                    />
+                    <button type="submit" className="btn-batcave-secondary p03-shrink-btn">
+                      View Record
+                    </button>
+                  </div>
+                </form>
+
+                {lookupResult !== null && <pre className="json-box">{JSON.stringify(lookupResult, null, 2)}</pre>}
+              </div>
+            </section>
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

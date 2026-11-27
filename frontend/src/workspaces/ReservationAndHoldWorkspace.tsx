@@ -77,6 +77,7 @@ interface ReservationAndHoldWorkspaceProps {
   chapterId: string;
   refreshSignal: number;
   chapterAccess: ChapterAccessSnapshot | null;
+  onBackToDashboard?: () => void;
 }
 
 const OP_REQUIRED_ACTIONS: Record<ResHoldOp, string[]> = {
@@ -98,7 +99,14 @@ function emptySignatory(): SignatoryInput {
   };
 }
 
-export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: ReservationAndHoldWorkspaceProps) {
+export function ReservationAndHoldWorkspace({
+  userId,
+  chapterId,
+  refreshSignal,
+  chapterAccess,
+  onBackToDashboard,
+}: ReservationAndHoldWorkspaceProps) {
+  const [viewTab, setViewTab] = useState<'actions' | 'records' | 'status'>('actions');
   const formKey = 'reservation_hold_editor';
 
   function readSavedDraft(): {
@@ -232,7 +240,7 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
         treatmentSourceId,
       }),
     });
-    setStatusMessage('Reservation/hold inputs held in chapter-scoped RAM only.');
+    setStatusMessage('Reservation and hold changes saved as a temporary draft for this session.');
   }
 
   const loadRfAllocations = useCallback(async () => {
@@ -307,7 +315,7 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
         expected_stock_version: String(lot.stock_version),
       },
     ]);
-    setStatusMessage(`Prefilled target from candidate lot ${lot.stock_lot_id.slice(0, 8)} (stock v${lot.stock_version}).`);
+    setStatusMessage(`Filled target details from stock batch ${lot.stock_lot_id.slice(0, 8)} (rev. ${lot.stock_version}).`);
   }
 
   function buildBody(): Record<string, unknown> {
@@ -432,7 +440,16 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
       if (clearanceSha) {
         setExpectedSnapshotSha(clearanceSha);
       }
-      setStatusMessage(`${opKind} executed cleanly. Key: ${key}`);
+      const actionLabels: Record<ResHoldOp, string> = {
+        prepare: 'Reservation prepared',
+        commit: 'Reservation confirmed',
+        release: 'Reserved stock released',
+        reallocate: 'Reservation moved',
+        placeHold: 'Stock hold placed',
+        proposeClear: 'Hold clearance submitted',
+        clearHold: 'Stock hold cleared',
+      };
+      setStatusMessage(`${actionLabels[opKind]}. Reference: ${key}`);
       await loadHolds();
       if (rfId.trim()) {
         await loadRfAllocations();
@@ -482,316 +499,733 @@ export function ReservationAndHoldWorkspace({ userId, chapterId, refreshSignal, 
   }
 
   return (
-    <div>
-      <div className="card">
-        <h2>Two-Step Reservations &amp; HTTP Stock Holds (`Ticket 07`)</h2>
-        <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
+    <main className="p03-workspace-shell">
+      <div className="p03-workspace-inner">
+        <header className="p03-top-header surface-card">
+          <div className="p03-header-search-row">
+            <div className="p03-search-input-wrap">
+              <svg
+                className="p03-search-icon"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                id="res-rf"
+                className="form-control p03-search-input"
+                value={rfId}
+                onChange={(e) => setRfId(e.target.value)}
+                placeholder="Enter requisition reference to load stock allocations..."
+                aria-label="Enter requisition reference"
+              />
+            </div>
 
-        <div className="row" style={{ marginBottom: '0.75rem' }}>
-          <div className="field">
-            <label htmlFor="res-rf">rf_id UUID</label>
-            <input id="res-rf" value={rfId} onChange={(e) => setRfId(e.target.value)} />
+            <div className="p03-search-meta">
+              {rfId.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setRfId('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="p03-search-clear-btn"
+                onClick={() => void loadHolds()}
+              >
+                Reload Holds
+              </button>
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                onClick={() => void loadRfAllocations()}
+                disabled={!rfId.trim()}
+              >
+                Load Allocations
+              </button>
+            </div>
           </div>
-          <div className="field">
-            <label htmlFor="res-prep">preparation_id UUID</label>
-            <input id="res-prep" value={prepId} onChange={(e) => setPrepId(e.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="res-id">reservation_id UUID</label>
-            <input id="res-id" value={reservationId} onChange={(e) => setReservationId(e.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="hold-id">hold_id UUID</label>
-            <input id="hold-id" value={holdId} onChange={(e) => setHoldId(e.target.value)} />
-          </div>
-        </div>
 
-        <div className="row" style={{ marginBottom: '0.75rem' }}>
-          <button type="button" className="btn secondary" onClick={() => void loadRfAllocations()} disabled={!rfId.trim()}>
-            Load RF Allocation Review
-          </button>
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={!rfId.trim() || !prepId.trim()}
-            onClick={() => void inspectSubresource(`/api/v1/chapters/${chapterId}/internal-rfs/${rfId.trim()}/reservation-preparations/${prepId.trim()}`)}
-          >
-            Read Preparation
-          </button>
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={!rfId.trim() || !reservationId.trim()}
-            onClick={() =>
-              void inspectSubresource(
-                `/api/v1/chapters/${chapterId}/internal-rfs/${rfId.trim()}/reservations/${reservationId.trim()}/history?limit=25`,
-              )
-            }
-          >
-            Reservation History
-          </button>
-          <button type="button" className="btn secondary" onClick={() => void loadHolds()}>
-            Reload Holds
-          </button>
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={!holdId.trim()}
-            onClick={() => void inspectSubresource(`/api/v1/chapters/${chapterId}/stock-holds/${holdId.trim()}/history?limit=25`)}
-          >
-            Hold History
-          </button>
-        </div>
-
-        {reviewData?.lines && reviewData.lines.length > 0 && (
-          <div style={{ marginBottom: '0.75rem' }}>
-            <h4>Candidate Lots From Allocation Review</h4>
-            {reviewData.lines.map((ln) => (
-              <div key={ln.rf_line_id} className="row" style={{ marginBottom: '0.4rem' }}>
-                <span className="mono muted">Line {ln.rf_line_id}</span>
-                {(ln.candidate_lots ?? []).map((lot) => (
-                  <button key={lot.stock_lot_id} type="button" className="btn secondary" onClick={() => applyCandidateLot(lot)}>
-                    Prefill Lot {lot.stock_lot_id.slice(0, 8)} (qty {lot.quantity_on_hand})
-                  </button>
-                ))}
+          <div className="p03-header-nav-row">
+            <div className="p03-header-left">
+              <h1 className="p03-main-title">Stock Reservations &amp; Holds</h1>
+            </div>
+            <div className="p03-header-controls">
+              <div className="p03-filter-pill-bar" role="tablist" aria-label="Reservations and holds views">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'actions'}
+                  className={`p03-filter-pill ${viewTab === 'actions' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('actions')}
+                >
+                  Reserve &amp; Hold Actions
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'records'}
+                  className={`p03-filter-pill ${viewTab === 'records' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('records')}
+                >
+                  Reservations &amp; Holds ({reservations.length + holds.length})
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'status'}
+                  className={`p03-filter-pill ${viewTab === 'status' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('status')}
+                >
+                  History &amp; Status
+                </button>
               </div>
-            ))}
+              {onBackToDashboard && (
+                <button
+                  type="button"
+                  className="btn-batcave-secondary p03-shrink-btn p04-back-btn"
+                  onClick={onBackToDashboard}
+                >
+                  ← Back to My Work
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <section className="p03-card surface-card form-stack" aria-label="Reservations and holds overview">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Allocations &amp; Custody Holds</h2>
+              <p className="form-card-subtitle">
+                Reserve available stock batches for approved requisitions or manage frozen stock holds.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              <span className="p03-version-pill">{reservations.length} Reservations</span>
+              <span className="p03-version-pill">{holds.length} Holds</span>
+            </div>
+          </div>
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
+
+        {viewTab === 'actions' && (
+          <div className="p02-members-grid">
+            <div className="p02-column-stack">
+              <section className="p03-card surface-card form-stack" aria-label="Context references and holds">
+                <h2 className="p03-section-title">
+                  Active Context References
+                </h2>
+
+                <div className="p03-two-col">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="res-prep">
+                      Preparation Reference
+                    </label>
+                    <input
+                      id="res-prep"
+                      className="form-control"
+                      value={prepId}
+                      onChange={(e) => setPrepId(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="res-id">
+                      Reservation Reference
+                    </label>
+                    <input
+                      id="res-id"
+                      className="form-control"
+                      value={reservationId}
+                      onChange={(e) => setReservationId(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="hold-id">
+                    Stock Hold Reference
+                  </label>
+                  <input
+                    id="hold-id"
+                    className="form-control"
+                    value={holdId}
+                    onChange={(e) => setHoldId(e.target.value)}
+                  />
+                </div>
+
+                <div className="p03-next-actions-row">
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary"
+                    disabled={!rfId.trim() || !prepId.trim()}
+                    onClick={() => {
+                      void inspectSubresource(`/api/v1/chapters/${chapterId}/internal-rfs/${rfId.trim()}/reservation-preparations/${prepId.trim()}`);
+                      setViewTab('status');
+                    }}
+                  >
+                    Read Preparation
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary"
+                    disabled={!rfId.trim() || !reservationId.trim()}
+                    onClick={() => {
+                      void inspectSubresource(
+                        `/api/v1/chapters/${chapterId}/internal-rfs/${rfId.trim()}/reservations/${reservationId.trim()}/history?limit=25`,
+                      );
+                      setViewTab('status');
+                    }}
+                  >
+                    Reservation History
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-batcave-secondary"
+                    disabled={!holdId.trim()}
+                    onClick={() => {
+                      void inspectSubresource(`/api/v1/chapters/${chapterId}/stock-holds/${holdId.trim()}/history?limit=25`);
+                      setViewTab('status');
+                    }}
+                  >
+                    Hold History
+                  </button>
+                </div>
+
+                {reviewData?.lines && reviewData.lines.length > 0 && (
+                  <div className="form-stack">
+                    <h3 className="s02-drawer-subhead">
+                      Available Stock Batches
+                    </h3>
+                    <div className="p03-history-list">
+                      {reviewData.lines.map((ln) => (
+                        <div key={ln.rf_line_id} className="p03-history-card">
+                          <div className="p03-history-head">
+                            <span className="p03-version-pill p03-id-pill p03-mono-inline">Line {ln.rf_line_id.slice(0, 8)}</span>
+                          </div>
+                          {(ln.candidate_lots ?? []).length > 0 && (
+                            <div className="p02-compact-actions">
+                              <div className="p02-compact-btn-group">
+                                {(ln.candidate_lots ?? []).map((lot) => (
+                                  <button
+                                    key={lot.stock_lot_id}
+                                    type="button"
+                                    className="p02-compact-btn"
+                                    onClick={() => applyCandidateLot(lot)}
+                                  >
+                                    Use Batch {lot.stock_lot_id.slice(0, 8)} (on hand: {lot.quantity_on_hand})
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {holds.length > 0 && (
+                  <div className="form-stack">
+                    <h3 className="s02-drawer-subhead">
+                      Chapter Stock Holds ({holds.length})
+                    </h3>
+                    <div className="p03-history-list">
+                      {holds.slice(0, 6).map((hold) => (
+                        <article
+                          key={hold.id}
+                          className={`p03-history-card ${holdId === hold.id ? 'is-search-match' : ''}`}
+                        >
+                          <div className="p03-history-head">
+                            <div className="p03-history-title-group">
+                              <strong>{hold.reason_code.replace(/_/g, ' ')}</strong>
+                              <span className={`s02-status-tag ${hold.status === 'cleared' ? 'is-ready' : 'is-uncertain'}`}>
+                                {hold.status}
+                              </span>
+                              <span className="p03-version-pill">rev. {hold.version}</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="p02-compact-btn"
+                              onClick={() => {
+                                setHoldId(hold.id);
+                                setExpectedVersion(String(hold.version));
+                                setExpectedMaterialVersion(String(hold.material_version));
+                              }}
+                            >
+                              Select
+                            </button>
+                          </div>
+                          {hold.reason && <div className="p03-history-meta">{hold.reason}</div>}
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+            </div>
+
+            <div className="p02-column-stack">
+              <section className="p03-card surface-card form-stack" aria-label="Update reservation or stock hold">
+                <h2 className="p03-section-title">
+                  Update Reservation or Stock Hold
+                </h2>
+
+                {opBlockReason && (
+                  <div className="callout-banner is-warning">
+                    <span className="callout-dot dot-warning" aria-hidden="true" />
+                    <span>{opBlockReason}</span>
+                  </div>
+                )}
+
+                <form onSubmit={executeAction} className="form-stack">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="rh-op">
+                      Action
+                    </label>
+                    <select
+                      id="rh-op"
+                      className="form-control"
+                      value={opKind}
+                      onChange={(e) => setOpKind(e.target.value as ResHoldOp)}
+                    >
+                      <option value="prepare">1. Prepare Stock Reservation</option>
+                      <option value="commit">2. Confirm Prepared Reservation</option>
+                      <option value="release">Release Reserved Stock</option>
+                      <option value="reallocate">Move Reservation to Another Batch</option>
+                      <option value="placeHold">Place Stock on Hold</option>
+                      <option value="proposeClear">Submit Hold Clearance &amp; Signatories</option>
+                      <option value="clearHold">Finalize Stock Hold Clearance</option>
+                    </select>
+                  </div>
+
+                  {(opKind === 'prepare' || opKind === 'commit' || opKind === 'release' || opKind === 'reallocate') && (
+                    <div className="p02-three-col-grid">
+                      <div className="form-group">
+                        <label className="form-label">Requisition Version</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min={1}
+                          required
+                          value={expectedRfVersion}
+                          onChange={(e) => setExpectedRfVersion(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Content Version</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min={1}
+                          required
+                          value={expectedRfMaterialVersion}
+                          onChange={(e) => setExpectedRfMaterialVersion(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Progress Version</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min={1}
+                          required
+                          value={expectedRfProgressVersion}
+                          onChange={(e) => setExpectedRfProgressVersion(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {(opKind === 'release' || opKind === 'reallocate' || opKind === 'proposeClear' || opKind === 'clearHold') && (
+                    <div className="p03-two-col">
+                      <div className="form-group">
+                        <label className="form-label">Current Record Version</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min={1}
+                          required
+                          value={expectedVersion}
+                          onChange={(e) => setExpectedVersion(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Current Content Version</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min={1}
+                          required
+                          value={expectedMaterialVersion}
+                          onChange={(e) => setExpectedMaterialVersion(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {opKind === 'prepare' && (
+                    <div className="form-group">
+                      <label className="form-label">Requisition Line Reference</label>
+                      <input
+                        className="form-control"
+                        required
+                        value={rfLineId}
+                        onChange={(e) => setRfLineId(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {opKind === 'commit' && (
+                    <div className="form-group">
+                      <label className="form-label">Preparation Version</label>
+                      <input
+                        className="form-control"
+                        type="number"
+                        min={1}
+                        required
+                        value={expectedPrepVersion}
+                        onChange={(e) => setExpectedPrepVersion(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {(opKind === 'release' || opKind === 'reallocate') && (
+                    <StockRangeRows label="Stock Batches to Release" rows={ranges} onChange={setRanges} />
+                  )}
+
+                  {(opKind === 'prepare' || opKind === 'reallocate' || opKind === 'placeHold') && (
+                    <StockTargetRows label="Selected Stock Batch Allocations" rows={targets} onChange={setTargets} />
+                  )}
+
+                  {(opKind === 'prepare' || opKind === 'reallocate') && (
+                    <div className="form-group">
+                      <label className="form-label">Override Policy Reference (optional)</label>
+                      <input
+                        className="form-control"
+                        value={overridePolicyId}
+                        onChange={(e) => setOverridePolicyId(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {opKind === 'release' && (
+                    <div className="form-group">
+                      <label className="form-label">Release Type</label>
+                      <select
+                        className="form-control"
+                        value={releaseKind}
+                        onChange={(e) => setReleaseKind(e.target.value as 'release' | 'cancel_commitment')}
+                      >
+                        <option value="release">Return Reserved Quantity</option>
+                        <option value="cancel_commitment">Cancel Reservation</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {opKind === 'placeHold' && (
+                    <div className="form-group">
+                      <label className="form-label">Hold Reason Category</label>
+                      <input
+                        className="form-control"
+                        required
+                        value={reasonCode}
+                        onChange={(e) => setReasonCode(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {(opKind === 'prepare' || opKind === 'release' || opKind === 'reallocate' || opKind === 'placeHold') && (
+                    <div className="form-group">
+                      <label className="form-label">Reason</label>
+                      <input
+                        className="form-control"
+                        required
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {opKind === 'proposeClear' && (
+                    <>
+                      <div className="p03-two-col">
+                        <div className="form-group">
+                          <label className="form-label">Clearance Resolution</label>
+                          <input
+                            className="form-control"
+                            required
+                            value={resolution}
+                            onChange={(e) => setResolution(e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Related Treatment Reference (optional)</label>
+                          <input
+                            className="form-control"
+                            value={treatmentSourceId}
+                            onChange={(e) => setTreatmentSourceId(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-stack">
+                        <div className="p04-line-top">
+                          <span className="form-label">
+                            Paper Signatories (1–10)
+                          </span>
+                          <button
+                            type="button"
+                            className="p02-compact-btn"
+                            onClick={() => setSignatories((prev) => [...prev, emptySignatory()])}
+                          >
+                            + Add Signatory
+                          </button>
+                        </div>
+
+                        <div className="p04-lines-list">
+                          {signatories.map((s, idx) => (
+                            <div key={idx} className="p04-line-card">
+                              <div className="p04-line-top">
+                                <span className="p03-version-pill">Signatory #{idx + 1}</span>
+                                {signatories.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="p02-compact-btn is-subtle-danger"
+                                    onClick={() => setSignatories((p) => p.filter((_, i) => i !== idx))}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                              <div className="p03-two-col">
+                                <div className="form-group">
+                                  <label className="form-label">Signatory Officer Reference</label>
+                                  <input
+                                    className="form-control"
+                                    required
+                                    value={s.user_id}
+                                    onChange={(e) =>
+                                      setSignatories((p) => p.map((x, i) => (i === idx ? { ...x, user_id: e.target.value } : x)))
+                                    }
+                                  />
+                                </div>
+                                <div className="form-group">
+                                  <label className="form-label">Membership Reference</label>
+                                  <input
+                                    className="form-control"
+                                    required
+                                    value={s.membership_id}
+                                    onChange={(e) =>
+                                      setSignatories((p) => p.map((x, i) => (i === idx ? { ...x, membership_id: e.target.value } : x)))
+                                    }
+                                  />
+                                </div>
+                              </div>
+                              <div className="p03-two-col">
+                                <div className="form-group">
+                                  <label className="form-label">Role Assignment Reference</label>
+                                  <input
+                                    className="form-control"
+                                    required
+                                    value={s.duty_grant_id}
+                                    onChange={(e) =>
+                                      setSignatories((p) => p.map((x, i) => (i === idx ? { ...x, duty_grant_id: e.target.value } : x)))
+                                    }
+                                  />
+                                </div>
+                                <div className="form-group">
+                                  <label className="form-label">Date &amp; Time Signed</label>
+                                  <input
+                                    className="form-control"
+                                    required
+                                    value={s.signed_at}
+                                    onChange={(e) =>
+                                      setSignatories((p) => p.map((x, i) => (i === idx ? { ...x, signed_at: e.target.value } : x)))
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {opKind === 'clearHold' && (
+                    <>
+                      <div className="p03-two-col">
+                        <div className="form-group">
+                          <label className="form-label">Signed Document Version</label>
+                          <input
+                            className="form-control"
+                            type="number"
+                            min={1}
+                            required
+                            value={expectedSnapshotMatVer}
+                            onChange={(e) => setExpectedSnapshotMatVer(e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Signed Document Verification Tag</label>
+                          <input
+                            className="form-control"
+                            required
+                            value={expectedSnapshotSha}
+                            onChange={(e) => setExpectedSnapshotSha(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <EvidenceBindingFields
+                        label="Ready Signed Document Binding"
+                        value={evidenceBinding}
+                        onChange={setEvidenceBinding}
+                      />
+                      <label className={`p03-checkbox-row ${matchesPaper ? 'is-checked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          className="p03-sr-checkbox"
+                          checked={matchesPaper}
+                          onChange={(e) => setMatchesPaper(e.target.checked)}
+                        />
+                        <span className={`p03-check-indicator ${matchesPaper ? 'is-checked' : ''}`} aria-hidden="true">
+                          ✓
+                        </span>
+                        <span className="p03-checkbox-main">
+                          I confirm the physically inspected paper form matches this clearance record
+                        </span>
+                      </label>
+                    </>
+                  )}
+
+                  <div className="p03-guard-buttons">
+                    <button
+                      className="btn-batcave-primary"
+                      type="submit"
+                      disabled={busy || opBlockReason !== null}
+                      title={opBlockReason ?? undefined}
+                    >
+                      Run Action
+                    </button>
+                    <button
+                      className="btn-batcave-secondary"
+                      type="button"
+                      onClick={parkDraftInMemory}
+                    >
+                      Save Temporary Draft
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
           </div>
         )}
 
-        <div className="grid-2">
-          <div>
-            <h4>RF Reservations ({reservations.length})</h4>
-            <pre className="json-box">{JSON.stringify({ review: reviewData, reservations }, null, 2)}</pre>
+        {viewTab === 'records' && (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Requisition reservations">
+              <h2 className="p03-section-title">
+                Requisition Reservations ({reservations.length})
+              </h2>
+              {reservations.length === 0 && reviewData === null ? (
+                <p className="p03-muted-copy">
+                  No reservations loaded. Enter a requisition reference in the top search bar and click “Load Allocations”.
+                </p>
+              ) : (
+                <pre className="json-box">{JSON.stringify({ review: reviewData, reservations }, null, 2)}</pre>
+              )}
+            </section>
+
+            <section className="p03-card surface-card form-stack" aria-label="Chapter stock holds">
+              <h2 className="p03-section-title">
+                Chapter Stock Holds ({holds.length})
+              </h2>
+              {holds.length === 0 ? (
+                <p className="p03-muted-copy">
+                  No stock holds recorded. Active and historical stock holds appear here once recorded.
+                </p>
+              ) : (
+                <pre className="json-box">{JSON.stringify(holds, null, 2)}</pre>
+              )}
+            </section>
           </div>
-          <div>
-            <h4>Chapter Stock Holds ({holds.length})</h4>
-            <pre className="json-box">{JSON.stringify(holds, null, 2)}</pre>
-          </div>
-        </div>
-      </div>
+        )}
 
-      <div className="grid-2">
-        <div className="card">
-          <h3>Execute Reservation or Stock Hold Action (`X-Action-Key`)</h3>
-          <form onSubmit={executeAction}>
-            <div className="field" style={{ marginBottom: '0.6rem' }}>
-              <label htmlFor="rh-op">Operation</label>
-              <select id="rh-op" value={opKind} onChange={(e) => setOpKind(e.target.value as ResHoldOp)}>
-                <option value="prepare">1. POST Prepare Reservation</option>
-                <option value="commit">2. POST Commit Prepared Reservation</option>
-                <option value="release">POST Release Reservation Ranges</option>
-                <option value="reallocate">POST Reallocate Reservation</option>
-                <option value="placeHold">POST Place Stock Hold</option>
-                <option value="proposeClear">PUT Propose Hold Clearance (Signatories)</option>
-                <option value="clearHold">POST Clear Hold (matches_paper)</option>
-              </select>
-            </div>
-
-            {(opKind === 'prepare' || opKind === 'commit' || opKind === 'release' || opKind === 'reallocate') && (
-              <div className="row" style={{ marginBottom: '0.5rem' }}>
-                <div className="field">
-                  <label>expected_rf_version</label>
-                  <input type="number" min={1} required value={expectedRfVersion} onChange={(e) => setExpectedRfVersion(e.target.value)} />
-                </div>
-                <div className="field">
-                  <label>expected_rf_material_version</label>
-                  <input type="number" min={1} required value={expectedRfMaterialVersion} onChange={(e) => setExpectedRfMaterialVersion(e.target.value)} />
-                </div>
-                <div className="field">
-                  <label>expected_rf_progress_version</label>
-                  <input type="number" min={1} required value={expectedRfProgressVersion} onChange={(e) => setExpectedRfProgressVersion(e.target.value)} />
-                </div>
-              </div>
-            )}
-
-            {(opKind === 'release' || opKind === 'reallocate' || opKind === 'proposeClear' || opKind === 'clearHold') && (
-              <div className="row" style={{ marginBottom: '0.5rem' }}>
-                <div className="field">
-                  <label>expected_version</label>
-                  <input type="number" min={1} required value={expectedVersion} onChange={(e) => setExpectedVersion(e.target.value)} />
-                </div>
-                <div className="field">
-                  <label>expected_material_version</label>
-                  <input type="number" min={1} required value={expectedMaterialVersion} onChange={(e) => setExpectedMaterialVersion(e.target.value)} />
-                </div>
-              </div>
-            )}
-
-            {opKind === 'prepare' && (
-              <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>rf_line_id UUID</label>
-                <input required value={rfLineId} onChange={(e) => setRfLineId(e.target.value)} />
-              </div>
-            )}
-
-            {opKind === 'commit' && (
-              <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>expected_preparation_version</label>
-                <input type="number" min={1} required value={expectedPrepVersion} onChange={(e) => setExpectedPrepVersion(e.target.value)} />
-              </div>
-            )}
-
-            {(opKind === 'release' || opKind === 'reallocate') && <StockRangeRows label="Owned From Ranges" rows={ranges} onChange={setRanges} />}
-
-            {(opKind === 'prepare' || opKind === 'reallocate' || opKind === 'placeHold') && (
-              <StockTargetRows label="Selected Disjoint Stock Targets" rows={targets} onChange={setTargets} />
-            )}
-
-            {(opKind === 'prepare' || opKind === 'reallocate') && (
-              <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>override_policy_id UUID (optional)</label>
-                <input value={overridePolicyId} onChange={(e) => setOverridePolicyId(e.target.value)} />
-              </div>
-            )}
-
-            {opKind === 'release' && (
-              <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>release_kind</label>
-                <select value={releaseKind} onChange={(e) => setReleaseKind(e.target.value as 'release' | 'cancel_commitment')}>
-                  <option value="release">release</option>
-                  <option value="cancel_commitment">cancel_commitment</option>
-                </select>
-              </div>
-            )}
-
-            {opKind === 'placeHold' && (
-              <div className="field" style={{ marginBottom: '0.5rem' }}>
-                <label>reason_code</label>
-                <input required value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} />
-              </div>
-            )}
-
-            {(opKind === 'prepare' || opKind === 'release' || opKind === 'reallocate' || opKind === 'placeHold') && (
-              <div className="field" style={{ marginBottom: '0.6rem' }}>
-                <label>Reason</label>
-                <input required value={reason} onChange={(e) => setReason(e.target.value)} />
-              </div>
-            )}
-
-            {opKind === 'proposeClear' && (
-              <>
-                <div className="row" style={{ marginBottom: '0.5rem' }}>
-                  <div className="field">
-                    <label>Clearance Resolution</label>
-                    <input required value={resolution} onChange={(e) => setResolution(e.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label>condition_treatment_source_id UUID (optional)</label>
-                    <input value={treatmentSourceId} onChange={(e) => setTreatmentSourceId(e.target.value)} />
-                  </div>
-                </div>
-                <div style={{ marginBottom: '0.65rem' }}>
-                  <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                    <strong>Paper Signatories (1..10)</strong>
-                    <button type="button" className="btn secondary" onClick={() => setSignatories((prev) => [...prev, emptySignatory()])}>
-                      + Add Signatory
+        {viewTab === 'status' && (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Check submitted action status">
+              <h2 className="p03-section-title">
+                Check Submitted Action Status
+              </h2>
+              <div className="form-stack">
+                <form onSubmit={lookupByKey} className="form-group">
+                  <label className="form-label" htmlFor="rh-lkp">
+                    Submission Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="rh-lkp"
+                      className="form-control"
+                      required
+                      value={lookupKey}
+                      onChange={(e) => setLookupKey(e.target.value)}
+                    />
+                    <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                      Check Reference
                     </button>
                   </div>
-                  {signatories.map((s, idx) => (
-                    <div key={idx} className="row" style={{ marginBottom: '0.35rem', padding: '0.4rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                      <div className="field">
-                        <label>user_id</label>
-                        <input
-                          required
-                          value={s.user_id}
-                          onChange={(e) => setSignatories((p) => p.map((x, i) => (i === idx ? { ...x, user_id: e.target.value } : x)))}
-                        />
-                      </div>
-                      <div className="field">
-                        <label>membership_id</label>
-                        <input
-                          required
-                          value={s.membership_id}
-                          onChange={(e) => setSignatories((p) => p.map((x, i) => (i === idx ? { ...x, membership_id: e.target.value } : x)))}
-                        />
-                      </div>
-                      <div className="field">
-                        <label>duty_grant_id</label>
-                        <input
-                          required
-                          value={s.duty_grant_id}
-                          onChange={(e) => setSignatories((p) => p.map((x, i) => (i === idx ? { ...x, duty_grant_id: e.target.value } : x)))}
-                        />
-                      </div>
-                      <div className="field">
-                        <label>signed_at</label>
-                        <input
-                          required
-                          value={s.signed_at}
-                          onChange={(e) => setSignatories((p) => p.map((x, i) => (i === idx ? { ...x, signed_at: e.target.value } : x)))}
-                        />
-                      </div>
-                      {signatories.length > 1 && (
-                        <button type="button" className="btn secondary" onClick={() => setSignatories((p) => p.filter((_, i) => i !== idx))}>
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+                </form>
 
-            {opKind === 'clearHold' && (
-              <>
-                <div className="row" style={{ marginBottom: '0.5rem' }}>
-                  <div className="field" style={{ maxWidth: '9rem' }}>
-                    <label>Snapshot material_version</label>
-                    <input type="number" min={1} required value={expectedSnapshotMatVer} onChange={(e) => setExpectedSnapshotMatVer(e.target.value)} />
+                <form onSubmit={lookupByOpId} className="form-group">
+                  <label className="form-label" htmlFor="rh-opid">
+                    Change Record Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="rh-opid"
+                      className="form-control"
+                      required
+                      value={lookupOpId}
+                      onChange={(e) => setLookupOpId(e.target.value)}
+                    />
+                    <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                      View Record
+                    </button>
                   </div>
-                  <div className="field">
-                    <label>expected_snapshot.sha256</label>
-                    <input required value={expectedSnapshotSha} onChange={(e) => setExpectedSnapshotSha(e.target.value)} />
-                  </div>
-                </div>
-                <EvidenceBindingFields label="Ready Paper Evidence Binding" value={evidenceBinding} onChange={setEvidenceBinding} />
-                <label className="row" style={{ marginBottom: '0.65rem', alignItems: 'center' }}>
-                  <input type="checkbox" checked={matchesPaper} onChange={(e) => setMatchesPaper(e.target.checked)} />
-                  <span>Confirmed physically inspected paper matches proposal (`matches_paper: true`)</span>
-                </label>
-              </>
-            )}
-
-            {opBlockReason && <div className="alert info">{opBlockReason}</div>}
-            <div className="row">
-              <button className="btn" type="submit" disabled={busy || opBlockReason !== null} title={opBlockReason ?? undefined}>
-                Run Action
-              </button>
-              <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <div className="card">
-          <h3>Reservation / Hold Outcome Recovery</h3>
-          <form onSubmit={lookupByKey}>
-            <div className="row" style={{ marginBottom: '0.5rem' }}>
-              <div className="field">
-                <label htmlFor="rh-lkp">X-Action-Key UUID</label>
-                <input id="rh-lkp" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
+                </form>
               </div>
-              <button className="btn secondary" type="submit">
-                Lookup by Key
-              </button>
-            </div>
-          </form>
-          <form onSubmit={lookupByOpId}>
-            <div className="row" style={{ marginBottom: '0.65rem' }}>
-              <div className="field">
-                <label htmlFor="rh-opid">operation_id UUID</label>
-                <input id="rh-opid" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
-              </div>
-              <button className="btn secondary" type="submit">
-                Read Operation ID
-              </button>
-            </div>
-          </form>
-          {resultJson !== null && <pre className="json-box">{JSON.stringify(resultJson, null, 2)}</pre>}
-        </div>
+            </section>
+
+            <section className="p03-card surface-card form-stack" aria-label="History and status output">
+              <h2 className="p03-section-title">
+                Status &amp; History Output
+              </h2>
+              {resultJson === null ? (
+                <p className="p03-muted-copy">
+                  No result loaded. Inspect a preparation or hold history, or search by submission reference on the left.
+                </p>
+              ) : (
+                <pre className="json-box">{JSON.stringify(resultJson, null, 2)}</pre>
+              )}
+            </section>
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

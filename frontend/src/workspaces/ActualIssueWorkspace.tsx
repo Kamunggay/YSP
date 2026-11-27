@@ -34,6 +34,7 @@ interface ActualIssueWorkspaceProps {
   chapterId: string;
   refreshSignal: number;
   chapterAccess: ChapterAccessSnapshot | null;
+  onBackToDashboard?: () => void;
 }
 
 const ISSUE_REQUIRED_ACTIONS: Record<IssueOpKind, string[]> = {
@@ -58,7 +59,14 @@ function emptyIssueLine(): IssueLineSelectionInput {
   };
 }
 
-export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: ActualIssueWorkspaceProps) {
+export function ActualIssueWorkspace({
+  userId,
+  chapterId,
+  refreshSignal,
+  chapterAccess,
+  onBackToDashboard,
+}: ActualIssueWorkspaceProps) {
+  const [viewTab, setViewTab] = useState<'workflow' | 'inspect' | 'status'>('workflow');
   const formKey = 'actual_issue_editor';
 
   function readSavedDraft(): {
@@ -159,7 +167,7 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
         snapshotSha,
       }),
     });
-    setStatusMessage('Actual issue inputs held in chapter-scoped RAM only.');
+    setStatusMessage('Issue handover details saved as a temporary draft for this session.');
   }
 
   const listRfIssues = useCallback(async () => {
@@ -348,7 +356,14 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
       if (ackId) {
         setAcknowledgmentId(ackId);
       }
-      setStatusMessage(`Actual Issue '${opKind}' completed. Key: ${key}`);
+      const issueOpLabels: Record<IssueOpKind, string> = {
+        prepare: 'Issue handover prepared',
+        revise: 'Prepared issue updated',
+        ack: 'Signed paper acknowledgment recorded',
+        post: 'Stock issue completed',
+        reconcile: 'Verification note recorded',
+      };
+      setStatusMessage(`${issueOpLabels[opKind]}. Reference: ${key}`);
       if (rfId.trim()) {
         await listRfIssues();
       }
@@ -387,339 +402,756 @@ export function ActualIssueWorkspace({ userId, chapterId, refreshSignal, chapter
   }
 
   return (
-    <div>
-      <div className="card">
-        <h2>Signed Actual RF Issue (`Ticket 08` · Prepare → Print → Paper Match → Post)</h2>
-        <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
-
-        <div className="row" style={{ marginBottom: '0.75rem' }}>
-          <div className="field">
-            <label htmlFor="iss-rf">rf_id UUID</label>
-            <input id="iss-rf" value={rfId} onChange={(e) => setRfId(e.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="iss-id">issue_id UUID</label>
-            <input id="iss-id" value={issueId} onChange={(e) => setIssueId(e.target.value)} />
-          </div>
-        </div>
-        <div className="row" style={{ marginBottom: '0.75rem' }}>
-          <button type="button" className="btn secondary" onClick={() => void listRfIssues()} disabled={!rfId.trim()}>
-            List RF Issues
-          </button>
-          <button type="button" className="btn secondary" onClick={() => void readIssuePart('detail')} disabled={!issueId.trim()}>
-            Read Detail
-          </button>
-          <button type="button" className="btn secondary" onClick={() => void readIssuePart('history')} disabled={!issueId.trim()}>
-            History
-          </button>
-          <button type="button" className="btn secondary" onClick={() => void readIssuePart('movements')} disabled={!issueId.trim()}>
-            Movements
-          </button>
-          <button type="button" className="btn secondary" onClick={() => void readIssuePart('related')} disabled={!issueId.trim()}>
-            Related
-          </button>
-          <button type="button" className="btn secondary" onClick={() => void readIssuePart('reconciliation')} disabled={!issueId.trim()}>
-            Reconciliation
-          </button>
-          <button type="button" className="btn secondary" onClick={() => void readIssuePart('print')} disabled={!issueId.trim()}>
-            Print Sheet
-          </button>
-        </div>
-
-        {issuesJson !== null && <pre className="json-box">{JSON.stringify(issuesJson, null, 2)}</pre>}
-      </div>
-
-      <div className="grid-2">
-        <div className="card">
-          <h3>Execute Issue Transition (`X-Action-Key`)</h3>
-          <form onSubmit={executeIssueOp}>
-            <div className="field" style={{ marginBottom: '0.55rem' }}>
-              <label htmlFor="iss-op">Operation</label>
-              <select id="iss-op" value={opKind} onChange={(e) => setOpKind(e.target.value as IssueOpKind)}>
-                <option value="prepare">1. POST Prepare Actual Issue</option>
-                <option value="revise">PUT Revise Prepared Issue</option>
-                <option value="ack">2. POST Match Paper Acknowledgment</option>
-                <option value="post">3. POST Commit Actual Issue</option>
-                <option value="reconcile">POST Record Uncertain Reconciliation</option>
-              </select>
+    <main className="p03-workspace-shell">
+      <div className="p03-workspace-inner">
+        <header className="p03-top-header surface-card">
+          <div className="p03-header-search-row">
+            <div className="p03-search-input-wrap">
+              <svg
+                className="p03-search-icon"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                id="iss-rf"
+                className="form-control p03-search-input"
+                value={rfId}
+                onChange={(e) => setRfId(e.target.value)}
+                placeholder="Enter requisition reference to load issue handovers..."
+                aria-label="Enter requisition reference"
+              />
             </div>
 
-            {opKind !== 'prepare' && (
-              <div className="row" style={{ marginBottom: '0.5rem' }}>
-                <div className="field">
-                  <label>expected_version</label>
-                  <input type="number" min={1} required value={expectedVersion} onChange={(e) => setExpectedVersion(e.target.value)} />
-                </div>
-                {opKind !== 'reconcile' && (
-                  <div className="field">
-                    <label>expected_material_version</label>
-                    <input type="number" min={1} required value={expectedMatVersion} onChange={(e) => setExpectedMatVersion(e.target.value)} />
-                  </div>
-                )}
+            <div className="p03-search-meta">
+              {rfId.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setRfId('')}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="p03-search-action-btn"
+                onClick={() => {
+                  void listRfIssues();
+                  setViewTab('inspect');
+                }}
+                disabled={!rfId.trim()}
+              >
+                Load Handovers
+              </button>
+            </div>
+          </div>
+
+          <div className="p03-header-nav-row">
+            <div className="p03-header-left">
+              <h1 className="p03-main-title">Stock Issue Handovers</h1>
+            </div>
+            <div className="p03-header-controls">
+              <div className="p03-filter-pill-bar" role="tablist" aria-label="Issue handover views">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'workflow'}
+                  className={`p03-filter-pill ${viewTab === 'workflow' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('workflow')}
+                >
+                  Record Handover
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'inspect'}
+                  className={`p03-filter-pill ${viewTab === 'inspect' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('inspect')}
+                >
+                  Inspect &amp; Movements
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'status'}
+                  className={`p03-filter-pill ${viewTab === 'status' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('status')}
+                >
+                  Status &amp; Print
+                </button>
               </div>
-            )}
+              {onBackToDashboard && (
+                <button
+                  type="button"
+                  className="btn-batcave-secondary p03-shrink-btn p04-back-btn"
+                  onClick={onBackToDashboard}
+                >
+                  ← Back to My Work
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
 
-            {(opKind === 'prepare' || opKind === 'revise' || opKind === 'post') && (
-              <div className="row" style={{ marginBottom: '0.5rem' }}>
-                <div className="field">
-                  <label>expected_rf_version</label>
-                  <input type="number" min={1} required value={expectedRfVersion} onChange={(e) => setExpectedRfVersion(e.target.value)} />
+        <section className="p03-card surface-card form-stack" aria-label="Stock issue handover overview">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Issue Handover Execution</h2>
+              <p className="form-card-subtitle">
+                Prepare batch releases, bind signed paper handovers, and deduct chapter inventory.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              {rfId.trim() && (
+                <span className="p03-version-pill p03-mono-inline">Requisition Loaded</span>
+              )}
+              {issueId.trim() && (
+                <span className="p03-version-pill p03-mono-inline">Handover Selected</span>
+              )}
+            </div>
+          </div>
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+        </section>
+
+        {viewTab === 'workflow' && (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Issue handover context references">
+              <h2 className="p03-section-title">
+                Handover References &amp; Actions
+              </h2>
+              <div className="form-stack">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="iss-id">
+                    Issue Handover Reference
+                  </label>
+                  <input
+                    id="iss-id"
+                    className="form-control"
+                    value={issueId}
+                    onChange={(e) => setIssueId(e.target.value)}
+                  />
                 </div>
-                <div className="field">
-                  <label>expected_rf_material_version</label>
-                  <input type="number" min={1} required value={expectedRfMatVersion} onChange={(e) => setExpectedRfMatVersion(e.target.value)} />
-                </div>
-                <div className="field">
-                  <label>expected_rf_progress_version</label>
-                  <input type="number" min={1} required value={expectedRfProgressVersion} onChange={(e) => setExpectedRfProgressVersion(e.target.value)} />
+
+                <div className="p02-compact-btn-group">
+                  <button
+                    type="button"
+                    className="p02-compact-btn"
+                    onClick={() => {
+                      void readIssuePart('detail');
+                      setViewTab('status');
+                    }}
+                    disabled={!issueId.trim()}
+                  >
+                    Read Detail
+                  </button>
+                  <button
+                    type="button"
+                    className="p02-compact-btn"
+                    onClick={() => {
+                      void readIssuePart('history');
+                      setViewTab('inspect');
+                    }}
+                    disabled={!issueId.trim()}
+                  >
+                    History
+                  </button>
+                  <button
+                    type="button"
+                    className="p02-compact-btn"
+                    onClick={() => {
+                      void readIssuePart('movements');
+                      setViewTab('inspect');
+                    }}
+                    disabled={!issueId.trim()}
+                  >
+                    Movements
+                  </button>
+                  <button
+                    type="button"
+                    className="p02-compact-btn"
+                    onClick={() => {
+                      void readIssuePart('related');
+                      setViewTab('inspect');
+                    }}
+                    disabled={!issueId.trim()}
+                  >
+                    Related
+                  </button>
+                  <button
+                    type="button"
+                    className="p02-compact-btn"
+                    onClick={() => {
+                      void readIssuePart('reconciliation');
+                      setViewTab('inspect');
+                    }}
+                    disabled={!issueId.trim()}
+                  >
+                    Reconciliation
+                  </button>
+                  <button
+                    type="button"
+                    className="p02-compact-btn"
+                    onClick={() => {
+                      void readIssuePart('print');
+                      setViewTab('status');
+                    }}
+                    disabled={!issueId.trim()}
+                  >
+                    Print Sheet
+                  </button>
                 </div>
               </div>
-            )}
+            </section>
 
-            {(opKind === 'prepare' || opKind === 'revise') && (
-              <>
-                <div className="row" style={{ marginBottom: '0.5rem' }}>
-                  <div className="field">
-                    <label>recipient_id UUID</label>
-                    <input required value={recipientId} onChange={(e) => setRecipientId(e.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label>handed_over_at</label>
-                    <input required value={handedOverAt} onChange={(e) => setHandedOverAt(e.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label>acknowledged_at</label>
-                    <input required value={acknowledgedAt} onChange={(e) => setAcknowledgedAt(e.target.value)} />
-                  </div>
+            <section className="p03-card surface-card form-stack" aria-label="Record or update issue handover">
+              <h2 className="p03-section-title">
+                Record or Update Issue Handover
+              </h2>
+
+              {opBlockReason && (
+                <div className="callout-banner is-warning">
+                  <span className="callout-dot dot-warning" aria-hidden="true" />
+                  <span>{opBlockReason}</span>
                 </div>
-                <label className="row" style={{ marginBottom: '0.5rem', alignItems: 'center' }}>
-                  <input type="checkbox" checked={acceptsPartial} onChange={(e) => setAcceptsPartial(e.target.checked)} />
-                  <span>recipient_accepts_partial</span>
-                </label>
-                {opKind === 'revise' && (
-                  <div className="field" style={{ marginBottom: '0.5rem' }}>
-                    <label>Revision Reason</label>
-                    <input required value={reviseReason} onChange={(e) => setReviseReason(e.target.value)} />
-                  </div>
-                )}
+              )}
 
-                <div style={{ marginBottom: '0.6rem' }}>
-                  <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                    <strong>Issue Batch Lines &amp; Targets</strong>
-                    <button type="button" className="btn secondary" onClick={() => setIssueLines((p) => [...p, emptyIssueLine()])}>
-                      + Batch Line
-                    </button>
-                  </div>
-                  {issueLines.map((ln, idx) => (
-                    <div key={idx} style={{ padding: '0.45rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem', marginBottom: '0.45rem' }}>
-                      <div className="row" style={{ marginBottom: '0.35rem' }}>
-                        <div className="field">
-                          <label>rf_line_id</label>
-                          <input
-                            required
-                            value={ln.rf_line_id}
-                            onChange={(e) => setIssueLines((p) => p.map((x, i) => (i === idx ? { ...x, rf_line_id: e.target.value } : x)))}
-                          />
-                        </div>
-                        <div className="field">
-                          <label>reservation_id</label>
-                          <input
-                            required
-                            value={ln.reservation_id}
-                            onChange={(e) => setIssueLines((p) => p.map((x, i) => (i === idx ? { ...x, reservation_id: e.target.value } : x)))}
-                          />
-                        </div>
-                        <div className="field" style={{ maxWidth: '6.5rem' }}>
-                          <label>res v</label>
-                          <input
-                            type="number"
-                            min={1}
-                            required
-                            value={ln.expected_reservation_version}
-                            onChange={(e) =>
-                              setIssueLines((p) => p.map((x, i) => (i === idx ? { ...x, expected_reservation_version: e.target.value } : x)))
-                            }
-                          />
-                        </div>
-                        <div className="field" style={{ maxWidth: '6.5rem' }}>
-                          <label>res mVer</label>
-                          <input
-                            type="number"
-                            min={1}
-                            required
-                            value={ln.expected_reservation_material_version}
-                            onChange={(e) =>
-                              setIssueLines((p) =>
-                                p.map((x, i) => (i === idx ? { ...x, expected_reservation_material_version: e.target.value } : x)),
-                              )
-                            }
-                          />
-                        </div>
-                      </div>
-                      <StockRangeRows
-                        label="Selected Reserved Ranges"
-                        rows={ln.targets}
-                        onChange={(next) => setIssueLines((p) => p.map((x, i) => (i === idx ? { ...x, targets: next } : x)))}
+              <form onSubmit={executeIssueOp} className="form-stack">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="iss-op">
+                    Workflow Step
+                  </label>
+                  <select
+                    id="iss-op"
+                    className="form-control"
+                    value={opKind}
+                    onChange={(e) => setOpKind(e.target.value as IssueOpKind)}
+                  >
+                    <option value="prepare">1. Prepare Issue Handover</option>
+                    <option value="revise">Update Prepared Issue</option>
+                    <option value="ack">2. Confirm Signed Paper Handover</option>
+                    <option value="post">3. Complete &amp; Deduct Stock</option>
+                    <option value="reconcile">Record Verification Note</option>
+                  </select>
+                </div>
+
+                {opKind !== 'prepare' && (
+                  <div className="p03-two-col">
+                    <div className="form-group">
+                      <label className="form-label">Current Record Version</label>
+                      <input
+                        className="form-control"
+                        type="number"
+                        min={1}
+                        required
+                        value={expectedVersion}
+                        onChange={(e) => setExpectedVersion(e.target.value)}
                       />
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {opKind === 'ack' && (
-              <>
-                <div className="row" style={{ marginBottom: '0.5rem' }}>
-                  <div className="field" style={{ maxWidth: '9rem' }}>
-                    <label>Snapshot material_version</label>
-                    <input type="number" min={1} required value={snapshotMatVer} onChange={(e) => setSnapshotMatVer(e.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label>expected_snapshot.sha256</label>
-                    <input required value={snapshotSha} onChange={(e) => setSnapshotSha(e.target.value)} />
-                  </div>
-                </div>
-                <EvidenceBindingFields label="Signed IS/AR Evidence Binding" value={evidenceBinding} onChange={setEvidenceBinding} />
-                <label className="row" style={{ marginBottom: '0.6rem', alignItems: 'center' }}>
-                  <input type="checkbox" checked={matchesPaper} onChange={(e) => setMatchesPaper(e.target.checked)} />
-                  <span>Confirmed physically inspected paper matches batch (`matches_paper: true`)</span>
-                </label>
-              </>
-            )}
-
-            {opKind === 'post' && (
-              <>
-                <div className="field" style={{ marginBottom: '0.5rem' }}>
-                  <label>acknowledgment_id UUID</label>
-                  <input required value={acknowledgmentId} onChange={(e) => setAcknowledgmentId(e.target.value)} />
-                </div>
-                <div style={{ marginBottom: '0.6rem' }}>
-                  <div className="row" style={{ justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <strong>Current Sources Pin</strong>
-                    <button
-                      type="button"
-                      className="btn secondary"
-                      onClick={() =>
-                        setCurrentSources((p) => [...p, { stock_lot_id: '', expected_lot_material_version: '1', expected_stock_version: '1' }])
-                      }
-                    >
-                      + Source
-                    </button>
-                  </div>
-                  {currentSources.map((src, idx) => (
-                    <div key={idx} className="row" style={{ marginBottom: '0.35rem' }}>
-                      <div className="field">
-                        <label>stock_lot_id</label>
+                    {opKind !== 'reconcile' && (
+                      <div className="form-group">
+                        <label className="form-label">Current Content Version</label>
                         <input
-                          required
-                          value={src.stock_lot_id}
-                          onChange={(e) => setCurrentSources((p) => p.map((x, i) => (i === idx ? { ...x, stock_lot_id: e.target.value } : x)))}
-                        />
-                      </div>
-                      <div className="field" style={{ maxWidth: '6.5rem' }}>
-                        <label>lot mVer</label>
-                        <input
+                          className="form-control"
                           type="number"
                           min={1}
                           required
-                          value={src.expected_lot_material_version}
-                          onChange={(e) =>
-                            setCurrentSources((p) => p.map((x, i) => (i === idx ? { ...x, expected_lot_material_version: e.target.value } : x)))
-                          }
+                          value={expectedMatVersion}
+                          onChange={(e) => setExpectedMatVersion(e.target.value)}
                         />
                       </div>
-                      <div className="field" style={{ maxWidth: '6.5rem' }}>
-                        <label>stockVer</label>
+                    )}
+                  </div>
+                )}
+
+                {(opKind === 'prepare' || opKind === 'revise' || opKind === 'post') && (
+                  <div className="p02-three-col-grid">
+                    <div className="form-group">
+                      <label className="form-label">Requisition Version</label>
+                      <input
+                        className="form-control"
+                        type="number"
+                        min={1}
+                        required
+                        value={expectedRfVersion}
+                        onChange={(e) => setExpectedRfVersion(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Content Version</label>
+                      <input
+                        className="form-control"
+                        type="number"
+                        min={1}
+                        required
+                        value={expectedRfMatVersion}
+                        onChange={(e) => setExpectedRfMatVersion(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Progress Version</label>
+                      <input
+                        className="form-control"
+                        type="number"
+                        min={1}
+                        required
+                        value={expectedRfProgressVersion}
+                        onChange={(e) => setExpectedRfProgressVersion(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {(opKind === 'prepare' || opKind === 'revise') && (
+                  <>
+                    <div className="p02-three-col-grid">
+                      <div className="form-group">
+                        <label className="form-label">Recipient Officer</label>
                         <input
-                          type="number"
-                          min={1}
+                          className="form-control"
                           required
-                          value={src.expected_stock_version}
-                          onChange={(e) =>
-                            setCurrentSources((p) => p.map((x, i) => (i === idx ? { ...x, expected_stock_version: e.target.value } : x)))
-                          }
+                          value={recipientId}
+                          onChange={(e) => setRecipientId(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Date &amp; Time Handed Over</label>
+                        <input
+                          className="form-control"
+                          required
+                          value={handedOverAt}
+                          onChange={(e) => setHandedOverAt(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Date &amp; Time Acknowledged</label>
+                        <input
+                          className="form-control"
+                          required
+                          value={acknowledgedAt}
+                          onChange={(e) => setAcknowledgedAt(e.target.value)}
                         />
                       </div>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
 
-            {opKind === 'reconcile' && (
-              <>
-                <div className="row" style={{ marginBottom: '0.5rem' }}>
-                  <div className="field">
-                    <label>finding</label>
-                    <select
-                      value={finding}
-                      onChange={(e) => setFinding(e.target.value as 'no_handover' | 'handed_over_unposted' | 'committed' | 'disputed')}
-                    >
-                      <option value="no_handover">no_handover</option>
-                      <option value="handed_over_unposted">handed_over_unposted</option>
-                      <option value="committed">committed</option>
-                      <option value="disputed">disputed</option>
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label>reason</label>
-                    <input required value={reconcileReason} onChange={(e) => setReconcileReason(e.target.value)} />
-                  </div>
-                </div>
-                <label className="row" style={{ marginBottom: '0.5rem', alignItems: 'center' }}>
-                  <input type="checkbox" checked={attachReconcileEvidence} onChange={(e) => setAttachReconcileEvidence(e.target.checked)} />
-                  <span>Include evidence binding</span>
-                </label>
-                {attachReconcileEvidence && (
-                  <EvidenceBindingFields label="Reconciliation Evidence Binding" value={evidenceBinding} onChange={setEvidenceBinding} />
+                    <label className={`p03-checkbox-row ${acceptsPartial ? 'is-checked' : ''}`}>
+                      <input
+                        type="checkbox"
+                        className="p03-sr-checkbox"
+                        checked={acceptsPartial}
+                        onChange={(e) => setAcceptsPartial(e.target.checked)}
+                      />
+                      <span className={`p03-check-indicator ${acceptsPartial ? 'is-checked' : ''}`} aria-hidden="true">
+                        ✓
+                      </span>
+                      <span className="p03-checkbox-main">Recipient agrees to partial handover</span>
+                    </label>
+
+                    {opKind === 'revise' && (
+                      <div className="form-group">
+                        <label className="form-label">Revision Reason</label>
+                        <input
+                          className="form-control"
+                          required
+                          value={reviseReason}
+                          onChange={(e) => setReviseReason(e.target.value)}
+                        />
+                      </div>
+                    )}
+
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
+                          Issue Batch Lines &amp; Targets
+                        </span>
+                        <button
+                          type="button"
+                          className="p02-compact-btn"
+                          onClick={() => setIssueLines((p) => [...p, emptyIssueLine()])}
+                        >
+                          + Batch Line
+                        </button>
+                      </div>
+                      <div className="p04-lines-list">
+                        {issueLines.map((ln, idx) => (
+                          <div key={idx} className="p04-line-card">
+                            <div className="p03-two-col">
+                              <div className="form-group">
+                                <label className="form-label">Requisition Line Reference</label>
+                                <input
+                                  className="form-control"
+                                  required
+                                  value={ln.rf_line_id}
+                                  onChange={(e) =>
+                                    setIssueLines((p) =>
+                                      p.map((x, i) => (i === idx ? { ...x, rf_line_id: e.target.value } : x)),
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Reservation Reference</label>
+                                <input
+                                  className="form-control"
+                                  required
+                                  value={ln.reservation_id}
+                                  onChange={(e) =>
+                                    setIssueLines((p) =>
+                                      p.map((x, i) => (i === idx ? { ...x, reservation_id: e.target.value } : x)),
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                            <div className="p03-two-col">
+                              <div className="form-group">
+                                <label className="form-label">Reservation Version</label>
+                                <input
+                                  className="form-control"
+                                  type="number"
+                                  min={1}
+                                  required
+                                  value={ln.expected_reservation_version}
+                                  onChange={(e) =>
+                                    setIssueLines((p) =>
+                                      p.map((x, i) =>
+                                        i === idx ? { ...x, expected_reservation_version: e.target.value } : x,
+                                      ),
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Reservation Content Version</label>
+                                <input
+                                  className="form-control"
+                                  type="number"
+                                  min={1}
+                                  required
+                                  value={ln.expected_reservation_material_version}
+                                  onChange={(e) =>
+                                    setIssueLines((p) =>
+                                      p.map((x, i) =>
+                                        i === idx ? { ...x, expected_reservation_material_version: e.target.value } : x,
+                                      ),
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                            <StockRangeRows
+                              label="Selected Reserved Ranges"
+                              rows={ln.targets}
+                              onChange={(next) =>
+                                setIssueLines((p) => p.map((x, i) => (i === idx ? { ...x, targets: next } : x)))
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
-              </>
+
+                {opKind === 'ack' && (
+                  <>
+                    <div className="p03-two-col">
+                      <div className="form-group">
+                        <label className="form-label">Signed Document Version</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min={1}
+                          required
+                          value={snapshotMatVer}
+                          onChange={(e) => setSnapshotMatVer(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Signed Document Verification Tag</label>
+                        <input
+                          className="form-control"
+                          required
+                          value={snapshotSha}
+                          onChange={(e) => setSnapshotSha(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <EvidenceBindingFields
+                      label="Signed Handover Document Binding"
+                      value={evidenceBinding}
+                      onChange={setEvidenceBinding}
+                    />
+                    <label className={`p03-checkbox-row ${matchesPaper ? 'is-checked' : ''}`}>
+                      <input
+                        type="checkbox"
+                        className="p03-sr-checkbox"
+                        checked={matchesPaper}
+                        onChange={(e) => setMatchesPaper(e.target.checked)}
+                      />
+                      <span className={`p03-check-indicator ${matchesPaper ? 'is-checked' : ''}`} aria-hidden="true">
+                        ✓
+                      </span>
+                      <span className="p03-checkbox-main">
+                        I confirm the physically signed paper form matches this batch release
+                      </span>
+                    </label>
+                  </>
+                )}
+
+                {opKind === 'post' && (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">Signed Acknowledgment Reference</label>
+                      <input
+                        className="form-control"
+                        required
+                        value={acknowledgmentId}
+                        onChange={(e) => setAcknowledgmentId(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-stack">
+                      <div className="p04-line-top">
+                        <span className="form-label">
+                          Batches to Deduct Stock From
+                        </span>
+                        <button
+                          type="button"
+                          className="p02-compact-btn"
+                          onClick={() =>
+                            setCurrentSources((p) => [
+                              ...p,
+                              { stock_lot_id: '', expected_lot_material_version: '1', expected_stock_version: '1' },
+                            ])
+                          }
+                        >
+                          + Batch
+                        </button>
+                      </div>
+                      <div className="p04-lines-list">
+                        {currentSources.map((src, idx) => (
+                          <div key={idx} className="p04-line-card">
+                            <div className="p02-three-col-grid">
+                              <div className="form-group">
+                                <label className="form-label">Stock Batch Reference</label>
+                                <input
+                                  className="form-control"
+                                  required
+                                  value={src.stock_lot_id}
+                                  onChange={(e) =>
+                                    setCurrentSources((p) =>
+                                      p.map((x, i) => (i === idx ? { ...x, stock_lot_id: e.target.value } : x)),
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Batch Content Version</label>
+                                <input
+                                  className="form-control"
+                                  type="number"
+                                  min={1}
+                                  required
+                                  value={src.expected_lot_material_version}
+                                  onChange={(e) =>
+                                    setCurrentSources((p) =>
+                                      p.map((x, i) =>
+                                        i === idx ? { ...x, expected_lot_material_version: e.target.value } : x,
+                                      ),
+                                    )
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label">Stock Version</label>
+                                <input
+                                  className="form-control"
+                                  type="number"
+                                  min={1}
+                                  required
+                                  value={src.expected_stock_version}
+                                  onChange={(e) =>
+                                    setCurrentSources((p) =>
+                                      p.map((x, i) => (i === idx ? { ...x, expected_stock_version: e.target.value } : x)),
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {opKind === 'reconcile' && (
+                  <>
+                    <div className="p03-two-col">
+                      <div className="form-group">
+                        <label className="form-label">Verification Result</label>
+                        <select
+                          className="form-control"
+                          value={finding}
+                          onChange={(e) =>
+                            setFinding(e.target.value as 'no_handover' | 'handed_over_unposted' | 'committed' | 'disputed')
+                          }
+                        >
+                          <option value="no_handover">No Handover Occurred</option>
+                          <option value="handed_over_unposted">Handed Over (Not Yet Recorded)</option>
+                          <option value="committed">Completed &amp; Confirmed</option>
+                          <option value="disputed">Disputed / Needs Review</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Reason</label>
+                        <input
+                          className="form-control"
+                          required
+                          value={reconcileReason}
+                          onChange={(e) => setReconcileReason(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <label className={`p03-checkbox-row ${attachReconcileEvidence ? 'is-checked' : ''}`}>
+                      <input
+                        type="checkbox"
+                        className="p03-sr-checkbox"
+                        checked={attachReconcileEvidence}
+                        onChange={(e) => setAttachReconcileEvidence(e.target.checked)}
+                      />
+                      <span
+                        className={`p03-check-indicator ${attachReconcileEvidence ? 'is-checked' : ''}`}
+                        aria-hidden="true"
+                      >
+                        ✓
+                      </span>
+                      <span className="p03-checkbox-main">Include signed document attachment</span>
+                    </label>
+                    {attachReconcileEvidence && (
+                      <EvidenceBindingFields
+                        label="Reconciliation Signed Document Binding"
+                        value={evidenceBinding}
+                        onChange={setEvidenceBinding}
+                      />
+                    )}
+                  </>
+                )}
+
+                <div className="p03-guard-buttons">
+                  <button
+                    className="btn-batcave-primary"
+                    type="submit"
+                    disabled={busy || opBlockReason !== null}
+                    title={opBlockReason ?? undefined}
+                  >
+                    Submit Issue Action
+                  </button>
+                  <button
+                    className="btn-batcave-secondary"
+                    type="button"
+                    onClick={parkDraftInMemory}
+                  >
+                    Save Temporary Draft
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        )}
+
+        {viewTab === 'inspect' && (
+          <section className="p03-card surface-card form-stack" aria-label="Handovers and movement records">
+            <h2 className="p03-section-title">
+              Handover List, History &amp; Movements
+            </h2>
+            {issuesJson === null ? (
+              <p className="p03-muted-copy">
+                No handover records loaded. Enter a requisition reference in the search bar above and click “Load Handovers”.
+              </p>
+            ) : (
+              <pre className="json-box">{JSON.stringify(issuesJson, null, 2)}</pre>
             )}
+          </section>
+        )}
 
-            {opBlockReason && <div className="alert info">{opBlockReason}</div>}
-            <div className="row">
-              <button className="btn" type="submit" disabled={busy || opBlockReason !== null} title={opBlockReason ?? undefined}>
-                Run Issue Operation
-              </button>
-              <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
-              </button>
-            </div>
-          </form>
-        </div>
+        {viewTab === 'status' && (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Status lookup">
+              <h2 className="p03-section-title">
+                Check Handover Submission Status
+              </h2>
+              <div className="form-stack">
+                <form onSubmit={lookupByKey} className="form-group">
+                  <label className="form-label" htmlFor="iss-lkp">
+                    Submission Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="iss-lkp"
+                      className="form-control"
+                      required
+                      value={lookupKey}
+                      onChange={(e) => setLookupKey(e.target.value)}
+                    />
+                    <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                      Check Status
+                    </button>
+                  </div>
+                </form>
 
-        <div className="card">
-          <h3>Issue Outcome Lookup &amp; Printout</h3>
-          <form onSubmit={lookupByKey}>
-            <div className="row" style={{ marginBottom: '0.5rem' }}>
-              <div className="field">
-                <label htmlFor="iss-lkp">X-Action-Key UUID</label>
-                <input id="iss-lkp" required value={lookupKey} onChange={(e) => setLookupKey(e.target.value)} />
+                <form onSubmit={lookupByOpId} className="form-group">
+                  <label className="form-label" htmlFor="iss-opid">
+                    Change Record Reference
+                  </label>
+                  <div className="p03-input-action-row">
+                    <input
+                      id="iss-opid"
+                      className="form-control"
+                      required
+                      value={lookupOpId}
+                      onChange={(e) => setLookupOpId(e.target.value)}
+                    />
+                    <button className="btn-batcave-secondary p03-shrink-btn" type="submit">
+                      View Record
+                    </button>
+                  </div>
+                </form>
               </div>
-              <button className="btn secondary" type="submit">
-                Find by Key
-              </button>
-            </div>
-          </form>
-          <form onSubmit={lookupByOpId}>
-            <div className="row" style={{ marginBottom: '0.65rem' }}>
-              <div className="field">
-                <label htmlFor="iss-opid">operation_id UUID</label>
-                <input id="iss-opid" required value={lookupOpId} onChange={(e) => setLookupOpId(e.target.value)} />
-              </div>
-              <button className="btn secondary" type="submit">
-                Read Operation ID
-              </button>
-            </div>
-          </form>
-          {detailJson !== null && <pre className="json-box">{JSON.stringify(detailJson, null, 2)}</pre>}
-          {printHtml !== null && (
-            <div style={{ marginTop: '0.65rem' }}>
-              <iframe title="Actual Issue Printout" sandbox="" srcDoc={printHtml} style={{ width: '100%', height: '240px', border: '1px solid #cbd5e1' }} />
-            </div>
-          )}
-        </div>
+            </section>
+
+            <section className="p03-card surface-card form-stack" aria-label="Detail and printable form">
+              <h2 className="p03-section-title">
+                Detail &amp; Printable Form
+              </h2>
+              {detailJson === null && printHtml === null ? (
+                <p className="p03-muted-copy">
+                  No result loaded. Inspect a handover detail or check a submission reference on the left.
+                </p>
+              ) : (
+                <div className="form-stack">
+                  {detailJson !== null && <pre className="json-box">{JSON.stringify(detailJson, null, 2)}</pre>}
+                  {printHtml !== null && (
+                    <iframe title="Actual Issue Printout" sandbox="" srcDoc={printHtml} className="stage1-print-frame" />
+                  )}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

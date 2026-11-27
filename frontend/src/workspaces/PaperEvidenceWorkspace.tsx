@@ -28,9 +28,17 @@ interface PaperEvidenceWorkspaceProps {
   chapterId: string;
   refreshSignal: number;
   chapterAccess: ChapterAccessSnapshot | null;
+  onBackToDashboard?: () => void;
 }
 
-export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapterAccess }: PaperEvidenceWorkspaceProps) {
+export function PaperEvidenceWorkspace({
+  userId,
+  chapterId,
+  refreshSignal,
+  chapterAccess,
+  onBackToDashboard,
+}: PaperEvidenceWorkspaceProps) {
+  const [viewTab, setViewTab] = useState<'manage' | 'history'>('manage');
   const formKey = 'paper_evidence_editor';
 
   function readSavedDraft(): {
@@ -88,7 +96,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
       pendingActionKey: null,
       payloadJson: JSON.stringify({ purpose, recordId, evidenceIdInput, expectedVersion, replaceReason }),
     });
-    setStatusMessage('Evidence metadata held in chapter-scoped RAM only (selected files must still be reattached if switched).');
+    setStatusMessage('Document details saved as a temporary draft for this session (reattach files if you switch chapters).');
   }
 
   function buildFormData(isReplace: boolean): FormData {
@@ -129,7 +137,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
       setEvidenceIdInput(result.data.evidence_id);
       setExpectedVersion(String(result.data.version));
       setReplayed(result.replayed);
-      setStatusMessage(`Uploaded ready evidence ${result.data.evidence_id} (v${result.data.version}).`);
+      setStatusMessage(`Signed document uploaded (Record ${result.data.evidence_id}, rev. ${result.data.version}).`);
       await inspectEvidence(result.data.evidence_id);
     } catch (err) {
       setError(err);
@@ -141,7 +149,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
   async function handleReplace(e: React.FormEvent) {
     e.preventDefault();
     if (!evidenceIdInput.trim() || !files || files.length === 0) {
-      setError(new Error('Provide evidence_id UUID and replacement file(s).'));
+      setError(new Error('Enter the Document Record ID and select replacement file(s).'));
       return;
     }
     setBusy(true);
@@ -155,7 +163,7 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
       memoryDraftStore.clearDraft(userId, chapterId, formKey);
       setExpectedVersion(String(result.data.version));
       setReplayed(result.replayed);
-      setStatusMessage(`Replaced evidence -> v${result.data.version}.`);
+      setStatusMessage(`Replacement document uploaded (rev. ${result.data.version}).`);
       await inspectEvidence(result.data.evidence_id);
     } catch (err) {
       setError(err);
@@ -235,132 +243,342 @@ export function PaperEvidenceWorkspace({ userId, chapterId, refreshSignal, chapt
   }
 
   return (
-    <div>
-      <div className="card">
-        <h2>Protected Paper Evidence (`Ticket 04` · Multipart Only)</h2>
-        <p className="muted">
-          Stage 1 enforces real JPEG/PNG/PDF file uploads validated on Laravel (`purpose` + `record_id` + `attachments`). No Canvas signature or browser storage is accepted.
-        </p>
-        <OperationBanner error={error} statusMessage={statusMessage} replayed={replayed} onDismiss={() => setStatusMessage(null)} />
-        {prepareReason && <div className="alert info">{prepareReason}</div>}
+    <main className="p03-workspace-shell">
+      <div className="p03-workspace-inner">
+        <header className="p03-top-header surface-card">
+          <div className="p03-header-search-row">
+            <div className="p03-search-input-wrap">
+              <svg
+                className="p03-search-icon"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+              </svg>
+              <input
+                id="ev-top-lookup"
+                className="form-control p03-search-input"
+                value={evidenceIdInput}
+                onChange={(e) => setEvidenceIdInput(e.target.value)}
+                placeholder="Enter document record reference to inspect..."
+                aria-label="Enter document record reference to inspect"
+              />
+            </div>
 
-        <div className="grid-2">
-          <form onSubmit={handleUpload}>
-            <h3>Upload New Evidence</h3>
-            <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="ev-purpose">Purpose</label>
-              <select id="ev-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value as EvidencePurpose)}>
-                <option value="opening_receipt">opening_receipt</option>
-                <option value="hold_clearance">hold_clearance</option>
-                <option value="actual_issue">actual_issue</option>
-              </select>
-            </div>
-            <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="ev-rec">Target Record UUID (`record_id`)</label>
-              <input id="ev-rec" required value={recordId} onChange={(e) => setRecordId(e.target.value)} />
-            </div>
-            <div className="field" style={{ marginBottom: '0.65rem' }}>
-              <label htmlFor="ev-files">Signed Paper Files (JPEG/PNG/PDF, max 10 MiB each)</label>
-              <input id="ev-files" type="file" multiple accept="image/jpeg,image/png,application/pdf" onChange={(e) => setFiles(e.target.files)} />
-            </div>
-            <div className="row">
-              <button className="btn" type="submit" disabled={busy || prepareReason !== null} title={prepareReason ?? undefined}>
-                Upload Multipart Evidence
-              </button>
-              <button className="btn secondary" type="button" onClick={parkDraftInMemory}>
-                Hold Draft in RAM
-              </button>
-            </div>
-          </form>
-
-          <form onSubmit={handleReplace}>
-            <h3>Inspect / Supersede Existing Evidence</h3>
-            <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="ev-id">evidence_id UUID</label>
-              <input id="ev-id" required value={evidenceIdInput} onChange={(e) => setEvidenceIdInput(e.target.value)} />
-            </div>
-            <div className="row" style={{ marginBottom: '0.5rem' }}>
-              <div className="field">
-                <label htmlFor="ev-ver">expected_version</label>
-                <input id="ev-ver" type="number" min={1} value={expectedVersion} onChange={(e) => setExpectedVersion(e.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="ev-reason">Replacement Reason</label>
-                <input id="ev-reason" value={replaceReason} onChange={(e) => setReplaceReason(e.target.value)} />
-              </div>
-            </div>
-            <div className="row">
+            <div className="p03-search-meta">
+              {evidenceIdInput.trim().length > 0 && (
+                <button
+                  type="button"
+                  className="p03-search-clear-btn"
+                  onClick={() => setEvidenceIdInput('')}
+                >
+                  Clear
+                </button>
+              )}
               <button
-                className="btn secondary"
                 type="button"
+                className="p03-search-action-btn"
                 disabled={readReason !== null}
                 title={readReason ?? undefined}
-                onClick={() => void inspectEvidence()}
+                onClick={() => {
+                  void inspectEvidence();
+                  setViewTab('history');
+                }}
               >
-                Inspect Current &amp; Versions
-              </button>
-              <button className="btn" type="submit" disabled={busy || prepareReason !== null} title={prepareReason ?? undefined}>
-                Upload Replacement Version
+                Inspect Document
               </button>
             </div>
-          </form>
-        </div>
-      </div>
-
-      {readResult?.current_version && (
-        <div className="card">
-          <h3>
-            Current Version v{readResult.current_version.version} ({readResult.current_version.technical_state})
-          </h3>
-          <p className="muted">Uploaded {formatManilaTime(readResult.current_version.uploaded_at)}</p>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Attachment ID</th>
-                  <th>Media Type</th>
-                  <th>Bytes</th>
-                  <th>Server SHA-256</th>
-                  <th>Retrieve</th>
-                </tr>
-              </thead>
-              <tbody>
-                {readResult.current_version.attachments.map((att) => (
-                  <tr key={att.attachment_id}>
-                    <td className="mono">{att.attachment_id}</td>
-                    <td>{att.media_type}</td>
-                    <td>{att.byte_length}</td>
-                    <td className="mono">{att.sha256}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn secondary"
-                        onClick={() => void downloadAttachment(readResult.current_version!.version_id, att.attachment_id)}
-                      >
-                        Fetch Authorized Bytes
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-          {previewUrl && (
-            <div style={{ marginTop: '0.75rem' }}>
-              <a href={previewUrl} target="_blank" rel="noreferrer" className="btn secondary">
-                Open Fetched Attachment Blob
-              </a>
+
+          <div className="p03-header-nav-row">
+            <div className="p03-header-left">
+              <h1 className="p03-main-title">Signed Documents</h1>
+            </div>
+            <div className="p03-header-controls">
+              <div className="p03-filter-pill-bar" role="tablist" aria-label="Document sections">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'manage'}
+                  className={`p03-filter-pill ${viewTab === 'manage' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('manage')}
+                >
+                  Upload &amp; Replace
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'history'}
+                  className={`p03-filter-pill ${viewTab === 'history' ? 'is-active' : ''}`}
+                  onClick={() => setViewTab('history')}
+                >
+                  Attachments &amp; History
+                </button>
+              </div>
+              {onBackToDashboard && (
+                <button
+                  type="button"
+                  className="btn-batcave-secondary p03-shrink-btn p04-back-btn"
+                  onClick={onBackToDashboard}
+                >
+                  ← Back to My Work
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <section className="p03-card surface-card form-stack" aria-label="Signed document verification overview">
+          <div className="p03-card-header-row">
+            <div>
+              <h2 className="p03-section-title">Signed Paper Verification</h2>
+              <p className="form-card-subtitle">
+                Upload verified scans or PDFs and bind them to chapter receipts, clearances, and issues.
+              </p>
+            </div>
+            <div className="p03-chip-wrap">
+              {readResult?.current_version && (
+                <span className="p03-version-pill">rev. {readResult.current_version.version}</span>
+              )}
+              <span className="p03-version-pill">
+                {readResult?.current_version
+                  ? `${readResult.current_version.attachments.length} attachment${readResult.current_version.attachments.length === 1 ? '' : 's'}`
+                  : 'Ready to Upload'}
+              </span>
+            </div>
+          </div>
+          <OperationBanner
+            error={error}
+            statusMessage={statusMessage}
+            replayed={replayed}
+            onDismiss={() => setStatusMessage(null)}
+          />
+          {prepareReason && (
+            <div className="callout-banner is-warning">
+              <span className="callout-dot dot-warning" aria-hidden="true" />
+              <span>{prepareReason}</span>
             </div>
           )}
-        </div>
-      )}
+        </section>
 
-      {versionsJson !== null && (
-        <div className="card">
-          <h3>Evidence Version Lineage</h3>
-          <pre className="json-box">{JSON.stringify(versionsJson, null, 2)}</pre>
-        </div>
-      )}
-    </div>
+        {viewTab === 'manage' ? (
+          <div className="p02-members-grid">
+            <section className="p03-card surface-card form-stack" aria-label="Upload signed document">
+              <div>
+                <h2 className="p03-section-title">Upload Signed Document</h2>
+                <p className="form-card-subtitle">
+                  Attach photos or scans of your signed paper forms (JPEG, PNG, or PDF, up to 10 MiB each).
+                </p>
+              </div>
+
+              <form onSubmit={handleUpload} className="form-stack">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="ev-purpose">
+                    Document Type
+                  </label>
+                  <select
+                    id="ev-purpose"
+                    className="form-control"
+                    value={purpose}
+                    onChange={(e) => setPurpose(e.target.value as EvidencePurpose)}
+                  >
+                    <option value="opening_receipt">Opening Inventory Receipt</option>
+                    <option value="hold_clearance">Stock Hold Clearance</option>
+                    <option value="actual_issue">Issue Handover Form</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="ev-rec">
+                    Linked Record Reference
+                  </label>
+                  <input
+                    id="ev-rec"
+                    className="form-control"
+                    required
+                    value={recordId}
+                    onChange={(e) => setRecordId(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="ev-files">
+                    Signed Paper Files (JPEG, PNG, or PDF)
+                  </label>
+                  <input
+                    id="ev-files"
+                    className="form-control p04-file-input"
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,application/pdf"
+                    onChange={(e) => setFiles(e.target.files)}
+                  />
+                </div>
+
+                <div className="p03-guard-buttons">
+                  <button
+                    className="btn-batcave-primary"
+                    type="submit"
+                    disabled={busy || prepareReason !== null}
+                    title={prepareReason ?? undefined}
+                  >
+                    Upload Document
+                  </button>
+                  <button
+                    className="btn-batcave-secondary"
+                    type="button"
+                    onClick={parkDraftInMemory}
+                  >
+                    Save Temporary Draft
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <section className="p03-card surface-card form-stack" aria-label="View or replace uploaded document">
+              <h2 className="p03-section-title">
+                Replace Uploaded Document
+              </h2>
+              <form onSubmit={handleReplace} className="form-stack">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="ev-id">
+                    Document Record Reference
+                  </label>
+                  <input
+                    id="ev-id"
+                    className="form-control"
+                    required
+                    value={evidenceIdInput}
+                    onChange={(e) => setEvidenceIdInput(e.target.value)}
+                  />
+                </div>
+
+                <div className="p03-two-col">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="ev-ver">
+                      Current Revision Number
+                    </label>
+                    <input
+                      id="ev-ver"
+                      className="form-control"
+                      type="number"
+                      min={1}
+                      value={expectedVersion}
+                      onChange={(e) => setExpectedVersion(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="ev-reason">
+                      Replacement Reason
+                    </label>
+                    <input
+                      id="ev-reason"
+                      className="form-control"
+                      value={replaceReason}
+                      onChange={(e) => setReplaceReason(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="p03-guard-buttons">
+                  <button
+                    className="btn-batcave-secondary"
+                    type="button"
+                    disabled={readReason !== null}
+                    title={readReason ?? undefined}
+                    onClick={() => {
+                      void inspectEvidence();
+                      setViewTab('history');
+                    }}
+                  >
+                    Inspect Revisions
+                  </button>
+                  <button
+                    className="btn-batcave-primary"
+                    type="submit"
+                    disabled={busy || prepareReason !== null}
+                    title={prepareReason ?? undefined}
+                  >
+                    Upload Replacement
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        ) : (
+          <div className="p02-column-stack">
+            <section className="p03-card surface-card form-stack" aria-label="Document attachments">
+              <div className="p03-card-header-row">
+                <div>
+                  <h2 className="p03-section-title">
+                    {readResult?.current_version
+                      ? `Revision v${readResult.current_version.version} · ${readResult.current_version.technical_state}`
+                      : 'Document Attachments'}
+                  </h2>
+                  {readResult?.current_version && (
+                    <p className="form-card-subtitle">
+                      Uploaded {formatManilaTime(readResult.current_version.uploaded_at)}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {!readResult?.current_version ? (
+                <p className="p03-muted-copy">
+                  No document loaded. Enter a document record reference in the search bar above and click “Inspect Document”.
+                </p>
+              ) : (
+                <div className="p03-history-list">
+                  {readResult.current_version.attachments.map((att, idx) => (
+                    <article key={att.attachment_id} className="p03-history-card">
+                      <div className="p03-history-head">
+                        <div className="p03-history-title-group">
+                          <span className="p03-version-pill p03-id-pill p03-mono-inline">File {idx + 1}</span>
+                          <strong>{att.media_type}</strong>
+                          <span className="p03-version-pill">{att.byte_length} bytes</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="p02-compact-btn"
+                          onClick={() => void downloadAttachment(readResult.current_version!.version_id, att.attachment_id)}
+                        >
+                          Load File
+                        </button>
+                      </div>
+                      <div className="p03-history-meta">
+                        <span className="p03-muted-inline">Verification tag: {att.sha256.slice(0, 16)}...</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {previewUrl && (
+                <div className="p03-next-actions-row">
+                  <a href={previewUrl} target="_blank" rel="noreferrer" className="btn-batcave-primary">
+                    Open Loaded File
+                  </a>
+                </div>
+              )}
+            </section>
+
+            {versionsJson !== null && (
+              <section className="p03-card surface-card form-stack" aria-label="Document revision history">
+                <h2 className="p03-section-title">
+                  Document Revision History
+                </h2>
+                <pre className="json-box">{JSON.stringify(versionsJson, null, 2)}</pre>
+              </section>
+            )}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

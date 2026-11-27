@@ -19,44 +19,95 @@ export function StockTargetRows({ label, rows, onChange }: StockTargetRowsProps)
   }
 
   return (
-    <div style={{ marginBottom: '0.75rem' }}>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-        <strong>{label}</strong>
-        <button type="button" className="btn secondary" onClick={() => onChange([...rows, emptyStockTarget()])}>
+    <div className="p04-lines-list">
+      <div className="p04-line-top">
+        <span className="form-label">{label}</span>
+        <button
+          type="button"
+          className="p02-compact-btn"
+          onClick={() => onChange([...rows, emptyStockTarget()])}
+        >
           + Add Target
         </button>
       </div>
       {rows.map((r, idx) => (
-        <div key={idx} className="row" style={{ marginBottom: '0.4rem', padding: '0.4rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem' }}>
-          <div className="field">
-            <label>stock_lot_id</label>
-            <input required value={r.stock_lot_id} onChange={(e) => updateRow(idx, { stock_lot_id: e.target.value })} />
+        <div key={idx} className="p04-line-card">
+          <div className="p04-line-top">
+            <span className="p03-version-pill">Target #{idx + 1}</span>
+            {rows.length > 1 && (
+              <button
+                type="button"
+                className="p02-compact-btn is-subtle-danger"
+                onClick={() => onChange(rows.filter((_, i) => i !== idx))}
+              >
+                Remove
+              </button>
+            )}
           </div>
-          <div className="field">
-            <label>basis_segment_id</label>
-            <input required value={r.basis_segment_id} onChange={(e) => updateRow(idx, { basis_segment_id: e.target.value })} />
+          <div className="p03-two-col">
+            <div className="form-group">
+              <label className="form-label">Stock Batch ID</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={r.stock_lot_id}
+                onChange={(e) => updateRow(idx, { stock_lot_id: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Batch Section ID</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={r.basis_segment_id}
+                onChange={(e) => updateRow(idx, { basis_segment_id: e.target.value })}
+              />
+            </div>
           </div>
-          <div className="field" style={{ maxWidth: '7rem' }}>
-            <label>offset</label>
-            <input required value={r.offset_quantity} onChange={(e) => updateRow(idx, { offset_quantity: e.target.value })} />
+          <div className="p03-two-col">
+            <div className="form-group">
+              <label className="form-label">Starting Point</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={r.offset_quantity}
+                onChange={(e) => updateRow(idx, { offset_quantity: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Quantity</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={r.quantity}
+                onChange={(e) => updateRow(idx, { quantity: e.target.value })}
+              />
+            </div>
           </div>
-          <div className="field" style={{ maxWidth: '7rem' }}>
-            <label>qty</label>
-            <input required value={r.quantity} onChange={(e) => updateRow(idx, { quantity: e.target.value })} />
+          <div className="p03-two-col">
+            <div className="form-group">
+              <label className="form-label">Batch Version</label>
+              <input
+                className="form-control"
+                type="number"
+                min={1}
+                required
+                value={r.expected_lot_material_version}
+                onChange={(e) => updateRow(idx, { expected_lot_material_version: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Stock Version</label>
+              <input
+                className="form-control"
+                type="number"
+                min={1}
+                required
+                value={r.expected_stock_version}
+                onChange={(e) => updateRow(idx, { expected_stock_version: e.target.value })}
+              />
+            </div>
           </div>
-          <div className="field" style={{ maxWidth: '5.5rem' }}>
-            <label>lot mVer</label>
-            <input type="number" min={1} required value={r.expected_lot_material_version} onChange={(e) => updateRow(idx, { expected_lot_material_version: e.target.value })} />
-          </div>
-          <div className="field" style={{ maxWidth: '5.5rem' }}>
-            <label>stockVer</label>
-            <input type="number" min={1} required value={r.expected_stock_version} onChange={(e) => updateRow(idx, { expected_stock_version: e.target.value })} />
-          </div>
-          {rows.length > 1 && (
-            <button type="button" className="btn secondary" onClick={() => onChange(rows.filter((_, i) => i !== idx))}>
-              Remove
-            </button>
-          )}
         </div>
       ))}
     </div>
@@ -75,36 +126,71 @@ export function StockRangeRows({ label, rows, onChange }: StockRangeRowsProps) {
   }
 
   return (
-    <div style={{ marginBottom: '0.75rem' }}>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-        <strong>{label}</strong>
-        <button type="button" className="btn secondary" onClick={() => onChange([...rows, emptyStockRange()])}>
+    <div className="p04-lines-list">
+      <div className="p04-line-top">
+        <span className="form-label">{label}</span>
+        <button
+          type="button"
+          className="p02-compact-btn"
+          onClick={() => onChange([...rows, emptyStockRange()])}
+        >
           + Add Range
         </button>
       </div>
       {rows.map((r, idx) => (
-        <div key={idx} className="row" style={{ marginBottom: '0.4rem', padding: '0.4rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem' }}>
-          <div className="field">
-            <label>stock_lot_id</label>
-            <input required value={r.stock_lot_id} onChange={(e) => updateRow(idx, { stock_lot_id: e.target.value })} />
+        <div key={idx} className="p04-line-card">
+          <div className="p04-line-top">
+            <span className="p03-version-pill">Range #{idx + 1}</span>
+            {rows.length > 1 && (
+              <button
+                type="button"
+                className="p02-compact-btn is-subtle-danger"
+                onClick={() => onChange(rows.filter((_, i) => i !== idx))}
+              >
+                Remove
+              </button>
+            )}
           </div>
-          <div className="field">
-            <label>basis_segment_id</label>
-            <input required value={r.basis_segment_id} onChange={(e) => updateRow(idx, { basis_segment_id: e.target.value })} />
+          <div className="p03-two-col">
+            <div className="form-group">
+              <label className="form-label">Stock Batch ID</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={r.stock_lot_id}
+                onChange={(e) => updateRow(idx, { stock_lot_id: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Batch Section ID</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={r.basis_segment_id}
+                onChange={(e) => updateRow(idx, { basis_segment_id: e.target.value })}
+              />
+            </div>
           </div>
-          <div className="field" style={{ maxWidth: '7rem' }}>
-            <label>offset</label>
-            <input required value={r.offset_quantity} onChange={(e) => updateRow(idx, { offset_quantity: e.target.value })} />
+          <div className="p03-two-col">
+            <div className="form-group">
+              <label className="form-label">Starting Point</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={r.offset_quantity}
+                onChange={(e) => updateRow(idx, { offset_quantity: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Quantity</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={r.quantity}
+                onChange={(e) => updateRow(idx, { quantity: e.target.value })}
+              />
+            </div>
           </div>
-          <div className="field" style={{ maxWidth: '7rem' }}>
-            <label>qty</label>
-            <input required value={r.quantity} onChange={(e) => updateRow(idx, { quantity: e.target.value })} />
-          </div>
-          {rows.length > 1 && (
-            <button type="button" className="btn secondary" onClick={() => onChange(rows.filter((_, i) => i !== idx))}>
-              Remove
-            </button>
-          )}
         </div>
       ))}
     </div>
@@ -126,46 +212,71 @@ export function EvidenceBindingFields({ label, value, onChange }: EvidenceBindin
   }
 
   return (
-    <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.35rem' }}>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-        <strong>{label}</strong>
+    <div className="p04-line-card">
+      <div className="p04-line-top">
+        <span className="form-label">{label}</span>
         <button
           type="button"
-          className="btn secondary"
+          className="p02-compact-btn"
           onClick={() => onChange({ ...value, attachments: [...value.attachments, { attachment_id: '', sha256: '' }] })}
         >
-          + Add Attachment Byte
+          + Add File Reference
         </button>
       </div>
-      <div className="row" style={{ marginBottom: '0.4rem' }}>
-        <div className="field">
-          <label>evidence_id UUID</label>
-          <input required value={value.evidence_id} onChange={(e) => onChange({ ...value, evidence_id: e.target.value })} />
+      <div className="p03-two-col">
+        <div className="form-group">
+          <label className="form-label">Document Record ID</label>
+          <input
+            className="form-control p03-mono-inline"
+            required
+            value={value.evidence_id}
+            onChange={(e) => onChange({ ...value, evidence_id: e.target.value })}
+          />
         </div>
-        <div className="field">
-          <label>version_id UUID</label>
-          <input required value={value.version_id} onChange={(e) => onChange({ ...value, version_id: e.target.value })} />
+        <div className="form-group">
+          <label className="form-label">Document Version ID</label>
+          <input
+            className="form-control p03-mono-inline"
+            required
+            value={value.version_id}
+            onChange={(e) => onChange({ ...value, version_id: e.target.value })}
+          />
         </div>
       </div>
       {value.attachments.map((a, idx) => (
-        <div key={idx} className="row" style={{ marginBottom: '0.35rem' }}>
-          <div className="field">
-            <label>attachment_id UUID</label>
-            <input required value={a.attachment_id} onChange={(e) => updateAttachment(idx, { attachment_id: e.target.value })} />
+        <div key={idx} className="p04-line-card">
+          <div className="p04-line-top">
+            <span className="p03-version-pill">Attachment #{idx + 1}</span>
+            {value.attachments.length > 1 && (
+              <button
+                type="button"
+                className="p02-compact-btn is-subtle-danger"
+                onClick={() => onChange({ ...value, attachments: value.attachments.filter((_, i) => i !== idx) })}
+              >
+                Remove
+              </button>
+            )}
           </div>
-          <div className="field">
-            <label>sha256 (64 hex)</label>
-            <input required value={a.sha256} onChange={(e) => updateAttachment(idx, { sha256: e.target.value })} />
+          <div className="p03-two-col">
+            <div className="form-group">
+              <label className="form-label">Attachment ID</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={a.attachment_id}
+                onChange={(e) => updateAttachment(idx, { attachment_id: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">File Verification Checksum</label>
+              <input
+                className="form-control p03-mono-inline"
+                required
+                value={a.sha256}
+                onChange={(e) => updateAttachment(idx, { sha256: e.target.value })}
+              />
+            </div>
           </div>
-          {value.attachments.length > 1 && (
-            <button
-              type="button"
-              className="btn secondary"
-              onClick={() => onChange({ ...value, attachments: value.attachments.filter((_, i) => i !== idx) })}
-            >
-              Remove
-            </button>
-          )}
         </div>
       ))}
     </div>
