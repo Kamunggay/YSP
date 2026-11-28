@@ -41,7 +41,7 @@ final class ControlReport
                 ->contains(fn ($receipt) => $receipt->receivingReport->location_id === $locationId));
 
         $status = $filters['status'];
-        $historyLocations = $locationId === null ? [] : $this->recordsAtLocation($chapterId, $locationId);
+        $historyLocations = $locationId === null ? [] : $this->recordsAtLocation($chapterId, $locationId, $variants->keys());
         $donations = $allLines->filter(fn ($line) => $this->inPeriod($line->donation->created_at, $filters)
             && match ($status) {
                 'all' => true,
@@ -140,14 +140,14 @@ final class ControlReport
                     $this->submittedAt($repf), (int) config('stage2.sla_hours.repf_approval'), 'Replenishment request is overdue for budget review.');
             }
             $locations = CatalogueLocation::where('chapter_id', $chapterId)->get();
-            $receiptLocations = Records::receiptLocations($chapterId, 'po');
+            $receiptLocations = Records::poReceiptLocations($chapterId, $variantIds);
             $orders = PurchaseOrder::where('chapter_id', $chapterId)->whereIn('status', ['pending_approval', ...Records::OPEN_PO])
                 ->whereHas('lines', fn (Builder $query) => $query->whereIn('variant_id', $variantIds))
                 ->orderBy('id')->get();
             foreach ($orders as $po) {
                 $receivedAt = $receiptLocations->get($po->id, collect());
-                $locationId = $receivedAt->contains($selectedLocation) ? $selectedLocation
-                    : ($receivedAt->first() ?? Records::deliveryLocation($po->delivery_location, $locations)?->id);
+                $locationId = Records::deliveryLocation($po->delivery_location, $locations)?->id
+                    ?? ($receivedAt->contains($selectedLocation) ? $selectedLocation : $receivedAt->first());
                 if ($po->status === 'pending_approval') {
                     $add('overdue_po_approval', $po, $po->po_reference, $locationId, 'BUDGET_APPROVER',
                         $this->submittedAt($po), (int) config('stage2.sla_hours.po_approval'), 'Purchase Order is overdue for approval.');
@@ -212,18 +212,19 @@ final class ControlReport
         return $user === null ? ['user_id' => $id, 'display_name' => 'Former officer'] : RepfResource::actor($user);
     }
 
-    private function recordsAtLocation(string $chapterId, string $locationId): array
+    private function recordsAtLocation(string $chapterId, string $locationId, Collection $variantIds): array
     {
         $rms = ReceivingReport::where('chapter_id', $chapterId)->where('location_id', $locationId)
-            ->get(['id', 'source_id', 'source_kind', 'status']);
+            ->get(['id']);
         $location = CatalogueLocation::where('chapter_id', $chapterId)->findOrFail($locationId);
-        $poIds = $rms->where('source_kind', 'po')->where('status', 'posted')->pluck('source_id');
-        $orders = PurchaseOrder::where('chapter_id', $chapterId)->where(fn (Builder $query) => $query
-            ->whereIn('id', $poIds)->orWhereIn('delivery_location', [$locationId, $location->name]))
+        $poIds = Records::poReceiptLocations($chapterId, $variantIds)->filter(fn ($locations) => $locations->contains($locationId))->keys();
+        $orders = PurchaseOrder::where('chapter_id', $chapterId)
+            ->whereHas('lines', fn (Builder $lines) => $lines->whereIn('variant_id', $variantIds))
+            ->where(fn (Builder $query) => $query->whereIn('id', $poIds)->orWhereIn('delivery_location', [$locationId, $location->name]))
             ->get(['id', 'repf_id']);
         $rfLines = Records::rfLinesAtLocation($chapterId, $locationId);
         $repfs = Repf::where('chapter_id', $chapterId)
-            ->whereHas('lines', fn (Builder $lines) => $lines->whereIn('rf_line_id', array_keys($rfLines)))
+            ->whereHas('lines', fn (Builder $lines) => $lines->whereIn('rf_line_id', array_keys($rfLines))->whereIn('variant_id', $variantIds))
             ->pluck('id')->merge($orders->pluck('repf_id'));
 
         return [
@@ -272,7 +273,8 @@ final class ControlReport
             'record_id' => $quotation ? $row->operation_json['resource_id'] : $row->record_id,
             'record_reference' => $quotation ? null : ($snapshot['repf_reference'] ?? $snapshot['po_reference'] ?? $snapshot['rm_reference'] ?? $snapshot['reference'] ?? null),
             'action' => Str::snake($row->event_type), 'actor' => $this->actor($actors, $row->actor_user_id),
-            'occurred_at' => RepfResource::instant($row->recorded_at), 'reason' => $row->reason,
+            'occurred_at' => RepfResource::instant($row->recorded_at),
+            'reason' => $row->reason === null ? null : mb_substr($row->reason, 0, 500),
         ];
     }
 }

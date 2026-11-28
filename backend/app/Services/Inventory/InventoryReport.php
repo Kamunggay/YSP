@@ -61,10 +61,14 @@ final class InventoryReport
         $issues = ActualIssueLine::whereIn('lot_id', $lotIds)
             ->whereHas('actualIssue', fn (Builder $query) => Records::period($query->where('chapter_id', $chapterId)
                 ->where('status', 'posted'), 'posted_at', $filters))->get()->groupBy('lot_id');
-        $receivingLocations = Records::receiptLocations($chapterId, 'po');
         $commitments = PurchaseOrderLine::whereIn('variant_id', $variants->keys())->where('outstanding_quantity', '>', 0)
             ->whereHas('purchaseOrder', fn (Builder $query) => $query->where('chapter_id', $chapterId)->whereIn('status', Records::OPEN_PO))
             ->with('purchaseOrder')->orderBy('id')->get()->groupBy('variant_id');
+        $receivingLocations = Records::receipts($chapterId, 'po')
+            ->whereIn('source_line_id', $commitments->collapse()->pluck('id'))
+            ->orderBy('id')->get()->groupBy('source_line_id')
+            ->map(fn (Collection $receipts) => $receipts->sortByDesc(fn ($receipt) => $receipt->receivingReport->posted_at)
+                ->first()->receivingReport->location_id);
         $rfLocations = $filters['location_id'] === null ? null : Records::rfLinesAtLocation($chapterId, $filters['location_id']);
         $demand = Records::rfLines($chapterId)->whereIn('variant_id', $variants->keys())
             ->when($rfLocations !== null, fn (Builder $query) => $query->whereIn('id', array_keys($rfLocations ?? [])))
@@ -148,14 +152,18 @@ final class InventoryReport
 
             foreach ($commitments->get($variant->id, collect()) as $line) {
                 $po = $line->purchaseOrder;
-                $location = $locations->get($receivingLocations->get($po->id)?->first())
-                    ?? Records::deliveryLocation($po->delivery_location, $locations)
-                    ?? ($filters['location_id'] === null && $stockrooms->count() === 1 ? $stockrooms->first() : null);
+                $destination = Records::deliveryLocation($po->delivery_location, $locations)
+                    ?? $locations->get($receivingLocations->get($line->id));
+                $location = $destination ?? ($filters['location_id'] === null ? $reportingLocation ?? $locations->first() : null);
                 if ($location === null || ($filters['location_id'] !== null && $filters['location_id'] !== $location->id)) {
                     continue;
                 }
-                $key = "$variant->id|$location->id|inbound";
+                $key = $destination === null ? "$variant->id|unassigned-inbound" : "$variant->id|$location->id|inbound";
                 $rows[$key] ??= $this->row($variant, $location, $thresholds, $breaches, custody: 'inbound');
+                if ($destination === null) {
+                    // shortcut: chapter-only inbound uses a reporting location ID until the contract permits a null destination.
+                    $rows[$key]['location_name'] = 'Chapter inbound (destination unassigned)';
+                }
                 $rows[$key]['inbound_open_po'] = BcMath::add($rows[$key]['inbound_open_po'], $line->outstanding_quantity);
             }
         }

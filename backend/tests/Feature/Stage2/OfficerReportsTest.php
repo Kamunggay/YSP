@@ -127,11 +127,19 @@ class OfficerReportsTest extends TestCase
         ]);
         $history(1);
         $history(2);
+        $stockroom = CatalogueLocation::create(['chapter_id' => $chapter->id, 'code' => 'PRIMARY', 'name' => 'Primary warehouse']);
+        CatalogueLocation::create(['chapter_id' => $chapter->id, 'code' => 'ANNEX', 'name' => 'Annex']);
         $base = "/api/v1/chapters/{$chapter->id}/reports";
         $period = 'date_from=2026-11-01&date_to=2026-11-30';
         $control = "$base/control?$period&limit=1";
         $procurement = "$base/procurement?$period&limit=1";
         $this->asBrowserOfficer($officer->id);
+
+        $this->get("$base/inventory?$period")->assertOk()
+            ->assertJsonPath('data.0.custody', 'inbound')
+            ->assertJsonPath('data.0.location_name', 'Chapter inbound (destination unassigned)')
+            ->assertJsonPath('data.0.inbound_open_po', '1');
+        $this->get("$base/inventory?$period&location_id={$stockroom->id}")->assertOk()->assertJsonCount(0, 'data');
 
         $exceptions = collect($this->get("$base/control?$period")->assertOk()->json('overdue_exceptions'))->keyBy('exception_kind');
         $this->assertSame(3, $exceptions['overdue_repf_approval']['overdue_hours']);

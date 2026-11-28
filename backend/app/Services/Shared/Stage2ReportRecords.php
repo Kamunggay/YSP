@@ -6,7 +6,6 @@ use App\Models\CatalogueLocation;
 use App\Models\CatalogueVariant;
 use App\Models\InternalRfLine;
 use App\Models\PolicyRecord;
-use App\Models\ReceivingReport;
 use App\Models\ReceivingReportLine;
 use App\Services\Authority\ChapterAuthority;
 use Brick\Math\BigDecimal;
@@ -70,11 +69,11 @@ final class Stage2ReportRecords
             ->with('receivingReport');
     }
 
-    public static function receiptLocations(string $chapterId, string $source): Collection
+    public static function poReceiptLocations(string $chapterId, Collection $variantIds): Collection
     {
-        return ReceivingReport::where('chapter_id', $chapterId)->where('source_kind', $source)->where('status', 'posted')
-            ->orderByDesc('posted_at')->orderBy('id')->get(['id', 'source_id', 'location_id'])
-            ->groupBy('source_id')->map(fn (Collection $reports) => $reports->pluck('location_id')->unique()->values());
+        return self::receipts($chapterId, 'po')->whereIn('variant_id', $variantIds)->orderBy('id')->get()
+            ->sortByDesc(fn ($line) => $line->receivingReport->posted_at)->groupBy('receivingReport.source_id')
+            ->map(fn (Collection $lines) => $lines->pluck('receivingReport.location_id')->unique()->values());
     }
 
     public static function policy(string $chapterId, string $code, string $owner, string $schema, CarbonImmutable $at): ?array
