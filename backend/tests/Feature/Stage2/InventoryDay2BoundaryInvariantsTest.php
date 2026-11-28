@@ -41,8 +41,11 @@ class InventoryDay2BoundaryInvariantsTest extends TestCase
         $validatePy = file_get_contents(base_path('../contracts/stage2/validate.py'));
 
         $this->assertNotFalse($handoffYaml);
+        $handoffYaml = str_replace("\r\n", "\n", $handoffYaml);
         $this->assertNotFalse($eventsYaml);
+        $eventsYaml = str_replace("\r\n", "\n", $eventsYaml);
         $this->assertNotFalse($openapiYaml);
+        $openapiYaml = str_replace("\r\n", "\n", $openapiYaml);
         $this->assertNotFalse($validatePy);
 
         $this->assertStringContainsString('/apply-lot-restriction', $validatePy);

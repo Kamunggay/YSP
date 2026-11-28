@@ -94,6 +94,7 @@ class RequisitionIssueService
                 throw new ContractException(409, 'already_posted', 'Actual issue is already posted.', [
                     'failed_intent_committed' => false,
                     'current' => $this->formatIssue($lockedIssue),
+                    'setup_blockers' => [],
                 ]);
             }
 
@@ -249,9 +250,10 @@ class RequisitionIssueService
                     /** @var InventoryLot|null $lot */
                     $lot = $issueLots->get($line->lot_id);
                     if ($lot && (! ($lot->immediately_allocatable ?? true) || ($rf && ! DonationRestrictionSupport::allowsRf($lot->segments ?? [], $rf)))) {
-                        throw new ContractException(409, 'restriction_unsupported', 'Lot restrictions exclude this requisition.', [
+                        throw new ContractException(409, 'stock_ineligible', 'Lot restrictions exclude this requisition.', [
                             'failed_intent_committed' => false,
                             'current' => $this->formatIssue($lockedIssue),
+                            'setup_blockers' => [],
                         ]);
                     }
                 }

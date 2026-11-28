@@ -2,6 +2,7 @@
 
 namespace App\Services\Inventory\Participants;
 
+use App\Exceptions\ContractException;
 use App\Http\Requests\AuthInput;
 use App\Models\CatalogueItem;
 use App\Models\CatalogueLocation;
@@ -18,10 +19,8 @@ use App\Models\InventoryPosting;
 use App\Models\PolicyRecord;
 use App\Models\User;
 use App\Services\Authority\ChapterAuthority;
-use App\Services\Evidence\PaperEvidenceStore;
-use App\Services\Notifications\DomainNotificationOutboxService;
+use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Shared\BcMath;
-use App\Services\Shared\CanonicalJson;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
@@ -77,19 +76,14 @@ class PrepareReceivingInventoryParticipant
         'resolves_discrepancy_id',
     ];
 
-    public function __construct(
-        private PaperEvidenceStore $evidenceStore,
-        private ?DomainNotificationOutboxService $outbox = null,
-    ) {
-        $this->outbox ??= app(DomainNotificationOutboxService::class);
-    }
+    public function __construct(private CheckEvidenceBindingParticipant $evidence) {}
 
     /**
      * Synchronous internal Stage 2 receiving-posting participant (PrepareReceivingInventoryInput -> PrepareReceivingInventoryResult).
      * Runs strictly inside Leader's single outer database transaction and exposes zero HTTP routes.
      *
      * @param  array<string, mixed>  $input
-     * @param  array<string, mixed>  $sourceContext
+     * @param  array<string, mixed>  $sourceContext  Locked source lines and canonical inspected RM snapshot from the caller.
      * @return array<string, mixed>
      */
     public function prepare(array $input, array $sourceContext, ?CarbonInterface $postedAt = null): array
@@ -108,7 +102,6 @@ class PrepareReceivingInventoryParticipant
         $sourceKind = $input['source_kind'];
         $rmId = $input['rm_id'];
         $rmReference = $input['rm_reference'];
-        $rmMaterialVersion = (int) $input['rm_material_version'];
         $expectedStockVersion = (int) $input['current_stock_version'];
 
         if (! $this->verifyActorAuthority($chapterId, $actorId)) {
@@ -128,7 +121,7 @@ class PrepareReceivingInventoryParticipant
             return $this->reject('stale_version');
         }
 
-        $evidenceError = $this->verifyEvidenceAcknowledgment($chapterId, $sourceKind, $rmId, $input['acknowledgment']);
+        $evidenceError = $this->verifyEvidenceAcknowledgment($input, $sourceContext['snapshot'] ?? null);
         if ($evidenceError !== null) {
             return $this->reject($evidenceError);
         }
@@ -245,16 +238,6 @@ class PrepareReceivingInventoryParticipant
         $sourceLineUpdates = $this->buildSourceLineUpdates($sourceContext, $sourceDeltas, $sourceKind);
 
         $this->assertLotConservation($usableLots, $nonUsableLots, $planned['totals']);
-
-        foreach (array_merge($usableLots, $nonUsableLots) as $postedLot) {
-            $this->outbox->recordIntent(
-                'stage1.stock-lot.changed.v1',
-                $chapterId,
-                $postedLot['lot_id'],
-                $nextStockVersion,
-                $rmMaterialVersion,
-            );
-        }
 
         return [
             'outcome' => 'ready',
@@ -433,71 +416,48 @@ class PrepareReceivingInventoryParticipant
         return null;
     }
 
-    private function verifyEvidenceAcknowledgment(string $chapterId, string $sourceKind, string $rmId, array $ack): ?string
+    private function verifyEvidenceAcknowledgment(array $input, mixed $snapshot): ?string
     {
-        $expectedKeys = ['acknowledgment_id', 'matched_by', 'matched_at', 'recipient_id', 'acknowledged_at', 'snapshot', 'bytes'];
-        if (! $this->hasExactKeys($ack, $expectedKeys)
-            || ! $this->isUuid($ack['acknowledgment_id'])
-            || ! $this->isUuid($ack['matched_by'])
-            || ($ack['recipient_id'] ?? null) !== null) {
+        $ack = $input['acknowledgment'];
+        $purpose = $input['source_kind'] === 'po_rm' ? 'po_supplier_dr' : 'da_receipt';
+        if (! $this->hasExactKeys($ack, ['acknowledgment_id', 'matched_by', 'matched_at', 'recipient_id', 'acknowledged_at', 'snapshot', 'bytes'])
+            || ! is_array($snapshot)
+            || ($snapshot['target']['purpose'] ?? null) !== $purpose
+            || ($snapshot['target']['record_id'] ?? null) !== $input['rm_id']
+            || ($snapshot['material_version'] ?? null) !== $input['rm_material_version']
+            || ! is_string($snapshot['sha256'] ?? null)
+            || preg_match('/^[a-f0-9]{64}$/', $snapshot['sha256']) !== 1
+            || ! $this->isUuid($ack['acknowledgment_id'] ?? null)
+            || ! $this->isUuid($ack['matched_by'] ?? null)
+            || $ack['recipient_id'] !== null
+            || ! is_array($ack['bytes'] ?? null)) {
             return 'evidence_mismatch';
         }
 
-        $expectedPurpose = $sourceKind === 'po_rm' ? 'po_supplier_dr' : 'da_receipt';
-        $snap = $ack['snapshot'] ?? null;
-        $bytes = $ack['bytes'] ?? null;
-        if (! is_array($snap) || ! is_array($bytes)
-            || ! $this->hasExactKeys($snap, ['target', 'material_version', 'sha256'])
-            || ! is_array($snap['target'])
-            || ! $this->hasExactKeys($snap['target'], ['purpose', 'record_id'])
-            || ($snap['target']['purpose'] ?? null) !== $expectedPurpose
-            || ($snap['target']['record_id'] ?? null) !== $rmId
-            || ! is_int($snap['material_version'] ?? null)
-            || $snap['material_version'] < 1
-            || ! is_string($snap['sha256'] ?? null)
-            || preg_match('/^[a-f0-9]{64}$/', $snap['sha256']) !== 1
-            || ! $this->isUuid($bytes['evidence_id'] ?? null)
-            || ! $this->isUuid($bytes['version_id'] ?? null)) {
+        $evidenceId = $ack['bytes']['evidence_id'] ?? null;
+        if (! $this->isUuid($evidenceId)) {
             return 'evidence_mismatch';
         }
 
-        $record = EvidenceRecord::where('chapter_id', $chapterId)
-            ->whereKey($bytes['evidence_id'])
-            ->sharedLock()
-            ->first();
-        if (! $record) {
+        $technicalState = EvidenceRecord::where('chapter_id', $input['chapter_id'])
+            ->whereKey($evidenceId)->sharedLock()->value('technical_state');
+        if ($technicalState === null) {
             return 'evidence_missing';
         }
-        if ($record->technical_state !== 'ready') {
+        if ($technicalState !== 'ready') {
             return 'evidence_invalid';
         }
-        if ($record->purpose !== $expectedPurpose || $record->record_id !== $rmId) {
-            return 'evidence_mismatch';
-        }
 
-        $blobs = $record->exactVersion($bytes['version_id']);
-        if ($blobs->isEmpty()) {
-            return 'evidence_missing';
-        }
+        try {
+            $this->evidence->verifyMatch(
+                $input['chapter_id'], $input['actor_id'], $snapshot, $ack['bytes'], $ack, null,
+            );
+        } catch (ContractException $exception) {
+            if ($exception->statusCode !== 409) {
+                throw $exception;
+            }
 
-        [, $storeError] = $this->evidenceStore->checkVersion($blobs);
-        if ($storeError !== null) {
-            return $storeError === 'object_missing' ? 'evidence_missing' : 'evidence_invalid';
-        }
-
-        $current = $record->currentVersionBlob();
-        if ($current && $record->versionId($current) !== $bytes['version_id']) {
-            return 'evidence_mismatch';
-        }
-
-        $actualBinding = [
-            'evidence_id' => $record->id,
-            'version_id' => $bytes['version_id'],
-            'attachments' => $blobs->map(fn ($b) => ['attachment_id' => $b->id, 'sha256' => $b->sha256_hash])->all(),
-        ];
-
-        if (CanonicalJson::encode($actualBinding) !== CanonicalJson::encode($bytes)) {
-            return 'evidence_mismatch';
+            return $exception->errorCode;
         }
 
         return null;
@@ -564,6 +524,16 @@ class PrepareReceivingInventoryParticipant
                 return ['rejected_reason' => 'source_not_eligible'];
             }
             $srcLine = $sourceLines[$sourceLineId];
+
+            if ($input['source_kind'] === 'da_rm') {
+                $restrictions = $srcLine['restrictions'] ?? null;
+                if (! DonationRestrictionSupport::isValid($restrictions)
+                    || ! DonationRestrictionSupport::equals($restrictions, $ln['restrictions'])) {
+                    return ['rejected_reason' => 'source_not_eligible'];
+                }
+
+                $ln['restrictions'] = $restrictions;
+            }
 
             // Detect substitution against the locked PO/DA line before version checks.
             if (($srcLine['variant_id'] ?? null) !== $ln['variant_id'] || ($srcLine['unit_id'] ?? null) !== $ln['unit_id']) {
@@ -722,8 +692,13 @@ class PrepareReceivingInventoryParticipant
             'source_type' => $input['source_kind'],
             'source_id' => $input['rm_id'],
             'source_reference' => $input['rm_reference'],
-            'source_doc_id' => $input['source_id'],
-            'source_line_id' => $ln['source_line_id'],
+            'source_kind' => $input['source_kind'],
+            'origin_source_id' => $input['source_id'],
+            'origin_source_line_id' => $ln['source_line_id'],
+            'origin_source_reference' => $input['source_reference'],
+            'donor_name' => $input['donor_name'],
+            'restriction_state' => $ln['restrictions']['state'],
+            'restrictions_json' => $ln['restrictions'],
             'rm_line_id' => $ln['rm_line_id'],
             'created_at' => $commitTime,
             'updated_at' => $commitTime,
@@ -745,8 +720,13 @@ class PrepareReceivingInventoryParticipant
             'source_ipc_id' => null,
             'source_ipc_line_id' => null,
             'rm_line_id' => $ln['rm_line_id'],
-            'source_doc_id' => $input['source_id'],
-            'source_line_id' => $ln['source_line_id'],
+            'source_kind' => $input['source_kind'],
+            'origin_source_id' => $input['source_id'],
+            'origin_source_line_id' => $ln['source_line_id'],
+            'origin_source_reference' => $input['source_reference'],
+            'origin_source_material_version' => $input['source_material_version'],
+            'restrictions_json' => $ln['restrictions'],
+            'immediately_allocatable' => $immediatelyAllocatable,
             'lot_id' => $lotId,
             'rm_reference' => $input['rm_reference'],
             'rm_material_version' => (int) $input['rm_material_version'],

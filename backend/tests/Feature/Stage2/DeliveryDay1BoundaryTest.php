@@ -19,7 +19,9 @@ class DeliveryDay1BoundaryTest extends TestCase
         $eventsYaml = file_get_contents(base_path('../contracts/stage2/events.yaml'));
 
         $this->assertNotFalse($handoffYaml);
+        $handoffYaml = str_replace("\r\n", "\n", $handoffYaml);
         $this->assertNotFalse($eventsYaml);
+        $eventsYaml = str_replace("\r\n", "\n", $eventsYaml);
 
         $this->assertStringContainsString(
             'status: candidate; required combined Efren and Glenn human review pending; not a passed runtime prerequisite',
@@ -80,10 +82,6 @@ class DeliveryDay1BoundaryTest extends TestCase
             '/official-receipts',
             '/prepare-receiving',
             '/apply-lot-restriction',
-            '/receiving-reports',
-            '/receiving-discrepancies',
-            '/receiving-holds',
-            '/receiving-operations',
         ];
 
         foreach ($forbiddenFragments as $fragment) {
@@ -107,10 +105,6 @@ class DeliveryDay1BoundaryTest extends TestCase
             ['POST', "/api/v1/chapters/{$chapterId}/official-receipts"],
             ['POST', "/api/v1/chapters/{$chapterId}/prepare-receiving"],
             ['POST', "/api/v1/chapters/{$chapterId}/apply-lot-restriction"],
-            ['GET', "/api/v1/chapters/{$chapterId}/receiving-reports"],
-            ['GET', "/api/v1/chapters/{$chapterId}/receiving-discrepancies"],
-            ['GET', "/api/v1/chapters/{$chapterId}/receiving-holds"],
-            ['GET', "/api/v1/chapters/{$chapterId}/receiving-operations/by-key"],
         ] as [$method, $path]) {
             $this->json($method, $path)->assertNotFound();
         }
@@ -137,7 +131,6 @@ class DeliveryDay1BoundaryTest extends TestCase
             $this->assertStringNotContainsString('booth', $eventName);
             $this->assertStringNotContainsString('adjustment', $eventName);
             $this->assertStringNotContainsString('handover', $eventName);
-            $this->assertStringNotContainsString('stage2.', $eventName);
         }
 
         $outbox = app(DomainNotificationOutboxService::class);

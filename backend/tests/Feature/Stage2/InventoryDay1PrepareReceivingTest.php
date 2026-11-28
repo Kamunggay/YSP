@@ -9,6 +9,7 @@ use App\Models\CatalogueVariant;
 use App\Models\Chapter;
 use App\Models\ChapterMembership;
 use App\Models\ChapterOpeningGuard;
+use App\Models\DomainNotificationOutbox;
 use App\Models\DutyGrant;
 use App\Models\EvidenceBlob;
 use App\Models\EvidenceRecord;
@@ -197,6 +198,7 @@ class InventoryDay1PrepareReceivingTest extends TestCase
         ]);
 
         $sourceContext = [
+            'snapshot' => $input['acknowledgment']['snapshot'],
             'source_status' => 'issued',
             'source_material_version' => 2,
             'lines' => [
@@ -279,6 +281,7 @@ class InventoryDay1PrepareReceivingTest extends TestCase
         ]);
 
         $ctx1 = [
+            'snapshot' => $input1['acknowledgment']['snapshot'],
             'source_status' => 'issued',
             'source_material_version' => 2,
             'lines' => [
@@ -329,7 +332,7 @@ class InventoryDay1PrepareReceivingTest extends TestCase
             ],
         ];
 
-        $res2 = DB::transaction(fn () => app(PrepareReceivingInventoryParticipant::class)->prepare($input2, $ctx2));
+        $res2 = DB::transaction(fn () => app(PrepareReceivingInventoryParticipant::class)->prepare($input2, ['snapshot' => $input2['acknowledgment']['snapshot']] + $ctx2));
         $this->assertSame('ready', $res2['outcome']);
         $this->assertSame(3, $res2['stock_version']);
         $this->assertSame('receiving_complete', $res2['source_line_updates'][0]['new_source_status']);
@@ -359,6 +362,7 @@ class InventoryDay1PrepareReceivingTest extends TestCase
         // 1. Overdelivery (65 accepted against 60 remaining) -> substitution_or_overdelivery_blocked.
         $rmOver = (string) Str::uuid();
         $ackOver = $this->seedEvidenceAcknowledgment($rmOver, 'po_supplier_dr');
+        $baseContext['snapshot'] = $ackOver['snapshot'];
         $res = $this->runParticipant(
             $this->makePoInput($rmOver, 'RM-2026-0099', $sourceId, 'PO-2026-0001', 1, $ackOver, [
                 $this->makePoLine((string) Str::uuid(), $sourceLineId, $this->variantPcsId, $this->unitPcsId, 0, 'Chapter Shirt / Medium', '65', '65', '0', '0', '240.00'),
@@ -392,6 +396,7 @@ class InventoryDay1PrepareReceivingTest extends TestCase
                 $this->makePoLine((string) Str::uuid(), $kgLineId, $this->variantKgId, $this->unitKgId, 3, 'Rice Bulk', '1.2345', '1.2345', '0.000', '0.000', '10.00'),
             ]),
             [
+                'snapshot' => $ackOver['snapshot'],
                 'source_status' => 'issued',
                 'source_material_version' => 2,
                 'lines' => [
@@ -418,6 +423,21 @@ class InventoryDay1PrepareReceivingTest extends TestCase
             $baseContext
         );
         $this->assertSame(['outcome' => 'rejected', 'reason' => 'evidence_mismatch'], $resEvMismatch);
+
+        foreach (['material_version' => 2, 'sha256' => str_repeat('a', 64)] as $key => $value) {
+            $staleAck = $ackOver;
+            $staleAck['snapshot'][$key] = $value;
+            $result = $this->runParticipant(
+                $this->makePoInput($rmOver, 'RM-2026-0099', $sourceId, 'PO-2026-0001', 1, $staleAck, [
+                    $this->makePoLine((string) Str::uuid(), $sourceLineId, $this->variantPcsId, $this->unitPcsId, 0, 'Chapter Shirt / Medium', '10', '10', '0', '0', '240.00'),
+                ]),
+                $baseContext
+            );
+            $this->assertSame(['outcome' => 'rejected', 'reason' => 'evidence_mismatch'], $result);
+        }
+
+        $this->assertSame(1, (int) ChapterOpeningGuard::where('chapter_id', $this->chapterId)->value('stock_version'));
+        $this->assertSame(0, DomainNotificationOutbox::count());
 
         // 6. Setup blocked (remove valuation_rounding policy).
         PolicyRecord::where('chapter_id', $this->chapterId)->where('policy_code', 'valuation_rounding')->delete();

@@ -1249,10 +1249,13 @@ class ReservationService
             || LotRestrictionAssignment::where('lot_id', $lot->id)->exists()) {
             throw new ContractException(409, 'restriction_unsupported', 'restriction unsupported', [
                 'failed_intent_committed' => false,
+                'setup_blockers' => [],
                 'current' => [
                     'rf' => null,
                     'preparation' => null,
                     'reservation' => $ignoreReservation ? $this->formatReservation($ignoreReservation) : null,
+                    'hold' => null,
+                    'review' => null,
                 ],
             ]);
         }

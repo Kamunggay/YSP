@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\Evidence\PaperEvidenceStore;
 use App\Services\Inventory\Participants\PrepareReceivingInventoryParticipant;
 use App\Services\Inventory\StockViewQueryService;
+use App\Services\Shared\BcMath;
 use App\Services\Shared\ReferenceSequenceService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -213,6 +214,7 @@ class InventoryDay3PoReceivingAcceptanceTest extends TestCase
                 $this->makePoLine((string) Str::uuid(), $poLineId, '50', '40', '0', '10', '240.00', '10 shirts rejected at dock.'),
             ]),
             [
+                'snapshot' => $ack1['snapshot'],
                 'source_status' => 'issued',
                 'source_material_version' => 2,
                 'lines' => [
@@ -239,6 +241,7 @@ class InventoryDay3PoReceivingAcceptanceTest extends TestCase
         $rm2Id = (string) Str::uuid();
         $ack2 = $this->seedPngEvidenceAcknowledgment($rm2Id, 'po_supplier_dr', $this->custodianId);
         $ctxPartial = [
+            'snapshot' => $ack2['snapshot'],
             'source_status' => 'partially_received',
             'source_material_version' => 2,
             'open_discrepancy_ids' => [$discrepancyId],
@@ -317,12 +320,15 @@ class InventoryDay3PoReceivingAcceptanceTest extends TestCase
             ])->assertStatus(201)->json('data.result');
 
         // Repeated signed partial issues: 15 then 10.
-        $this->prepareAcknowledgeAndPostIssue($rfId, $rfLineId, $reservation, $lot1, '0', '15');
+        $firstAcknowledgment = $this->prepareAcknowledgeAndPostIssue($rfId, $rfLineId, $reservation, $lot1, '0', '15');
+        $line = InternalRf::findOrFail($rfId)->lines()->findOrFail($rfLineId);
+        $this->assertSame('10', BcMath::format(BcMath::sub($line->approved_quantity, $line->issued_quantity), 0));
         $resUpdated = $this->asBrowserOfficer($this->custodianId)
             ->getJson("/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rfId}/reservations/{$reservation['id']}")
             ->assertOk()->json('data');
         $lot1->refresh();
-        $this->prepareAcknowledgeAndPostIssue($rfId, $rfLineId, $resUpdated, $lot1, '15', '10');
+        $this->prepareAcknowledgeAndPostIssue($rfId, $rfLineId, $resUpdated, $lot1, '15', '10', $firstAcknowledgment);
+        $this->assertSame('25', BcMath::format($line->refresh()->issued_quantity, 0));
 
         $viewsFinal = app(StockViewQueryService::class)->getSevenViews($this->chapterId, $this->variantPcsId, 0);
         $this->assertSame('75', $viewsFinal['usable_stockroom_on_hand']['quantity']);
@@ -337,7 +343,9 @@ class InventoryDay3PoReceivingAcceptanceTest extends TestCase
         $openapiYaml = file_get_contents(base_path('../contracts/stage2/openapi.yaml'));
         $handoffYaml = file_get_contents(base_path('../contracts/stage2/handoff.yaml'));
         $this->assertNotFalse($openapiYaml);
+        $openapiYaml = str_replace("\r\n", "\n", $openapiYaml);
         $this->assertNotFalse($handoffYaml);
+        $handoffYaml = str_replace("\r\n", "\n", $handoffYaml);
 
         $queuePos = strpos($openapiYaml, "    AllocationQueueList:\n");
         $this->assertNotFalse($queuePos);
@@ -386,8 +394,9 @@ class InventoryDay3PoReceivingAcceptanceTest extends TestCase
         array $reservation,
         InventoryLot $lot,
         string $offset,
-        string $qty
-    ): void {
+        string $qty,
+        ?string $otherAcknowledgment = null,
+    ): string {
         $rf = InternalRf::findOrFail($rfId);
         $lot->refresh();
 
@@ -428,30 +437,63 @@ class InventoryDay3PoReceivingAcceptanceTest extends TestCase
                 'matches_paper' => true,
             ])->assertOk()->json('data.result');
 
-        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())
-            ->postJson("/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue['id']}/post", [
-                'expected_version' => $matched['version'],
-                'expected_material_version' => $matched['material_version'],
-                'expected_rf_version' => $rf->version,
-                'expected_rf_material_version' => $rf->material_version,
-                'expected_rf_progress_version' => $rf->progress_version,
-                'acknowledgment_id' => $matched['acknowledgment']['acknowledgment_id'],
-                'current_sources' => [[
-                    'reservation_id' => $reservation['id'],
-                    'expected_version' => $reservation['version'],
-                    'expected_material_version' => $reservation['material_version'],
-                    'targets' => [[
-                        'stock_lot_id' => $lot->id,
-                        'basis_segment_id' => $lot->basis_segment_id,
-                        'offset_quantity' => $offset,
-                        'quantity' => $qty,
-                        'expected_lot_material_version' => $lot->material_version,
-                        'expected_stock_version' => $lot->stock_version,
-                    ]],
+        $postUrl = "/api/v1/chapters/{$this->chapterId}/actual-issues/{$issue['id']}/post";
+        $payload = [
+            'expected_version' => $matched['version'],
+            'expected_material_version' => $matched['material_version'],
+            'expected_rf_version' => $rf->version,
+            'expected_rf_material_version' => $rf->material_version,
+            'expected_rf_progress_version' => $rf->progress_version,
+            'acknowledgment_id' => $matched['acknowledgment']['acknowledgment_id'],
+            'current_sources' => [[
+                'reservation_id' => $reservation['id'],
+                'expected_version' => $reservation['version'],
+                'expected_material_version' => $reservation['material_version'],
+                'targets' => [[
+                    'stock_lot_id' => $lot->id,
+                    'basis_segment_id' => $lot->basis_segment_id,
+                    'offset_quantity' => $offset,
+                    'quantity' => $qty,
+                    'expected_lot_material_version' => $lot->material_version,
+                    'expected_stock_version' => $lot->stock_version,
                 ]],
-            ])->assertOk()->assertJsonPath('status', 'posted');
+            ]],
+        ];
 
-        $this->assertGreaterThan(0, InventoryMovement::where('lot_id', $lot->id)->count());
+        $movementCount = InventoryMovement::count();
+        $onHand = $lot->quantity_on_hand;
+        if ($otherAcknowledgment !== null) {
+            $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())
+                ->postJson($postUrl, array_replace($payload, ['acknowledgment_id' => $otherAcknowledgment]))
+                ->assertStatus(409)
+                ->assertJsonPath('error.code', 'evidence_mismatch')
+                ->assertJsonPath('failed_intent_committed', false);
+            $this->assertSame($onHand, $lot->refresh()->quantity_on_hand);
+            $this->assertSame($movementCount, InventoryMovement::count());
+        }
+
+        $postKey = (string) Str::uuid();
+        $posted = $this->asBrowserOfficer($this->custodianId, $postKey)
+            ->postJson($postUrl, $payload)
+            ->assertOk()->assertHeader('X-Action-Replayed', 'false')
+            ->assertJsonPath('status', 'posted');
+        $postedOnHand = $lot->refresh()->quantity_on_hand;
+        $this->assertSame($movementCount + 1, InventoryMovement::count());
+
+        $this->asBrowserOfficer($this->custodianId, $postKey)
+            ->postJson($postUrl, $payload)
+            ->assertOk()->assertHeader('X-Action-Replayed', 'true')
+            ->assertExactJson($posted->json());
+        $this->assertSame($postedOnHand, $lot->refresh()->quantity_on_hand);
+        $this->assertSame($movementCount + 1, InventoryMovement::count());
+
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())
+            ->postJson($postUrl, $payload)
+            ->assertStatus(409)->assertJsonPath('error.code', 'already_posted');
+        $this->assertSame($postedOnHand, $lot->refresh()->quantity_on_hand);
+        $this->assertSame($movementCount + 1, InventoryMovement::count());
+
+        return $payload['acknowledgment_id'];
     }
 
     /** @return array<string, mixed> */

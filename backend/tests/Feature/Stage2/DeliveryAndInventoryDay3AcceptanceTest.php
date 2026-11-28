@@ -261,12 +261,13 @@ class DeliveryAndInventoryDay3AcceptanceTest extends TestCase
                 ],
             ],
             [
+                'snapshot' => $ack['snapshot'],
                 'source_status' => 'acknowledged',
                 'source_material_version' => 1,
                 'lines' => [
-                    $lineUnrestrictedId => ['variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '10'],
-                    $lineBoundedId => ['variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '20'],
-                    $lineUninterpretedId => ['variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '15'],
+                    $lineUnrestrictedId => ['restrictions' => $unrestricted, 'variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '10'],
+                    $lineBoundedId => ['restrictions' => $boundedUnitA, 'variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '20'],
+                    $lineUninterpretedId => ['restrictions' => $uninterpreted, 'variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '15'],
                 ],
             ]
         ));
@@ -336,7 +337,7 @@ class DeliveryAndInventoryDay3AcceptanceTest extends TestCase
                 'expected_rf_progress_version' => 1,
             ])->assertStatus(409)->assertJsonPath('error.code', 'restriction_unsupported');
 
-        // 3. Unit A reserves [0, 5) on boundedLot; then restriction resolution narrows boundedLot to Unit B -> ActualIssue::post refuses (409 restriction_unsupported).
+        // The current restriction is rechecked when the previously reserved lot is issued.
         $rfAResBounded = $this->reserveViaHttp($rfA, $rfA['lines'][0]['id'], $boundedLot, '0', '5');
         $rfAFresh = InternalRf::with('lines')->findOrFail($rfA['id']);
 
@@ -417,7 +418,7 @@ class DeliveryAndInventoryDay3AcceptanceTest extends TestCase
                         'expected_stock_version' => $boundedLot->stock_version,
                     ]],
                 ]],
-            ])->assertStatus(409)->assertJsonPath('error.code', 'restriction_unsupported');
+            ])->assertStatus(409)->assertJsonPath('error.code', 'stock_ineligible')->assertJsonPath('setup_blockers', []);
 
         // 4. Resolve uninterpretedLot -> bounded for Unit A with an independent hold [0, 5), reserve [5, 15), and post 2 partial actual issues (4 + 6).
         app(ReservationService::class)->placeHold($this->chapterId, $this->custodianId, [

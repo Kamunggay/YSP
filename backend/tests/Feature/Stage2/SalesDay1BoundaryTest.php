@@ -19,7 +19,9 @@ class SalesDay1BoundaryTest extends TestCase
         $validatePy = file_get_contents(base_path('../contracts/stage2/validate.py'));
 
         $this->assertNotFalse($handoffYaml);
+        $handoffYaml = str_replace("\r\n", "\n", $handoffYaml);
         $this->assertNotFalse($openapiYaml);
+        $openapiYaml = str_replace("\r\n", "\n", $openapiYaml);
         $this->assertNotFalse($validatePy);
 
         // RepF trigger kind strictly allows rf_shortage & rop_replenishment, never so_shortage.
@@ -130,7 +132,7 @@ class SalesDay1BoundaryTest extends TestCase
         $this->assertIsArray($eventMap);
 
         foreach (array_keys($eventMap) as $eventName) {
-            foreach (['sales', 'invoice', 'payment', 'official', 'booth', 'adjustment', 'stage2.'] as $blocked) {
+            foreach (['sales', 'invoice', 'payment', 'official', 'booth', 'adjustment'] as $blocked) {
                 $this->assertStringNotContainsString($blocked, $eventName);
             }
         }

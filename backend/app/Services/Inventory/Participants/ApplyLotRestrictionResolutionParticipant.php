@@ -3,9 +3,6 @@
 namespace App\Services\Inventory\Participants;
 
 use App\Models\InventoryLot;
-use App\Models\StockReservation;
-use App\Services\Inventory\ReservationService;
-use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\BcMath;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -20,12 +17,6 @@ class ApplyLotRestrictionResolutionParticipant
         'previous_restrictions',
         'restrictions',
     ];
-
-    public function __construct(
-        private ?DomainNotificationOutboxService $outbox = null,
-    ) {
-        $this->outbox ??= app(DomainNotificationOutboxService::class);
-    }
 
     /**
      * Synchronous internal Stage 2 participant (`applyLotRestrictionResolution`).
@@ -52,9 +43,9 @@ class ApplyLotRestrictionResolutionParticipant
 
         // Lock matching remaining stockroom lots deterministically in ascending lot UUID order.
         $lots = InventoryLot::where('chapter_id', $chapterId)
-            ->where('source_type', 'da_rm')
-            ->where('source_doc_id', $daId)
-            ->where('source_line_id', $daLineId)
+            ->where('source_kind', 'da_rm')
+            ->where('origin_source_id', $daId)
+            ->where('origin_source_line_id', $daLineId)
             ->where('custody', 'STOCKROOM')
             ->orderBy('id')
             ->lockForUpdate()
@@ -68,8 +59,8 @@ class ApplyLotRestrictionResolutionParticipant
             }
 
             if ($lot->chapter_id !== $chapterId
-                || $lot->source_doc_id !== $daId
-                || $lot->source_line_id !== $daLineId
+                || $lot->origin_source_id !== $daId
+                || $lot->origin_source_line_id !== $daLineId
                 || strtoupper((string) $lot->custody) !== 'STOCKROOM') {
                 return $this->rejectTargetLocked();
             }
@@ -132,6 +123,8 @@ class ApplyLotRestrictionResolutionParticipant
             /** @var InventoryLot $lot */
             $lot = $plan['lot'];
             $lot->segments = $plan['segments'];
+            $lot->restriction_state = $newRestrictions['state'];
+            $lot->restrictions_json = $newRestrictions;
             $lot->immediately_allocatable = strtoupper((string) $lot->condition) === 'USABLE'
                 && strtoupper((string) $lot->custody) === 'STOCKROOM'
                 && $newAllocatableState;
@@ -140,17 +133,7 @@ class ApplyLotRestrictionResolutionParticipant
             $lot->save();
 
             $updatedLotIds[] = $lot->id;
-
-            $this->outbox->recordIntent(
-                'stage1.stock-lot.changed.v1',
-                $chapterId,
-                $lot->id,
-                (int) $lot->stock_version,
-                (int) $lot->material_version,
-            );
         }
-
-        $this->refreshActiveReservationBlockedBalances($chapterId, $updatedLotIds);
 
         $updatedLotIds = array_values(array_unique($updatedLotIds));
         sort($updatedLotIds);
@@ -186,33 +169,10 @@ class ApplyLotRestrictionResolutionParticipant
             return false;
         }
 
-        return DonationRestrictionSupport::isValid($input['restrictions'] ?? null, ['bounded', 'unrestricted'], true);
-    }
+        $allowedStates = $input['previous_restrictions']['state'] === 'bounded'
+            ? ['bounded']
+            : ['bounded', 'unrestricted'];
 
-    /**
-     * Recompute derived reservation blocked balances without altering reservation statuses or holds.
-     *
-     * @param  list<string>  $lotIds
-     */
-    private function refreshActiveReservationBlockedBalances(string $chapterId, array $lotIds): void
-    {
-        $activeReservations = StockReservation::where('chapter_id', $chapterId)
-            ->where('status', 'ACTIVE')
-            ->where(function ($q) use ($lotIds) {
-                $q->whereIn('lot_id', $lotIds)
-                    ->orWhereHas('allocations', fn ($aq) => $aq->whereIn('lot_id', $lotIds));
-            })
-            ->lockForUpdate()
-            ->get();
-
-        if ($activeReservations->isEmpty()) {
-            return;
-        }
-
-        $reservationService = app(ReservationService::class);
-        foreach ($activeReservations as $reservation) {
-            $reservationService->syncReservationStateAndBlocked($reservation);
-            $reservation->save();
-        }
+        return DonationRestrictionSupport::isValid($input['restrictions'] ?? null, $allowedStates, true);
     }
 }

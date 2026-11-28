@@ -182,7 +182,7 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
         ]);
     }
 
-    public function test_da_rm_mixed_restrictions_sharing_sku_enforces_adr0004_blocking_and_emits_stock_lot_outbox(): void
+    public function test_da_rm_mixed_restrictions_sharing_sku_enforces_adr0004_blocking(): void
     {
         $daId = (string) Str::uuid();
         $daLineBoundedId = (string) Str::uuid();
@@ -219,10 +219,11 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
         ]);
 
         $sourceContext = [
+            'snapshot' => $ack['snapshot'],
             'source_status' => 'acknowledged',
             'source_material_version' => 1,
             'lines' => [
-                $daLineBoundedId => [
+                $daLineBoundedId => ['restrictions' => $boundedRestrictions,
                     'variant_id' => $this->variantPcsId,
                     'unit_id' => $this->unitPcsId,
                     'unit_valuation_php' => '200.00',
@@ -230,7 +231,7 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
                     'rejected_or_disputed_quantity' => '0',
                     'outstanding_quantity' => '20',
                 ],
-                $daLineUninterpretedId => [
+                $daLineUninterpretedId => ['restrictions' => $uninterpretedRestrictions,
                     'variant_id' => $this->variantPcsId,
                     'unit_id' => $this->unitPcsId,
                     'unit_valuation_php' => '200.00',
@@ -248,6 +249,14 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
                 ],
             ],
         ];
+
+        $mismatchedInput = $input;
+        $mismatchedInput['lines'][0]['restrictions'] = $uninterpretedRestrictions;
+        $rejected = DB::transaction(fn () => app(PrepareReceivingInventoryParticipant::class)->prepare($mismatchedInput, $sourceContext));
+        $this->assertSame(['outcome' => 'rejected', 'reason' => 'source_not_eligible'], $rejected);
+        $this->assertSame(0, InventoryLot::count());
+        $this->assertSame(0, InventoryMovement::count());
+        $this->assertSame(0, DomainNotificationOutbox::count());
 
         $committedAt = CarbonImmutable::parse('2026-11-27T10:20:00.000000Z');
         $result = DB::transaction(fn () => app(PrepareReceivingInventoryParticipant::class)->prepare($input, $sourceContext, $committedAt));
@@ -313,32 +322,7 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
             $this->assertSame('restriction_unsupported', $ex->errorCode);
         }
 
-        // Strict closed 8-field stage1.stock-lot.changed.v1 outbox intents co-emitted for every posted lot.
-        $outboxRows = DomainNotificationOutbox::where('chapter_id', $this->chapterId)
-            ->where('event_name', 'stage1.stock-lot.changed.v1')
-            ->get();
-        $this->assertCount(3, $outboxRows);
-        $this->assertEqualsCanonicalizing(
-            [$boundedLot['lot_id'], $uninterpretedLot['lot_id'], $quarantinedLot['lot_id']],
-            $outboxRows->pluck('resource_id')->all()
-        );
-        foreach ($outboxRows as $row) {
-            $this->assertSame("private-stage1.chapter.{$this->chapterId}", $row->channel_name);
-            $payload = $row->payload_json;
-            $this->assertEqualsCanonicalizing([
-                'event_name',
-                'event_id',
-                'committed_at',
-                'chapter_id',
-                'resource_kind',
-                'resource_id',
-                'resource_version',
-                'material_version',
-            ], array_keys($payload));
-            $this->assertSame('stock_lot', $payload['resource_kind']);
-            $this->assertSame(23, $payload['resource_version']);
-            $this->assertSame(1, $payload['material_version']);
-        }
+        $this->assertSame(0, DomainNotificationOutbox::where('event_name', 'stage1.stock-lot.changed.v1')->count());
     }
 
     public function test_da_rm_validation_and_atomic_rollback_on_outer_transaction_failure(): void
@@ -348,11 +332,23 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
         $rmId = (string) Str::uuid();
         $ack = $this->seedEvidenceAcknowledgment($rmId, 'da_receipt');
 
+        $sourceRestriction = [
+            'state' => 'uninterpreted',
+            'allowed_uses' => [],
+            'event_ids' => [],
+            'requesting_unit_ids' => [],
+            'effective_from' => null,
+            'effective_until' => null,
+            'interpretation_id' => null,
+            'source_condition_reference' => 'DA condition note',
+        ];
         $ctx = [
+            'snapshot' => $ack['snapshot'],
             'source_status' => 'acknowledged',
             'source_material_version' => 1,
             'lines' => [
                 $daLineId => [
+                    'restrictions' => $sourceRestriction,
                     'variant_id' => $this->variantPcsId,
                     'unit_id' => $this->unitPcsId,
                     'unit_valuation_php' => '200.00',
@@ -427,7 +423,7 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
         $this->assertSame(22, (int) ChapterOpeningGuard::where('chapter_id', $this->chapterId)->value('stock_version'));
     }
 
-    public function test_apply_lot_restriction_resolution_updates_matching_segments_preserves_holds_and_co_emits_outbox(): void
+    public function test_apply_lot_restriction_resolution_updates_matching_segments_and_preserves_holds(): void
     {
         $daId = (string) Str::uuid();
         $daLineBoundedId = (string) Str::uuid();
@@ -463,11 +459,12 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
                 $this->makeDaLine((string) Str::uuid(), $daLineUninterpretedId, '12', '10', '2', '0', '200.00', $uninterpretedRestrictions, '2 damaged transit shirts.'),
             ]),
             [
+                'snapshot' => $ack['snapshot'],
                 'source_status' => 'acknowledged',
                 'source_material_version' => 1,
                 'lines' => [
-                    $daLineBoundedId => ['variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '20'],
-                    $daLineUninterpretedId => ['variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '10'],
+                    $daLineBoundedId => ['restrictions' => $boundedRestrictions, 'variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '20'],
+                    $daLineUninterpretedId => ['restrictions' => $uninterpretedRestrictions, 'variant_id' => $this->variantPcsId, 'unit_id' => $this->unitPcsId, 'unit_valuation_php' => '200.00', 'accepted_quantity' => '0', 'rejected_or_disputed_quantity' => '0', 'outstanding_quantity' => '10'],
                 ],
             ]
         ));
@@ -581,11 +578,11 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
         $this->assertSame(24, (int) $freshLineCLot->stock_version);
         $this->assertSame('10.000000', (string) $freshLineCLot->quantity_on_hand);
         $this->assertSame('STOCKROOM', $freshLineCLot->custody);
-        $this->assertSame($resolvedBounded, $freshLineCLot->segments[0]['restrictions']);
+        $this->assertEquals($resolvedBounded, $freshLineCLot->segments[0]['restrictions']);
 
         $this->assertFalse($freshQuarantinedLot->immediately_allocatable);
         $this->assertSame(24, (int) $freshQuarantinedLot->stock_version);
-        $this->assertSame($resolvedBounded, $freshQuarantinedLot->segments[0]['restrictions']);
+        $this->assertEquals($resolvedBounded, $freshQuarantinedLot->segments[0]['restrictions']);
 
         // Unrelated lot A and existing StockHold & StockReservation remain untouched.
         $this->assertSame(23, (int) $freshLineALot->stock_version);
@@ -600,14 +597,7 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
         $this->assertSame('30', $views['usable_stockroom_on_hand']['quantity']);
         $this->assertSame('21', $views['available_to_allocate']['quantity']);
 
-        // Outbox contains stage1.stock-lot.changed.v1 ONLY for the 2 updated lots.
-        $outboxLotIds = DomainNotificationOutbox::where('chapter_id', $this->chapterId)
-            ->where('event_name', 'stage1.stock-lot.changed.v1')
-            ->pluck('resource_id')
-            ->all();
-        $this->assertEqualsCanonicalizing($expectedUpdatedIds, $outboxLotIds);
-
-        // 5. Bounded -> unrestricted apply refinement works cleanly as well.
+        // 5. Bounded conditions cannot be cleared by a restriction resolution.
         $unrestricted = [
             'state' => 'unrestricted',
             'allowed_uses' => [],
@@ -626,9 +616,11 @@ class InventoryDay2DonationAndRestrictionTest extends TestCase
             'previous_restrictions' => $resolvedBounded,
             'restrictions' => $unrestricted,
         ]));
-        $this->assertSame('ready', $refineResult['outcome']);
-        $this->assertSame($expectedUpdatedIds, $refineResult['updated_lot_ids']);
-        $this->assertSame('unrestricted', InventoryLot::findOrFail($uninterpretedLot['lot_id'])->segments[0]['restrictions']['state']);
+        $this->assertSame(['outcome' => 'rejected', 'reason' => 'target_locked'], $refineResult);
+        $this->assertEquals($resolvedBounded, $freshLineCLot->refresh()->segments[0]['restrictions']);
+        $this->assertSame(24, (int) $freshLineCLot->stock_version);
+        $this->assertSame('active', StockHold::findOrFail($holdId)->status);
+        $this->assertSame(0, DomainNotificationOutbox::count());
     }
 
     /** @return array{0: InternalRf, 1: InternalRfLine} */

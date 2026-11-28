@@ -25,7 +25,6 @@ class InventoryLot extends Model
         'condition',
         'custody',
         'custodian_user_id',
-        'immediately_allocatable',
         'quantity_on_hand',
         'original_quantity',
         'quantity_scale',
@@ -36,19 +35,26 @@ class InventoryLot extends Model
         'source_type',
         'source_id',
         'source_reference',
-        'source_doc_id',
-        'source_line_id',
+        'source_kind',
         'rm_line_id',
+        'origin_source_id',
+        'origin_source_line_id',
+        'origin_source_reference',
+        'donor_name',
+        'restriction_state',
+        'restrictions_json',
+        'immediately_allocatable',
     ];
 
     protected function casts(): array
     {
         return [
-            'immediately_allocatable' => 'boolean',
             'quantity_on_hand' => 'decimal:6',
             'original_quantity' => 'decimal:6',
             'quantity_scale' => 'integer',
             'segments' => 'array',
+            'restrictions_json' => 'array',
+            'immediately_allocatable' => 'boolean',
             'stock_version' => 'integer',
             'material_version' => 'integer',
         ];
