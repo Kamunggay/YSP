@@ -22,6 +22,7 @@ use App\Models\StockHoldRange;
 use App\Models\StockReservation;
 use App\Services\Evidence\Participants\CheckEvidenceBindingParticipant;
 use App\Services\Inventory\InternalRfService;
+use App\Services\Inventory\Participants\DonationRestrictionSupport;
 use App\Services\Inventory\Participants\PrepareActualIssueInventoryParticipant;
 use App\Services\Inventory\Participants\PrepareRfDemandChangeParticipant;
 use App\Services\Inventory\ReservationService;
@@ -230,6 +231,28 @@ class RequisitionIssueService
                                 'current' => $this->formatIssue($lockedIssue),
                             ]);
                         }
+                    }
+                }
+
+                // Re-verify live BoundedRestriction parity against the locked lot before consuming reservations.
+                $issueLots = InventoryLot::where('chapter_id', $chapterId)
+                    ->whereIn('id', $lotIds)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                foreach ($issueLines as $line) {
+                    if (! $line->lot_id) {
+                        continue;
+                    }
+                    /** @var InventoryLot|null $lot */
+                    $lot = $issueLots->get($line->lot_id);
+                    if ($lot && (! ($lot->immediately_allocatable ?? true) || ($rf && ! DonationRestrictionSupport::allowsRf($lot->segments ?? [], $rf)))) {
+                        throw new ContractException(409, 'restriction_unsupported', 'Lot restrictions exclude this requisition.', [
+                            'failed_intent_committed' => false,
+                            'current' => $this->formatIssue($lockedIssue),
+                        ]);
                     }
                 }
             }
