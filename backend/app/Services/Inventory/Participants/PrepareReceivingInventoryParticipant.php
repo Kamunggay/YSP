@@ -19,6 +19,7 @@ use App\Models\PolicyRecord;
 use App\Models\User;
 use App\Services\Authority\ChapterAuthority;
 use App\Services\Evidence\PaperEvidenceStore;
+use App\Services\Notifications\DomainNotificationOutboxService;
 use App\Services\Shared\BcMath;
 use App\Services\Shared\CanonicalJson;
 use Brick\Math\BigDecimal;
@@ -76,18 +77,12 @@ class PrepareReceivingInventoryParticipant
         'resolves_discrepancy_id',
     ];
 
-    private const REQUIRED_RESTRICTION_KEYS = [
-        'state',
-        'allowed_uses',
-        'event_ids',
-        'requesting_unit_ids',
-        'effective_from',
-        'effective_until',
-        'interpretation_id',
-        'source_condition_reference',
-    ];
-
-    public function __construct(private PaperEvidenceStore $evidenceStore) {}
+    public function __construct(
+        private PaperEvidenceStore $evidenceStore,
+        private ?DomainNotificationOutboxService $outbox = null,
+    ) {
+        $this->outbox ??= app(DomainNotificationOutboxService::class);
+    }
 
     /**
      * Synchronous internal Stage 2 receiving-posting participant (PrepareReceivingInventoryInput -> PrepareReceivingInventoryResult).
@@ -251,6 +246,16 @@ class PrepareReceivingInventoryParticipant
 
         $this->assertLotConservation($usableLots, $nonUsableLots, $planned['totals']);
 
+        foreach (array_merge($usableLots, $nonUsableLots) as $postedLot) {
+            $this->outbox->recordIntent(
+                'stage1.stock-lot.changed.v1',
+                $chapterId,
+                $postedLot['lot_id'],
+                $nextStockVersion,
+                $rmMaterialVersion,
+            );
+        }
+
         return [
             'outcome' => 'ready',
             'stock_version' => $nextStockVersion,
@@ -349,11 +354,11 @@ class PrepareReceivingInventoryParticipant
                 return 'source_not_eligible';
             }
 
-            if (! is_array($ln['restrictions']) || ! $this->hasExactKeys($ln['restrictions'], self::REQUIRED_RESTRICTION_KEYS)) {
-                return 'source_not_eligible';
-            }
-
-            if ($input['source_kind'] === 'po_rm' && ! $this->isStrictlyUnrestricted($ln['restrictions'])) {
+            if ($input['source_kind'] === 'po_rm') {
+                if (! DonationRestrictionSupport::isStrictlyUnrestricted($ln['restrictions'])) {
+                    return 'source_not_eligible';
+                }
+            } elseif (! DonationRestrictionSupport::isValid($ln['restrictions'])) {
                 return 'source_not_eligible';
             }
         }
@@ -889,18 +894,6 @@ class PrepareReceivingInventoryParticipant
         $frac = explode('.', $raw, 2)[1] ?? '';
 
         return strlen($frac) <= $scale;
-    }
-
-    private function isStrictlyUnrestricted(array $restrictions): bool
-    {
-        return ($restrictions['state'] ?? null) === 'unrestricted'
-            && $restrictions['allowed_uses'] === []
-            && $restrictions['event_ids'] === []
-            && $restrictions['requesting_unit_ids'] === []
-            && $restrictions['effective_from'] === null
-            && $restrictions['effective_until'] === null
-            && $restrictions['interpretation_id'] === null
-            && $restrictions['source_condition_reference'] === null;
     }
 
     /** @param list<string> $requiredKeys */

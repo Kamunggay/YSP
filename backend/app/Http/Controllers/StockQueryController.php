@@ -257,13 +257,15 @@ class StockQueryController extends Controller
             ->values()
             ->all();
 
-        if (! empty($restrictions)) {
+        $isUninterpreted = $isUsable && ! ($lot->immediately_allocatable ?? true);
+        if (! empty($restrictions) || $isUninterpreted) {
             $blockers[] = 'lot_restricted';
         }
 
         $onHand = BcMath::str($lot->quantity_on_hand);
         $eligible = $isUsable
             && empty($restrictions)
+            && ! $isUninterpreted
             && BcMath::comp($blockedQty, $onHand) < 0;
 
         return response()->json([

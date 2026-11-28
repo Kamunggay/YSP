@@ -1243,7 +1243,7 @@ class ReservationService
             ]);
         }
 
-        if (LotRestrictionAssignment::where('lot_id', $lot->id)->exists()) {
+        if (! ($lot->immediately_allocatable ?? true) || LotRestrictionAssignment::where('lot_id', $lot->id)->exists()) {
             throw new ContractException(409, 'restriction_unsupported', 'restriction unsupported', [
                 'failed_intent_committed' => false,
                 'current' => [
