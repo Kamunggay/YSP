@@ -40,8 +40,12 @@ class Stage2ADatabaseSupplyProviderTest extends TestCase
             : array_replace(config('database.connections.mysql'), ['database' => $database, 'url' => null]);
         config(['database.connections.supply_fixture' => $connection]);
         DB::setDefaultConnection('supply_fixture');
-        $this->assertSame([], Schema::getTables(), 'Supply fixture connection must point to an empty disposable database.');
-        $this->assertSame(0, Artisan::call('migrate', ['--force' => true]));
+        $this->assertSame(
+            [],
+            Schema::getTableListing($database === false ? null : $database),
+            'Supply fixture connection must point to an empty disposable database.',
+        );
+        $this->assertSame(0, Artisan::call('migrate', ['--database' => 'supply_fixture', '--force' => true]));
 
         // The Leader procurement migration is not part of this integration base.
         Schema::create('repfs', function (Blueprint $table): void {

@@ -64,8 +64,7 @@ final class AllocationQueueQueryService
                 }
             })
             ->with(['rf', 'reservations' => fn ($q) => $q->where('status', 'ACTIVE')])
-            ->orderBy('id')
-            ->sharedLock();
+            ->orderBy('id');
 
         if (! empty($filters['variant_id'])) {
             $lineQuery->where('variant_id', $filters['variant_id']);
@@ -81,7 +80,6 @@ final class AllocationQueueQueryService
             ? CatalogueVariant::where('chapter_id', $chapterId)
                 ->whereIn('id', $variantIds)
                 ->with(['item', 'unit'])
-                ->sharedLock()
                 ->get()
                 ->keyBy('id')
             : collect();
@@ -147,10 +145,9 @@ final class AllocationQueueQueryService
                 ->withExists('restrictions')
                 ->orderBy('created_at')
                 ->orderBy('id')
-                ->sharedLock()
                 ->get()
             : collect();
-        $ranges = $this->stockViews->loadLotRanges($lots);
+        $ranges = $this->stockViews->loadLotRanges($lots, protectSales: true);
         $lotsByVariant = $lots->groupBy('variant_id');
 
         $entries = [];
@@ -176,7 +173,13 @@ final class AllocationQueueQueryService
                 $overridePolicyId = null;
             }
 
-            $priorityRank = max(1, min(1000, (int) ($allocPolicy['unit_ranks'][$rf->requesting_unit_id] ?? 1000)));
+            $priorityRank = $allocPolicy['unit_ranks'][$rf->requesting_unit_id] ?? null;
+            if ($priorityRank === null) {
+                $blocker = ChapterAuthority::setupBlocker('allocation_priority', 'CHAPTER_HEAD', 'missing');
+                throw new ContractException(409, 'setup_blocked', 'An approved allocation rank is required for the requesting unit.', [
+                    'blockers' => [$blocker],
+                ]);
+            }
             $neededAt = $rf->needed_at?->utc()->format('Y-m-d\TH:i:s.u\Z') ?? $observedStr;
             $approvedAt = $rf->approved_at?->utc()->format('Y-m-d\TH:i:s.u\Z') ?? $observedStr;
 
@@ -229,7 +232,6 @@ final class AllocationQueueQueryService
             ]);
 
             $eligibleSources = array_slice($eligibleSources, 0, 100);
-            $eligibleAvailQty = array_reduce($eligibleSources, fn (string $sum, array $source): string => BcMath::add($sum, $source['free_quantity']), '0');
 
             $fulfillment = BcMath::isPositive($item['issued_qty']) ? 'partially_issued' : 'outstanding';
 

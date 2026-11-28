@@ -7,7 +7,6 @@ use App\Models\CatalogueVariant;
 use App\Models\InternalRf;
 use App\Models\InventoryLot;
 use App\Models\RfReservationAllocation;
-use App\Models\StockHold;
 use App\Models\StockHoldRange;
 use App\Models\StockReservation;
 use App\Services\Inventory\Participants\OpenProcurementSupplyProvider;
@@ -27,8 +26,6 @@ class StockViewQueryService
         CarbonInterface $at,
         ?string $use,
         ?InternalRf $rf = null,
-        ?array $holds = null,
-        ?array $reservations = null,
         ?string $requestingUnitId = null,
         ?string $eventId = null,
         ?CarbonInterface $neededAt = null,
@@ -37,15 +34,18 @@ class StockViewQueryService
         return $this->eligibility->project(
             $lot,
             $ranges['consumed'] ?? $this->getConsumedIntervalsForLot($lot)['consumed_intervals'],
-            $holds ?? $ranges['holds'] ?? $this->getActiveHoldRangesForLot($lot->chapter_id, $lot->id),
-            $reservations ?? $ranges['reservations'] ?? $this->getActiveReservationRangesForLot($lot->chapter_id, $lot->id),
+            $ranges['holds'] ?? $this->getActiveHoldRangesForLot($lot->chapter_id, $lot->id),
+            [
+                ...($ranges['reservations'] ?? $this->getActiveReservationRangesForLot($lot->chapter_id, $lot->id)),
+                ...($ranges['sale_commitments'] ?? []),
+            ],
             $lot->restrictions_exists ?? $lot->restrictions()->exists(),
             $at, $use, $rf, $requestingUnitId, $eventId, $neededAt,
         );
     }
 
     /** @param Collection<int, InventoryLot> $lots Lots from one authorized chapter. */
-    public function loadLotRanges(Collection $lots): array
+    public function loadLotRanges(Collection $lots, bool $protectSales = false, bool $lock = false): array
     {
         if ($lots->isEmpty()) {
             return [];
@@ -55,14 +55,14 @@ class StockViewQueryService
         $chapterId = $lots->first()->chapter_id;
         $holds = StockHoldRange::where('chapter_id', $chapterId)->whereIn('lot_id', $ids)
             ->whereHas('hold', fn ($query) => $query->where('status', 'active'))
-            ->get()->groupBy('lot_id');
+            ->orderBy('id')->when($lock, fn ($query) => $query->sharedLock())->get()->groupBy('lot_id');
         $reservations = RfReservationAllocation::where('chapter_id', $chapterId)->whereIn('lot_id', $ids)
             ->where('status', 'active')
             ->whereHas('reservation', fn ($query) => $query->where('status', 'ACTIVE'))
-            ->get()->groupBy('lot_id');
+            ->orderBy('id')->when($lock, fn ($query) => $query->sharedLock())->get()->groupBy('lot_id');
         $issues = ActualIssueLine::whereIn('lot_id', $ids)
             ->whereHas('actualIssue', fn ($query) => $query->where('chapter_id', $chapterId)->where('status', 'posted'))
-            ->get()->groupBy('lot_id');
+            ->orderBy('id')->when($lock, fn ($query) => $query->sharedLock())->get()->groupBy('lot_id');
 
         $ranges = [];
         foreach ($lots as $lot) {
@@ -77,7 +77,63 @@ class StockViewQueryService
             ];
         }
 
+        if ($protectSales) {
+            foreach ($this->saleCommitmentRanges($lots, $ranges, $lock) as $id => $committed) {
+                $ranges[$id]['sale_commitments'] = $committed;
+            }
+        }
+
         return $ranges;
+    }
+
+    /**
+     * Sales reservations have no basis coordinates yet. Protect their quantity
+     * from sale-eligible free stock in stable lot order.
+     *
+     * @param  Collection<int, InventoryLot>  $lots  All matching lots in one chapter
+     */
+    public function saleCommitmentRanges(Collection $lots, ?array $ranges = null, bool $lock = false): array
+    {
+        if ($lots->isEmpty()) {
+            return [];
+        }
+        $sales = StockReservation::query()->join('sales_order_lines', 'sales_order_lines.id', '=', 'stock_reservations.source_line_id')
+            ->where('stock_reservations.chapter_id', $lots->first()->chapter_id)
+            ->where('stock_reservations.source_type', 'SO')
+            ->where('stock_reservations.status', 'ACTIVE')
+            ->whereNull('stock_reservations.lot_id')
+            ->whereIn('sales_order_lines.variant_id', $lots->pluck('variant_id')->unique())
+            ->orderBy('stock_reservations.id')
+            ->when($lock, fn ($query) => $query->sharedLock())
+            ->get(['sales_order_lines.variant_id', 'stock_reservations.active_quantity', 'stock_reservations.quantity'])
+            ->groupBy('variant_id')
+            ->map(fn ($rows) => $rows->reduce(fn (string $sum, StockReservation $sale) => BcMath::add($sum, $sale->active_quantity ?? $sale->quantity), '0'));
+        if ($sales->isEmpty()) {
+            return [];
+        }
+
+        $ranges ??= $this->loadLotRanges($lots, lock: $lock);
+        $commitments = [];
+        $observedAt = now('UTC');
+        foreach ($lots->sortBy('id') as $lot) {
+            $variantId = $lot->variant_id;
+            $remaining = $sales->get($variantId, '0');
+            if (! BcMath::isPositive($remaining)) {
+                continue;
+            }
+            $available = $this->getLotAvailability($lot, $observedAt, 'sale', ranges: $ranges[$lot->id]);
+            foreach ($available['free_intervals'] as $range) {
+                if (! BcMath::isPositive($remaining)) {
+                    break;
+                }
+                $quantity = BcMath::min($remaining, $range['quantity']);
+                $commitments[$lot->id][] = ['offset' => $range['offset_quantity'], 'quantity' => $quantity];
+                $remaining = BcMath::sub($remaining, $quantity);
+            }
+            $sales[$variantId] = $remaining;
+        }
+
+        return $commitments;
     }
 
     /**
@@ -87,7 +143,7 @@ class StockViewQueryService
      *
      * @return array<string, mixed>
      */
-    public function getRawMetrics(string $chapterId, ?string $variantId = null): array
+    public function getRawMetrics(string $chapterId, ?string $variantId = null, ?string $use = null): array
     {
         $lotQuery = InventoryLot::where('chapter_id', $chapterId);
         if ($variantId) {
@@ -143,7 +199,6 @@ class StockViewQueryService
 
         $rfReserved = BcMath::str('0');
         $soReserved = BcMath::str('0');
-        $rfAllocIntervalsByLot = [];
         $unallocatedRfReserved = BcMath::str('0');
 
         foreach ($reservations as $res) {
@@ -154,42 +209,9 @@ class StockViewQueryService
                 $activeAllocs = $res->allocations->where('status', 'active');
                 if ($activeAllocs->isEmpty()) {
                     $unallocatedRfReserved = BcMath::add($unallocatedRfReserved, $rQty);
-                } else {
-                    foreach ($activeAllocs as $alloc) {
-                        $remainingAllocQty = BcMath::sub(
-                            $alloc->quantity,
-                            BcMath::add($alloc->consumed_quantity, $alloc->released_quantity)
-                        );
-                        if (BcMath::comp($remainingAllocQty, '0') > 0) {
-                            $rfAllocIntervalsByLot[$alloc->lot_id][] = [
-                                'offset' => BcMath::str($alloc->offset_quantity),
-                                'quantity' => $remainingAllocQty,
-                            ];
-                        }
-                    }
                 }
             } elseif ($type === 'SO') {
                 $soReserved = BcMath::add($soReserved, $rQty);
-            }
-        }
-
-        $usableLotIds = array_keys($usableLots);
-
-        // Active stock holds
-        $holdIntervalsByLot = [];
-        if (! empty($usableLotIds)) {
-            $activeHolds = StockHold::where('chapter_id', $chapterId)
-                ->where('status', 'active')
-                ->with(['ranges' => fn ($q) => $q->whereIn('lot_id', $usableLotIds)])
-                ->get();
-
-            foreach ($activeHolds as $hold) {
-                foreach ($hold->ranges as $range) {
-                    $holdIntervalsByLot[$range->lot_id][] = [
-                        'offset' => BcMath::str($range->offset_quantity),
-                        'quantity' => BcMath::str($range->quantity),
-                    ];
-                }
             }
         }
 
@@ -198,11 +220,10 @@ class StockViewQueryService
         $observedAt = now('UTC');
         $lotRanges = $this->loadLotRanges(collect($usableLots));
         foreach ($usableLots as $lotId => $lot) {
-            $rfIntervals = $rfAllocIntervalsByLot[$lotId] ?? [];
-            $holdIntervals = $holdIntervalsByLot[$lotId] ?? [];
-            $overlaps = BcMath::intersectIntervalLists($rfIntervals, $holdIntervals);
+            $ranges = $lotRanges[$lotId];
+            $overlaps = BcMath::intersectIntervalLists($ranges['reservations'], $ranges['holds']);
             $blockedReserved = BcMath::add($blockedReserved, BcMath::intervalUnionLength($overlaps));
-            $availability = $this->getLotAvailability($lot, $observedAt, null, holds: $holdIntervals, reservations: $rfIntervals, ranges: $lotRanges[$lotId]);
+            $availability = $this->getLotAvailability($lot, $observedAt, $use, ranges: $ranges);
             $freeOnHand = BcMath::add($freeOnHand, $availability['eligible_free_quantity']);
         }
 
@@ -317,24 +338,13 @@ class StockViewQueryService
      */
     public function getActiveHoldRangesForLot(string $chapterId, string $lotId): array
     {
-        $holds = StockHold::where('chapter_id', $chapterId)
-            ->where('status', 'active')
-            ->whereHas('ranges', fn ($q) => $q->where('lot_id', $lotId))
-            ->with(['ranges' => fn ($q) => $q->where('lot_id', $lotId)])
-            ->get();
-
-        $result = [];
-        foreach ($holds as $hold) {
-            foreach ($hold->ranges as $range) {
-                $result[] = [
-                    'hold_id' => $hold->id,
-                    'offset' => BcMath::str($range->offset_quantity),
-                    'quantity' => BcMath::str($range->quantity),
-                ];
-            }
-        }
-
-        return $result;
+        return StockHoldRange::where('chapter_id', $chapterId)->where('lot_id', $lotId)
+            ->whereHas('hold', fn ($query) => $query->where('status', 'active'))
+            ->sharedLock()->get()->map(fn (StockHoldRange $range) => [
+                'hold_id' => $range->hold_id,
+                'offset' => BcMath::str($range->offset_quantity),
+                'quantity' => BcMath::str($range->quantity),
+            ])->all();
     }
 
     /**

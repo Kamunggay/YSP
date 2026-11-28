@@ -31,6 +31,7 @@ class CombinedBackendMergeVerificationTest extends TestCase
     private const ALLOWED_EXTRA_ROUTES = [
         'GET /api/v1/chapters/{}/buyers',
         'POST /api/v1/chapters/{}/buyers',
+        'GET /api/v1/chapters/{}/allocation-queue',
         'GET /api/v1/chapters/{}/handovers',
         'POST /api/v1/chapters/{}/handovers',
         'GET /api/v1/chapters/{}/handovers/{}',

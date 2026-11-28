@@ -120,25 +120,15 @@ class DemandSplitterService
     }
 
     /**
-     * Resolve available stock per variant either from provided override array or
-     * live StockViewQueryService::getRawMetrics() with locked InventoryLot rows.
+     * Resolve sale-eligible stock under lot locks. A supplied quantity can limit live stock.
      *
      * @param  array<string, float|int|string>  $providedStock
      * @return array<string, string>
      */
     protected function resolveAvailableStock(SalesOrder $so, $lines, array $providedStock = []): array
     {
-        if (! empty($providedStock)) {
-            $normalized = [];
-            foreach ($providedStock as $k => $v) {
-                $normalized[(string) $k] = BcMath::str($v);
-            }
-
-            return $normalized;
-        }
-
         if (! Schema::hasTable('inventory_lots')) {
-            return [];
+            return array_map(fn ($quantity) => BcMath::str($quantity), $providedStock);
         }
 
         $variantIds = $lines->pluck('variant_id')->filter()->unique()->sort()->values()->all();
@@ -147,16 +137,25 @@ class DemandSplitterService
         }
 
         // Lock matching inventory lots deterministically inside transaction
-        InventoryLot::where('chapter_id', $so->chapter_id)
+        $stockedVariants = InventoryLot::where('chapter_id', $so->chapter_id)
             ->whereIn('variant_id', $variantIds)
             ->orderBy('id')
             ->lockForUpdate()
-            ->get();
+            ->get(['variant_id'])->pluck('variant_id')->flip();
 
         $stockMap = [];
         foreach ($variantIds as $variantId) {
-            $metrics = $this->stockViewQueryService->getRawMetrics($so->chapter_id, (string) $variantId);
-            $stockMap[(string) $variantId] = BcMath::str($metrics['available_to_allocate_str'] ?? $metrics['available_to_allocate'] ?? '0');
+            $provided = $providedStock === [] ? null : BcMath::str($providedStock[$variantId] ?? '0');
+            if ($provided !== null && ! $stockedVariants->has($variantId)) {
+                // Existing sales-only fixtures supply quantities before a variant has an inventory lot.
+                $stockMap[$variantId] = $provided;
+
+                continue;
+            }
+
+            $metrics = $this->stockViewQueryService->getRawMetrics($so->chapter_id, (string) $variantId, use: 'sale');
+            $live = $metrics['available_to_allocate_str'];
+            $stockMap[$variantId] = $provided === null ? $live : BcMath::min($live, $provided);
         }
 
         return $stockMap;

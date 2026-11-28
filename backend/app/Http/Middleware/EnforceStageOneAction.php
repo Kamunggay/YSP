@@ -21,7 +21,7 @@ class EnforceStageOneAction
     {
         $authority = $request->attributes->get(ChapterAuthority::class);
         foreach ($actions as $action) {
-            if (! array_intersect($authority->duties(), ChapterAuthority::ACTION_DUTIES[$action])) {
+            if (! array_intersect($authority->duties(), ChapterAuthority::dutiesForAction($action))) {
                 throw new ContractException(403, 'duty_denied', 'Current duty does not permit this action.');
             }
         }

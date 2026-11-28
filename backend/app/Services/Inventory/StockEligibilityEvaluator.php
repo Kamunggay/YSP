@@ -54,6 +54,13 @@ final class StockEligibilityEvaluator
             || ($restriction === null && in_array($lot->restriction_state, ['bounded', 'uninterpreted'], true))) {
             return 'uninterpreted';
         }
+        if (in_array(strtoupper($lot->source_kind ?? $lot->source_type ?? ''), ['IPC', 'IPC_RM', 'OPENING_RM'], true)
+            && is_array($restriction) && ($restriction['state'] ?? null) === 'unrestricted'
+            && is_array($restriction['allowed_uses'] ?? null) && count($restriction['allowed_uses']) === 3
+            && array_diff(['internal_use', 'sale', 'booth_custody'], $restriction['allowed_uses']) === []) {
+            // Legacy Opening RM records explicitly listed every use for unrestricted stock.
+            $restriction['allowed_uses'] = [];
+        }
         if ($restriction === null || DonationRestrictionSupport::isStrictlyUnrestricted($restriction)) {
             return 'unrestricted';
         }

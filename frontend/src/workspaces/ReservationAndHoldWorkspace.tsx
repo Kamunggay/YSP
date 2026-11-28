@@ -79,6 +79,12 @@ interface AllocationReviewLine {
   candidate_lots?: CandidateLotInfo[];
 }
 
+interface RfAllocationReviewPins {
+  rf_version: number;
+  rf_material_version: number;
+  rf_progress_version: number;
+}
+
 interface AllocationReviewData {
   rf?: {
     id: string;
@@ -178,9 +184,10 @@ export function ReservationAndHoldWorkspace({
   const [reservationId, setReservationId] = useState(initialDraft.reservationId ?? '');
   const [holdId, setHoldId] = useState(initialDraft.holdId ?? '');
 
-  const [queue, setQueue] = useState<AllocationQueueEntry[]>([]);
-  const [queueState, setQueueState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [queueResult, setQueueResult] = useState<{ generation: string; entries: AllocationQueueEntry[]; failed?: true }>();
   const [pickerRevision, setPickerRevision] = useState(0);
+  const [reviewGeneration, setReviewGeneration] = useState('');
+  const generation = `${refreshSignal}:${pickerRevision}`;
   const [reviewData, setReviewData] = useState<AllocationReviewData | null>(null);
   const [reservations, setReservations] = useState<ReservationRecord[]>([]);
   const [holds, setHolds] = useState<StockHoldRecord[]>([]);
@@ -261,36 +268,51 @@ export function ReservationAndHoldWorkspace({
         entries.push(...response.data);
         cursor = response.page?.next_cursor ?? null;
       } while (cursor);
-      setQueue(entries);
-      setQueueState('ready');
+      setQueueResult({ generation, entries });
     };
     void load().catch((failure: unknown) => {
       if (current) {
-        setQueueState('failed');
+        setQueueResult({ generation, entries: [], failed: true });
         setError(failure);
       }
     });
     return () => { current = false; };
-  }, [chapterId, opKind, opBlockReason, pickerRevision, refreshSignal]);
+  }, [chapterId, opKind, opBlockReason, generation]);
 
+  const currentQueue = queueResult?.generation === generation ? queueResult : undefined;
+  const queueState = currentQueue ? currentQueue.failed ? 'failed' : 'ready' : 'loading';
+  const queue = currentQueue?.entries ?? [];
   const selectedLine = queue.find((entry) => entry.rf_id === rfId && entry.rf_line_id === rfLineId);
 
+  const selectedRfId = selectedLine?.rf_id;
+  const selectedRfLineId = selectedLine?.rf_line_id;
+  const requestedReview = `${generation}:${selectedRfId ?? ''}:${selectedRfLineId ?? ''}`;
   useEffect(() => {
-    if (opKind !== 'prepare' || !selectedLine) return;
+    if (opKind !== 'prepare' || opBlockReason || !selectedRfId || !selectedRfLineId) return;
     let current = true;
-    void apiGet<AllocationReviewData>(`/api/v1/chapters/${chapterId}/internal-rfs/${selectedLine.rf_id}/allocation-review`)
-      .then(({ data }) => {
-        if (!current || !data.rf) return;
-        setReviewData(data);
-        setExpectedRfVersion(String(data.rf.version));
-        setExpectedRfMaterialVersion(String(data.rf.material_version));
-        setExpectedRfProgressVersion(String(data.rf.progress_version));
+    const path = `/api/v1/chapters/${chapterId}/internal-rfs/${selectedRfId}/allocation-review`;
+    void Promise.all([
+      apiGet<AllocationReviewData>(path),
+      apiGet<RfAllocationReviewPins>(`${path}${buildQuery({ rf_line_id: selectedRfLineId })}`),
+    ])
+      .then(([ranges, { data: pins }]) => {
+        if (!current || !ranges.data.rf) return;
+        if (pins.rf_version !== ranges.data.rf.version || pins.rf_material_version !== ranges.data.rf.material_version
+          || pins.rf_progress_version !== ranges.data.rf.progress_version) {
+          setError(new Error('The RF changed while loading. Reload the allocation queue and choose again.'));
+          return;
+        }
+        setReviewData(ranges.data);
+        setExpectedRfVersion(String(pins.rf_version));
+        setExpectedRfMaterialVersion(String(pins.rf_material_version));
+        setExpectedRfProgressVersion(String(pins.rf_progress_version));
+        setReviewGeneration(requestedReview);
       })
       .catch((failure: unknown) => {
         if (current) setError(failure);
       });
     return () => { current = false; };
-  }, [chapterId, opKind, selectedLine, pickerRevision, refreshSignal]);
+  }, [chapterId, opKind, opBlockReason, selectedRfId, selectedRfLineId, requestedReview]);
 
   function chooseRfLine(id: string) {
     const line = queue.find((entry) => entry.rf_line_id === id);
@@ -299,11 +321,12 @@ export function ReservationAndHoldWorkspace({
     setPrepId('');
     setReservationId('');
     setReviewData(null);
+    setReviewGeneration('');
     setTargets([emptyStockTarget()]);
     setError(null);
   }
 
-  const candidateLots = reviewData?.rf?.id === selectedLine?.rf_id
+  const candidateLots = requestedReview === reviewGeneration && reviewData?.rf?.id === selectedRfId
     ? reviewData?.lines?.find((line) => line.rf_line_id === rfLineId)?.candidate_lots ?? []
     : [];
   const stockChoices = selectedLine?.eligible_sources.flatMap((source) => {
@@ -327,9 +350,8 @@ export function ReservationAndHoldWorkspace({
     && (opKind !== 'commit' || (rfId && prepId));
 
   function reloadPicker() {
-    setQueue([]);
-    setQueueState('loading');
     setReviewData(null);
+    setReviewGeneration('');
     setTargets([emptyStockTarget()]);
     setPickerRevision((revision) => revision + 1);
   }
@@ -1010,7 +1032,7 @@ export function ReservationAndHoldWorkspace({
                                     expected_stock_version: String(choice.lot.stock_version),
                                   } : emptyStockTarget());
                                 }}
-                                disabled={busy || !selectedLine || !reviewData}
+                                disabled={busy || !selectedLine || requestedReview !== reviewGeneration}
                               />
                               {selection ? (
                                 <label className="form-group">
@@ -1079,8 +1101,9 @@ export function ReservationAndHoldWorkspace({
 
                   {(opKind === 'prepare' || opKind === 'release' || opKind === 'reallocate' || opKind === 'placeHold') && (
                     <div className="form-group">
-                      <label className="form-label">Reason</label>
+                      <label className="form-label" htmlFor="reservation-reason">Reason</label>
                       <input
+                        id="reservation-reason"
                         className="form-control"
                         required
                         value={reason}

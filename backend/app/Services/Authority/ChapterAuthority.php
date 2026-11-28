@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\DB;
 final class ChapterAuthority
 {
     public const ACTION_DUTIES = [
-        'allocation_queue.read' => ['INVENTORY', 'DISPATCH', 'RF_APPROVER', 'CHAPTER_HEAD'],
         'rf.read' => ['COMMITTEE_REQUESTER', 'RF_APPROVER', 'INVENTORY', 'DISPATCH'],
         'catalogue.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'COMMITTEE_REQUESTER', 'RF_APPROVER'],
         'catalogue.maintain' => ['INVENTORY'],
@@ -43,6 +42,13 @@ final class ChapterAuthority
         'opening_rm.read' => ['INVENTORY', 'RECEIVING'],
         'opening.result.read' => ['INVENTORY', 'INDEPENDENT_REVIEWER', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE'],
     ];
+
+    public static function dutiesForAction(string $action): array
+    {
+        return $action === 'allocation_queue.read'
+            ? ['INVENTORY', 'DISPATCH', 'RF_APPROVER', 'CHAPTER_HEAD']
+            : self::ACTION_DUTIES[$action] ?? [];
+    }
 
     public const DUTIES = [
         'COMMITTEE_REQUESTER', 'RF_APPROVER', 'SALES_OFFICER', 'SALES_REVIEWER',
@@ -272,7 +278,7 @@ final class ChapterAuthority
 
     public function allows(string $action, ?string $unitId = null, ?string $decisionScope = null): bool
     {
-        return collect(self::ACTION_DUTIES[$action])->contains(fn ($duty) => $this->allowsDuty($duty, $unitId, $decisionScope));
+        return collect(self::dutiesForAction($action))->contains(fn ($duty) => $this->allowsDuty($duty, $unitId, $decisionScope));
     }
 
     public static function covers(DutyGrant $grant, ?string $unitId, ?string $amount = null): bool

@@ -219,8 +219,8 @@ class StockQueryController extends Controller
             }
             $seen[$name] = true;
         }
-        $intendedUse = $request->query('intended_use', 'internal_use');
-        if (! in_array($intendedUse, ['internal_use', 'sale', 'booth_custody'], true)) {
+        $intendedUse = $request->query('intended_use');
+        if ($intendedUse !== null && ! in_array($intendedUse, ['internal_use', 'sale', 'booth_custody'], true)) {
             throw new ContractException(400, 'invalid_selector', 'Invalid intended stock use.');
         }
         foreach (['unit_id', 'requesting_unit_id', 'event_id'] as $name) {
@@ -294,7 +294,7 @@ class StockQueryController extends Controller
         }
         $ranges = $this->stockViewService->loadLotRanges(collect([$lot]))[$lot->id];
         $at = CarbonImmutable::now('UTC');
-        $availability = fn (string $use) => $this->stockViewService->getLotAvailability(
+        $availability = fn (?string $use) => $this->stockViewService->getLotAvailability(
             $lot, $at, $use,
             requestingUnitId: $request->query('requesting_unit_id'),
             eventId: $request->query('event_id'),

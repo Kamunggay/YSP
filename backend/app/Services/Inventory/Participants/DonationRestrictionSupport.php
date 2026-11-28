@@ -247,7 +247,7 @@ final class DonationRestrictionSupport
     private static function withinWindow(array $restriction, CarbonInterface $at): bool
     {
         return ($restriction['effective_from'] === null || $at->gte(CarbonImmutable::parse($restriction['effective_from'])))
-            && ($restriction['effective_until'] === null || $at->lte(CarbonImmutable::parse($restriction['effective_until'])));
+            && ($restriction['effective_until'] === null || $at->lt(CarbonImmutable::parse($restriction['effective_until'])));
     }
 
     public static function isUuid(mixed $value): bool

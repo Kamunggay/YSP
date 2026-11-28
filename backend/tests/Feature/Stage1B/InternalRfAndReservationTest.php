@@ -4,6 +4,7 @@ namespace Tests\Feature\Stage1B;
 
 use App\Models\ActualIssue;
 use App\Models\AuditLog;
+use App\Models\Buyer;
 use App\Models\CatalogueItem;
 use App\Models\CatalogueLocation;
 use App\Models\CatalogueUnit;
@@ -16,11 +17,14 @@ use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
 use App\Models\PolicyRecord;
 use App\Models\RfReservationAllocation;
+use App\Models\SalesOrder;
+use App\Models\SalesOrderLine;
 use App\Models\StockHold;
 use App\Models\StockReservation;
 use App\Models\User;
 use App\Services\Inventory\PhysicalPostingService;
 use App\Services\Inventory\StockViewQueryService;
+use App\Services\Sales\DemandSplitterService;
 use App\Services\Shared\CanonicalJson;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -445,23 +449,23 @@ class InternalRfAndReservationTest extends TestCase
 
         $route = "/api/v1/chapters/{$this->chapterId}/allocation-queue";
         $request = $this->asBrowserOfficer($this->custodianId);
-        $pageOne = $request->getJson("$route?limit=1")->assertOk()
+        $pageOne = $request->get("$route?limit=1")->assertOk()
             ->assertJsonPath('is_commit_authorization', false)
             ->assertJsonPath('data.0.eligible_sources.0.stock_lot_id', $lot->id);
         $cursor = rawurlencode($pageOne->json('page.next_cursor'));
-        $pageTwo = $request->getJson("$route?limit=1&cursor=$cursor")->assertOk()
+        $pageTwo = $request->get("$route?limit=1&cursor=$cursor")->assertOk()
             ->assertJsonPath('page.next_cursor', null);
         $this->assertEqualsCanonicalizing(
             [$first['id'], $second['id']],
             [$pageOne->json('data.0.rf_id'), $pageTwo->json('data.0.rf_id')],
         );
-        $request->getJson("$route?rf_id={$hidden['id']}")->assertNotFound()
+        $request->get("$route?rf_id={$hidden['id']}")->assertNotFound()
             ->assertJsonPath('error.code', 'resource_not_found');
         $unknown = (string) Str::uuid();
         $foreign = InternalRf::findOrFail($hidden['id']);
         $foreign->update(['chapter_id' => $this->foreignChapterId]);
         foreach ([$unknown, $hiddenUnit] as $unit) {
-            $request->getJson("$route?requesting_unit_id=$unit")->assertNotFound()
+            $request->get("$route?requesting_unit_id=$unit")->assertNotFound()
                 ->assertJsonPath('error.code', 'resource_not_found')
                 ->assertJsonPath('error.message', 'Resource not found.');
         }
@@ -485,7 +489,8 @@ class InternalRfAndReservationTest extends TestCase
             'source_condition_reference' => 'Donor letter A',
         ];
         $lot->update(['source_kind' => 'da_rm', 'segments' => [
-            ['basis_segment_id' => $lot->basis_segment_id, 'offset_quantity' => '0', 'quantity' => '5', 'restrictions' => $bounded],
+            ['basis_segment_id' => $lot->basis_segment_id, 'offset_quantity' => '0', 'quantity' => '2', 'restrictions' => $bounded],
+            ['basis_segment_id' => $lot->basis_segment_id, 'offset_quantity' => '2', 'quantity' => '3', 'restrictions' => $bounded],
             ['basis_segment_id' => $otherSegment, 'offset_quantity' => '5', 'quantity' => '5', 'restrictions' => array_replace($bounded, [
                 'allowed_uses' => [],
                 'requesting_unit_ids' => [],
@@ -515,9 +520,12 @@ class InternalRfAndReservationTest extends TestCase
 
         $review = $officer->getJson("$rfRoute/allocation-review")->assertOk();
         $candidate = collect($review->json('data.lines.0.candidate_lots'))->firstWhere('stock_lot_id', $lot->id);
-        $this->assertSame([['basis_segment_id' => $lot->basis_segment_id, 'offset_quantity' => '0', 'quantity' => '4']], $candidate['free_intervals']);
+        $this->assertSame([
+            ['basis_segment_id' => $lot->basis_segment_id, 'offset_quantity' => '0', 'quantity' => '2'],
+            ['basis_segment_id' => $lot->basis_segment_id, 'offset_quantity' => '2', 'quantity' => '2'],
+        ], $candidate['free_intervals']);
         $this->assertSame('8', $review->json('data.lines.0.views.available_to_allocate.quantity'));
-        $summary = $officer->getJson("$rfRoute/allocation-review?rf_line_id={$rf['lines'][0]['id']}")->assertOk()
+        $summary = $officer->get("$rfRoute/allocation-review?rf_line_id={$rf['lines'][0]['id']}")->assertOk()
             ->assertJsonPath('data.free_eligible_quantity', '8')->assertJsonPath('data.is_commit_authorization', false);
         $this->assertEqualsCanonicalizing([
             'rf_id', 'rf_line_id', 'rf_version', 'rf_material_version', 'rf_progress_version', 'progress',
@@ -554,7 +562,62 @@ class InternalRfAndReservationTest extends TestCase
                 $commit->assertCreated()->assertJsonPath('data.result.committed_quantity', '4');
             }
         }
+        $lot->update(['immediately_allocatable' => false]);
         $this->assertSame('4.000000', app(StockViewQueryService::class)->getRawMetrics($this->chapterId, $this->variantId)['available_to_allocate_str']);
+        $this->assertSame('4.000000', app(StockViewQueryService::class)->getRawMetrics($this->chapterId, $this->variantId, use: 'sale')['available_to_allocate_str']);
+    }
+
+    public function test_sales_commitment_protects_unrestricted_stock_while_rf_only_donation_can_be_reserved(): void
+    {
+        $unrestricted = $this->seedLot(4, 'SALE-ELIGIBLE');
+        $donation = $this->seedLot(5, 'INTERNAL-USE-ONLY');
+        $donation->update(['restriction_state' => 'bounded', 'restrictions_json' => [
+            'state' => 'bounded',
+            'allowed_uses' => ['internal_use'],
+            'event_ids' => [],
+            'requesting_unit_ids' => [],
+            'effective_from' => null,
+            'effective_until' => null,
+            'interpretation_id' => null,
+            'source_condition_reference' => 'Internal use condition',
+        ]]);
+        $buyer = Buyer::create(['chapter_id' => $this->chapterId, 'name' => 'Chapter Buyer']);
+        $order = SalesOrder::create([
+            'chapter_id' => $this->chapterId, 'so_number' => 'SO-RF-SCOPE',
+            'buyer_id' => $buyer->id, 'order_date' => '2026-11-10', 'target_delivery_date' => '2026-11-20',
+            'status' => 'SUBMITTED', 'created_by' => $this->custodianId,
+        ]);
+        SalesOrderLine::create([
+            'so_id' => $order->id, 'variant_id' => $this->variantId, 'unit_id' => $this->unitId,
+            'ordered_quantity' => 9, 'unit_price' => 100, 'line_total' => 900, 'line_status' => 'ACTIVE',
+        ]);
+        $sale = app(DemandSplitterService::class)->checkAndSplitDemand($order, [$this->variantId => 9]);
+        $this->assertSame(4.0, $sale['total_reserved']);
+        $this->assertSame(5.0, $sale['total_backordered']);
+
+        $rf = $this->createAndApproveRf(6);
+        $route = "/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}";
+        $review = $this->asBrowserOfficer($this->custodianId)->getJson("$route/allocation-review")->assertOk();
+        $this->assertSame([$donation->id], collect($review->json('data.lines.0.candidate_lots'))->pluck('stock_lot_id')->all());
+
+        foreach ([$unrestricted, $donation] as $lot) {
+            $prep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("$route/reservation-preparations", [
+                'rf_line_id' => $rf['lines'][0]['id'], 'reason' => 'Select workshop supplies',
+                'targets' => [[
+                    'stock_lot_id' => $lot->id, 'basis_segment_id' => $lot->basis_segment_id,
+                    'offset_quantity' => '0', 'quantity' => '2',
+                    'expected_lot_material_version' => $lot->material_version, 'expected_stock_version' => $lot->stock_version,
+                ]],
+            ])->assertCreated()->json('data.resource_id');
+            $result = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("$route/reservation-preparations/$prep/commit", [
+                'expected_preparation_version' => 1,
+            ]);
+            if ($lot->id === $unrestricted->id) {
+                $result->assertConflict()->assertJsonPath('error.code', 'availability_conflict');
+            } else {
+                $result->assertCreated()->assertJsonPath('data.result.committed_quantity', '2');
+            }
+        }
     }
 
     public function test_commit_and_reallocation_reject_stock_outside_the_selected_rf_line_or_basis_segment(): void
@@ -584,7 +647,11 @@ class InternalRfAndReservationTest extends TestCase
             'expected_lot_material_version' => $lot->material_version,
             'expected_stock_version' => $lot->stock_version,
         ];
-        $invalid = [$target($wrongVariant), $target($wrongUnit), $target($lot, (string) Str::uuid())];
+        $invalid = [
+            $target($wrongVariant), $target($wrongUnit), $target($lot, (string) Str::uuid()),
+            array_replace($target($lot), ['offset_quantity' => '0.5']),
+            array_replace($target($lot), ['expected_stock_version' => $lot->stock_version + 1]),
+        ];
         foreach ([...$invalid, $target($lot)] as $index => $selected) {
             $prep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("$base/reservation-preparations", $versions + [
                 'rf_line_id' => $rf['lines'][0]['id'],
@@ -610,7 +677,7 @@ class InternalRfAndReservationTest extends TestCase
 
         $updatedRf = InternalRf::findOrFail($rf['id']);
         $before = RfReservationAllocation::where('reservation_id', $committed['id'])->get()->toArray();
-        foreach ($invalid as $selection) {
+        foreach ([...$invalid, array_diff_key($target($lot), ['expected_stock_version' => true])] as $selection) {
             $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("$base/reservations/{$committed['id']}/reallocate", [
                 'expected_rf_version' => $updatedRf->version,
                 'expected_rf_material_version' => $updatedRf->material_version,

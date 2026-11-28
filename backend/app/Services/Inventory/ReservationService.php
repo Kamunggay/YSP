@@ -198,12 +198,16 @@ class ReservationService
             $targets = $prep->targets_json ?? [];
             $sortedLotIds = collect($targets)->pluck('stock_lot_id')->unique()->sort()->values()->all();
             $lots = InventoryLot::where('chapter_id', $chapterId)
-                ->whereIn('id', $sortedLotIds)
+                ->where(fn ($query) => $query->whereIn('id', $sortedLotIds)
+                    ->orWhere(fn ($pool) => $pool->where('variant_id', $rfLine->variant_id)->where('unit_id', $rfLine->unit_id)))
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
 
+            $saleCommitments = $this->stockViewQuery->saleCommitmentRanges(
+                $lots->where('variant_id', $rfLine->variant_id)->where('unit_id', $rfLine->unit_id), lock: true,
+            );
             $totalQty = BcMath::str('0');
             foreach ($targets as $target) {
                 $lotId = (string) $target['stock_lot_id'];
@@ -216,7 +220,7 @@ class ReservationService
                     ]);
                 }
 
-                $this->assertLotTargetAvailable($lot, $target, $rf, $rfLine);
+                $this->assertLotTargetAvailable($lot, $target, $rf, $rfLine, $saleCommitments[$lotId] ?? []);
                 $totalQty = BcMath::add($totalQty, $target['quantity']);
             }
 
@@ -474,24 +478,25 @@ class ReservationService
             $this->assertReservationVersions($reservation, $rf, $input);
             $this->assertNoUnresolvedHandoverForReservation($chapterId, $rf->id, $reservation->id);
 
-            $allocs = RfReservationAllocation::where('reservation_id', $reservation->id)
-                ->where('status', 'active')
-                ->lockForUpdate()
-                ->get();
-
             $rfLine = InternalRfLine::where('rf_id', $rf->id)
                 ->whereKey($reservation->rf_line_id ?? $reservation->source_line_id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            // Lock all target lots in deterministic order
-            $targetLotIds = collect($toTargets)->pluck('stock_lot_id')->unique()->sort()->values()->all();
+            // Use the same lot-before-allocation order as a commit.
+            $lotIds = collect([...$fromRanges, ...$toTargets])->pluck('stock_lot_id')->unique()->sort()->values()->all();
             $lots = InventoryLot::where('chapter_id', $chapterId)
-                ->whereIn('id', $targetLotIds)
+                ->where(fn ($query) => $query->whereIn('id', $lotIds)
+                    ->orWhere(fn ($pool) => $pool->where('variant_id', $rfLine->variant_id)->where('unit_id', $rfLine->unit_id)))
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
+
+            $allocs = RfReservationAllocation::where('reservation_id', $reservation->id)
+                ->where('status', 'active')
+                ->lockForUpdate()
+                ->get();
 
             $currentReservation = $this->formatReservation($reservation);
 
@@ -514,6 +519,9 @@ class ReservationService
                 }
             }
 
+            $saleCommitments = $this->stockViewQuery->saleCommitmentRanges(
+                $lots->where('variant_id', $rfLine->variant_id)->where('unit_id', $rfLine->unit_id), lock: true,
+            );
             // Recheck free ranges after releasing only the selected coordinates.
             foreach ($toTargets as $target) {
                 $lotId = (string) $target['stock_lot_id'];
@@ -526,7 +534,7 @@ class ReservationService
                     ]);
                 }
 
-                $this->assertLotTargetAvailable($lot, $target, $rf, $rfLine, $currentReservation);
+                $this->assertLotTargetAvailable($lot, $target, $rf, $rfLine, $saleCommitments[$lotId] ?? [], $currentReservation);
             }
 
             foreach ($toTargets as $tt) {
@@ -1257,6 +1265,7 @@ class ReservationService
         array $target,
         InternalRf $rf,
         InternalRfLine $rfLine,
+        array $saleCommitments,
         ?array $currentReservation = null,
     ): void {
         $conflict = fn (string $code, string $message) => new ContractException(409, $code, $message, [
@@ -1275,33 +1284,51 @@ class ReservationService
             || $lot->unit_id !== $rfLine->unit_id || strtoupper($lot->condition) !== 'USABLE' || strtoupper($lot->custody) !== 'STOCKROOM') {
             throw $conflict('availability_conflict', 'Stock lot does not match the approved RF line and usable stockroom scope.');
         }
-        if (isset($target['expected_lot_material_version']) && (int) $target['expected_lot_material_version'] !== (int) $lot->material_version) {
+        if (($target['expected_lot_material_version'] ?? null) !== $lot->material_version) {
             throw $conflict('material_version_conflict', 'Lot material version changed.');
         }
-        if (isset($target['expected_stock_version']) && (int) $target['expected_stock_version'] !== (int) $lot->stock_version) {
+        if (($target['expected_stock_version'] ?? null) !== $lot->stock_version) {
             throw $conflict('availability_conflict', 'Lot stock version changed.');
+        }
+
+        $scale = $rfLine->identity_at_approval['quantity_scale'] ?? $lot->quantity_scale ?? 0;
+        foreach (['offset_quantity', 'quantity'] as $field) {
+            $value = $target[$field] ?? null;
+            if (! is_string($value) || ! preg_match('/^\d+(?:\.\d{1,6})?$/D', $value)
+                || BcMath::comp($value, BcMath::str($value, $scale)) !== 0) {
+                throw $conflict('availability_conflict', 'The requested range does not use the approved quantity scale.');
+            }
         }
 
         $offset = BcMath::str($target['offset_quantity']);
         $quantity = BcMath::str($target['quantity']);
         $eligibility = app(StockEligibilityEvaluator::class);
-        $segment = collect($eligibility->segments($lot))->first(fn (array $segment): bool => $segment['basis_segment_id'] === $target['basis_segment_id']
-            && BcMath::intervalContains($segment['offset'], $segment['quantity'], $offset, $quantity));
-        if ($segment === null || ! BcMath::isPositive($quantity)) {
-            throw $conflict('availability_conflict', 'The named basis segment does not contain the requested range.');
+        $covered = [];
+        foreach ($eligibility->segments($lot) as $segment) {
+            if ($segment['basis_segment_id'] !== $target['basis_segment_id']) {
+                continue;
+            }
+            $intersections = BcMath::intersectIntervalLists([$segment], [['offset' => $offset, 'quantity' => $quantity]]);
+            if ($intersections === []) {
+                continue;
+            }
+            $state = $eligibility->restrictionState(
+                $lot, $segment['restrictions'], $lot->restrictions()->sharedLock()->exists(), $rf->purpose, now('UTC'), $rf,
+            );
+            if (! in_array($state, ['unrestricted', 'bounded'], true)) {
+                throw $conflict('restriction_unsupported', 'Donor conditions do not permit this range for the RF.');
+            }
+            array_push($covered, ...$intersections);
         }
 
-        $state = $eligibility->restrictionState(
-            $lot, $segment['restrictions'], $lot->restrictions()->exists(), $rf->purpose, now('UTC'), $rf,
-        );
-        if (! in_array($state, ['unrestricted', 'bounded'], true)) {
-            throw $conflict('restriction_unsupported', 'Donor conditions do not permit this range for the RF.');
+        if (! BcMath::isPositive($quantity) || BcMath::comp(BcMath::intervalUnionLength($covered), $quantity) !== 0) {
+            throw $conflict('availability_conflict', 'The named basis segment does not contain the requested range.');
         }
 
         $consumed = $this->stockViewQuery->getConsumedIntervalsForLot($lot)['consumed_intervals'];
         $holds = $this->stockViewQuery->getActiveHoldRangesForLot($rf->chapter_id, $lot->id);
         $reservations = $this->stockViewQuery->getActiveReservationRangesForLot($rf->chapter_id, $lot->id);
-        foreach ([...$consumed, ...$holds, ...$reservations] as $blocked) {
+        foreach ([...$consumed, ...$holds, ...$reservations, ...$saleCommitments] as $blocked) {
             if (BcMath::intervalsOverlap($offset, $quantity, $blocked['offset'], $blocked['quantity'])) {
                 throw $conflict('availability_conflict', 'The requested range overlaps held, reserved or consumed stock.');
             }
