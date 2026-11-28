@@ -135,6 +135,8 @@ interface ReservationAndHoldWorkspaceProps {
   refreshSignal: number;
   chapterContext: ChapterContext | null;
   chapterAccess: ChapterAccessSnapshot | null;
+  initialRfId?: string | null;
+  initialRfLineId?: string | null;
   onBackToDashboard?: () => void;
 }
 
@@ -207,15 +209,20 @@ export function ReservationAndHoldWorkspace({
   refreshSignal,
   chapterContext,
   chapterAccess,
+  initialRfId = null,
+  initialRfLineId = null,
   onBackToDashboard,
 }: ReservationAndHoldWorkspaceProps) {
   const [viewTab, setViewTab] = useState<'actions' | 'records' | 'status'>('actions');
 
   const initialDraft = readResHoldDraft(userId, chapterId);
-  const [rfId, setRfId] = useState(initialDraft.rfId ?? '');
-  const [rfLineId, setRfLineId] = useState(initialDraft.rfLineId ?? '');
-  const [prepId, setPrepId] = useState(initialDraft.prepId ?? '');
-  const [reservationId, setReservationId] = useState(initialDraft.reservationId ?? '');
+  const matchesInitialRf = !initialRfId || !initialDraft.rfId || initialDraft.rfId === initialRfId;
+  const [rfId, setRfId] = useState(initialRfId ?? initialDraft.rfId ?? '');
+  const [rfLineId, setRfLineId] = useState(
+    initialRfLineId ?? (matchesInitialRf ? (initialDraft.rfLineId ?? '') : ''),
+  );
+  const [prepId, setPrepId] = useState(matchesInitialRf ? (initialDraft.prepId ?? '') : '');
+  const [reservationId, setReservationId] = useState(matchesInitialRf ? (initialDraft.reservationId ?? '') : '');
   const [holdId, setHoldId] = useState(initialDraft.holdId ?? '');
 
   const [rfList, setRfList] = useState<InternalRfOption[]>([]);

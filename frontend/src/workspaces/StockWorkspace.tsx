@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { actionBlockReason } from '../api/access.ts';
 import { apiGet, buildQuery, formatManilaTime } from '../api/client.ts';
+import { isStage2PreviewActive } from '../api/stage2Client.ts';
 import type { ChapterAccessSnapshot, IntendedUse, SevenStockViews } from '../api/types.ts';
+import { useStage2Candidates } from '../api/useStage2Candidates.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
+import { SearchableRecordPicker } from '../components/SearchableRecordPicker.tsx';
 
 interface StockSummaryItem {
   variant_id: string;
@@ -23,6 +26,8 @@ interface StockLotItem {
   variant_id: string;
   location_id: string;
   condition?: string;
+  restriction_state?: 'unrestricted' | 'bounded' | 'uninterpreted';
+  inbound_open_po?: string;
   stock_version?: number;
   material_version?: number;
   segments?: unknown[];
@@ -49,6 +54,12 @@ export function StockWorkspace({
   const [requestingUnitId, setRequestingUnitId] = useState('');
   const [eventId, setEventId] = useState('');
   const [variantFilter, setVariantFilter] = useState('');
+  const candidates = useStage2Candidates(
+    chapterId,
+    refreshSignal,
+    isStage2PreviewActive(),
+    chapterAccess,
+  );
 
   const [summaries, setSummaries] = useState<StockSummaryItem[]>([]);
   const [lots, setLots] = useState<StockLotItem[]>([]);
@@ -189,27 +200,14 @@ export function StockWorkspace({
       <div className="p03-workspace-inner">
         <header className="p03-top-header surface-card">
           <div className="p03-header-search-row">
-            <div className="p03-search-input-wrap">
-              <svg
-                className="p03-search-icon"
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" strokeLinecap="round" />
-              </svg>
-              <input
-                id="stk-var"
-                className="form-control p03-search-input"
-                value={variantFilter}
-                onChange={(e) => setVariantFilter(e.target.value)}
-                placeholder="Filter by item variant reference..."
-                aria-label="Filter by item variant reference"
+            <div className="p03-search-input-wrap" style={{ flex: 1 }}>
+              <SearchableRecordPicker
+                id="stk-var-picker"
+                label="Filter by Item Variant"
+                valueId={variantFilter}
+                options={candidates.variantOptions}
+                onSelect={(opt) => setVariantFilter(opt?.id ?? '')}
+                placeholder="Pick item variant..."
               />
             </div>
 
@@ -444,6 +442,26 @@ export function StockWorkspace({
                         <div className="p03-history-title-group">
                           <span className="p03-version-pill p03-id-pill p03-mono-inline">{lot.lot_reference ?? lot.id.slice(0, 8)}</span>
                           {lot.condition && <span className="s02-status-tag">{lot.condition}</span>}
+                          {lot.restriction_state && (
+                            <span
+                              className={`s2-badge ${
+                                lot.restriction_state === 'uninterpreted'
+                                  ? 'is-danger'
+                                  : lot.restriction_state === 'bounded'
+                                    ? 'is-warning'
+                                    : 'is-ready'
+                              }`}
+                            >
+                              {lot.restriction_state === 'uninterpreted'
+                                ? 'Uninterpreted — Allocation Blocked'
+                                : lot.restriction_state === 'bounded'
+                                  ? 'Bounded Restricted'
+                                  : 'Unrestricted'}
+                            </span>
+                          )}
+                          {lot.inbound_open_po && (
+                            <span className="p03-version-pill">Inbound PO: {lot.inbound_open_po}</span>
+                          )}
                           {lot.stock_version !== undefined && (
                             <span className="p03-version-pill">rev. {lot.stock_version}</span>
                           )}

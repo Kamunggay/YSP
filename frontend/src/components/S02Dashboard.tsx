@@ -123,6 +123,43 @@ const WORKSPACE_GROUPS: NavGroupConfig[] = [
       },
     ],
   },
+  {
+    id: 'stage2_procurement',
+    label: 'Procurement & Donations',
+    tone: 'procurement',
+    items: [
+      {
+        tab: 'replenishment_repf',
+        label: 'Replenishment & RepF',
+        subtitle: 'Net shortage, ROP & budget review',
+        requiredActions: ['repf.read', 'replenishment.read'],
+      },
+      {
+        tab: 'quotations_po',
+        label: 'Quotations & POs',
+        subtitle: 'Quotes, selection & purchase orders',
+        requiredActions: ['po.read', 'quotation.read'],
+      },
+      {
+        tab: 'receiving_discrepancies',
+        label: 'Receiving & Holds',
+        subtitle: 'PO/DA receipts, discrepancies & holds',
+        requiredActions: ['receiving_report.read', 'receiving_hold.read'],
+      },
+      {
+        tab: 'donations_restrictions',
+        label: 'Donations & Restrictions',
+        subtitle: 'In-kind DAs & ADR 0004 resolution',
+        requiredActions: ['donation.read'],
+      },
+      {
+        tab: 'stage2_alerts_reports',
+        label: 'Alerts, Queue & Reports',
+        subtitle: 'Officer alerts, INV-09 queue & printouts',
+        requiredActions: ['alerts.read', 'allocation_queue.read', 'reports.read'],
+      },
+    ],
+  },
 ];
 
 function computeInitials(name: string): string {
@@ -141,15 +178,29 @@ function computeInitials(name: string): string {
 
 function formatEventTitle(eventName: string): string {
   const cleaned = eventName
-    .replace(/^stage1\./i, '')
-    .replace(/[._]/g, ' ')
+    .replace(/^(stage1|stage2)\./i, '')
+    .replace(/\.v\d+$/i, '')
+    .replace(/[._-]/g, ' ')
     .replace(/\bipc\b/gi, 'opening count')
     .replace(/\bopening rm\b/gi, 'opening receipt')
+    .replace(/\brepf\b/gi, 'replenishment requisition')
     .replace(/\brf\b/gi, 'requisition');
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
 function formatDraftTab(formKey: string): { tab: WorkspaceTab; workspaceLabel: string } {
+  if (formKey.includes('repf')) {
+    return { tab: 'replenishment_repf', workspaceLabel: 'Replenishment & RepF' };
+  }
+  if (formKey.includes('stage2_po')) {
+    return { tab: 'quotations_po', workspaceLabel: 'Quotations & POs' };
+  }
+  if (formKey.includes('receiving')) {
+    return { tab: 'receiving_discrepancies', workspaceLabel: 'Receiving & Holds' };
+  }
+  if (formKey.includes('stage2_da')) {
+    return { tab: 'donations_restrictions', workspaceLabel: 'Donations & Restrictions' };
+  }
   if (formKey.includes('catalogue')) {
     return { tab: 'catalogue', workspaceLabel: 'Catalogue' };
   }
@@ -224,6 +275,7 @@ export function S02Dashboard({
     catalogue: true,
     requests: true,
     custody: true,
+    stage2_procurement: true,
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [activeQueueTab, setActiveQueueTab] = useState<'priority' | 'updates' | 'drafts'>('priority');
@@ -285,6 +337,7 @@ export function S02Dashboard({
       catalogue: nextState,
       requests: nextState,
       custody: nextState,
+      stage2_procurement: nextState,
     });
   }
 
@@ -1014,6 +1067,66 @@ interface PriorityItem {
                   <span className="s02-quick-text">
                     <span className="s02-quick-title">Opening</span>
                     <span className="s02-quick-sub">Baseline counts &amp; receipts</span>
+                  </span>
+                </button>
+
+                <button type="button" className="s02-quick-tile" onClick={() => onSelectTab('replenishment_repf')}>
+                  <span className="s02-quick-icon" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                      <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <span className="s02-quick-text">
+                    <span className="s02-quick-title">Replenishment &amp; RepF</span>
+                    <span className="s02-quick-sub">Net shortage &amp; budget review</span>
+                  </span>
+                </button>
+
+                <button type="button" className="s02-quick-tile" onClick={() => onSelectTab('quotations_po')}>
+                  <span className="s02-quick-icon" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                      <path d="M4 7h16M4 12h10M4 17h7" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <span className="s02-quick-text">
+                    <span className="s02-quick-title">Quotes &amp; POs</span>
+                    <span className="s02-quick-sub">Supplier selection &amp; orders</span>
+                  </span>
+                </button>
+
+                <button type="button" className="s02-quick-tile" onClick={() => onSelectTab('receiving_discrepancies')}>
+                  <span className="s02-quick-icon" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                      <path d="M21 8l-9-5-9 5v8l9 5 9-5V8Z" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  <span className="s02-quick-text">
+                    <span className="s02-quick-title">Receiving &amp; Holds</span>
+                    <span className="s02-quick-sub">PO/DA receipts &amp; discrepancies</span>
+                  </span>
+                </button>
+
+                <button type="button" className="s02-quick-tile" onClick={() => onSelectTab('donations_restrictions')}>
+                  <span className="s02-quick-icon" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                      <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10Z" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  <span className="s02-quick-text">
+                    <span className="s02-quick-title">Donations</span>
+                    <span className="s02-quick-sub">In-kind DAs &amp; ADR 0004 rules</span>
+                  </span>
+                </button>
+
+                <button type="button" className="s02-quick-tile" onClick={() => onSelectTab('stage2_alerts_reports')}>
+                  <span className="s02-quick-icon" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                      <path d="M3 3v18h18M7 15l4-4 3 3 5-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  <span className="s02-quick-text">
+                    <span className="s02-quick-title">Alerts &amp; Reports</span>
+                    <span className="s02-quick-sub">INV-09 queue &amp; audit sheets</span>
                   </span>
                 </button>
               </div>

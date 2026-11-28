@@ -1,3 +1,7 @@
+import type { AllEvidencePurpose } from './stage2Types.ts';
+
+export * from './stage2Types.ts';
+
 export type ConnectionState = 'checking' | 'connected' | 'unavailable';
 
 export type WorkspaceTab =
@@ -8,7 +12,12 @@ export type WorkspaceTab =
   | 'opening'
   | 'requisitions'
   | 'reservations_holds'
-  | 'actual_issues';
+  | 'actual_issues'
+  | 'replenishment_repf'
+  | 'quotations_po'
+  | 'receiving_discrepancies'
+  | 'donations_restrictions'
+  | 'stage2_alerts_reports';
 
 export interface FieldError {
   pointer: string;
@@ -165,5 +174,16 @@ export interface Stage1EventNotice {
   material_version: number | null;
 }
 
-export type EvidencePurpose = 'opening_receipt' | 'hold_clearance' | 'actual_issue';
+export interface BoundedRestriction {
+  state: 'unrestricted' | 'bounded' | 'uninterpreted';
+  allowed_uses: Array<'internal_use' | 'sale' | 'booth_custody'>;
+  event_ids: string[];
+  requesting_unit_ids: string[];
+  effective_from: string | null;
+  effective_until: string | null;
+  interpretation_id: string | null;
+  source_condition_reference: string | null;
+}
+
+export type EvidencePurpose = AllEvidencePurpose;
 export type IntendedUse = 'internal_use' | 'sale' | 'booth_transfer';

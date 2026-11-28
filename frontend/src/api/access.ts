@@ -42,6 +42,46 @@ const ACTION_LABELS: Record<string, string> = {
   'issue.prepare': 'Preparing stock issue handovers',
   'issue.post': 'Posting completed issue handovers',
   'issue_result.read': 'Viewing issue handover status',
+  // Stage 2 action keys (39 canonical keys from contracts/stage2/handoff.yaml)
+  'replenishment.read': 'Viewing net shortage & replenishment needs',
+  'repf.read': 'Viewing replenishment forms',
+  'repf.draft': 'Drafting & revising replenishment forms',
+  'repf.submit': 'Submitting replenishment forms for budget review',
+  'repf.budget_review': 'Reviewing replenishment budgets',
+  'repf.cancel': 'Canceling replenishment forms',
+  'quotation.read': 'Viewing supplier quotations',
+  'quotation.manage': 'Recording & updating supplier quotations',
+  'quotation.select': 'Selecting a supplier quotation',
+  'po.read': 'Viewing purchase orders',
+  'po.draft': 'Drafting & editing purchase orders',
+  'po.submit': 'Submitting purchase orders for approval',
+  'po.approve': 'Approving or returning purchase orders',
+  'po.acknowledge': 'Recording supplier acknowledgment',
+  'po.amend_propose': 'Proposing purchase order amendments',
+  'po.amend_approve': 'Approving purchase order amendments',
+  'po.close_short': 'Closing short purchase orders',
+  'po.cancel': 'Canceling purchase orders',
+  'da.read': 'Viewing donation acknowledgments',
+  'da.history_read': 'Viewing donation revision history',
+  'da.draft': 'Drafting & revising donations',
+  'da.submit': 'Submitting donations for acknowledgment',
+  'da.acknowledge': 'Acknowledging donations & donor conditions',
+  'da.cancel': 'Canceling donations',
+  'da.restriction_resolve': 'Resolving donor restrictions',
+  'receiving.read': 'Viewing receiving reports, discrepancies & holds',
+  'receiving.draft': 'Preparing PO & donation receiving reports',
+  'receiving.inspect': 'Recording receiving inspections',
+  'receiving.match_evidence': 'Binding signed receiving paper',
+  'receiving.post': 'Posting inspected receiving reports',
+  'receiving.cancel': 'Canceling unposted receiving reports',
+  'discrepancy.manage': 'Notifying suppliers of discrepancies',
+  'discrepancy.resolve': 'Reviewing & resolving receiving discrepancies',
+  'receiving.hold_manage': 'Recording & linking missing-source holds',
+  'allocation_queue.read': 'Viewing allocation priority queue',
+  'alerts.read': 'Viewing operational alerts',
+  'reports.inventory.read': 'Viewing inventory reports',
+  'reports.procurement.read': 'Viewing procurement reports',
+  'reports.control.read': 'Viewing control & donation reports',
 };
 
 const DUTY_LABELS: Record<string, string> = {
@@ -49,13 +89,21 @@ const DUTY_LABELS: Record<string, string> = {
   APPROVAL: 'Requisition Approver',
   RF_APPROVER: 'Requisition Approver',
   RF_CREATOR: 'Requisition Preparer',
+  COMMITTEE_REQUESTER: 'Committee Requester',
   CUSTODY: 'Stock Custodian',
   DISPATCH: 'Dispatch Officer',
   OPENING: 'Opening Inventory Officer',
   EVIDENCE: 'Document Verification Officer',
   CHAPTER_HEAD: 'Chapter Head',
   FINANCE: 'Finance Officer',
-  TECHNICAL_REP: 'Technical Representative',
+  PURCHASING: 'Purchasing Officer',
+  BUDGET_APPROVER: 'Budget Approver',
+  RECEIVING: 'Receiving Officer',
+  SALES_OFFICER: 'Sales Officer',
+  SALES_REVIEWER: 'Sales Reviewer',
+  BOOTH_CUSTODIAN: 'Booth Custodian',
+  BOOTH_CASHIER: 'Booth Cashier',
+  INDEPENDENT_REVIEWER: 'Independent Reviewer',
 };
 
 export function formatActionName(action: string): string {
@@ -89,10 +137,15 @@ export function formatDutyName(duty: string): string {
 
 export function formatSettingKey(key: string): string {
   return key
+    .replace(/\bpurchasing_quotation_policy\b/g, 'quotation tier policy')
+    .replace(/\bda_authorization\b/g, 'donation authorization policy')
     .replace(/_/g, ' ')
+    .replace(/\brepf\b/gi, 'replenishment form')
+    .replace(/\bpo\b/gi, 'purchase order')
+    .replace(/\bda\b/gi, 'donation acknowledgment')
     .replace(/\brf\b/gi, 'requisition')
     .replace(/\bipc\b/gi, 'opening count')
-    .replace(/\brm\b/gi, 'opening receipt');
+    .replace(/\brm\b/gi, 'receiving report');
 }
 
 export function actionBlockReason(access: ChapterAccessSnapshot | null, ...actions: string[]): string | null {

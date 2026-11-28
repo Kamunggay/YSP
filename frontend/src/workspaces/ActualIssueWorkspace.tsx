@@ -181,6 +181,8 @@ interface ActualIssueWorkspaceProps {
   refreshSignal: number;
   chapterContext: ChapterContext | null;
   chapterAccess: ChapterAccessSnapshot | null;
+  initialRfId?: string | null;
+  initialRfLineId?: string | null;
   onBackToDashboard?: () => void;
 }
 
@@ -324,13 +326,16 @@ export function ActualIssueWorkspace({
   refreshSignal,
   chapterContext,
   chapterAccess,
+  initialRfId = null,
+  initialRfLineId = null,
   onBackToDashboard,
 }: ActualIssueWorkspaceProps) {
   const [viewTab, setViewTab] = useState<'workflow' | 'inspect' | 'status'>('workflow');
 
   const initialDraft = parseSavedDraft(userId, chapterId);
-  const [rfId, setRfId] = useState(initialDraft.rfId ?? '');
-  const [issueId, setIssueId] = useState(initialDraft.issueId ?? '');
+  const matchesInitialRf = !initialRfId || !initialDraft.rfId || initialDraft.rfId === initialRfId;
+  const [rfId, setRfId] = useState(initialRfId ?? initialDraft.rfId ?? '');
+  const [issueId, setIssueId] = useState(matchesInitialRf ? (initialDraft.issueId ?? '') : '');
   const [opKind, setOpKind] = useState<IssueOpKind>(initialDraft.opKind ?? 'prepare');
 
   const [rfList, setRfList] = useState<InternalRfOption[]>([]);
@@ -349,19 +354,21 @@ export function ActualIssueWorkspace({
   const [expectedVersion, setExpectedVersion] = useState('1');
   const [expectedMatVersion, setExpectedMatVersion] = useState('1');
 
-  const [recipientId, setRecipientId] = useState(initialDraft.recipientId ?? '');
+  const [recipientId, setRecipientId] = useState(matchesInitialRf ? (initialDraft.recipientId ?? '') : '');
   const [handedOverAt, setHandedOverAt] = useState(() => initialDraft.handedOverAt ?? nowUtcMicro());
   const [acknowledgedAt, setAcknowledgedAt] = useState(() => initialDraft.acknowledgedAt ?? nowUtcMicro());
   const [acceptsPartial, setAcceptsPartial] = useState(initialDraft.acceptsPartial ?? false);
   const [reviseReason, setReviseReason] = useState(initialDraft.reviseReason ?? '');
   const [issueLines, setIssueLines] = useState<IssueLineSelectionInput[]>(
-    initialDraft.issueLines && initialDraft.issueLines.length > 0 ? initialDraft.issueLines : [emptyIssueLine()],
+    matchesInitialRf && initialDraft.issueLines && initialDraft.issueLines.length > 0
+      ? initialDraft.issueLines
+      : [{ ...emptyIssueLine(), rf_line_id: initialRfLineId ?? '' }],
   );
 
   const [snapshotMatVer, setSnapshotMatVer] = useState('1');
-  const [snapshotSha, setSnapshotSha] = useState(initialDraft.snapshotSha ?? '');
+  const [snapshotSha, setSnapshotSha] = useState(matchesInitialRf ? (initialDraft.snapshotSha ?? '') : '');
   const [matchesPaper, setMatchesPaper] = useState(initialDraft.matchesPaper ?? true);
-  const [acknowledgmentId, setAcknowledgmentId] = useState(initialDraft.acknowledgmentId ?? '');
+  const [acknowledgmentId, setAcknowledgmentId] = useState(matchesInitialRf ? (initialDraft.acknowledgmentId ?? '') : '');
   const [currentSources, setCurrentSources] = useState<PostSourcePinInput[]>([]);
   const [batchHydrating, setBatchHydrating] = useState(false);
 

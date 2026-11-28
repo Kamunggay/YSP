@@ -1,9 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { actionBlockReason } from '../api/access.ts';
 import { apiGet, apiGetBlob, apiMutate, formatManilaTime, newActionKey } from '../api/client.ts';
+import {
+  isStage2PreviewActive,
+  listDonations,
+  listPurchaseOrders,
+  listReceivingDiscrepancies,
+  listReceivingHolds,
+  listReceivingReports,
+  listRepfs,
+} from '../api/stage2Client.ts';
 import type { ChapterAccessSnapshot, EvidencePurpose } from '../api/types.ts';
+import { useStage2Candidates } from '../api/useStage2Candidates.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
+import { SearchableRecordPicker } from '../components/SearchableRecordPicker.tsx';
+import type { SearchablePickerOption } from '../components/SearchableRecordPicker.tsx';
 import { memoryDraftStore } from '../state/memoryDraftStore.ts';
+import { stage2EvidenceStore } from '../state/stage2EvidenceStore.ts';
 
 interface EvidenceAttachment {
   attachment_id: string;
@@ -68,7 +81,128 @@ export function PaperEvidenceWorkspace({
   const initialDraft = readSavedDraft();
   const [purpose, setPurpose] = useState<EvidencePurpose>(initialDraft.purpose ?? 'opening_receipt');
   const [recordId, setRecordId] = useState(initialDraft.recordId ?? '');
+  const [manualRecordEntry, setManualRecordEntry] = useState(false);
+  const [stage2RecordOptions, setStage2RecordOptions] = useState<
+    Array<SearchablePickerOption<string>>
+  >([]);
+  const candidates = useStage2Candidates(
+    chapterId,
+    refreshSignal,
+    isStage2PreviewActive(),
+    chapterAccess,
+  );
   const [files, setFiles] = useState<FileList | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const opts: Array<SearchablePickerOption<string>> = [];
+      for (const rf of candidates.rfs) {
+        opts.push({
+          id: rf.id,
+          primaryLabel: `${rf.reference ?? rf.id.slice(0, 8)} (Internal RF)`,
+          secondaryLabel: rf.status,
+          badge: 'RF',
+          meta: rf.id,
+        });
+      }
+      for (const lot of candidates.lots) {
+        opts.push({
+          id: lot.id,
+          primaryLabel: `${lot.source_reference ?? lot.id.slice(0, 8)} (Stock Lot)`,
+          secondaryLabel: lot.condition,
+          badge: 'Lot',
+          meta: lot.id,
+        });
+      }
+      const [repfs, pos, das, rms, discs, holds] = await Promise.all([
+        listRepfs(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
+        listPurchaseOrders(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
+        listDonations(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
+        listReceivingReports(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
+        listReceivingDiscrepancies(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
+        listReceivingHolds(chapterId, { limit: 25 }).then((r) => r.data).catch(() => []),
+      ]);
+      if (!active) return;
+      for (const r of repfs) {
+        opts.push({
+          id: r.id,
+          primaryLabel: `${r.repf_reference ?? r.id.slice(0, 8)} (RepF Quotation Target)`,
+          secondaryLabel: r.status,
+          badge: 'RepF',
+          meta: r.id,
+        });
+      }
+      for (const p of pos) {
+        opts.push({
+          id: p.id,
+          primaryLabel: `${p.po_reference ?? p.id.slice(0, 8)} (PO)`,
+          secondaryLabel: p.supplier.supplier_name,
+          badge: 'PO',
+          meta: p.id,
+        });
+      }
+      for (const d of das) {
+        opts.push({
+          id: d.da_id,
+          primaryLabel: `${d.reference ?? d.da_id.slice(0, 8)} (DA — ${d.donor_name})`,
+          secondaryLabel: d.status,
+          badge: 'DA',
+          meta: d.da_id,
+        });
+      }
+      for (const rm of rms) {
+        opts.push({
+          id: rm.id,
+          primaryLabel: `${rm.rm_reference ?? rm.id.slice(0, 8)} (Receiving Report)`,
+          secondaryLabel: `${rm.source_kind.toUpperCase()} ${rm.source_reference}`,
+          badge: 'RM',
+          meta: rm.id,
+        });
+      }
+      for (const dc of discs) {
+        opts.push({
+          id: dc.id,
+          primaryLabel: `${dc.rm_reference} Discrepancy`,
+          secondaryLabel: dc.discrepancy_notes,
+          badge: 'Discrepancy',
+          meta: dc.id,
+        });
+      }
+      for (const h of holds) {
+        opts.push({
+          id: h.id,
+          primaryLabel: `${h.carrier_or_sender_name} Hold`,
+          secondaryLabel: h.hold_reason,
+          badge: 'Hold',
+          meta: h.id,
+        });
+      }
+      setStage2RecordOptions(opts);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [candidates.lots, candidates.rfs, chapterId, refreshSignal]);
+
+  const filteredRecordOptions = useMemo(() => {
+    const badgeByPurpose: Record<string, string[]> = {
+      opening_receipt: ['Lot'],
+      hold_clearance: ['Lot'],
+      actual_issue: ['RF'],
+      quotation_attachment: ['RepF'],
+      po_supplier_dr: ['PO', 'RM'],
+      da_acknowledgment: ['DA'],
+      da_receipt: ['RM', 'DA'],
+      donor_restriction_resolution: ['DA'],
+      receiving_discrepancy: ['Discrepancy'],
+      missing_source_hold: ['Hold'],
+    };
+    const preferred = badgeByPurpose[purpose] ?? [];
+    if (preferred.length === 0) return stage2RecordOptions;
+    const matches = stage2RecordOptions.filter((o) => o.badge && preferred.includes(o.badge));
+    return matches.length > 0 ? matches : stage2RecordOptions;
+  }, [purpose, stage2RecordOptions]);
 
   const [evidenceIdInput, setEvidenceIdInput] = useState(initialDraft.evidenceIdInput ?? '');
   const [expectedVersion, setExpectedVersion] = useState(initialDraft.expectedVersion ?? '1');
@@ -137,6 +271,22 @@ export function PaperEvidenceWorkspace({
       setEvidenceIdInput(result.data.evidence_id);
       setExpectedVersion(String(result.data.version));
       setReplayed(result.replayed);
+      stage2EvidenceStore.record({
+        chapterId,
+        purpose,
+        recordId: recordId.trim(),
+        label: `${purpose.replaceAll('_', ' ')} (${recordId.trim().slice(0, 8)}…)`,
+        version: result.data.version,
+        uploadedAt: result.data.uploaded_at ?? '',
+        binding: {
+          evidence_id: result.data.evidence_id,
+          version_id: result.data.version_id,
+          attachments: result.data.attachments.map((a) => ({
+            attachment_id: a.attachment_id,
+            sha256: a.sha256,
+          })),
+        },
+      });
       setStatusMessage(`Signed document uploaded (Record ${result.data.evidence_id}, rev. ${result.data.version}).`);
       await inspectEvidence(result.data.evidence_id);
     } catch (err) {
@@ -391,20 +541,49 @@ export function PaperEvidenceWorkspace({
                     <option value="opening_receipt">Opening Inventory Receipt</option>
                     <option value="hold_clearance">Stock Hold Clearance</option>
                     <option value="actual_issue">Issue Handover Form</option>
+                    <option value="quotation_attachment">Supplier Quotation Attachment</option>
+                    <option value="po_supplier_dr">Purchase Order / Supplier Delivery Receipt</option>
+                    <option value="da_acknowledgment">Signed Donation Acknowledgment</option>
+                    <option value="da_receipt">Donation Receiving Report Paper</option>
+                    <option value="donor_restriction_resolution">Signed Donor Restriction Resolution</option>
+                    <option value="receiving_discrepancy">Receiving Discrepancy Resolution Paper</option>
+                    <option value="missing_source_hold">Missing-Source Hold Receipt / Return</option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="ev-rec">
-                    Linked Record Reference
+                  {!manualRecordEntry ? (
+                    <SearchableRecordPicker
+                      id="ev-rec-picker"
+                      label="Linked Record Reference"
+                      valueId={recordId}
+                      options={filteredRecordOptions}
+                      onSelect={(opt) => setRecordId(opt?.id ?? '')}
+                      required
+                      placeholder="Search chapter records matching purpose..."
+                    />
+                  ) : (
+                    <>
+                      <label className="form-label" htmlFor="ev-rec">
+                        Linked Record Reference (Manual UUID)
+                      </label>
+                      <input
+                        id="ev-rec"
+                        className="form-control"
+                        required
+                        value={recordId}
+                        onChange={(e) => setRecordId(e.target.value)}
+                      />
+                    </>
+                  )}
+                  <label className="s2-check-row">
+                    <input
+                      type="checkbox"
+                      checked={manualRecordEntry}
+                      onChange={(e) => setManualRecordEntry(e.target.checked)}
+                    />
+                    Enter record ID manually instead of picking from loaded chapter records
                   </label>
-                  <input
-                    id="ev-rec"
-                    className="form-control"
-                    required
-                    value={recordId}
-                    onChange={(e) => setRecordId(e.target.value)}
-                  />
                 </div>
 
                 <div className="form-group">

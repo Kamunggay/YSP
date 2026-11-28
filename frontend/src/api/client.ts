@@ -167,6 +167,22 @@ export async function checkHealth(signal?: AbortSignal): Promise<ConnectionState
   }
 }
 
+export async function apiGetRaw<T>(path: string, extraHeaders?: Record<string, string>): Promise<T> {
+  const response = await fetch(path, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+      ...(extraHeaders ?? {}),
+    },
+  });
+  if (!response.ok) {
+    await throwParsedError(response);
+  }
+  return (await response.json()) as T;
+}
+
 export async function apiGet<T>(path: string, extraHeaders?: Record<string, string>): Promise<ApiEnvelope<T>> {
   const response = await fetch(path, {
     method: 'GET',
@@ -217,7 +233,7 @@ export async function apiGetBlob(path: string): Promise<{ blob: Blob; contentTyp
 }
 
 export async function apiMutate<T>(
-  method: 'POST' | 'PUT',
+  method: 'POST' | 'PUT' | 'DELETE',
   path: string,
   body: unknown | null,
   actionKey?: string,

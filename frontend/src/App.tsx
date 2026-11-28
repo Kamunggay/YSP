@@ -14,6 +14,8 @@ import { BatCaveShell } from './components/BatCaveShell.tsx';
 import { useBatCaveToast } from './components/batcaveToast.ts';
 import { OperationBanner } from './components/OperationBanner.tsx';
 import { S02Dashboard } from './components/S02Dashboard.tsx';
+import { getRefreshDomainsForNotice } from './realtime/stage2NoticeRouter.ts';
+import type { Stage2RefreshDomain } from './realtime/stage2NoticeRouter.ts';
 import { Stage1ReverbClient, type RealtimeStatus } from './realtime/reverbClient.ts';
 import { memoryDraftStore, type MemoryDraftEntry } from './state/memoryDraftStore.ts';
 import { getInitialSoundsEnabled, playClickPen, playOutageSwitch } from './theme/batcaveAudio.ts';
@@ -21,9 +23,19 @@ import { ActualIssueWorkspace } from './workspaces/ActualIssueWorkspace.tsx';
 import { CatalogueWorkspace } from './workspaces/CatalogueWorkspace.tsx';
 import { OpeningBaselineWorkspace } from './workspaces/OpeningBaselineWorkspace.tsx';
 import { PaperEvidenceWorkspace } from './workspaces/PaperEvidenceWorkspace.tsx';
+import { QuotationPurchaseOrderWorkspace } from './workspaces/QuotationPurchaseOrderWorkspace.tsx';
+import { ReceivingDiscrepancyHoldWorkspace } from './workspaces/ReceivingDiscrepancyHoldWorkspace.tsx';
+import { ReplenishmentRepfWorkspace } from './workspaces/ReplenishmentRepfWorkspace.tsx';
 import { RequisitionWorkspace } from './workspaces/RequisitionWorkspace.tsx';
 import { ReservationAndHoldWorkspace } from './workspaces/ReservationAndHoldWorkspace.tsx';
+import { Stage2AlertsReportsWorkspace } from './workspaces/Stage2AlertsReportsWorkspace.tsx';
+import { DonationRestrictionWorkspace } from './workspaces/DonationRestrictionWorkspace.tsx';
 import { StockWorkspace } from './workspaces/StockWorkspace.tsx';
+import {
+  resetStage2Preview,
+  setStage2PreviewEnabled,
+} from './fixtures/stage2Fixtures.ts';
+import { stage2EvidenceStore } from './state/stage2EvidenceStore.ts';
 
 export function App() {
   const [connection, setConnection] = useState<ConnectionState>('checking');
@@ -40,12 +52,25 @@ export function App() {
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [chapterContext, setChapterContext] = useState<ChapterContext | null>(null);
   const [chapterAccess, setChapterAccess] = useState<ChapterAccessSnapshot | null>(null);
+  const [stage2PreviewEnabled, setStage2PreviewState] = useState(false);
+  const [stage2DeepLink, setStage2DeepLink] = useState<{
+    repfId?: string;
+    poId?: string;
+    daId?: string;
+  }>({});
+  const [rfHandoff, setRfHandoff] = useState<{
+    rfId: string;
+    rfLineId?: string;
+  } | null>(null);
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('my_work');
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('disconnected');
   const [realtimeDetail, setRealtimeDetail] = useState<string | undefined>(undefined);
   const [recentNotices, setRecentNotices] = useState<Stage1EventNotice[]>([]);
   const [refreshSignal, setRefreshSignal] = useState(0);
+  const [stage2DomainSignals, setStage2DomainSignals] = useState<
+    Partial<Record<Stage2RefreshDomain, number>>
+  >({});
   const [drafts, setDrafts] = useState<MemoryDraftEntry[]>([]);
 
   const reverbRef = useRef<Stage1ReverbClient | null>(null);
@@ -210,6 +235,16 @@ export function App() {
           }
           if (notice.chapter_id && notice.chapter_id === selectedChapterId) {
             setRefreshSignal((s) => s + 1);
+            const domains = getRefreshDomainsForNotice(notice);
+            if (domains.length > 0) {
+              setStage2DomainSignals((prev) => {
+                const next = { ...prev };
+                for (const d of domains) {
+                  next[d] = (next[d] ?? 0) + 1;
+                }
+                return next;
+              });
+            }
           }
         },
         onResyncNeeded: () => {
@@ -267,6 +302,11 @@ export function App() {
     } catch {
       // Clear local session state even if server session already expired
     }
+    setStage2PreviewState(false);
+    resetStage2Preview();
+    stage2EvidenceStore.clearAll();
+    setStage2DeepLink({});
+    setRfHandoff(null);
     handleSessionUpdated(null);
     handleNotify('info', 'Signed out. Temporary session drafts cleared.');
   }
@@ -381,6 +421,35 @@ export function App() {
           <OperationBanner error={globalError} />
           {selectedChapterId ? (
             <>
+              <div className="s2-preview-bar" role="region" aria-label="Stage 2 data mode">
+                <div>
+                  <strong>Stage 2 Mode:</strong>{' '}
+                  {stage2PreviewEnabled ? (
+                    <span className="s2-badge is-warning">
+                      Contract Fixture Preview (In-Memory Sample Data)
+                    </span>
+                  ) : (
+                    <span className="s2-badge is-ready">Live HTTP Backend</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn-batcave-secondary p02-compact-btn"
+                  onClick={() => {
+                    const next = !stage2PreviewEnabled;
+                    setStage2PreviewState(next);
+                    setStage2PreviewEnabled(next, selectedChapterId, (notice) => {
+                      setRecentNotices((prev) => [notice, ...prev].slice(0, 25));
+                      setRefreshSignal((s) => s + 1);
+                    });
+                    setRefreshSignal((s) => s + 1);
+                  }}
+                >
+                  {stage2PreviewEnabled
+                    ? 'Switch to Live Backend'
+                    : 'Enable Contract Fixture Preview'}
+                </button>
+              </div>
               {activeTab === 'catalogue' && (
                 <CatalogueWorkspace
                   key={`${session.user.id}::${selectedChapterId}`}
@@ -437,6 +506,8 @@ export function App() {
                   refreshSignal={refreshSignal}
                   chapterContext={chapterContext}
                   chapterAccess={chapterAccess}
+                  initialRfId={rfHandoff?.rfId ?? null}
+                  initialRfLineId={rfHandoff?.rfLineId ?? null}
                   onBackToDashboard={handleBackToDashboard}
                 />
               )}
@@ -448,6 +519,97 @@ export function App() {
                   refreshSignal={refreshSignal}
                   chapterContext={chapterContext}
                   chapterAccess={chapterAccess}
+                  initialRfId={rfHandoff?.rfId ?? null}
+                  initialRfLineId={rfHandoff?.rfLineId ?? null}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'replenishment_repf' && (
+                <ReplenishmentRepfWorkspace
+                  key={`${session.user.id}::${selectedChapterId}::repf`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  domainSignal={stage2DomainSignals.repf ?? stage2DomainSignals.replenishment ?? 0}
+                  chapterAccess={chapterAccess}
+                  previewEnabled={stage2PreviewEnabled}
+                  initialRepfId={stage2DeepLink.repfId ?? null}
+                  onNavigateTab={(tab, opts) => {
+                    if (opts) setStage2DeepLink(opts);
+                    setActiveTab(tab);
+                  }}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'quotations_po' && (
+                <QuotationPurchaseOrderWorkspace
+                  key={`${session.user.id}::${selectedChapterId}::po`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  domainSignal={
+                    (stage2DomainSignals.quotations ?? 0) +
+                    (stage2DomainSignals.purchase_order ?? 0)
+                  }
+                  chapterAccess={chapterAccess}
+                  previewEnabled={stage2PreviewEnabled}
+                  initialRepfId={stage2DeepLink.repfId ?? null}
+                  initialPoId={stage2DeepLink.poId ?? null}
+                  onNavigateTab={(tab, opts) => {
+                    if (opts) setStage2DeepLink(opts);
+                    setActiveTab(tab);
+                  }}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'receiving_discrepancies' && (
+                <ReceivingDiscrepancyHoldWorkspace
+                  key={`${session.user.id}::${selectedChapterId}::rcv`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  domainSignal={
+                    (stage2DomainSignals.receiving_report ?? 0) +
+                    (stage2DomainSignals.receiving_discrepancy ?? 0) +
+                    (stage2DomainSignals.receiving_hold ?? 0)
+                  }
+                  chapterAccess={chapterAccess}
+                  previewEnabled={stage2PreviewEnabled}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'donations_restrictions' && (
+                <DonationRestrictionWorkspace
+                  key={`${session.user.id}::${selectedChapterId}::da`}
+                  userId={session.user.id}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  domainSignal={stage2DomainSignals.donation ?? 0}
+                  chapterAccess={chapterAccess}
+                  previewEnabled={stage2PreviewEnabled}
+                  initialDaId={stage2DeepLink.daId ?? null}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+              )}
+              {activeTab === 'stage2_alerts_reports' && (
+                <Stage2AlertsReportsWorkspace
+                  key={`${session.user.id}::${selectedChapterId}::s2ar`}
+                  chapterId={selectedChapterId}
+                  refreshSignal={refreshSignal}
+                  domainSignal={
+                    (stage2DomainSignals.alerts ?? 0) +
+                    (stage2DomainSignals.allocation_queue ?? 0) +
+                    (stage2DomainSignals.reports ?? 0)
+                  }
+                  chapterAccess={chapterAccess}
+                  previewEnabled={stage2PreviewEnabled}
+                  onHandoffAllocation={({ targetTab, rfId, rfLineId }) => {
+                    setRfHandoff({ rfId, rfLineId });
+                    setActiveTab(targetTab);
+                  }}
+                  onNavigateTab={(tab) => setActiveTab(tab)}
                   onBackToDashboard={handleBackToDashboard}
                 />
               )}

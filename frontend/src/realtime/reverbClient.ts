@@ -1,5 +1,9 @@
 import { apiAuthorizeChannel } from '../api/client.ts';
 import type { Stage1EventNotice } from '../api/types.ts';
+import {
+  isSupportedStageEventName,
+  Stage2NoticeTracker,
+} from './stage2NoticeRouter.ts';
 
 export type RealtimeStatus = 'disconnected' | 'connecting' | 'connected' | 'stale_reconnect' | 'denied';
 
@@ -17,7 +21,7 @@ export class Stage1ReverbClient {
   private userId: string | null = null;
   private chapterId: string | null = null;
   private generation = 0;
-  private readonly seenEventIds = new Set<string>();
+  private readonly noticeTracker = new Stage2NoticeTracker();
   private reconnectTimer: number | null = null;
   private intentionalClose = false;
   private subscribedChannels = new Set<string>();
@@ -38,6 +42,9 @@ export class Stage1ReverbClient {
 
   connect(userId: string, chapterId: string | null): void {
     const contextChanged = this.userId !== userId || this.chapterId !== chapterId;
+    if (contextChanged) {
+      this.noticeTracker.clear();
+    }
     if (!contextChanged && this.socket && this.socket.readyState <= WebSocket.OPEN) {
       return;
     }
@@ -94,17 +101,17 @@ export class Stage1ReverbClient {
           return;
         }
 
-        if (frame.event.startsWith('stage1.') && frame.event.endsWith('.changed.v1')) {
-          const payload = typeof frame.data === 'string' ? (JSON.parse(frame.data) as Stage1EventNotice) : (frame.data as Stage1EventNotice);
-          if (payload && payload.event_id && !this.seenEventIds.has(payload.event_id)) {
-            this.seenEventIds.add(payload.event_id);
-            if (this.seenEventIds.size > 500) {
-              const first = this.seenEventIds.values().next().value;
-              if (first) {
-                this.seenEventIds.delete(first);
-              }
+        if (isSupportedStageEventName(frame.event)) {
+          const payload =
+            typeof frame.data === 'string'
+              ? (JSON.parse(frame.data) as unknown)
+              : frame.data;
+          const evaluated = this.noticeTracker.evaluate(payload, this.chapterId);
+          if (evaluated.accepted) {
+            if (evaluated.notice.event_name === 'stage1.authority.changed.v1') {
+              this.noticeTracker.clear();
             }
-            this.onNotice(payload);
+            this.onNotice(evaluated.notice);
           }
         }
       };
@@ -142,7 +149,7 @@ export class Stage1ReverbClient {
     this.intentionalClose = true;
     this.userId = null;
     this.chapterId = null;
-    this.seenEventIds.clear();
+    this.noticeTracker.clear();
     this.teardownSocketOnly();
     this.onStatus('disconnected');
   }
