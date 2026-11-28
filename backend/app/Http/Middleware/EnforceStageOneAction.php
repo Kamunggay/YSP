@@ -180,7 +180,7 @@ class EnforceStageOneAction
         if ($response->getStatusCode() === 404) {
             $code = match (true) {
                 $request->routeIs('paper-evidence.*') => 'evidence_not_found',
-                $request->is('*/opening-actions/*', '*/procurement-operations/*', '*/donation-operations/*') => 'operation_not_found',
+                $request->is('*/opening-actions/*', '*/procurement-operations/*', '*/donation-operations/*', '*/receiving-operations/*') => 'operation_not_found',
                 default => 'resource_not_found',
             };
 

@@ -18,6 +18,9 @@ use App\Http\Controllers\PaperEvidenceController;
 use App\Http\Controllers\ProcurementOperationController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\ReceivingDiscrepancyAndHoldController;
+use App\Http\Controllers\ReceivingOperationController;
+use App\Http\Controllers\ReceivingReportController;
 use App\Http\Controllers\RepfController;
 use App\Http\Controllers\RepfMutationController;
 use App\Http\Controllers\ReservationAndHoldController;
@@ -29,6 +32,8 @@ use App\Services\Donations\DonationWorkflow;
 use App\Services\Procurement\PurchaseOrderWorkflow;
 use App\Services\Procurement\QuotationWorkflow;
 use App\Services\Procurement\RepfWorkflow;
+use App\Services\Receiving\ReceivingExceptionWorkflow;
+use App\Services\Receiving\ReceivingReportWorkflow;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -157,6 +162,56 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads',
     ] as $operation => [$method, $path]) {
         Route::match([$method], $path, DonationMutationController::class)
             ->name($operation)->middleware('stage-one.action:'.DonationWorkflow::ACTIONS[$operation]);
+    }
+});
+
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads', 'stage-one.chapter')->group(function () {
+    Route::get('/receiving-operations/by-key', [ReceivingOperationController::class, 'byKey'])->middleware('stage-one.action:receiving.read');
+    Route::get('/receiving-operations/{operation_id}', [ReceivingOperationController::class, 'show'])->middleware('stage-one.action:receiving.read');
+
+    Route::get('/receiving-reports', [ReceivingReportController::class, 'index'])->middleware('stage-one.action:receiving.read');
+    Route::get('/receiving-reports/{rm_id}', [ReceivingReportController::class, 'show'])->middleware('stage-one.action:receiving.read');
+    Route::get('/receiving-reports/{rm_id}/movements', [ReceivingReportController::class, 'movements'])->middleware('stage-one.action:receiving.read');
+    Route::get('/receiving-reports/{rm_id}/discrepancies', [ReceivingReportController::class, 'discrepancies'])->middleware('stage-one.action:receiving.read');
+    Route::get('/receiving-reports/{rm_id}/history', [ReceivingReportController::class, 'history'])->middleware('stage-one.action:receiving.read,history.read');
+    Route::get('/receiving-reports/{rm_id}/versions/{version}', [ReceivingReportController::class, 'version'])->middleware('stage-one.action:receiving.read,history.read');
+    Route::get('/receiving-reports/{rm_id}/related', [ReceivingReportController::class, 'related'])->middleware('stage-one.action:receiving.read');
+    Route::get('/receiving-reports/{rm_id}/print', [ReceivingReportController::class, 'print'])->middleware('stage-one.action:receiving.read');
+
+    Route::get('/receiving-discrepancies', [ReceivingDiscrepancyAndHoldController::class, 'indexDiscrepancies'])->middleware('stage-one.action:receiving.read');
+    Route::get('/receiving-discrepancies/{discrepancy_id}', [ReceivingDiscrepancyAndHoldController::class, 'showDiscrepancy'])->middleware('stage-one.action:receiving.read');
+
+    Route::get('/receiving-holds', [ReceivingDiscrepancyAndHoldController::class, 'indexHolds'])->middleware('stage-one.action:receiving.read');
+    Route::get('/receiving-holds/{hold_id}', [ReceivingDiscrepancyAndHoldController::class, 'showHold'])->middleware('stage-one.action:receiving.read');
+    Route::get('/receiving-holds/{hold_id}/history', [ReceivingDiscrepancyAndHoldController::class, 'holdHistory'])->middleware('stage-one.action:receiving.read,history.read');
+});
+
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads,read_committed', 'stage-one.chapter')->group(function () {
+    foreach ([
+        'createReceivingReport' => ['POST', '/receiving-reports'],
+        'replaceReceivingReport' => ['PUT', '/receiving-reports/{rm_id}'],
+        'inspectReceivingReport' => ['POST', '/receiving-reports/{rm_id}/inspection'],
+        'matchReceivingReportEvidence' => ['POST', '/receiving-reports/{rm_id}/evidence-match'],
+        'postReceivingReport' => ['POST', '/receiving-reports/{rm_id}/post'],
+        'cancelReceivingReport' => ['POST', '/receiving-reports/{rm_id}/cancel'],
+    ] as $operation => [$method, $path]) {
+        Route::match([$method], $path, [ReceivingReportController::class, 'mutate'])
+            ->name($operation)->middleware('stage-one.action:'.ReceivingReportWorkflow::ACTIONS[$operation]);
+    }
+    foreach ([
+        'notifySupplierOfReceivingDiscrepancy' => ['POST', '/receiving-discrepancies/{discrepancy_id}/notify-supplier'],
+        'resolveReceivingDiscrepancy' => ['POST', '/receiving-discrepancies/{discrepancy_id}/resolutions'],
+    ] as $operation => [$method, $path]) {
+        Route::match([$method], $path, [ReceivingDiscrepancyAndHoldController::class, 'mutateDiscrepancy'])
+            ->name($operation)->middleware('stage-one.action:'.ReceivingExceptionWorkflow::DISCREPANCY_ACTIONS[$operation]);
+    }
+    foreach ([
+        'createReceivingHold' => ['POST', '/receiving-holds'],
+        'linkReceivingHoldSource' => ['POST', '/receiving-holds/{hold_id}/link-source'],
+        'rejectReturnReceivingHold' => ['POST', '/receiving-holds/{hold_id}/reject-return'],
+    ] as $operation => [$method, $path]) {
+        Route::match([$method], $path, [ReceivingDiscrepancyAndHoldController::class, 'mutateHold'])
+            ->name($operation)->middleware('stage-one.action:'.ReceivingExceptionWorkflow::HOLD_ACTIONS[$operation]);
     }
 });
 
