@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ContractException;
+use App\Http\Requests\AuthInput;
 use App\Models\CatalogueVariant;
+use App\Models\InternalRf;
 use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
 use App\Models\LotRestrictionAssignment;
 use App\Models\StockHold;
+use App\Services\Inventory\StockEligibilityEvaluator;
 use App\Services\Inventory\StockViewQueryService;
 use App\Services\Shared\BcMath;
 use Illuminate\Http\JsonResponse;
@@ -15,8 +19,11 @@ use Illuminate\Http\Request;
 class StockQueryController extends Controller
 {
     public function __construct(
-        protected StockViewQueryService $stockViewService
-    ) {}
+        protected StockViewQueryService $stockViewService,
+        protected ?StockEligibilityEvaluator $eligibilityEvaluator = null,
+    ) {
+        $this->eligibilityEvaluator = $eligibilityEvaluator ?? app(StockEligibilityEvaluator::class);
+    }
 
     /**
      * GET /api/v1/chapters/{chapter_id}/stock
@@ -261,10 +268,48 @@ class StockQueryController extends Controller
             $blockers[] = 'lot_restricted';
         }
 
-        $onHand = BcMath::str($lot->quantity_on_hand);
+        $intendedUse = strtolower((string) ($request->query('intended_use') ?? 'internal_use'));
+        if (! in_array($intendedUse, ['internal_use', 'sale', 'booth_custody'], true)) {
+            throw new ContractException(400, 'invalid_selector', 'intended_use must be internal_use, sale, or booth_custody.');
+        }
+
+        $targetRf = null;
+        $rfIdParam = $request->query('rf_id');
+        if ($rfIdParam !== null && $rfIdParam !== '') {
+            if (! is_string($rfIdParam) || preg_match(AuthInput::UUID, $rfIdParam) !== 1) {
+                throw new ContractException(400, 'invalid_selector', 'rf_id must be a valid UUID.');
+            }
+            $targetRf = InternalRf::where('chapter_id', $chapterId)->whereKey($rfIdParam)->first();
+            if (! $targetRf) {
+                throw new ContractException(404, 'resource_not_found', "Internal RF {$rfIdParam} was not found.");
+            }
+        }
+
+        $eval = $this->eligibilityEvaluator->evaluateLot($lot, $targetRf, null, [], $intendedUse);
+        $internalEval = $intendedUse === 'internal_use' && $targetRf === null
+            ? $eval
+            : $this->eligibilityEvaluator->evaluateLot($lot, $targetRf, null, [], 'internal_use');
+        $saleEval = $intendedUse === 'sale' && $targetRf === null
+            ? $eval
+            : $this->eligibilityEvaluator->evaluateLot($lot, null, null, [], 'sale');
+
+        $hasPositiveFree = BcMath::isPositive($eval['eligible_free_quantity']);
+        if (BcMath::isPositive($eval['uninterpreted_restricted_quantity'])) {
+            $blockers[] = 'uninterpreted_restriction';
+        }
+        if (BcMath::isPositive($eval['ineligible_restricted_quantity'])) {
+            $blockers[] = 'lot_restricted';
+        }
+
         $eligible = $isUsable
             && empty($restrictions)
-            && BcMath::comp($blockedQty, $onHand) < 0;
+            && $hasPositiveFree;
+        $internalUseEligible = $isUsable
+            && empty($restrictions)
+            && BcMath::isPositive($internalEval['eligible_free_quantity']);
+        $saleEligible = $isUsable
+            && empty($restrictions)
+            && BcMath::isPositive($saleEval['eligible_free_quantity']);
 
         return response()->json([
             'data' => [
@@ -275,7 +320,15 @@ class StockQueryController extends Controller
                 'variant_material_version' => (int) ($lot->variant?->material_version ?? 1),
                 'unit_material_version' => (int) ($lot->unit?->material_version ?? 1),
                 'unit_id' => $lot->unit_id,
+                'intended_use' => $intendedUse,
                 'eligible' => $eligible,
+                'internal_use_eligible' => $internalUseEligible,
+                'sale_eligible' => $saleEligible,
+                'restriction_state' => $eval['restriction_state'],
+                'eligible_free_quantity' => BcMath::format($eval['eligible_free_quantity'], $lot->quantity_scale ?? 0),
+                'ineligible_restricted_quantity' => BcMath::format($eval['ineligible_restricted_quantity'], $lot->quantity_scale ?? 0),
+                'uninterpreted_restricted_quantity' => BcMath::format($eval['uninterpreted_restricted_quantity'], $lot->quantity_scale ?? 0),
+                'free_intervals' => $eval['free_intervals'],
                 'active_hold_ids' => $activeHoldIds,
                 'blocked_quantity' => BcMath::format($blockedQty, $lot->quantity_scale ?? 0),
                 'restrictions' => $restrictions,

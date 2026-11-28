@@ -15,7 +15,9 @@ use App\Models\StockReservation;
 use App\Services\Authority\ChapterAuthority;
 use App\Services\Inventory\InternalRfService;
 use App\Services\Inventory\ReservationService;
+use App\Services\Inventory\StockEligibilityEvaluator;
 use App\Services\Inventory\StockViewQueryService;
+use App\Services\Shared\BcMath;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -24,8 +26,11 @@ class ReservationAndHoldController extends Controller
     public function __construct(
         protected ReservationService $reservationService,
         protected InternalRfService $rfService,
-        protected StockViewQueryService $stockViewService
-    ) {}
+        protected StockViewQueryService $stockViewService,
+        protected ?StockEligibilityEvaluator $eligibilityEvaluator = null
+    ) {
+        $this->eligibilityEvaluator = $eligibilityEvaluator ?? app(StockEligibilityEvaluator::class);
+    }
 
     public function prepareRfReservation(Request $request, string $chapterId, string $rfId): JsonResponse
     {
@@ -205,24 +210,40 @@ class ReservationAndHoldController extends Controller
         }
 
         $lineReviews = [];
+        $observedAt = now('UTC');
         foreach ($rf->lines as $line) {
             $views = $this->stockViewService->getSevenViews($chapterId, $line->variant_id);
-            $candidateLots = InventoryLot::where('chapter_id', $chapterId)
+            $lots = InventoryLot::where('chapter_id', $chapterId)
                 ->where('variant_id', $line->variant_id)
                 ->where('condition', 'USABLE')
                 ->where('custody', 'STOCKROOM')
                 ->orderBy('created_at')
-                ->get()
-                ->map(fn (InventoryLot $lot) => [
+                ->orderBy('id')
+                ->get();
+
+            $preloaded = $this->eligibilityEvaluator->preloadLots($chapterId, $lots);
+            $candidateLots = [];
+            foreach ($lots as $lot) {
+                $eval = $this->eligibilityEvaluator->evaluateLot($lot, $rf, $observedAt->toImmutable(), $preloaded);
+                if (! BcMath::isPositive($eval['eligible_free_quantity'])) {
+                    continue;
+                }
+                $candidateLots[] = [
                     'stock_lot_id' => $lot->id,
+                    'source_kind' => $eval['source_kind'],
+                    'source_reference' => $eval['source_reference'],
+                    'location_id' => $lot->location_id,
                     'basis_segment_id' => $lot->basis_segment_id ?? $lot->id,
                     'quantity_on_hand' => $lot->quantity_on_hand,
+                    'free_quantity' => BcMath::format($eval['eligible_free_quantity'], (int) ($lot->quantity_scale ?? 0)),
+                    'restriction_state' => $eval['restriction_state'],
+                    'free_intervals' => $eval['free_intervals'],
                     'stock_version' => $lot->stock_version,
                     'material_version' => $lot->material_version,
-                    'active_holds' => $this->stockViewService->getActiveHoldRangesForLot($chapterId, $lot->id),
-                    'active_reservations' => $this->stockViewService->getActiveReservationRangesForLot($chapterId, $lot->id),
-                ])
-                ->values();
+                    'active_holds' => $preloaded['holds_by_lot'][$lot->id] ?? [],
+                    'active_reservations' => $preloaded['reservations_by_lot'][$lot->id] ?? [],
+                ];
+            }
 
             $lineReviews[] = [
                 'rf_line_id' => $line->id,

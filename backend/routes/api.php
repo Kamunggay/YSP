@@ -14,6 +14,7 @@ use App\Http\Controllers\PaperEvidenceController;
 use App\Http\Controllers\ReservationAndHoldController;
 use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
+use App\Http\Controllers\Stage2InventoryQueryController;
 use App\Http\Controllers\StockQueryController;
 use App\Http\PaperEvidenceDownload;
 use Illuminate\Support\Facades\Route;
@@ -101,6 +102,10 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority', 'stag
     Route::get('/stock/lots/{stock_lot_id}', [StockQueryController::class, 'readStockLot'])->middleware('stage-one.action:stock.read');
     Route::get('/stock/lots/{stock_lot_id}/eligibility', [StockQueryController::class, 'readStockEligibility'])->middleware('stage-one.action:stock.read');
     Route::get('/stock/lots/{stock_lot_id}/history', [StockQueryController::class, 'listStockLotHistory'])->middleware('stage-one.action:history.read,stock.read');
+
+    // ================= STAGE 2A INVENTORY QUERIES =================
+    Route::get('/replenishment/needs', [Stage2InventoryQueryController::class, 'listReplenishmentNeeds'])->middleware('stage-one.action:replenishment.read');
+    Route::get('/allocation-queue', [Stage2InventoryQueryController::class, 'listAllocationQueue'])->middleware('stage-one.action:allocation_queue.read');
 
     // ================= OPENING INVENTORY (IPC & OPENING RM) =================
     Route::get('/opening-actions/by-key', [OpeningInventoryController::class, 'findOpeningActionByKey'])->middleware('stage-one.action:opening.result.read');

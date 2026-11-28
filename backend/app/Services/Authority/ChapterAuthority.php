@@ -43,6 +43,18 @@ final class ChapterAuthority
         'opening.result.read' => ['INVENTORY', 'INDEPENDENT_REVIEWER', 'RECEIVING', 'CHAPTER_HEAD', 'FINANCE'],
     ];
 
+    public const STAGE2_ACTION_DUTIES = [
+        'replenishment.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD'],
+        'allocation_queue.read' => ['INVENTORY', 'DISPATCH', 'RF_APPROVER', 'CHAPTER_HEAD'],
+    ];
+
+    public static function dutiesForAction(string $action): array
+    {
+        return self::ACTION_DUTIES[$action]
+            ?? self::STAGE2_ACTION_DUTIES[$action]
+            ?? [];
+    }
+
     public const DUTIES = [
         'COMMITTEE_REQUESTER', 'RF_APPROVER', 'SALES_OFFICER', 'SALES_REVIEWER',
         'FINANCE', 'INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'RECEIVING',
@@ -271,7 +283,7 @@ final class ChapterAuthority
 
     public function allows(string $action, ?string $unitId = null, ?string $decisionScope = null): bool
     {
-        return collect(self::ACTION_DUTIES[$action])->contains(fn ($duty) => $this->allowsDuty($duty, $unitId, $decisionScope));
+        return collect(self::dutiesForAction($action))->contains(fn ($duty) => $this->allowsDuty($duty, $unitId, $decisionScope));
     }
 
     public static function covers(DutyGrant $grant, ?string $unitId, ?string $amount = null): bool

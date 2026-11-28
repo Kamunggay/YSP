@@ -271,7 +271,7 @@ export function AuthGate({
           I have saved these codes
         </button>
       </div>
-      <pre className="json-box">{recoveryCodesDelivery.codes.join('\n')}</pre>
+      <pre className="json-box">{(recoveryCodesDelivery.codes ?? []).join('\n')}</pre>
     </div>
   );
 
