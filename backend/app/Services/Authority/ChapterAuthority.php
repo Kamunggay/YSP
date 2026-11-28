@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 final class ChapterAuthority
 {
     public const ACTION_DUTIES = [
+        'allocation_queue.read' => ['INVENTORY', 'DISPATCH', 'RF_APPROVER', 'CHAPTER_HEAD'],
         'rf.read' => ['COMMITTEE_REQUESTER', 'RF_APPROVER', 'INVENTORY', 'DISPATCH'],
         'catalogue.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'COMMITTEE_REQUESTER', 'RF_APPROVER'],
         'catalogue.maintain' => ['INVENTORY'],

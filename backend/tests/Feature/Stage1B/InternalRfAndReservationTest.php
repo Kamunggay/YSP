@@ -3,6 +3,7 @@
 namespace Tests\Feature\Stage1B;
 
 use App\Models\ActualIssue;
+use App\Models\AuditLog;
 use App\Models\CatalogueItem;
 use App\Models\CatalogueLocation;
 use App\Models\CatalogueUnit;
@@ -13,11 +14,14 @@ use App\Models\DutyGrant;
 use App\Models\InternalRf;
 use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
+use App\Models\PolicyRecord;
+use App\Models\RfReservationAllocation;
 use App\Models\StockHold;
 use App\Models\StockReservation;
 use App\Models\User;
 use App\Services\Inventory\PhysicalPostingService;
 use App\Services\Inventory\StockViewQueryService;
+use App\Services\Shared\CanonicalJson;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -389,6 +393,240 @@ class InternalRfAndReservationTest extends TestCase
             ->assertJsonPath('data.result.reference', $rfNumber)
             ->assertJsonPath('data.result.lines.0.progress.canceled_quantity', '10')
             ->assertJsonPath('data.result.lines.0.progress.remaining_quantity', '0');
+    }
+
+    private function seedAllocationPolicy(string $key, string $schema, array $value, ?string $subjectId = null): void
+    {
+        $id = (string) Str::uuid();
+        PolicyRecord::create([
+            'id' => $id,
+            'aggregate_id' => $id,
+            'chapter_id' => $this->chapterId,
+            'policy_code' => $key,
+            'policy_version' => 1,
+            'rules_json' => $value,
+            'effective_from' => now()->subDay(),
+        ]);
+        AuditLog::create([
+            'chapter_id' => $this->chapterId,
+            'user_id' => $this->headId,
+            'action' => 'controlled:recordPolicy',
+            'entity_type' => 'policy',
+            'entity_id' => $id,
+            'details' => [
+                'version' => 1,
+                'subject_id' => $subjectId,
+                'value_schema_reference' => '#/components/schemas/'.$schema,
+                'value_sha256' => CanonicalJson::sha256($value),
+                'approvals' => [['id' => (string) Str::uuid(), 'authority' => 'CHAPTER_HEAD', 'approver_id' => $this->headId]],
+            ],
+        ]);
+    }
+
+    public function test_allocation_queue_only_pages_visible_lines_and_returns_uniform_not_found(): void
+    {
+        $this->seedAllocationPolicy('allocation_priority', 'AllocationPriorityPolicyValue', [
+            'priorities' => [['requesting_unit_id' => $this->requestingUnitId, 'rank' => 1]],
+            'overrides' => [],
+        ]);
+        $this->seedAllocationPolicy('quantity_scale', 'CatalogueQuantityPolicyValue', [
+            'unit_id' => $this->unitId,
+            'quantity_scale' => 0,
+        ], $this->variantId);
+
+        $lot = $this->seedLot(8);
+        $first = $this->createAndApproveRf(4);
+        $second = $this->createAndApproveRf(4);
+        $hidden = $this->createAndApproveRf(4);
+        $hiddenUnit = (string) Str::uuid();
+        InternalRf::findOrFail($hidden['id'])->update(['requesting_unit_id' => $hiddenUnit]);
+        DutyGrant::where('user_id', $this->custodianId)->where('duty_code', 'INVENTORY')
+            ->firstOrFail()->update(['scope' => ['unit_id' => $this->requestingUnitId]]);
+
+        $route = "/api/v1/chapters/{$this->chapterId}/allocation-queue";
+        $request = $this->asBrowserOfficer($this->custodianId);
+        $pageOne = $request->getJson("$route?limit=1")->assertOk()
+            ->assertJsonPath('is_commit_authorization', false)
+            ->assertJsonPath('data.0.eligible_sources.0.stock_lot_id', $lot->id);
+        $cursor = rawurlencode($pageOne->json('page.next_cursor'));
+        $pageTwo = $request->getJson("$route?limit=1&cursor=$cursor")->assertOk()
+            ->assertJsonPath('page.next_cursor', null);
+        $this->assertEqualsCanonicalizing(
+            [$first['id'], $second['id']],
+            [$pageOne->json('data.0.rf_id'), $pageTwo->json('data.0.rf_id')],
+        );
+        $request->getJson("$route?rf_id={$hidden['id']}")->assertNotFound()
+            ->assertJsonPath('error.code', 'resource_not_found');
+        $unknown = (string) Str::uuid();
+        $foreign = InternalRf::findOrFail($hidden['id']);
+        $foreign->update(['chapter_id' => $this->foreignChapterId]);
+        foreach ([$unknown, $hiddenUnit] as $unit) {
+            $request->getJson("$route?requesting_unit_id=$unit")->assertNotFound()
+                ->assertJsonPath('error.code', 'resource_not_found')
+                ->assertJsonPath('error.message', 'Resource not found.');
+        }
+    }
+
+    public function test_reads_and_reserves_the_free_portion_of_a_bounded_lot(): void
+    {
+        $lot = $this->seedLot(10, 'DA-STOCK');
+        $free = $this->seedLot(4, 'OPENING-STOCK');
+        $unresolved = $this->seedLot(3, 'UNRESOLVED-STOCK');
+        $unresolved->update(['immediately_allocatable' => false]);
+        $otherSegment = (string) Str::uuid();
+        $bounded = [
+            'state' => 'bounded',
+            'allowed_uses' => ['internal_use'],
+            'event_ids' => [],
+            'requesting_unit_ids' => [$this->requestingUnitId],
+            'effective_from' => null,
+            'effective_until' => null,
+            'interpretation_id' => null,
+            'source_condition_reference' => 'Donor letter A',
+        ];
+        $lot->update(['source_kind' => 'da_rm', 'segments' => [
+            ['basis_segment_id' => $lot->basis_segment_id, 'offset_quantity' => '0', 'quantity' => '5', 'restrictions' => $bounded],
+            ['basis_segment_id' => $otherSegment, 'offset_quantity' => '5', 'quantity' => '5', 'restrictions' => array_replace($bounded, [
+                'allowed_uses' => [],
+                'requesting_unit_ids' => [],
+                'state' => 'uninterpreted',
+            ])],
+        ]]);
+        $rf = $this->createAndApproveRf(8);
+        $chapter = "/api/v1/chapters/{$this->chapterId}";
+        $rfRoute = "$chapter/internal-rfs/{$rf['id']}";
+        $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("$chapter/stock-holds", [
+            'reason_code' => 'damage_review',
+            'reason' => 'Inspect last usable unit and unresolved stock',
+            'targets' => [[
+                'stock_lot_id' => $lot->id, 'basis_segment_id' => $lot->basis_segment_id,
+                'offset_quantity' => '4', 'quantity' => '3',
+                'expected_lot_material_version' => $lot->material_version, 'expected_stock_version' => $lot->stock_version,
+            ]],
+        ])->assertCreated();
+        $lot->refresh();
+        $officer = $this->asBrowserOfficer($this->custodianId);
+        $officer->getJson("$chapter/stock/lots/{$lot->id}/eligibility?intended_use=sale")->assertOk()
+            ->assertJsonPath('data.eligible', false);
+        $officer->getJson("$chapter/stock/lots/{$free->id}/eligibility?intended_use=sale")->assertOk()
+            ->assertJsonPath('data.eligible', true);
+        $officer->getJson("$chapter/stock/lots/{$lot->id}/eligibility?rf_id={$rf['id']}")->assertBadRequest()
+            ->assertJsonPath('error.code', 'invalid_selector');
+
+        $review = $officer->getJson("$rfRoute/allocation-review")->assertOk();
+        $candidate = collect($review->json('data.lines.0.candidate_lots'))->firstWhere('stock_lot_id', $lot->id);
+        $this->assertSame([['basis_segment_id' => $lot->basis_segment_id, 'offset_quantity' => '0', 'quantity' => '4']], $candidate['free_intervals']);
+        $this->assertSame('8', $review->json('data.lines.0.views.available_to_allocate.quantity'));
+        $summary = $officer->getJson("$rfRoute/allocation-review?rf_line_id={$rf['lines'][0]['id']}")->assertOk()
+            ->assertJsonPath('data.free_eligible_quantity', '8')->assertJsonPath('data.is_commit_authorization', false);
+        $this->assertEqualsCanonicalizing([
+            'rf_id', 'rf_line_id', 'rf_version', 'rf_material_version', 'rf_progress_version', 'progress',
+            'free_eligible_quantity', 'uncovered_quantity', 'allocation_policy', 'ordered_demands',
+            'queue_next_cursor', 'setup_blockers', 'observed_at', 'is_commit_authorization',
+        ], array_keys($summary->json('data')));
+
+        $versions = [
+            'expected_rf_version' => $rf['version'],
+            'expected_rf_material_version' => $rf['material_version'],
+            'expected_rf_progress_version' => $rf['progress_version'],
+        ];
+        $target = [
+            'stock_lot_id' => $lot->id, 'basis_segment_id' => $lot->basis_segment_id,
+            'offset_quantity' => '0', 'quantity' => '4',
+            'expected_lot_material_version' => $candidate['material_version'], 'expected_stock_version' => $candidate['stock_version'],
+        ];
+        foreach ([
+            [array_replace($target, ['offset_quantity' => '3']), 'availability_conflict'],
+            [array_replace($target, ['offset_quantity' => '4', 'quantity' => '1']), 'availability_conflict'],
+            [array_replace($target, ['basis_segment_id' => $otherSegment, 'offset_quantity' => '8', 'quantity' => '1']), 'restriction_unsupported'],
+            [$target, null],
+        ] as [$requested, $error]) {
+            $prep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("$rfRoute/reservation-preparations", $versions + [
+                'rf_line_id' => $rf['lines'][0]['id'], 'targets' => [$requested], 'override_policy_id' => null, 'reason' => 'Workshop stock',
+            ])->assertCreated()->json('data.resource_id');
+            $commit = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson(
+                "$rfRoute/reservation-preparations/$prep/commit", $versions + ['expected_preparation_version' => 1],
+            );
+            if ($error !== null) {
+                $commit->assertConflict()->assertJsonPath('error.code', $error)->assertJsonPath('failed_intent_committed', false);
+                $this->assertSame(0, RfReservationAllocation::count());
+            } else {
+                $commit->assertCreated()->assertJsonPath('data.result.committed_quantity', '4');
+            }
+        }
+        $this->assertSame('4.000000', app(StockViewQueryService::class)->getRawMetrics($this->chapterId, $this->variantId)['available_to_allocate_str']);
+    }
+
+    public function test_commit_and_reallocation_reject_stock_outside_the_selected_rf_line_or_basis_segment(): void
+    {
+        $lot = $this->seedLot(6);
+        $otherVariant = CatalogueVariant::findOrFail($this->variantId)->replicate();
+        $otherVariant->fill(['code' => 'OTHER-KIT', 'sku' => 'OTHER-KIT'])->save();
+        $otherUnit = CatalogueUnit::findOrFail($this->unitId)->replicate();
+        $otherUnit->fill(['code' => 'BOX'])->save();
+        $wrongVariant = $this->seedLot(6, 'OTHER-VARIANT');
+        $wrongVariant->update(['variant_id' => $otherVariant->id]);
+        $wrongUnit = $this->seedLot(6, 'OTHER-UNIT');
+        $wrongUnit->update(['unit_id' => $otherUnit->id]);
+
+        $rf = $this->createAndApproveRf(6);
+        $base = "/api/v1/chapters/{$this->chapterId}/internal-rfs/{$rf['id']}";
+        $versions = [
+            'expected_rf_version' => $rf['version'],
+            'expected_rf_material_version' => $rf['material_version'],
+            'expected_rf_progress_version' => $rf['progress_version'],
+        ];
+        $target = static fn (InventoryLot $lot, ?string $segmentId = null): array => [
+            'stock_lot_id' => $lot->id,
+            'basis_segment_id' => $segmentId ?? $lot->basis_segment_id,
+            'offset_quantity' => '0',
+            'quantity' => '2',
+            'expected_lot_material_version' => $lot->material_version,
+            'expected_stock_version' => $lot->stock_version,
+        ];
+        $invalid = [$target($wrongVariant), $target($wrongUnit), $target($lot, (string) Str::uuid())];
+        foreach ([...$invalid, $target($lot)] as $index => $selected) {
+            $prep = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("$base/reservation-preparations", $versions + [
+                'rf_line_id' => $rf['lines'][0]['id'],
+                'targets' => [$selected],
+                'override_policy_id' => null,
+                'reason' => 'Reserve available stock',
+            ])->assertCreated()->json('data.resource_id');
+
+            $commit = $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson(
+                "$base/reservation-preparations/$prep/commit", $versions + ['expected_preparation_version' => 1],
+            );
+            if ($index < count($invalid)) {
+                $commit->assertConflict()
+                    ->assertJsonPath('error.code', 'availability_conflict')
+                    ->assertJsonPath('failed_intent_committed', false);
+                $this->assertSame(0, StockReservation::count());
+                $this->assertSame($lot->stock_version, $lot->refresh()->stock_version);
+                $this->assertSame($rf['progress_version'], InternalRf::findOrFail($rf['id'])->progress_version);
+            } else {
+                $committed = $commit->assertCreated()->json('data.result');
+            }
+        }
+
+        $updatedRf = InternalRf::findOrFail($rf['id']);
+        $before = RfReservationAllocation::where('reservation_id', $committed['id'])->get()->toArray();
+        foreach ($invalid as $selection) {
+            $this->asBrowserOfficer($this->custodianId, (string) Str::uuid())->postJson("$base/reservations/{$committed['id']}/reallocate", [
+                'expected_rf_version' => $updatedRf->version,
+                'expected_rf_material_version' => $updatedRf->material_version,
+                'expected_rf_progress_version' => $updatedRf->progress_version,
+                'expected_version' => $committed['version'],
+                'expected_material_version' => $committed['material_version'],
+                'from_ranges' => [array_intersect_key($target($lot), array_flip(['stock_lot_id', 'basis_segment_id', 'offset_quantity', 'quantity']))],
+                'to_targets' => [$selection],
+                'reason' => 'Move the reservation',
+            ])->assertConflict()
+                ->assertJsonPath('error.code', 'availability_conflict')
+                ->assertJsonPath('failed_intent_committed', false);
+
+            $this->assertSame($before, RfReservationAllocation::where('reservation_id', $committed['id'])->get()->toArray());
+            $this->assertSame($updatedRf->progress_version, $updatedRf->fresh()->progress_version);
+        }
     }
 
     public function test_fixture_b_exact_ten_vs_available_six_409_then_explicit_six_and_commitment_conflict_on_cancel(): void

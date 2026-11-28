@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ContractException;
+use App\Http\Requests\AuthInput;
 use App\Models\CatalogueVariant;
 use App\Models\InventoryLot;
 use App\Models\InventoryMovement;
@@ -9,6 +11,7 @@ use App\Models\LotRestrictionAssignment;
 use App\Models\StockHold;
 use App\Services\Inventory\StockViewQueryService;
 use App\Services\Shared\BcMath;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -206,6 +209,32 @@ class StockQueryController extends Controller
      */
     public function readStockEligibility(Request $request, string $chapterId, string $stockLotId): JsonResponse
     {
+        $selectors = ['intended_use', 'unit_id', 'requesting_unit_id', 'event_id', 'needed_at', 'quantity'];
+        $seen = [];
+        $query = (string) $request->server('QUERY_STRING', '');
+        foreach ($query === '' ? [] : explode('&', $query) as $parameter) {
+            $name = urldecode(explode('=', $parameter, 2)[0]);
+            if (! in_array($name, $selectors, true) || isset($seen[$name])) {
+                throw new ContractException(400, 'invalid_selector', 'Unsupported or duplicate stock eligibility selector.');
+            }
+            $seen[$name] = true;
+        }
+        $intendedUse = $request->query('intended_use', 'internal_use');
+        if (! in_array($intendedUse, ['internal_use', 'sale', 'booth_custody'], true)) {
+            throw new ContractException(400, 'invalid_selector', 'Invalid intended stock use.');
+        }
+        foreach (['unit_id', 'requesting_unit_id', 'event_id'] as $name) {
+            $value = $request->query($name);
+            if ($value !== null && (! is_string($value) || preg_match(AuthInput::UUID, $value) !== 1)) {
+                throw new ContractException(400, 'invalid_selector', "Invalid {$name} selector.");
+            }
+        }
+        $neededAt = $request->query('needed_at');
+        if ($neededAt !== null && (! is_string($neededAt) || ! CarbonImmutable::canBeCreatedFromFormat($neededAt, 'Y-m-d\TH:i:s.u\Z')
+            && ! CarbonImmutable::canBeCreatedFromFormat($neededAt, 'Y-m-d\TH:i:s\Z'))) {
+            throw new ContractException(400, 'invalid_selector', 'Invalid needed_at selector.');
+        }
+
         $lot = InventoryLot::where('chapter_id', $chapterId)
             ->where('id', $stockLotId)
             ->with(['variant', 'unit'])
@@ -257,16 +286,28 @@ class StockQueryController extends Controller
             ->values()
             ->all();
 
-        $isUninterpreted = $isUsable && ! ($lot->immediately_allocatable ?? true);
-        if (! empty($restrictions) || $isUninterpreted) {
+        $scale = $lot->quantity_scale ?? 0;
+        $quantity = $request->query('quantity');
+        if ($quantity !== null && (! is_string($quantity) || ! preg_match('/^\d+(?:\.\d{1,6})?$/D', $quantity)
+            || strlen(explode('.', $quantity, 2)[1] ?? '') > $scale || ! BcMath::isPositive($quantity))) {
+            throw new ContractException(400, 'invalid_selector', 'Invalid stock quantity selector.');
+        }
+        $ranges = $this->stockViewService->loadLotRanges(collect([$lot]))[$lot->id];
+        $at = CarbonImmutable::now('UTC');
+        $availability = fn (string $use) => $this->stockViewService->getLotAvailability(
+            $lot, $at, $use,
+            requestingUnitId: $request->query('requesting_unit_id'),
+            eventId: $request->query('event_id'),
+            neededAt: $neededAt === null ? null : CarbonImmutable::parse($neededAt, 'UTC'),
+            ranges: $ranges,
+        );
+        $available = $availability($intendedUse);
+        $canAllocate = fn (array $projection) => BcMath::isPositive($projection['eligible_free_quantity'])
+            && ($quantity === null || BcMath::comp($projection['eligible_free_quantity'], $quantity) >= 0)
+            && $request->query('unit_id', $lot->unit_id) === $lot->unit_id;
+        if (BcMath::isPositive($available['ineligible_restricted_quantity']) || BcMath::isPositive($available['uninterpreted_restricted_quantity'])) {
             $blockers[] = 'lot_restricted';
         }
-
-        $onHand = BcMath::str($lot->quantity_on_hand);
-        $eligible = $isUsable
-            && empty($restrictions)
-            && ! $isUninterpreted
-            && BcMath::comp($blockedQty, $onHand) < 0;
 
         return response()->json([
             'data' => [
@@ -277,7 +318,15 @@ class StockQueryController extends Controller
                 'variant_material_version' => (int) ($lot->variant?->material_version ?? 1),
                 'unit_material_version' => (int) ($lot->unit?->material_version ?? 1),
                 'unit_id' => $lot->unit_id,
-                'eligible' => $eligible,
+                'eligible' => $canAllocate($available),
+                'intended_use' => $intendedUse,
+                'internal_use_eligible' => $canAllocate($intendedUse === 'internal_use' ? $available : $availability('internal_use')),
+                'sale_eligible' => $canAllocate($intendedUse === 'sale' ? $available : $availability('sale')),
+                'restriction_state' => $available['restriction_state'],
+                'eligible_free_quantity' => BcMath::format($available['eligible_free_quantity'], $scale),
+                'ineligible_restricted_quantity' => BcMath::format($available['ineligible_restricted_quantity'], $scale),
+                'uninterpreted_restricted_quantity' => BcMath::format($available['uninterpreted_restricted_quantity'], $scale),
+                'free_intervals' => $available['free_intervals'],
                 'active_hold_ids' => $activeHoldIds,
                 'blocked_quantity' => BcMath::format($blockedQty, $lot->quantity_scale ?? 0),
                 'restrictions' => $restrictions,

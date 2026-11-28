@@ -65,7 +65,7 @@ class EnforceStageOneAction
         $receipt = $request->isMethod('GET') && $request->is('*/internal-rfs/operation-results', '*/internal-rfs/operation-results/*', '*/actual-issue-operations/*', '*/reservation-operations/*', '*/opening-actions/*');
         if (! $rfList && ! $receipt) {
             foreach ($actions as $action) {
-                if ($action === 'ipc.authorize' || ($action === 'rf.draft' && ! $rf) || ($action === 'rf.read' && $rf)) {
+                if (in_array($action, ['ipc.authorize', 'allocation_queue.read'], true) || ($action === 'rf.draft' && ! $rf) || ($action === 'rf.read' && $rf)) {
                     continue;
                 }
                 if ($action === 'rf.approve' && $rf && $authority->routedRfApprover($rf)) {

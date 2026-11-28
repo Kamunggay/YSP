@@ -3,14 +3,83 @@
 namespace App\Services\Inventory;
 
 use App\Models\ActualIssueLine;
+use App\Models\CatalogueVariant;
+use App\Models\InternalRf;
 use App\Models\InventoryLot;
 use App\Models\RfReservationAllocation;
 use App\Models\StockHold;
+use App\Models\StockHoldRange;
 use App\Models\StockReservation;
+use App\Services\Inventory\Participants\OpenProcurementSupplyProvider;
 use App\Services\Shared\BcMath;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 
 class StockViewQueryService
 {
+    public function __construct(
+        private StockEligibilityEvaluator $eligibility,
+        private OpenProcurementSupplyProvider $supply,
+    ) {}
+
+    public function getLotAvailability(
+        InventoryLot $lot,
+        CarbonInterface $at,
+        ?string $use,
+        ?InternalRf $rf = null,
+        ?array $holds = null,
+        ?array $reservations = null,
+        ?string $requestingUnitId = null,
+        ?string $eventId = null,
+        ?CarbonInterface $neededAt = null,
+        ?array $ranges = null,
+    ): array {
+        return $this->eligibility->project(
+            $lot,
+            $ranges['consumed'] ?? $this->getConsumedIntervalsForLot($lot)['consumed_intervals'],
+            $holds ?? $ranges['holds'] ?? $this->getActiveHoldRangesForLot($lot->chapter_id, $lot->id),
+            $reservations ?? $ranges['reservations'] ?? $this->getActiveReservationRangesForLot($lot->chapter_id, $lot->id),
+            $lot->restrictions_exists ?? $lot->restrictions()->exists(),
+            $at, $use, $rf, $requestingUnitId, $eventId, $neededAt,
+        );
+    }
+
+    /** @param Collection<int, InventoryLot> $lots Lots from one authorized chapter. */
+    public function loadLotRanges(Collection $lots): array
+    {
+        if ($lots->isEmpty()) {
+            return [];
+        }
+
+        $ids = $lots->pluck('id')->all();
+        $chapterId = $lots->first()->chapter_id;
+        $holds = StockHoldRange::where('chapter_id', $chapterId)->whereIn('lot_id', $ids)
+            ->whereHas('hold', fn ($query) => $query->where('status', 'active'))
+            ->get()->groupBy('lot_id');
+        $reservations = RfReservationAllocation::where('chapter_id', $chapterId)->whereIn('lot_id', $ids)
+            ->where('status', 'active')
+            ->whereHas('reservation', fn ($query) => $query->where('status', 'ACTIVE'))
+            ->get()->groupBy('lot_id');
+        $issues = ActualIssueLine::whereIn('lot_id', $ids)
+            ->whereHas('actualIssue', fn ($query) => $query->where('chapter_id', $chapterId)->where('status', 'posted'))
+            ->get()->groupBy('lot_id');
+
+        $ranges = [];
+        foreach ($lots as $lot) {
+            $ranges[$lot->id] = [
+                'consumed' => $this->consumedIntervals($lot, $issues->get($lot->id, collect()))['consumed_intervals'],
+                'holds' => $holds->get($lot->id, collect())->map(fn (StockHoldRange $range) => [
+                    'hold_id' => $range->hold_id,
+                    'offset' => BcMath::str($range->offset_quantity),
+                    'quantity' => BcMath::str($range->quantity),
+                ])->all(),
+                'reservations' => $this->reservationIntervals($reservations->get($lot->id, collect())),
+            ];
+        }
+
+        return $ranges;
+    }
+
     /**
      * Get raw numeric/decimal metrics for the seven non-additive stock views.
      * Uses bcmath scale-6 precision and half-open interval union arithmetic so
@@ -25,7 +94,7 @@ class StockViewQueryService
             $lotQuery->where('variant_id', $variantId);
         }
 
-        $lots = $lotQuery->get();
+        $lots = $lotQuery->withExists('restrictions')->get();
 
         $usableOnHand = BcMath::str('0');
         $boothCustody = BcMath::str('0');
@@ -33,8 +102,7 @@ class StockViewQueryService
         $quarantineOnly = BcMath::str('0');
         $rejectedOnly = BcMath::str('0');
 
-        $usableLotIds = [];
-        $unallocatableUsableLotQtyById = [];
+        $usableLots = [];
 
         foreach ($lots as $lot) {
             $qty = BcMath::str($lot->quantity_on_hand);
@@ -45,10 +113,7 @@ class StockViewQueryService
                 $boothCustody = BcMath::add($boothCustody, $qty);
             } elseif ($cond === 'USABLE' && $cust === 'STOCKROOM') {
                 $usableOnHand = BcMath::add($usableOnHand, $qty);
-                $usableLotIds[] = $lot->id;
-                if (! ($lot->immediately_allocatable ?? true)) {
-                    $unallocatableUsableLotQtyById[$lot->id] = $qty;
-                }
+                $usableLots[$lot->id] = $lot;
             } elseif ($cond === 'QUARANTINE') {
                 $quarantinedRejected = BcMath::add($quarantinedRejected, $qty);
                 $quarantineOnly = BcMath::add($quarantineOnly, $qty);
@@ -108,6 +173,8 @@ class StockViewQueryService
             }
         }
 
+        $usableLotIds = array_keys($usableLots);
+
         // Active stock holds
         $holdIntervalsByLot = [];
         if (! empty($usableLotIds)) {
@@ -126,54 +193,33 @@ class StockViewQueryService
             }
         }
 
-        // Compute blocked_reserved = union(RF_alloc ∩ Holds) across lots
-        // Compute unavailable_in_lots = union(RF_alloc ∪ Holds) across usable lots
         $blockedReserved = BcMath::str('0');
-        $unavailableAllocatedOrHeld = $unallocatedRfReserved;
-
-        $allAffectedLotIds = array_unique(array_merge(
-            array_keys($rfAllocIntervalsByLot),
-            array_keys($holdIntervalsByLot),
-            $usableLotIds
-        ));
-
-        foreach ($allAffectedLotIds as $lotId) {
+        $freeOnHand = BcMath::str('0');
+        $observedAt = now('UTC');
+        $lotRanges = $this->loadLotRanges(collect($usableLots));
+        foreach ($usableLots as $lotId => $lot) {
             $rfIntervals = $rfAllocIntervalsByLot[$lotId] ?? [];
             $holdIntervals = $holdIntervalsByLot[$lotId] ?? [];
-
-            if (! empty($rfIntervals) && ! empty($holdIntervals)) {
-                $intersections = BcMath::intersectIntervalLists($rfIntervals, $holdIntervals);
-                $blockedReserved = BcMath::add($blockedReserved, BcMath::intervalUnionLength($intersections));
-            }
-
-            if (in_array($lotId, $usableLotIds, true)) {
-                if (isset($unallocatableUsableLotQtyById[$lotId])) {
-                    $unavailableAllocatedOrHeld = BcMath::add(
-                        $unavailableAllocatedOrHeld,
-                        $unallocatableUsableLotQtyById[$lotId]
-                    );
-                } else {
-                    $combined = array_merge($rfIntervals, $holdIntervals);
-                    if (! empty($combined)) {
-                        $unavailableAllocatedOrHeld = BcMath::add(
-                            $unavailableAllocatedOrHeld,
-                            BcMath::intervalUnionLength($combined)
-                        );
-                    }
-                }
-            }
+            $overlaps = BcMath::intersectIntervalLists($rfIntervals, $holdIntervals);
+            $blockedReserved = BcMath::add($blockedReserved, BcMath::intervalUnionLength($overlaps));
+            $availability = $this->getLotAvailability($lot, $observedAt, null, holds: $holdIntervals, reservations: $rfIntervals, ranges: $lotRanges[$lotId]);
+            $freeOnHand = BcMath::add($freeOnHand, $availability['eligible_free_quantity']);
         }
 
-        $totalUnavailable = BcMath::add($unavailableAllocatedOrHeld, $soReserved);
-        $availableToAllocateStr = BcMath::sub($usableOnHand, $totalUnavailable);
-        if (BcMath::comp($availableToAllocateStr, '0') < 0) {
-            $availableToAllocateStr = BcMath::str('0');
-        }
+        $availableToAllocateStr = BcMath::max('0', BcMath::sub($freeOnHand, BcMath::add($unallocatedRfReserved, $soReserved)));
 
         $totalPhysicalStr = BcMath::add(
             BcMath::add($usableOnHand, $boothCustody),
             $quarantinedRejected
         );
+
+        $inbound = BcMath::str('0');
+        $variants = $variantId === null ? CatalogueVariant::where('chapter_id', $chapterId)->pluck('id')->all() : [$variantId];
+        foreach ($this->supply->getInboundSourcesForVariants($chapterId, $variants) as $source) {
+            if ($source['source_kind'] === 'po') {
+                $inbound = BcMath::add($inbound, $source['open_quantity']);
+            }
+        }
 
         return [
             'usable_on_hand' => (float) $usableOnHand,
@@ -187,8 +233,9 @@ class StockViewQueryService
             'quarantined_rejected' => (float) $quarantinedRejected,
             'quarantine' => (float) $quarantineOnly,
             'rejected' => (float) $rejectedOnly,
-            'inbound_po' => 0.0,
-            'inbound_open_po' => 0.0,
+            'inbound_po' => (float) $inbound,
+            'inbound_open_po' => (float) $inbound,
+            'inbound_open_po_str' => $inbound,
             'total_physical_balance' => (float) $totalPhysicalStr,
             // Exact bcmath strings for callers needing arbitrary precision
             'usable_on_hand_str' => $usableOnHand,
@@ -246,8 +293,8 @@ class StockViewQueryService
             ],
             'inbound_open_po' => [
                 'label' => 'Inbound open PO',
-                'quantity' => $format('0'),
-                'value' => 0.0,
+                'quantity' => $format($raw['inbound_open_po_str']),
+                'value' => $raw['inbound_open_po'],
             ],
             'blocked_reserved' => [
                 'label' => 'Blocked reserved (subset of RF-reserved)',
@@ -272,6 +319,7 @@ class StockViewQueryService
     {
         $holds = StockHold::where('chapter_id', $chapterId)
             ->where('status', 'active')
+            ->whereHas('ranges', fn ($q) => $q->where('lot_id', $lotId))
             ->with(['ranges' => fn ($q) => $q->where('lot_id', $lotId)])
             ->get();
 
@@ -300,8 +348,13 @@ class StockViewQueryService
             ->where('lot_id', $lotId)
             ->where('status', 'active')
             ->whereHas('reservation', fn ($q) => $q->where('status', 'ACTIVE'))
-            ->get();
+            ->sharedLock()->get();
 
+        return $this->reservationIntervals($allocs);
+    }
+
+    private function reservationIntervals(Collection $allocs): array
+    {
         $result = [];
         foreach ($allocs as $alloc) {
             $rem = BcMath::sub(
@@ -330,13 +383,6 @@ class StockViewQueryService
      */
     public function getConsumedIntervalsForLot(InventoryLot $lot, ?string $excludeIssueId = null): array
     {
-        $basisTotal = BcMath::str($lot->original_quantity ?? $lot->quantity_on_hand);
-        $onHand = BcMath::str($lot->quantity_on_hand);
-        $totalConsumed = BcMath::sub($basisTotal, $onHand);
-        if (BcMath::comp($totalConsumed, '0') < 0) {
-            $totalConsumed = BcMath::str('0');
-        }
-
         $postedLinesQuery = ActualIssueLine::where('lot_id', $lot->id)
             ->whereHas('actualIssue', fn ($q) => $q->where('chapter_id', $lot->chapter_id)->where('status', 'posted'));
 
@@ -344,7 +390,18 @@ class StockViewQueryService
             $postedLinesQuery->where('actual_issue_id', '!=', $excludeIssueId);
         }
 
-        $postedLines = $postedLinesQuery->get();
+        return $this->consumedIntervals($lot, $postedLinesQuery->sharedLock()->get());
+    }
+
+    private function consumedIntervals(InventoryLot $lot, Collection $postedLines): array
+    {
+        $basisTotal = BcMath::str($lot->original_quantity ?? $lot->quantity_on_hand);
+        $onHand = BcMath::str($lot->quantity_on_hand);
+        $totalConsumed = BcMath::sub($basisTotal, $onHand);
+        if (BcMath::comp($totalConsumed, '0') < 0) {
+            $totalConsumed = BcMath::str('0');
+        }
+
         $intervals = [];
         $explicitSum = BcMath::str('0');
 

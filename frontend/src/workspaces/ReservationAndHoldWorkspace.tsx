@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { actionBlockReason, unwrapMutationData } from '../api/access.ts';
-import { apiGet, apiMutate, buildQuery, newActionKey } from '../api/client.ts';
-import type { ChapterAccessSnapshot } from '../api/types.ts';
+import { apiGet, apiMutate, buildQuery, ContractApiError, newActionKey } from '../api/client.ts';
+import type { ApiEnvelope, ChapterAccessSnapshot } from '../api/types.ts';
 import { OperationBanner } from '../components/OperationBanner.tsx';
+import { SearchableRecordPicker } from '../components/SearchableRecordPicker.tsx';
 import {
   emptyEvidenceBinding,
   emptyStockRange,
@@ -38,10 +39,35 @@ interface ReservationRecord {
   blocked_quantity: string;
 }
 
+interface FreeStockRange {
+  basis_segment_id: string;
+  offset_quantity: string;
+  quantity: string;
+}
+
+interface AllocationQueueEntry {
+  rf_id: string;
+  rf_line_id: string;
+  rf_reference: string;
+  item_code: string;
+  variant_code: string;
+  variant_label: string;
+  unit_code: string;
+  unreserved_outstanding_quantity: string;
+  eligible_sources: {
+    stock_lot_id: string;
+    source_kind: 'opening_rm' | 'po_rm' | 'da_rm';
+    source_reference: string;
+    free_quantity: string;
+  }[];
+}
+
+const sourceLabels = { opening_rm: 'Opening RM', po_rm: 'PO-RM', da_rm: 'DA-RM' };
+
 interface CandidateLotInfo {
   stock_lot_id: string;
   basis_segment_id: string;
-  quantity_on_hand: string;
+  free_intervals: FreeStockRange[];
   stock_version: number;
   material_version: number;
 }
@@ -152,6 +178,9 @@ export function ReservationAndHoldWorkspace({
   const [reservationId, setReservationId] = useState(initialDraft.reservationId ?? '');
   const [holdId, setHoldId] = useState(initialDraft.holdId ?? '');
 
+  const [queue, setQueue] = useState<AllocationQueueEntry[]>([]);
+  const [queueState, setQueueState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [pickerRevision, setPickerRevision] = useState(0);
   const [reviewData, setReviewData] = useState<AllocationReviewData | null>(null);
   const [reservations, setReservations] = useState<ReservationRecord[]>([]);
   const [holds, setHolds] = useState<StockHoldRecord[]>([]);
@@ -218,6 +247,93 @@ export function ReservationAndHoldWorkspace({
 
   const opBlockReason = actionBlockReason(chapterAccess, ...OP_REQUIRED_ACTIONS[opKind]);
 
+  useEffect(() => {
+    if (opKind !== 'prepare' || opBlockReason) return;
+    let current = true;
+    const load = async () => {
+      const entries: AllocationQueueEntry[] = [];
+      let cursor: string | null = null;
+      do {
+        const response: ApiEnvelope<AllocationQueueEntry[]> = await apiGet(
+          `/api/v1/chapters/${chapterId}/allocation-queue${buildQuery({ limit: '100', cursor })}`,
+        );
+        if (!current) return;
+        entries.push(...response.data);
+        cursor = response.page?.next_cursor ?? null;
+      } while (cursor);
+      setQueue(entries);
+      setQueueState('ready');
+    };
+    void load().catch((failure: unknown) => {
+      if (current) {
+        setQueueState('failed');
+        setError(failure);
+      }
+    });
+    return () => { current = false; };
+  }, [chapterId, opKind, opBlockReason, pickerRevision, refreshSignal]);
+
+  const selectedLine = queue.find((entry) => entry.rf_id === rfId && entry.rf_line_id === rfLineId);
+
+  useEffect(() => {
+    if (opKind !== 'prepare' || !selectedLine) return;
+    let current = true;
+    void apiGet<AllocationReviewData>(`/api/v1/chapters/${chapterId}/internal-rfs/${selectedLine.rf_id}/allocation-review`)
+      .then(({ data }) => {
+        if (!current || !data.rf) return;
+        setReviewData(data);
+        setExpectedRfVersion(String(data.rf.version));
+        setExpectedRfMaterialVersion(String(data.rf.material_version));
+        setExpectedRfProgressVersion(String(data.rf.progress_version));
+      })
+      .catch((failure: unknown) => {
+        if (current) setError(failure);
+      });
+    return () => { current = false; };
+  }, [chapterId, opKind, selectedLine, pickerRevision, refreshSignal]);
+
+  function chooseRfLine(id: string) {
+    const line = queue.find((entry) => entry.rf_line_id === id);
+    setRfId(line?.rf_id ?? '');
+    setRfLineId(line?.rf_line_id ?? '');
+    setPrepId('');
+    setReservationId('');
+    setReviewData(null);
+    setTargets([emptyStockTarget()]);
+    setError(null);
+  }
+
+  const candidateLots = reviewData?.rf?.id === selectedLine?.rf_id
+    ? reviewData?.lines?.find((line) => line.rf_line_id === rfLineId)?.candidate_lots ?? []
+    : [];
+  const stockChoices = selectedLine?.eligible_sources.flatMap((source) => {
+    const lot = candidateLots.find((candidate) => candidate.stock_lot_id === source.stock_lot_id);
+    return lot?.free_intervals.map((range) => ({
+      id: `${lot.stock_lot_id}:${range.basis_segment_id}:${range.offset_quantity}`,
+      label: `${source.source_reference} ? ${sourceLabels[source.source_kind]} ? ${range.quantity} ${selectedLine.unit_code} free at offset ${range.offset_quantity}`,
+      lot,
+      range,
+    })) ?? [];
+  }) ?? [];
+
+  const allTargetsSelected = targets.every((target) => stockChoices.some(({ lot, range }) =>
+    lot.stock_lot_id === target.stock_lot_id && range.basis_segment_id === target.basis_segment_id
+    && range.offset_quantity === target.offset_quantity
+    && String(lot.stock_version) === target.expected_stock_version
+    && String(lot.material_version) === target.expected_lot_material_version,
+  ));
+  const canSubmit = !busy && !opBlockReason
+    && (opKind !== 'prepare' || (queueState === 'ready' && selectedLine && allTargetsSelected))
+    && (opKind !== 'commit' || (rfId && prepId));
+
+  function reloadPicker() {
+    setQueue([]);
+    setQueueState('loading');
+    setReviewData(null);
+    setTargets([emptyStockTarget()]);
+    setPickerRevision((revision) => revision + 1);
+  }
+
   function parkDraftInMemory() {
     memoryDraftStore.saveDraft({
       userId,
@@ -272,7 +388,7 @@ export function ReservationAndHoldWorkspace({
   }, [chapterId, rfId, rfLineId, reservationId]);
 
   useEffect(() => {
-    if (refreshSignal === 0 || !rfId.trim()) {
+    if (opKind === 'prepare' || opKind === 'commit' || refreshSignal === 0 || !rfId.trim()) {
       return;
     }
     let active = true;
@@ -302,21 +418,7 @@ export function ReservationAndHoldWorkspace({
     return () => {
       active = false;
     };
-  }, [chapterId, rfId, refreshSignal]);
-
-  function applyCandidateLot(lot: CandidateLotInfo) {
-    setTargets([
-      {
-        stock_lot_id: lot.stock_lot_id,
-        basis_segment_id: lot.basis_segment_id,
-        offset_quantity: '0',
-        quantity: lot.quantity_on_hand,
-        expected_lot_material_version: String(lot.material_version),
-        expected_stock_version: String(lot.stock_version),
-      },
-    ]);
-    setStatusMessage(`Filled target details from stock batch ${lot.stock_lot_id.slice(0, 8)} (rev. ${lot.stock_version}).`);
-  }
+  }, [chapterId, opKind, rfId, refreshSignal]);
 
   function buildBody(): Record<string, unknown> {
     const rfVers = {
@@ -381,6 +483,7 @@ export function ReservationAndHoldWorkspace({
 
   async function executeAction(e: React.FormEvent) {
     e.preventDefault();
+    if (!canSubmit) return;
     setBusy(true);
     setError(null);
     setReplayed(false);
@@ -416,8 +519,13 @@ export function ReservationAndHoldWorkspace({
             : undefined;
       if (opKind === 'prepare' && returnedId) {
         setPrepId(returnedId);
+        setExpectedPrepVersion(String(record.version));
+        setOpKind('commit');
       } else if (opKind === 'commit' && returnedId) {
         setReservationId(returnedId);
+        setPrepId('');
+        setOpKind('prepare');
+        reloadPicker();
       } else if (opKind === 'placeHold' && returnedId) {
         setHoldId(returnedId);
       }
@@ -450,12 +558,18 @@ export function ReservationAndHoldWorkspace({
         clearHold: 'Stock hold cleared',
       };
       setStatusMessage(`${actionLabels[opKind]}. Reference: ${key}`);
-      await loadHolds();
-      if (rfId.trim()) {
-        await loadRfAllocations();
+      if (opKind !== 'prepare' && opKind !== 'commit') {
+        await loadHolds();
+        if (rfId.trim()) await loadRfAllocations();
       }
     } catch (err) {
       setError(err);
+      if ((opKind === 'prepare' || opKind === 'commit') && err instanceof ContractApiError && [403, 404, 409].includes(err.status)) {
+        setPrepId('');
+        setOpKind('prepare');
+        reloadPicker();
+        setStatusMessage('Availability or access changed. Choose a current stock range and prepare again.');
+      }
     } finally {
       setBusy(false);
     }
@@ -502,6 +616,22 @@ export function ReservationAndHoldWorkspace({
     <main className="p03-workspace-shell">
       <div className="p03-workspace-inner">
         <header className="p03-top-header surface-card">
+          {opKind === 'prepare' ? (
+            <div className="form-stack">
+              <SearchableRecordPicker
+                label="Approved RF line"
+                options={queue.map((entry) => ({
+                  id: entry.rf_line_id,
+                  label: `${entry.rf_reference} ? ${entry.item_code} / ${entry.variant_code} ? ${entry.variant_label} ? ${entry.unreserved_outstanding_quantity} ${entry.unit_code} needed`,
+                }))}
+                value={rfLineId}
+                disabled={busy || queueState !== 'ready'}
+                onSelect={chooseRfLine}
+              />
+              {queueState === 'loading' && !opBlockReason ? <p role="status">Loading allocation queue?</p> : null}
+              {queueState === 'failed' ? <button type="button" onClick={reloadPicker}>Reload allocation queue</button> : null}
+            </div>
+          ) : opKind !== 'commit' && (
           <div className="p03-header-search-row">
             <div className="p03-search-input-wrap">
               <svg
@@ -554,6 +684,7 @@ export function ReservationAndHoldWorkspace({
               </button>
             </div>
           </div>
+          )}
 
           <div className="p03-header-nav-row">
             <div className="p03-header-left">
@@ -636,12 +767,16 @@ export function ReservationAndHoldWorkspace({
                     <label className="form-label" htmlFor="res-prep">
                       Preparation Reference
                     </label>
-                    <input
-                      id="res-prep"
-                      className="form-control"
-                      value={prepId}
-                      onChange={(e) => setPrepId(e.target.value)}
-                    />
+                    {opKind === 'prepare' || opKind === 'commit' ? (
+                      <p id="res-prep">{prepId ? 'Ready to commit' : 'No reservation prepared'}</p>
+                    ) : (
+                      <input
+                        id="res-prep"
+                        className="form-control"
+                        value={prepId}
+                        onChange={(e) => setPrepId(e.target.value)}
+                      />
+                    )}
                   </div>
                   <div className="form-group">
                     <label className="form-label" htmlFor="res-id">
@@ -705,39 +840,6 @@ export function ReservationAndHoldWorkspace({
                     Hold History
                   </button>
                 </div>
-
-                {reviewData?.lines && reviewData.lines.length > 0 && (
-                  <div className="form-stack">
-                    <h3 className="s02-drawer-subhead">
-                      Available Stock Batches
-                    </h3>
-                    <div className="p03-history-list">
-                      {reviewData.lines.map((ln) => (
-                        <div key={ln.rf_line_id} className="p03-history-card">
-                          <div className="p03-history-head">
-                            <span className="p03-version-pill p03-id-pill p03-mono-inline">Line {ln.rf_line_id.slice(0, 8)}</span>
-                          </div>
-                          {(ln.candidate_lots ?? []).length > 0 && (
-                            <div className="p02-compact-actions">
-                              <div className="p02-compact-btn-group">
-                                {(ln.candidate_lots ?? []).map((lot) => (
-                                  <button
-                                    key={lot.stock_lot_id}
-                                    type="button"
-                                    className="p02-compact-btn"
-                                    onClick={() => applyCandidateLot(lot)}
-                                  >
-                                    Use Batch {lot.stock_lot_id.slice(0, 8)} (on hand: {lot.quantity_on_hand})
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {holds.length > 0 && (
                   <div className="form-stack">
@@ -813,7 +915,7 @@ export function ReservationAndHoldWorkspace({
                     </select>
                   </div>
 
-                  {(opKind === 'prepare' || opKind === 'commit' || opKind === 'release' || opKind === 'reallocate') && (
+                  {(opKind === 'release' || opKind === 'reallocate') && (
                     <div className="p02-three-col-grid">
                       <div className="form-group">
                         <label className="form-label">Requisition Version</label>
@@ -878,39 +980,65 @@ export function ReservationAndHoldWorkspace({
                     </div>
                   )}
 
-                  {opKind === 'prepare' && (
-                    <div className="form-group">
-                      <label className="form-label">Requisition Line Reference</label>
-                      <input
-                        className="form-control"
-                        required
-                        value={rfLineId}
-                        onChange={(e) => setRfLineId(e.target.value)}
-                      />
-                    </div>
-                  )}
-
-                  {opKind === 'commit' && (
-                    <div className="form-group">
-                      <label className="form-label">Preparation Version</label>
-                      <input
-                        className="form-control"
-                        type="number"
-                        min={1}
-                        required
-                        value={expectedPrepVersion}
-                        onChange={(e) => setExpectedPrepVersion(e.target.value)}
-                      />
-                    </div>
-                  )}
-
                   {(opKind === 'release' || opKind === 'reallocate') && (
                     <StockRangeRows label="Stock Batches to Release" rows={ranges} onChange={setRanges} />
                   )}
 
-                  {(opKind === 'prepare' || opKind === 'reallocate' || opKind === 'placeHold') && (
-                    <StockTargetRows label="Selected Stock Batch Allocations" rows={targets} onChange={setTargets} />
-                  )}
+                  {opKind === 'prepare' ? (
+                      <div className="form-stack">
+                        {targets.map((target, index) => {
+                          const selection = stockChoices.find((choice) => choice.lot.stock_lot_id === target.stock_lot_id
+                            && choice.range.basis_segment_id === target.basis_segment_id
+                            && choice.range.offset_quantity === target.offset_quantity);
+                          function updateTarget(next: StockTargetInput) {
+                            setTargets((rows) => rows.map((row, position) => position === index ? next : row));
+                          }
+                          return (
+                            <div className="form-stack" key={index}>
+                              <SearchableRecordPicker
+                                label={`Free stock range ${index + 1}`}
+                                options={stockChoices}
+                                value={selection?.id ?? ''}
+                                onSelect={(id) => {
+                                  const choice = stockChoices.find((option) => option.id === id);
+                                  updateTarget(choice ? {
+                                    stock_lot_id: choice.lot.stock_lot_id,
+                                    basis_segment_id: choice.range.basis_segment_id,
+                                    offset_quantity: choice.range.offset_quantity,
+                                    quantity: choice.range.quantity,
+                                    expected_lot_material_version: String(choice.lot.material_version),
+                                    expected_stock_version: String(choice.lot.stock_version),
+                                  } : emptyStockTarget());
+                                }}
+                                disabled={busy || !selectedLine || !reviewData}
+                              />
+                              {selection ? (
+                                <label className="form-group">
+                                  <span className="form-label">Reserve quantity {index + 1}</span>
+                                  <input
+                                    className="form-control"
+                                    inputMode="decimal"
+                                    required
+                                    value={target.quantity}
+                                    onChange={(event) => updateTarget({ ...target, quantity: event.target.value })}
+                                  />
+                                </label>
+                              ) : null}
+                              {targets.length > 1 ? (
+                                <button type="button" onClick={() => setTargets((rows) => rows.filter((_, position) => position !== index))}>
+                                  Remove range {index + 1}
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                        {stockChoices.length > 1 && targets.length < 50 ? (
+                          <button type="button" onClick={() => setTargets((rows) => [...rows, emptyStockTarget()])}>Add range</button>
+                        ) : null}
+                      </div>
+                    ) : (opKind === 'reallocate' || opKind === 'placeHold') && (
+                      <StockTargetRows label="Selected Stock Batch Allocations" rows={targets} onChange={setTargets} />
+                    )}
 
                   {(opKind === 'prepare' || opKind === 'reallocate') && (
                     <div className="form-group">
@@ -1117,10 +1245,10 @@ export function ReservationAndHoldWorkspace({
                     <button
                       className="btn-batcave-primary"
                       type="submit"
-                      disabled={busy || opBlockReason !== null}
+                      disabled={!canSubmit}
                       title={opBlockReason ?? undefined}
                     >
-                      Run Action
+                      {opKind === 'prepare' ? 'Prepare reservation' : opKind === 'commit' ? 'Commit reservation' : 'Run Action'}
                     </button>
                     <button
                       className="btn-batcave-secondary"

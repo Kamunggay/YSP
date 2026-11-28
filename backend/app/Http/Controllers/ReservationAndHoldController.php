@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ContractException;
 use App\Http\Middleware\EnforceBrowserAuthority;
+use App\Http\Requests\AuthInput;
 use App\Models\IdempotencyRecord;
 use App\Models\InternalRf;
 use App\Models\InventoryLot;
@@ -13,11 +14,14 @@ use App\Models\StockHold;
 use App\Models\StockHoldHistory;
 use App\Models\StockReservation;
 use App\Services\Authority\ChapterAuthority;
+use App\Services\Inventory\AllocationQueueQueryService;
 use App\Services\Inventory\InternalRfService;
 use App\Services\Inventory\ReservationService;
 use App\Services\Inventory\StockViewQueryService;
+use App\Services\Shared\BcMath;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ReservationAndHoldController extends Controller
 {
@@ -76,7 +80,7 @@ class ReservationAndHoldController extends Controller
 
             return response()->json($envelope, 201, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray(isset($e->extra['setup_blockers']) ? (string) Str::uuid() : null), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
@@ -191,53 +195,131 @@ class ReservationAndHoldController extends Controller
 
             return response()->json($envelope, 200, ['Cache-Control' => 'no-store']);
         } catch (ContractException $e) {
-            return response()->json($e->toArray(), $e->statusCode, ['Cache-Control' => 'no-store']);
+            return response()->json($e->toArray(isset($e->extra['setup_blockers']) ? (string) Str::uuid() : null), $e->statusCode, ['Cache-Control' => 'no-store']);
         }
     }
 
-    public function readRfAllocationReview(string $chapterId, string $rfId): JsonResponse
+    public function readRfAllocationReview(Request $request, string $chapterId, string $rfId): JsonResponse
     {
-        $rf = InternalRf::where('chapter_id', $chapterId)->where('id', $rfId)->with('lines')->first();
-        if (! $rf) {
-            return response()->json([
-                'error' => ['code' => 'resource_not_found', 'message' => "Internal RF {$rfId} not found."],
-            ], 404, ['Cache-Control' => 'no-store']);
+        $rf = InternalRf::where('chapter_id', $chapterId)->whereKey($rfId)->with('lines')->firstOrFail();
+        $lineId = $request->query('rf_line_id');
+        if ($lineId !== null && (! is_string($lineId) || preg_match(AuthInput::UUID, $lineId) !== 1)) {
+            throw new ContractException(400, 'invalid_selector', 'Invalid RF line selector.');
+        }
+        if ($lineId !== null && ($rf->status !== 'approved' || ! $rf->lines->contains('id', $lineId))) {
+            throw new ContractException(404, 'resource_not_found', 'Resource not found.');
         }
 
+        $observedAt = now('UTC');
+        $formattedRf = $this->rfService->formatRf($rf);
         $lineReviews = [];
         foreach ($rf->lines as $line) {
-            $views = $this->stockViewService->getSevenViews($chapterId, $line->variant_id);
-            $candidateLots = InventoryLot::where('chapter_id', $chapterId)
-                ->where('variant_id', $line->variant_id)
-                ->where('condition', 'USABLE')
-                ->where('custody', 'STOCKROOM')
-                ->where('immediately_allocatable', true)
-                ->orderBy('created_at')
-                ->get()
-                ->map(fn (InventoryLot $lot) => [
-                    'stock_lot_id' => $lot->id,
-                    'basis_segment_id' => $lot->basis_segment_id ?? $lot->id,
-                    'quantity_on_hand' => $lot->quantity_on_hand,
-                    'stock_version' => $lot->stock_version,
-                    'material_version' => $lot->material_version,
-                    'active_holds' => $this->stockViewService->getActiveHoldRangesForLot($chapterId, $lot->id),
-                    'active_reservations' => $this->stockViewService->getActiveReservationRangesForLot($chapterId, $lot->id),
-                ])
-                ->values();
+            if ($lineId !== null && $line->id !== $lineId) {
+                continue;
+            }
+
+            $candidateLots = [];
+            if ($rf->status === 'approved') {
+                $lots = InventoryLot::where('chapter_id', $chapterId)->where('variant_id', $line->variant_id)
+                    ->where('unit_id', $line->unit_id)->where('condition', 'USABLE')->where('custody', 'STOCKROOM')
+                    ->withExists('restrictions')->orderBy('created_at')->orderBy('id')->get();
+                $lotRanges = $this->stockViewService->loadLotRanges($lots);
+                foreach ($lots as $lot) {
+                    $ranges = $lotRanges[$lot->id];
+                    $available = $this->stockViewService->getLotAvailability($lot, $observedAt, $rf->purpose, $rf, ranges: $ranges);
+                    if (BcMath::isPositive($available['eligible_free_quantity'])) {
+                        $candidateLots[] = [
+                            'stock_lot_id' => $lot->id,
+                            'basis_segment_id' => $lot->basis_segment_id ?? $lot->id,
+                            'quantity_on_hand' => $lot->quantity_on_hand,
+                            'stock_version' => $lot->stock_version,
+                            'material_version' => $lot->material_version,
+                            'active_holds' => $ranges['holds'],
+                            'active_reservations' => $ranges['reservations'],
+                            'free_intervals' => $available['free_intervals'],
+                        ];
+                    }
+                }
+            }
+
+            if ($lineId !== null) {
+                $progress = collect($formattedRf['lines'])->firstWhere('id', $lineId)['progress'];
+                $free = '0';
+                foreach ($candidateLots as $lot) {
+                    foreach ($lot['free_intervals'] as $range) {
+                        $free = BcMath::add($free, $range['quantity']);
+                    }
+                }
+                $scale = (int) ($line->identity_at_approval['quantity_scale'] ?? 0);
+                $policy = null;
+                $blockers = [];
+                $demands = [];
+                $authority = $request->attributes->get(ChapterAuthority::class);
+                try {
+                    $queue = app(AllocationQueueQueryService::class)->buildQueue($authority, [
+                        'variant_id' => $line->variant_id,
+                        'eligible_only' => false,
+                    ]);
+                    $reference = $queue['allocation_policy'];
+                    $policyRecord = $authority->chapter->policyRecords()->where('policy_code', 'allocation_priority')
+                        ->where('aggregate_id', $reference['policy_id'])->where('policy_version', $reference['version'])->first();
+                    $approval = collect($policyRecord?->setupEvidence()['approvals'] ?? [])->firstWhere('authority', 'CHAPTER_HEAD');
+                    if ($approval && isset($approval['id'], $approval['approver_id'])) {
+                        $policy = [
+                            'policy_id' => $reference['policy_id'],
+                            'material_version' => $reference['version'],
+                            'approval_id' => $approval['id'],
+                            'approved_by' => $approval['approver_id'],
+                        ];
+                    }
+                    foreach (array_slice($queue['entries'], 0, 100) as $demand) {
+                        $demands[] = [
+                            'rf_id' => $demand['rf_id'],
+                            'rf_line_id' => $demand['rf_line_id'],
+                            'priority_rank' => $demand['priority_rank'],
+                            'needed_at' => $demand['needed_at'],
+                            'approved_at' => $demand['approved_at'],
+                            'unreserved_quantity' => $demand['unreserved_outstanding_quantity'],
+                        ];
+                    }
+                } catch (ContractException $exception) {
+                    if ($exception->errorCode !== 'setup_blocked') {
+                        throw $exception;
+                    }
+                    $blockers = $exception->extra['blockers'] ?? [];
+                }
+
+                return response()->json(['data' => [
+                    'rf_id' => $rfId,
+                    'rf_line_id' => $lineId,
+                    'rf_version' => $rf->version,
+                    'rf_material_version' => $rf->material_version,
+                    'rf_progress_version' => $rf->progress_version,
+                    'progress' => $progress,
+                    'free_eligible_quantity' => BcMath::format($free, $scale),
+                    'uncovered_quantity' => BcMath::format(BcMath::max('0', BcMath::sub($progress['unreserved_quantity'], $free)), $scale),
+                    'allocation_policy' => $policy,
+                    'ordered_demands' => $demands,
+                    'queue_next_cursor' => null,
+                    'setup_blockers' => $blockers,
+                    'observed_at' => $observedAt->format('Y-m-d\TH:i:s.u\Z'),
+                    'is_commit_authorization' => false,
+                ]], 200, ['Cache-Control' => 'no-store']);
+            }
 
             $lineReviews[] = [
                 'rf_line_id' => $line->id,
                 'variant_id' => $line->variant_id,
                 'unit_id' => $line->unit_id,
-                'views' => $views,
+                'views' => $this->stockViewService->getSevenViews($chapterId, $line->variant_id, $line->identity_at_approval['quantity_scale'] ?? 0),
                 'candidate_lots' => $candidateLots,
             ];
         }
 
         return response()->json([
             'data' => [
-                'rf' => $this->rfService->formatRf($rf),
-                'observed_at' => now('UTC')->format('Y-m-d\TH:i:s.u\Z'),
+                'rf' => $formattedRf,
+                'observed_at' => $observedAt->format('Y-m-d\TH:i:s.u\Z'),
                 'lines' => $lineReviews,
             ],
         ], 200, ['Cache-Control' => 'no-store']);

@@ -222,6 +222,34 @@ final class DonationRestrictionSupport
         return true;
     }
 
+    /** @param array<string, mixed> $restriction Validated bounded condition. */
+    public static function allowsUse(
+        array $restriction,
+        string $use,
+        ?string $requestingUnitId,
+        ?string $eventId,
+        CarbonInterface $at,
+        ?CarbonInterface $neededAt = null,
+    ): bool {
+        return in_array($use, $restriction['allowed_uses'], true)
+            && ($restriction['requesting_unit_ids'] === [] || in_array($requestingUnitId, $restriction['requesting_unit_ids'], true))
+            && ($restriction['event_ids'] === [] || in_array($eventId, $restriction['event_ids'], true))
+            && self::withinWindow($restriction, $at)
+            && ($neededAt === null || self::withinWindow($restriction, $neededAt));
+    }
+
+    /** @param array<string, mixed> $restriction Validated bounded condition. */
+    public static function allowsAnyUse(array $restriction, CarbonInterface $at): bool
+    {
+        return $restriction['allowed_uses'] !== [] && self::withinWindow($restriction, $at);
+    }
+
+    private static function withinWindow(array $restriction, CarbonInterface $at): bool
+    {
+        return ($restriction['effective_from'] === null || $at->gte(CarbonImmutable::parse($restriction['effective_from'])))
+            && ($restriction['effective_until'] === null || $at->lte(CarbonImmutable::parse($restriction['effective_until'])));
+    }
+
     public static function isUuid(mixed $value): bool
     {
         return is_string($value) && preg_match(AuthInput::UUID, $value) === 1;
