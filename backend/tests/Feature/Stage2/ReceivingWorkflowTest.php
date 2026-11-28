@@ -291,6 +291,31 @@ class ReceivingWorkflowTest extends TestCase
         $this->assertSame('10.000000', (string) $poLine->rejected_or_disputed_quantity);
         $this->assertSame('60.000000', (string) $poLine->outstanding_quantity);
 
+        $reports = "/api/v1/chapters/{$chapter->id}/reports";
+        $date = now('Asia/Manila')->toDateString();
+        $period = "date_from=$date&date_to=$date&location_id={$location->id}";
+        $inventory = $this->asBrowserOfficer($receiver->id)->get("$reports/inventory?$period")->assertOk();
+        $inventory->assertJsonPath('stock_category_labels.views_are_additive', false)
+            ->assertJsonPath('totals.total_usable_valuation_php', '500.00');
+        $stock = collect($inventory->json('data'));
+        $usable = $stock->firstWhere('available_to_allocate', '40');
+        $this->assertSame('40', $usable['period_receipts_quantity']);
+        $this->assertSame('PCS', $usable['unit_code']);
+        $this->assertSame('10', $stock->firstWhere('condition', 'rejected')['quarantined_rejected']);
+        $this->assertSame('0', $stock->firstWhere('condition', 'rejected')['available_to_allocate']);
+        $this->assertSame('60', $stock->firstWhere('custody', 'inbound')['inbound_open_po']);
+        $this->get("$reports/procurement?$period&status=partially_received")->assertOk()
+            ->assertJsonPath('purchase_order_summary.0.ordered_quantity', '100')
+            ->assertJsonPath('purchase_order_summary.0.accepted_quantity', '40')
+            ->assertJsonPath('purchase_order_summary.0.rejected_or_disputed_quantity', '10')
+            ->assertJsonPath('purchase_order_summary.0.outstanding_quantity', '60')
+            ->assertJsonPath('purchase_order_summary.0.open_discrepancy_count', 1)
+            ->assertJsonPath('totals.total_ordered_php', '1250.00')
+            ->assertJsonPath('totals.total_accepted_value_php', '500.00');
+        $this->get("/api/v1/chapters/{$chapter->id}/alerts?alert_type=open_receiving_discrepancy")->assertOk()
+            ->assertJsonPath('data.0.record_id', $discrepancyId)
+            ->assertJsonPath('data.0.record_reference', $rm1Ref);
+
         // Posted RM is immutable (cannot replace or cancel)
         $this->write($receiver, "$rmUrl/$rm1Id/cancel", [
             'expected_version' => 7,
@@ -590,6 +615,19 @@ class ReceivingWorkflowTest extends TestCase
         $this->assertFalse($byLine[$daLine1->id]['immediately_allocatable']);
         $this->assertSame('bounded', $byLine[$daLine2->id]['restrictions']['state']);
         $this->assertTrue($byLine[$daLine2->id]['immediately_allocatable']);
+
+        $reports = "/api/v1/chapters/{$chapter->id}/reports";
+        $date = now('Asia/Manila')->toDateString();
+        $period = "date_from=$date&date_to=$date&location_id={$location->id}";
+        $control = $this->get("$reports/control?$period")->assertOk()
+            ->assertJsonPath('totals.uninterpreted_donation_count', 1);
+        $donations = collect($control->json('donation_restrictions'))->keyBy('variant_id');
+        $this->assertFalse($donations[$daLine1->variant_id]['allocatable_now']);
+        $this->assertTrue($donations[$daLine2->variant_id]['allocatable_now']);
+        $this->assertSame('uninterpreted', $donations[$daLine1->variant_id]['restriction']['state']);
+        $this->get("$reports/inventory?$period&status=with_uninterpreted_restriction")->assertOk()
+            ->assertJsonPath('data.0.restriction_state', 'uninterpreted')
+            ->assertJsonPath('data.0.available_to_allocate', '0');
 
         // Unposted RM cancel allocates no reference and posts zero movements
         [$po, $poLine] = $this->seedIssuedPo($chapter, $purchaser, $variant, $unit, '15', '10.00');
@@ -969,7 +1007,7 @@ class ReceivingWorkflowTest extends TestCase
             'id' => (string) Str::uuid(),
             'repf_id' => $repf->id,
             'line_number' => 1,
-            'trigger_kind' => 'min_stock',
+            'trigger_kind' => 'rop_replenishment',
             'item_id' => $variant->item_id,
             'variant_id' => $variant->id,
             'unit_id' => $unit->id,

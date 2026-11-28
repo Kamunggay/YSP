@@ -21,12 +21,43 @@ final class SnapshotPage
         array $items,
         int $snapshotVersion,
     ): JsonResponse {
+        return response()->json(self::paginate($request, $chapterId, $scope, $filters, $limit, $rawCursor, ['data' => $items], $snapshotVersion));
+    }
+
+    public static function sections(
+        Request $request,
+        string $chapterId,
+        string $scope,
+        array $filters,
+        int $limit,
+        ?string $rawCursor,
+        array $sections,
+        array $snapshotContext = [],
+    ): array {
+        $digest = CanonicalJson::sha256([$sections, $snapshotContext]);
+        $version = 1 + ((int) hexdec(substr($digest, 0, 8)) % 2147483647);
+
+        return self::paginate($request, $chapterId, $scope, [CanonicalJson::sha256($filters)], $limit, $rawCursor, $sections, $version, $digest);
+    }
+
+    private static function paginate(
+        Request $request,
+        string $chapterId,
+        string $scope,
+        array $filters,
+        int $limit,
+        ?string $rawCursor,
+        array $sections,
+        int $snapshotVersion,
+        ?string $snapshotHash = null,
+    ): array {
+
         $authority = $request->attributes->get(ChapterAuthority::class);
         $userId = $request->user()->id;
         $grantsHash = hash('sha256', CanonicalJson::encode($authority->grants->map(fn ($grant) => [
             $grant->id, $grant->duty_code, (int) $grant->version, $grant->scope,
         ])->all()));
-        $snapshotHash = hash('sha256', CanonicalJson::encode([$snapshotVersion, $items]));
+        $snapshotHash ??= CanonicalJson::sha256([$snapshotVersion, $sections['data']]);
         $offset = 0;
         $expires = now('UTC')->addMinutes(5)->timestamp;
 
@@ -56,8 +87,8 @@ final class SnapshotPage
             $expires = (int) $decoded['expires'];
         }
 
-        $slice = array_slice($items, $offset, $limit);
-        $nextCursor = $offset + $limit < count($items)
+        $slice = array_map(fn (array $items) => array_slice($items, $offset, $limit), $sections);
+        $nextCursor = $offset + $limit < max(array_map(count(...), $sections))
             ? Crypt::encryptString(json_encode([
                 'scope' => $scope,
                 'user' => $userId,
@@ -72,12 +103,11 @@ final class SnapshotPage
             ], JSON_THROW_ON_ERROR))
             : null;
 
-        return response()->json([
-            'data' => $slice,
+        return $slice + [
             'page' => [
                 'next_cursor' => $nextCursor,
                 'snapshot_version' => max(1, $snapshotVersion),
             ],
-        ]);
+        ];
     }
 }

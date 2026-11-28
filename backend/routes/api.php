@@ -13,6 +13,7 @@ use App\Http\Controllers\HandoverController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InternalRfController;
 use App\Http\Controllers\NotificationSubscriptionController;
+use App\Http\Controllers\OfficerAlertController;
 use App\Http\Controllers\OpeningInventoryController;
 use App\Http\Controllers\PaperEvidenceController;
 use App\Http\Controllers\ProcurementOperationController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\RepfMutationController;
 use App\Http\Controllers\ReservationAndHoldController;
 use App\Http\Controllers\SalesOrderAcceptanceController;
 use App\Http\Controllers\SalesOrderController;
+use App\Http\Controllers\Stage2ReportController;
 use App\Http\Controllers\StockQueryController;
 use App\Http\PaperEvidenceDownload;
 use App\Services\Donations\DonationWorkflow;
@@ -212,6 +214,16 @@ Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads,r
     ] as $operation => [$method, $path]) {
         Route::match([$method], $path, [ReceivingDiscrepancyAndHoldController::class, 'mutateHold'])
             ->name($operation)->middleware('stage-one.action:'.ReceivingExceptionWorkflow::HOLD_ACTIONS[$operation]);
+    }
+});
+
+Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads', 'stage-one.chapter')->group(function () {
+    Route::get('/alerts', OfficerAlertController::class)->middleware('stage-one.action:alerts.read');
+    foreach (['inventory', 'procurement', 'control'] as $kind) {
+        Route::get("/reports/{$kind}", [Stage2ReportController::class, 'show'])
+            ->defaults('report_kind', $kind)->defaults('print', false)->middleware("stage-one.action:reports.{$kind}.read");
+        Route::get("/reports/{$kind}/print", [Stage2ReportController::class, 'show'])
+            ->defaults('report_kind', $kind)->defaults('print', true)->middleware("stage-one.action:reports.{$kind}.read");
     }
 });
 
