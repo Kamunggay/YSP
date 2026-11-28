@@ -46,8 +46,9 @@ class StockViewQueryService
     }
 
     /** @param Collection<int, InventoryLot> $lots Lots from one authorized chapter. */
-    public function loadLotRanges(Collection $lots, bool $protectSales = false, bool $lock = false): array
-    {
+    public function loadLotRanges(
+        Collection $lots, bool $protectSales = false, bool $lock = false, ?CarbonInterface $observedAt = null,
+    ): array {
         if ($lots->isEmpty()) {
             return [];
         }
@@ -79,7 +80,7 @@ class StockViewQueryService
         }
 
         if ($protectSales) {
-            foreach ($this->saleCommitmentRanges($lots, $ranges, $lock) as $id => $committed) {
+            foreach ($this->saleCommitmentRanges($lots, $ranges, $lock, $observedAt) as $id => $committed) {
                 $ranges[$id]['sale_commitments'] = $committed;
             }
         }
@@ -93,8 +94,9 @@ class StockViewQueryService
      *
      * @param  Collection<int, InventoryLot>  $lots  All matching lots in one chapter
      */
-    public function saleCommitmentRanges(Collection $lots, ?array $ranges = null, bool $lock = false): array
-    {
+    public function saleCommitmentRanges(
+        Collection $lots, ?array $ranges = null, bool $lock = false, ?CarbonInterface $observedAt = null,
+    ): array {
         if ($lots->isEmpty()) {
             return [];
         }
@@ -115,7 +117,7 @@ class StockViewQueryService
 
         $ranges ??= $this->loadLotRanges($lots, lock: $lock);
         $commitments = [];
-        $observedAt = now('UTC');
+        $observedAt ??= now('UTC');
         foreach ($lots->sortBy('id') as $lot) {
             $variantId = $lot->variant_id;
             $remaining = $sales->get($variantId, '0');

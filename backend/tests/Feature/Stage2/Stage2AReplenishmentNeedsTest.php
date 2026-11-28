@@ -160,9 +160,10 @@ class Stage2AReplenishmentNeedsTest extends TestCase
 
     #[DataProvider('rfCoverageCases')]
     public function test_replenishment_matches_each_free_range_to_eligible_rf_demand(
-        array $lots, string $aDemand, string $bDemand, string $available, string $shortage, bool $aboveRop = false
+        array $lots, string $aDemand, string $bDemand, string $available, string $shortage, ?array $thresholds = null
     ): void {
-        [$itemId, $variantId] = $this->seedItemAndVariant('KIT', 'KIT-M', 'Kit', 'Medium');
+        CatalogueUnit::whereKey($this->unitEachId)->update(['quantity_kind' => 'measured', 'quantity_scale' => 2]);
+        [$itemId, $variantId] = $this->seedItemAndVariant('KIT', 'KIT-M', 'Kit', 'Medium', scale: 2);
         $this->seedPolicy('quantity_scale', $variantId, 'CatalogueQuantityPolicyValue', [
             'unit_id' => $this->unitEachId,
             'quantity_kind' => 'measured',
@@ -175,8 +176,8 @@ class Stage2AReplenishmentNeedsTest extends TestCase
             ],
             'overrides' => [],
         ]);
-        if ($aboveRop) {
-            foreach (['rop' => '1.00', 'target_level' => '12.00'] as $policy => $quantity) {
+        if ($thresholds !== null) {
+            foreach (['rop' => $thresholds['rop'], 'target_level' => '12.00'] as $policy => $quantity) {
                 $this->seedPolicy($policy, $itemId, 'CatalogueThresholdPolicyValue', [
                     'unit_id' => $this->unitEachId, 'quantity' => $quantity,
                 ]);
@@ -186,9 +187,9 @@ class Stage2AReplenishmentNeedsTest extends TestCase
         [, $lineB] = $this->createApprovedRf($this->unitBId, $variantId, $bDemand);
 
         foreach ($lots as $index => [$quantity, $units, $terms]) {
-            $lotId = $this->createLot($variantId, $quantity, 'bounded', $terms + [
+            $lotId = $this->createLot($variantId, $quantity, $terms + [
                 'requesting_unit_ids' => array_map(fn (string $unit) => $unit === 'A' ? $this->unitAId : $this->unitBId, $units),
-            ], 'DA_RM', "DA-{$index}", scale: 2);
+            ], scale: 2);
             InventoryLot::whereKey($lotId)->update(['created_at' => now()->subHours(count($lots) - $index)]);
         }
 
@@ -197,13 +198,14 @@ class Stage2AReplenishmentNeedsTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.quantity_scale', 2)
             ->assertJsonPath('data.0.eligible_available_to_allocate', $available)
-            ->assertJsonPath('data.0.low_stock_breach', false)
+            ->assertJsonPath('data.0.low_stock_breach', $thresholds['breach'] ?? false)
+            ->assertJsonPath('data.0.gross_rop_replenishment_need', $thresholds['top_up'] ?? '0.00')
             ->assertJsonPath('data.0.unreserved_approved_rf_shortage', $shortage)
             ->assertJsonPath('data.0.uncovered_rf_shortage_quantity', $shortage)
-            ->assertJsonPath('data.0.proposed_uncovered_quantity', $shortage)
+            ->assertJsonPath('data.0.proposed_uncovered_quantity', $thresholds['combined'] ?? $shortage)
             ->assertJsonPath('data.0.contributing_rf_lines.0.rf_line_id', $lineA)
             ->assertJsonPath('data.0.contributing_rf_lines.1.rf_line_id', $lineB)
-            ->assertJsonCount($aboveRop ? 0 : 2, 'data.0.setup_blockers');
+            ->assertJsonCount($thresholds === null ? 2 : 0, 'data.0.setup_blockers');
 
         $snapshot = $this->snapshot($variantId);
         $this->assertSame('ready', $snapshot['outcome']);
@@ -219,7 +221,12 @@ class Stage2AReplenishmentNeedsTest extends TestCase
             'shared range first' => [[$flexible, $onlyA], '5.00', '5.00', '10.00', '0.00'],
             'shared range last' => [[$onlyA, $flexible], '5.00', '5.00', '10.00', '0.00'],
             'excess constrained stock cannot cover another unit' => [
-                [['10.00', ['A'], []]], '2.00', '8.00', '10.00', '8.00', true,
+                [['10.00', ['A'], []]], '2.00', '8.00', '10.00', '8.00',
+                ['rop' => '1.00', 'breach' => false, 'top_up' => '0.00', 'combined' => '8.00'],
+            ],
+            'ROP top-up uses stock left after actual RF matches' => [
+                [['10.00', ['A'], []]], '2.00', '8.00', '10.00', '8.00',
+                ['rop' => '10.00', 'breach' => true, 'top_up' => '4.00', 'combined' => '12.00'],
             ],
             'fractional reassignment' => [
                 [['5.70', ['A', 'B'], []], ['4.50', ['A'], []]], '5.10', '5.10', '10.20', '0.00',
@@ -262,7 +269,7 @@ class Stage2AReplenishmentNeedsTest extends TestCase
         ]);
 
         // Usable stockroom lot: 25 units (holds=3, reservation=4 with one unit overlapping)
-        $lotId = $this->createLot($variantId, '25', 'unrestricted', [], 'PO_DR', 'RM-PO-001');
+        $lotId = $this->createLot($variantId, '25');
         $hold = StockHold::create([
             'id' => (string) Str::uuid(),
             'chapter_id' => $this->chapterId,
@@ -414,12 +421,20 @@ class Stage2AReplenishmentNeedsTest extends TestCase
             $this->get($url.'?'.$query)->assertBadRequest()->assertJsonPath('error.code', 'invalid_selector');
         }
         $this->get($url, ['X-Action-Key' => (string) Str::uuid()])->assertBadRequest()->assertJsonPath('error.code', 'invalid_selector');
-        $this->get($url.'?item_id='.$firstItem.'&q=kIt')->assertOk()->assertJsonPath('data.0.variant_id', $first);
+        $this->get($url.'?item_id='.$firstItem.'&q=%20kIt%20')->assertOk()->assertJsonPath('data.0.variant_id', $first);
+        $this->get($url.'?q=%09KIT')->assertOk()->assertJsonCount(0, 'data');
 
+        $firstLot = $this->createLot($first, '1');
+        $secondLot = $this->createLot($second, '1');
+        InventoryLot::whereKey($secondLot)->update(['stock_version' => 10]);
         $page = $this->get($url.'?limit=1')->assertOk()->assertJsonPath('data.0.variant_id', $first);
         $nextUrl = $url.'?limit=1&cursor='.rawurlencode($page->json('page.next_cursor'));
         $this->travel(1)->seconds();
         $this->get($nextUrl)->assertOk()->assertJsonPath('data.0.variant_id', $second)->assertJsonPath('page.next_cursor', null);
+        InventoryLot::whereKey($firstLot)->increment('stock_version');
+        $this->get($nextUrl)->assertConflict()->assertJsonPath('error.code', 'snapshot_stale');
+        $page = $this->get($url.'?limit=1')->assertOk();
+        $nextUrl = $url.'?limit=1&cursor='.rawurlencode($page->json('page.next_cursor'));
         $this->createApprovedRf($this->unitAId, $second, '2');
         $this->get($nextUrl)->assertConflict()->assertJsonPath('error.code', 'snapshot_stale');
     }
@@ -454,7 +469,7 @@ class Stage2AReplenishmentNeedsTest extends TestCase
         ]));
     }
 
-    private function seedItemAndVariant(string $itemCode, string $variantCode, string $itemName, string $variantLabel): array
+    private function seedItemAndVariant(string $itemCode, string $variantCode, string $itemName, string $variantLabel, int $scale = 0): array
     {
         $itemId = (string) Str::uuid();
         $variantId = (string) Str::uuid();
@@ -479,7 +494,7 @@ class Stage2AReplenishmentNeedsTest extends TestCase
             'name' => "{$itemName} / {$variantLabel}",
             'label' => "{$itemName} / {$variantLabel}",
             'unit_id' => $this->unitEachId,
-            'quantity_scale' => 0,
+            'quantity_scale' => $scale,
             'quantity_identity_locked' => true,
             'material_version' => 1,
             'is_active' => true,
@@ -522,39 +537,19 @@ class Stage2AReplenishmentNeedsTest extends TestCase
         return $policyId;
     }
 
-    private function createLot(
-        string $variantId,
-        string $qty,
-        string $restrictionState,
-        array $boundedOverrides,
-        string $sourceType,
-        string $sourceReference,
-        int $scale = 0,
-    ): string {
+    private function createLot(string $variantId, string $qty, ?array $donorTerms = null, int $scale = 0): string
+    {
         $lotId = (string) Str::uuid();
-        $restrictions = match ($restrictionState) {
-            'uninterpreted' => [
-                'state' => 'uninterpreted',
-                'allowed_uses' => [],
-                'event_ids' => [],
-                'requesting_unit_ids' => [],
-                'effective_from' => null,
-                'effective_until' => null,
-                'interpretation_id' => null,
-                'source_condition_reference' => 'UNINTERPRETED-DONATION',
-            ],
-            'bounded' => array_merge([
-                'state' => 'bounded',
-                'allowed_uses' => ['internal_use'],
-                'event_ids' => [],
-                'requesting_unit_ids' => [],
-                'effective_from' => null,
-                'effective_until' => null,
-                'interpretation_id' => (string) Str::uuid(),
-                'source_condition_reference' => 'BOUNDED-DONATION',
-            ], $boundedOverrides),
-            default => null,
-        };
+        $restrictions = $donorTerms === null ? null : $donorTerms + [
+            'state' => 'bounded',
+            'allowed_uses' => ['internal_use'],
+            'event_ids' => [],
+            'requesting_unit_ids' => [],
+            'effective_from' => null,
+            'effective_until' => null,
+            'interpretation_id' => (string) Str::uuid(),
+            'source_condition_reference' => 'BOUNDED-DONATION',
+        ];
 
         InventoryLot::create([
             'id' => $lotId,
@@ -578,9 +573,9 @@ class Stage2AReplenishmentNeedsTest extends TestCase
             ]],
             'stock_version' => 1,
             'material_version' => 1,
-            'source_type' => $sourceType,
+            'source_type' => $donorTerms === null ? 'PO_DR' : 'DA_RM',
             'source_id' => (string) Str::uuid(),
-            'source_reference' => $sourceReference,
+            'source_reference' => 'RM-'.substr($lotId, 0, 8),
         ]);
 
         return $lotId;
@@ -592,9 +587,9 @@ class Stage2AReplenishmentNeedsTest extends TestCase
         string $variantId,
         string $approvedQty,
         string $reservedQty = '0',
-        string $neededAt = '2026-12-01T08:00:00Z',
-        string $approvedAt = '2026-11-25T10:00:00Z'
     ): array {
+        $neededAt = '2026-12-01T08:00:00Z';
+        $approvedAt = '2026-11-25T10:00:00Z';
         $rfId = (string) Str::uuid();
         $rfLineId = (string) Str::uuid();
         $seq = substr(str_replace('-', '', $rfId), 0, 6);
@@ -669,7 +664,8 @@ final class FakeProcurementSupplyProvider implements OpenProcurementSupplyProvid
         string $chapterId,
         array $variantIds,
         ?string $excludeRepfId = null,
-        ?string $observedAt = null
+        ?string $observedAt = null,
+        bool $lock = true,
     ): array {
         return array_values(array_filter(
             $this->sources,

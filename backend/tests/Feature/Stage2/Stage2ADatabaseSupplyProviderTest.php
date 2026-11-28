@@ -284,5 +284,28 @@ class Stage2ADatabaseSupplyProviderTest extends TestCase
         $chapterMetrics = $stockViews->getRawMetrics($this->chapterId, null);
         $this->assertSame('150.000000', $chapterMetrics['inbound_open_po_str']);
         $this->assertSame('0.000000', $chapterMetrics['usable_on_hand_str']);
+
+        $withoutRepf = $provider->getInboundSourcesForVariants($this->chapterId, [$variantAId], excludeRepfId: $repfId);
+        $this->assertFalse(collect($withoutRepf)->contains('source_kind', 'repf'));
+
+        if (DB::getDriverName() === 'mysql') {
+            $readOpenPo = fn () => collect($provider->getInboundSourcesForVariants(
+                $this->chapterId, [$variantAId], lock: false,
+            ))->first(fn (array $source) => $source['source_id'] === $poMixedId && $source['coverage_state'] === 'counted')['open_quantity'];
+
+            $writer = DB::build(config('database.connections.supply_fixture'));
+            try {
+                DB::transaction(function () use ($writer, $readOpenPo, $poCountedLineId): void {
+                    // Establish the caller's inventory read view before the receipt reduces outstanding supply.
+                    DB::table('inventory_lots')->count();
+                    $writer->table('purchase_order_lines')->where('id', $poCountedLineId)->update(['outstanding_quantity' => 30]);
+                    $this->assertSame('40.000000', $readOpenPo());
+                });
+                $this->assertSame('30.000000', $readOpenPo());
+            } finally {
+                $writer->disconnect();
+            }
+        }
+
     }
 }

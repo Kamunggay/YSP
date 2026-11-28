@@ -36,7 +36,7 @@ final class Stage2InventoryQueryController extends Controller
         if (! in_array($trigger, ['all', 'rf_shortage', 'rop_breach', 'uncovered_only'], true)) {
             throw new ContractException(400, 'invalid_selector', 'Unsupported trigger_filter selector.');
         }
-        $prefix = isset($selectors['q']) ? mb_strtolower(trim($selectors['q'])) : null;
+        $prefix = isset($selectors['q']) ? strtolower(trim($selectors['q'], ' ')) : null;
         if ($prefix !== null && (preg_match('/\S/u', $prefix) !== 1 || mb_strlen($prefix) > 80)) {
             throw new ContractException(400, 'invalid_selector', 'q must be 1 to 80 non-blank characters.');
         }
@@ -54,7 +54,7 @@ final class Stage2InventoryQueryController extends Controller
         $candidateIds = $variants->where('is_active', true)->with('item')->get()
             ->filter(fn (CatalogueVariant $variant) => $prefix === null
                 || collect([$variant->item->code, $variant->item->name, $variant->code ?? $variant->sku, $variant->label ?: $variant->name])
-                    ->contains(fn ($value) => str_starts_with(mb_strtolower((string) $value), $prefix)))
+                    ->contains(fn ($value) => str_starts_with(strtolower((string) $value), $prefix)))
             ->sort(fn (CatalogueVariant $a, CatalogueVariant $b) => [$a->item->code, $a->code ?? $a->sku, $a->id]
                 <=> [$b->item->code, $b->code ?? $b->sku, $b->id])
             ->pluck('id');
@@ -65,7 +65,8 @@ final class Stage2InventoryQueryController extends Controller
         $observedAt = now('UTC')->format('Y-m-d\TH:i:s.u\Z');
         $snapshotVersion = max(1, (int) $authority->chapter->version);
         $items = [];
-        foreach ($candidateIds->chunk(100) as $chunk) {
+        $pageVersions = [];
+        foreach ($candidateIds->chunk($limit) as $chunk) {
             $result = $this->netShortage->computeNetShortageSnapshot([
                 'chapter_id' => $chapterId,
                 'actor_id' => $actorId,
@@ -93,6 +94,7 @@ final class Stage2InventoryQueryController extends Controller
                 throw new ContractException(503, 'unavailable', 'Replenishment snapshot is unavailable.');
             }
 
+            $pageVersions[] = $result['snapshot_version'];
             $snapshotVersion = max($snapshotVersion, $result['snapshot_version']);
             foreach ($result['items'] as $item) {
                 $matches = match ($trigger) {
@@ -110,7 +112,7 @@ final class Stage2InventoryQueryController extends Controller
         $page = $this->pagination->paginate(
             $items, $selectors['cursor'] ?? null, $limit, 'replenishment_needs', $actorId, $chapterId,
             $authority->version, $snapshotVersion, [$itemId, $variantId, $trigger, $prefix],
-            array_map(fn (array $item) => array_diff_key($item, ['observed_at' => true]), $items),
+            [$pageVersions, array_map(fn (array $item) => array_diff_key($item, ['observed_at' => true]), $items)],
         );
 
         return response()->json([

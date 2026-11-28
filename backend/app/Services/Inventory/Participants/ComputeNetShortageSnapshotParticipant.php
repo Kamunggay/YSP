@@ -94,13 +94,13 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
         $variantIds = $variants->pluck('id')->all();
         $lots = InventoryLot::where('chapter_id', $chapterId)->whereIn('variant_id', $variantIds)
             ->withExists('restrictions')->orderBy('created_at')->orderBy('id')->get();
-        $ranges = $this->stockViews->loadLotRanges($lots, protectSales: true);
+        $ranges = $this->stockViews->loadLotRanges($lots, protectSales: true, observedAt: $at);
         $lines = InternalRfLine::whereIn('variant_id', $variantIds)
             ->whereHas('rf', fn ($query) => $query->where('chapter_id', $chapterId)->where('status', 'approved'))
             ->with(['rf', 'reservations' => fn ($query) => $query->active()->where('source_type', 'RF')->with('allocations')])
             ->get();
         $inbound = collect($this->supply->getInboundSourcesForVariants(
-            $chapterId, $variantIds, $input['exclude_repf_id'], $observedAt,
+            $chapterId, $variantIds, $input['exclude_repf_id'], $observedAt, lock: false,
         ))->groupBy('variant_id');
 
         $lotsByVariant = $lots->groupBy('variant_id');
@@ -327,9 +327,8 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
             foreach ($siblings as $variant) {
                 $summary = $summaries[$variant->id];
                 $onHand = BcMath::add($onHand, $summary['usable_stockroom_on_hand']);
-                $postRf = BcMath::add($postRf, BcMath::sub(
-                    $summary['eligible_available_to_allocate'], $summary['total_unreserved_approved_rf_demand'],
-                ));
+                $matchedRf = BcMath::sub($summary['total_unreserved_approved_rf_demand'], $summary['unreserved_approved_rf_shortage']);
+                $postRf = BcMath::add($postRf, BcMath::sub($summary['eligible_available_to_allocate'], $matchedRf));
             }
 
             $breach = $threshold['rop_unit_id'] === $primary->unit_id

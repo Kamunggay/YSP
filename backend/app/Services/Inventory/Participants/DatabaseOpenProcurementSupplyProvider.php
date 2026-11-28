@@ -31,7 +31,8 @@ final class DatabaseOpenProcurementSupplyProvider implements OpenProcurementSupp
         string $chapterId,
         array $variantIds,
         ?string $excludeRepfId = null,
-        ?string $observedAt = null
+        ?string $observedAt = null,
+        bool $lock = true,
     ): array {
         if ($variantIds === []) {
             return [];
@@ -63,7 +64,7 @@ final class DatabaseOpenProcurementSupplyProvider implements OpenProcurementSupp
                     'repf_lines.linked_demand_canceled as line_demand_canceled',
                     'repf_lines.needed_by as needed_by',
                 ])
-                ->sharedLock()
+                ->when($lock, fn ($query) => $query->sharedLock())
                 ->get();
 
             foreach ($repfRows as $row) {
@@ -125,7 +126,7 @@ final class DatabaseOpenProcurementSupplyProvider implements OpenProcurementSupp
                     'purchase_order_lines.outstanding_quantity as open_quantity',
                     'purchase_order_lines.linked_demand_canceled as line_demand_canceled',
                 ])
-                ->sharedLock()
+                ->when($lock, fn ($query) => $query->sharedLock())
                 ->get();
 
             $disputedPoLineIds = [];

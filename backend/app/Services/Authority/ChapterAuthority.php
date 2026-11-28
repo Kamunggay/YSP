@@ -21,7 +21,6 @@ final class ChapterAuthority
         'catalogue.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'COMMITTEE_REQUESTER', 'RF_APPROVER'],
         'catalogue.maintain' => ['INVENTORY'],
         'stock.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH'],
-        'replenishment.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD'],
         'evidence.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'RF_APPROVER'],
         'evidence.prepare' => ['INVENTORY', 'RECEIVING', 'DISPATCH'],
         'ipc.draft' => ['INVENTORY'],
@@ -46,9 +45,11 @@ final class ChapterAuthority
 
     public static function dutiesForAction(string $action): array
     {
-        return $action === 'allocation_queue.read'
-            ? ['INVENTORY', 'DISPATCH', 'RF_APPROVER', 'CHAPTER_HEAD']
-            : self::ACTION_DUTIES[$action] ?? [];
+        return match ($action) {
+            'allocation_queue.read' => ['INVENTORY', 'DISPATCH', 'RF_APPROVER', 'CHAPTER_HEAD'],
+            'replenishment.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD'],
+            default => self::ACTION_DUTIES[$action] ?? [],
+        };
     }
 
     public const DUTIES = [

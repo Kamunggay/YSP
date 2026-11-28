@@ -13,6 +13,8 @@ namespace App\Services\Inventory\Participants;
 interface OpenProcurementSupplyProvider
 {
     /**
+     * Use lock: false when the caller already has a consistent inventory snapshot.
+     *
      * @param  list<string>  $variantIds
      * @return array<int, array{
      *   variant_id: string,
@@ -30,6 +32,7 @@ interface OpenProcurementSupplyProvider
         string $chapterId,
         array $variantIds,
         ?string $excludeRepfId = null,
-        ?string $observedAt = null
+        ?string $observedAt = null,
+        bool $lock = true,
     ): array;
 }
