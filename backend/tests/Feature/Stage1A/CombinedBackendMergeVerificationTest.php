@@ -32,6 +32,7 @@ class CombinedBackendMergeVerificationTest extends TestCase
         'GET /api/v1/chapters/{}/buyers',
         'POST /api/v1/chapters/{}/buyers',
         'GET /api/v1/chapters/{}/allocation-queue',
+        'GET /api/v1/chapters/{}/replenishment/needs',
         'GET /api/v1/chapters/{}/handovers',
         'POST /api/v1/chapters/{}/handovers',
         'GET /api/v1/chapters/{}/handovers/{}',

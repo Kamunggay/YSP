@@ -11,20 +11,113 @@ use App\Models\InternalRf;
 use App\Services\Authority\ChapterAuthority;
 use App\Services\Inventory\AllocationQueueQueryService;
 use App\Services\Inventory\AllocationSnapshotPage;
+use App\Services\Inventory\Participants\NetShortageSnapshotParticipant;
+use App\Services\Shared\BcMath;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-/**
- * Serves the chapter-scoped Stage 2 allocation queue.
- */
 final class Stage2InventoryQueryController extends Controller
 {
     public function __construct(
         private readonly AllocationQueueQueryService $allocationQueueService,
         private readonly AllocationSnapshotPage $pagination,
+        private readonly NetShortageSnapshotParticipant $netShortage,
     ) {}
+
+    public function listReplenishmentNeeds(Request $request, string $chapterId): JsonResponse
+    {
+        $selectors = $this->pagination->parseSelectors($request, [
+            'limit', 'cursor', 'item_id', 'variant_id', 'trigger_filter', 'q',
+        ]);
+        $limit = $this->pagination->parseLimit($selectors['limit'] ?? null);
+        $trigger = $selectors['trigger_filter'] ?? 'all';
+        if (! in_array($trigger, ['all', 'rf_shortage', 'rop_breach', 'uncovered_only'], true)) {
+            throw new ContractException(400, 'invalid_selector', 'Unsupported trigger_filter selector.');
+        }
+        $prefix = isset($selectors['q']) ? mb_strtolower(trim($selectors['q'])) : null;
+        if ($prefix !== null && (preg_match('/\S/u', $prefix) !== 1 || mb_strlen($prefix) > 80)) {
+            throw new ContractException(400, 'invalid_selector', 'q must be 1 to 80 non-blank characters.');
+        }
+
+        $itemId = isset($selectors['item_id']) ? $this->pagination->requireUuidSelector($selectors['item_id'], 'item_id') : null;
+        $variantId = isset($selectors['variant_id']) ? $this->pagination->requireUuidSelector($selectors['variant_id'], 'variant_id') : null;
+        $variants = CatalogueVariant::where('chapter_id', $chapterId)
+            ->when($itemId !== null, fn ($query) => $query->where('item_id', $itemId))
+            ->when($variantId !== null, fn ($query) => $query->whereKey($variantId));
+        if (($itemId !== null && ! CatalogueItem::where('chapter_id', $chapterId)->whereKey($itemId)->exists())
+            || ($variantId !== null && ! (clone $variants)->exists())) {
+            throw new ContractException(404, 'resource_not_found', 'Resource not found.');
+        }
+
+        $candidateIds = $variants->where('is_active', true)->with('item')->get()
+            ->filter(fn (CatalogueVariant $variant) => $prefix === null
+                || collect([$variant->item->code, $variant->item->name, $variant->code ?? $variant->sku, $variant->label ?: $variant->name])
+                    ->contains(fn ($value) => str_starts_with(mb_strtolower((string) $value), $prefix)))
+            ->sort(fn (CatalogueVariant $a, CatalogueVariant $b) => [$a->item->code, $a->code ?? $a->sku, $a->id]
+                <=> [$b->item->code, $b->code ?? $b->sku, $b->id])
+            ->pluck('id');
+
+        /** @var ChapterAuthority $authority */
+        $authority = $request->attributes->get(ChapterAuthority::class);
+        $actorId = (string) $request->user()->id;
+        $observedAt = now('UTC')->format('Y-m-d\TH:i:s.u\Z');
+        $snapshotVersion = max(1, (int) $authority->chapter->version);
+        $items = [];
+        foreach ($candidateIds->chunk(100) as $chunk) {
+            $result = $this->netShortage->computeNetShortageSnapshot([
+                'chapter_id' => $chapterId,
+                'actor_id' => $actorId,
+                'observed_at' => $observedAt,
+                'variant_ids' => $chunk->values()->all(),
+                'include_rf_line_breakdown' => true,
+                'require_rop_and_target_policies' => $trigger === 'rop_breach',
+                'exclude_repf_id' => null,
+            ]);
+
+            if ($result['outcome'] === 'setup_blocked') {
+                return response()->json([
+                    'request_id' => (string) Str::uuid(),
+                    'error' => [
+                        'code' => 'setup_blocked',
+                        'message' => 'Required replenishment policies are not effective.',
+                        'blockers' => $result['blockers'],
+                    ],
+                ], 409, ['Cache-Control' => 'no-store']);
+            }
+            if ($result['outcome'] === 'rejected') {
+                if (in_array($result['code'], ['chapter_not_found', 'resource_not_found'], true)) {
+                    throw new ContractException(404, $result['code'], $result['message']);
+                }
+                throw new ContractException(503, 'unavailable', 'Replenishment snapshot is unavailable.');
+            }
+
+            $snapshotVersion = max($snapshotVersion, $result['snapshot_version']);
+            foreach ($result['items'] as $item) {
+                $matches = match ($trigger) {
+                    'rf_shortage' => BcMath::isPositive($item['unreserved_approved_rf_shortage']),
+                    'rop_breach' => $item['low_stock_breach'],
+                    'uncovered_only' => BcMath::isPositive($item['proposed_uncovered_quantity']),
+                    default => true,
+                };
+                if ($matches) {
+                    $items[] = $item;
+                }
+            }
+        }
+
+        $page = $this->pagination->paginate(
+            $items, $selectors['cursor'] ?? null, $limit, 'replenishment_needs', $actorId, $chapterId,
+            $authority->version, $snapshotVersion, [$itemId, $variantId, $trigger, $prefix],
+            array_map(fn (array $item) => array_diff_key($item, ['observed_at' => true]), $items),
+        );
+
+        return response()->json([
+            'data' => $page['entries'],
+            'page' => ['next_cursor' => $page['next_cursor'], 'snapshot_version' => $snapshotVersion],
+        ], 200, ['Cache-Control' => 'no-store']);
+    }
 
     public function listAllocationQueue(Request $request, string $chapterId): JsonResponse
     {

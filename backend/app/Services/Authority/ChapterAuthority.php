@@ -21,6 +21,7 @@ final class ChapterAuthority
         'catalogue.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'COMMITTEE_REQUESTER', 'RF_APPROVER'],
         'catalogue.maintain' => ['INVENTORY'],
         'stock.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH'],
+        'replenishment.read' => ['INVENTORY', 'PURCHASING', 'BUDGET_APPROVER', 'CHAPTER_HEAD'],
         'evidence.read' => ['INVENTORY', 'RECEIVING', 'DISPATCH', 'RF_APPROVER'],
         'evidence.prepare' => ['INVENTORY', 'RECEIVING', 'DISPATCH'],
         'ipc.draft' => ['INVENTORY'],

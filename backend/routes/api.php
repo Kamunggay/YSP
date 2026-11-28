@@ -41,6 +41,7 @@ Route::prefix('v1/auth')->group(function () {
 Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:reads', 'stage-one.chapter')->group(function () {
     Route::get('/context', [ChapterAccessController::class, 'context']);
     Route::get('/access', [ChapterAccessController::class, 'access']);
+    Route::get('/replenishment/needs', [Stage2InventoryQueryController::class, 'listReplenishmentNeeds'])->middleware('stage-one.action:replenishment.read');
 });
 
 Route::prefix('v1/chapters/{chapter_id}')->middleware('browser.authority:evidence', 'stage-one.chapter')->group(function () {

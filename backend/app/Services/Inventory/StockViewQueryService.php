@@ -30,6 +30,7 @@ class StockViewQueryService
         ?string $eventId = null,
         ?CarbonInterface $neededAt = null,
         ?array $ranges = null,
+        ?array $potentialUses = null,
     ): array {
         return $this->eligibility->project(
             $lot,
@@ -40,7 +41,7 @@ class StockViewQueryService
                 ...($ranges['sale_commitments'] ?? []),
             ],
             $lot->restrictions_exists ?? $lot->restrictions()->exists(),
-            $at, $use, $rf, $requestingUnitId, $eventId, $neededAt,
+            $at, $use, $rf, $requestingUnitId, $eventId, $neededAt, $potentialUses,
         );
     }
 

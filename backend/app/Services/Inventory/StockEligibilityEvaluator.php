@@ -96,12 +96,14 @@ final class StockEligibilityEvaluator
         ?string $requestingUnitId = null,
         ?string $eventId = null,
         ?CarbonInterface $neededAt = null,
+        ?array $potentialUses = null,
     ): array {
         $projection = [
             'usable_stockroom_on_hand' => BcMath::str('0'),
             'active_stock_hold_quantity' => BcMath::str('0'),
             'ineligible_restricted_quantity' => BcMath::str('0'),
             'uninterpreted_restricted_quantity' => BcMath::str('0'),
+            'eligible_unheld_quantity' => BcMath::str('0'),
             'eligible_free_quantity' => BcMath::str('0'),
             'restriction_state' => 'unrestricted',
             'free_intervals' => [],
@@ -125,7 +127,8 @@ final class StockEligibilityEvaluator
                 $lot, $restriction, $legacyRestriction, $use ?? '', $at, $rf, $requestingUnitId, $eventId, $neededAt,
             );
             if ($use === null && $state === 'ineligible_bounded'
-                && DonationRestrictionSupport::allowsAnyUse($restriction, $at)) {
+                && DonationRestrictionSupport::allowsAnyUse($restriction, $at)
+                && ($potentialUses === null || array_intersect($potentialUses, $restriction['allowed_uses']) !== [])) {
                 $state = 'bounded';
             }
 
@@ -137,7 +140,11 @@ final class StockEligibilityEvaluator
                 continue;
             }
 
-            foreach ($this->subtract($onHand, [...$holds, ...$reservations]) as $range) {
+            $unheld = $this->subtract($onHand, $holds);
+            $projection['eligible_unheld_quantity'] = BcMath::add(
+                $projection['eligible_unheld_quantity'], BcMath::intervalUnionLength($unheld),
+            );
+            foreach ($this->subtract($unheld, $reservations) as $range) {
                 $projection['free_intervals'][] = [
                     'basis_segment_id' => $segment['basis_segment_id'],
                     'offset_quantity' => BcMath::format($range['offset'], $lot->quantity_scale ?? 0),

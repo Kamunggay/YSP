@@ -63,6 +63,30 @@ final class InventoryPolicyResolver
         ];
     }
 
+    public function resolveItemThresholds(ChapterAuthority $authority, Collection $policies, string $itemId): array
+    {
+        $thresholds = ['blockers' => []];
+        foreach (['rop' => 'approved_rop', 'target_level' => 'approved_target_level'] as $code => $quantityKey) {
+            $policy = $this->resolveSubjectPolicy(
+                $authority,
+                $policies,
+                $code,
+                'CatalogueThresholdPolicyValue',
+                $itemId,
+                fn (PolicyRecord $record) => $record->rules_json,
+                "An effective approved {$code} policy is required for this item.",
+            );
+            $thresholds[$quantityKey] = $policy['data']['quantity'] ?? null;
+            $thresholds[$code.'_unit_id'] = $policy['data']['unit_id'] ?? null;
+            $thresholds[$code.'_policy'] = $policy['policy_ref'];
+            if ($policy['blocker'] !== null) {
+                $thresholds['blockers'][] = $policy['blocker'];
+            }
+        }
+
+        return $thresholds;
+    }
+
     /**
      * Resolve effective chapter-level allocation_priority policy + unit ranks + active overrides.
      * Throws 409 setup_blocked when missing/unapproved/not_effective/expired.

@@ -101,6 +101,9 @@ final class AllocationSnapshotPage
         try {
             $cursor = json_decode(Crypt::decryptString($rawCursor), true, flags: JSON_THROW_ON_ERROR);
         } catch (DecryptException|\JsonException) {
+            if ($kind === 'replenishment_needs') {
+                throw new ContractException(400, 'invalid_selector', 'Invalid pagination cursor.');
+            }
             throw new ContractException(409, 'snapshot_stale', 'Allocation snapshot is no longer available.');
         }
 
