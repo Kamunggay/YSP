@@ -211,6 +211,7 @@ class ReservationAndHoldController extends Controller
                 ->where('variant_id', $line->variant_id)
                 ->where('condition', 'USABLE')
                 ->where('custody', 'STOCKROOM')
+                ->where('immediately_allocatable', true)
                 ->orderBy('created_at')
                 ->get()
                 ->map(fn (InventoryLot $lot) => [

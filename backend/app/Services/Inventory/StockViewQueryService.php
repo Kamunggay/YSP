@@ -34,6 +34,7 @@ class StockViewQueryService
         $rejectedOnly = BcMath::str('0');
 
         $usableLotIds = [];
+        $unallocatableUsableLotQtyById = [];
 
         foreach ($lots as $lot) {
             $qty = BcMath::str($lot->quantity_on_hand);
@@ -45,6 +46,9 @@ class StockViewQueryService
             } elseif ($cond === 'USABLE' && $cust === 'STOCKROOM') {
                 $usableOnHand = BcMath::add($usableOnHand, $qty);
                 $usableLotIds[] = $lot->id;
+                if (! ($lot->immediately_allocatable ?? true)) {
+                    $unallocatableUsableLotQtyById[$lot->id] = $qty;
+                }
             } elseif ($cond === 'QUARANTINE') {
                 $quarantinedRejected = BcMath::add($quarantinedRejected, $qty);
                 $quarantineOnly = BcMath::add($quarantineOnly, $qty);
@@ -143,12 +147,19 @@ class StockViewQueryService
             }
 
             if (in_array($lotId, $usableLotIds, true)) {
-                $combined = array_merge($rfIntervals, $holdIntervals);
-                if (! empty($combined)) {
+                if (isset($unallocatableUsableLotQtyById[$lotId])) {
                     $unavailableAllocatedOrHeld = BcMath::add(
                         $unavailableAllocatedOrHeld,
-                        BcMath::intervalUnionLength($combined)
+                        $unallocatableUsableLotQtyById[$lotId]
                     );
+                } else {
+                    $combined = array_merge($rfIntervals, $holdIntervals);
+                    if (! empty($combined)) {
+                        $unavailableAllocatedOrHeld = BcMath::add(
+                            $unavailableAllocatedOrHeld,
+                            BcMath::intervalUnionLength($combined)
+                        );
+                    }
                 }
             }
         }

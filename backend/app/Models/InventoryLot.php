@@ -35,6 +35,15 @@ class InventoryLot extends Model
         'source_type',
         'source_id',
         'source_reference',
+        'source_kind',
+        'rm_line_id',
+        'origin_source_id',
+        'origin_source_line_id',
+        'origin_source_reference',
+        'donor_name',
+        'restriction_state',
+        'restrictions_json',
+        'immediately_allocatable',
     ];
 
     protected function casts(): array
@@ -44,6 +53,8 @@ class InventoryLot extends Model
             'original_quantity' => 'decimal:6',
             'quantity_scale' => 'integer',
             'segments' => 'array',
+            'restrictions_json' => 'array',
+            'immediately_allocatable' => 'boolean',
             'stock_version' => 'integer',
             'material_version' => 'integer',
         ];

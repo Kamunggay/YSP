@@ -41,6 +41,16 @@ class InventoryMovement extends Model
         'accepted_value',
         'currency',
         'posted_by',
+        'source_kind',
+        'rm_line_id',
+        'origin_source_id',
+        'origin_source_line_id',
+        'origin_source_reference',
+        'origin_source_material_version',
+        'unit_valuation_php',
+        'total_value_php',
+        'restrictions_json',
+        'immediately_allocatable',
     ];
 
     protected function casts(): array
@@ -52,6 +62,11 @@ class InventoryMovement extends Model
             'rm_material_version' => 'integer',
             'ipc_material_version' => 'integer',
             'created_at' => 'datetime',
+            'origin_source_material_version' => 'integer',
+            'unit_valuation_php' => 'decimal:2',
+            'total_value_php' => 'decimal:2',
+            'restrictions_json' => 'array',
+            'immediately_allocatable' => 'boolean',
         ];
     }
 
