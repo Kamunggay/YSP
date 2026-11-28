@@ -427,7 +427,9 @@ class Stage2AReplenishmentNeedsTest extends TestCase
         $firstLot = $this->createLot($first, '1');
         $secondLot = $this->createLot($second, '1');
         InventoryLot::whereKey($secondLot)->update(['stock_version' => 10]);
+        $readsBeforePage = $this->fakeSupply->reads;
         $page = $this->get($url.'?limit=1')->assertOk()->assertJsonPath('data.0.variant_id', $first);
+        $this->assertSame($readsBeforePage + 1, $this->fakeSupply->reads);
         $nextUrl = $url.'?limit=1&cursor='.rawurlencode($page->json('page.next_cursor'));
         $this->travel(1)->seconds();
         $this->get($nextUrl)->assertOk()->assertJsonPath('data.0.variant_id', $second)->assertJsonPath('page.next_cursor', null);
@@ -660,6 +662,8 @@ final class FakeProcurementSupplyProvider implements OpenProcurementSupplyProvid
     /** @var array<int, array<string, mixed>> */
     public array $sources = [];
 
+    public int $reads = 0;
+
     public function getInboundSourcesForVariants(
         string $chapterId,
         array $variantIds,
@@ -667,6 +671,8 @@ final class FakeProcurementSupplyProvider implements OpenProcurementSupplyProvid
         ?string $observedAt = null,
         bool $lock = true,
     ): array {
+        $this->reads++;
+
         return array_values(array_filter(
             $this->sources,
             fn (array $src) => in_array($src['variant_id'], $variantIds, true)

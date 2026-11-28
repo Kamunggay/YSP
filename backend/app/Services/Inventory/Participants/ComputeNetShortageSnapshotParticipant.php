@@ -41,6 +41,17 @@ final class ComputeNetShortageSnapshotParticipant implements NetShortageSnapshot
             return ['outcome' => 'rejected', 'code' => 'chapter_not_found', 'message' => 'Chapter not found.'];
         }
 
+        if ($input['variant_ids'] === [] || count($input['variant_ids']) > 100) {
+            return ['outcome' => 'rejected', 'code' => 'resource_not_found', 'message' => 'Expected 1 to 100 active catalogue variants.'];
+        }
+
+        return $this->forVariants($authority, $input);
+    }
+
+    /** Evaluate one catalogue scope with shared stock and policy reads. */
+    public function forVariants(ChapterAuthority $authority, array $input): array
+    {
+        $chapterId = $authority->chapter->id;
         $requestedIds = $input['variant_ids'];
         $at = CarbonImmutable::parse($input['observed_at'])->utc();
         $observedAt = $at->format('Y-m-d\TH:i:s.u\Z');

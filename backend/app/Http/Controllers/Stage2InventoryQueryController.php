@@ -11,7 +11,7 @@ use App\Models\InternalRf;
 use App\Services\Authority\ChapterAuthority;
 use App\Services\Inventory\AllocationQueueQueryService;
 use App\Services\Inventory\AllocationSnapshotPage;
-use App\Services\Inventory\Participants\NetShortageSnapshotParticipant;
+use App\Services\Inventory\Participants\ComputeNetShortageSnapshotParticipant;
 use App\Services\Shared\BcMath;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,7 +23,7 @@ final class Stage2InventoryQueryController extends Controller
     public function __construct(
         private readonly AllocationQueueQueryService $allocationQueueService,
         private readonly AllocationSnapshotPage $pagination,
-        private readonly NetShortageSnapshotParticipant $netShortage,
+        private readonly ComputeNetShortageSnapshotParticipant $netShortage,
     ) {}
 
     public function listReplenishmentNeeds(Request $request, string $chapterId): JsonResponse
@@ -65,13 +65,11 @@ final class Stage2InventoryQueryController extends Controller
         $observedAt = now('UTC')->format('Y-m-d\TH:i:s.u\Z');
         $snapshotVersion = max(1, (int) $authority->chapter->version);
         $items = [];
-        $pageVersions = [];
-        foreach ($candidateIds->chunk($limit) as $chunk) {
-            $result = $this->netShortage->computeNetShortageSnapshot([
-                'chapter_id' => $chapterId,
-                'actor_id' => $actorId,
+        if ($candidateIds->isNotEmpty()) {
+            // Trigger filters and stale cursors depend on the whole candidate scope.
+            $result = $this->netShortage->forVariants($authority, [
                 'observed_at' => $observedAt,
-                'variant_ids' => $chunk->values()->all(),
+                'variant_ids' => $candidateIds->all(),
                 'include_rf_line_breakdown' => true,
                 'require_rop_and_target_policies' => $trigger === 'rop_breach',
                 'exclude_repf_id' => null,
@@ -88,31 +86,25 @@ final class Stage2InventoryQueryController extends Controller
                 ], 409, ['Cache-Control' => 'no-store']);
             }
             if ($result['outcome'] === 'rejected') {
-                if (in_array($result['code'], ['chapter_not_found', 'resource_not_found'], true)) {
-                    throw new ContractException(404, $result['code'], $result['message']);
+                if ($result['code'] === 'resource_not_found') {
+                    throw new ContractException(404, 'resource_not_found', $result['message']);
                 }
                 throw new ContractException(503, 'unavailable', 'Replenishment snapshot is unavailable.');
             }
 
-            $pageVersions[] = $result['snapshot_version'];
-            $snapshotVersion = max($snapshotVersion, $result['snapshot_version']);
-            foreach ($result['items'] as $item) {
-                $matches = match ($trigger) {
-                    'rf_shortage' => BcMath::isPositive($item['unreserved_approved_rf_shortage']),
-                    'rop_breach' => $item['low_stock_breach'],
-                    'uncovered_only' => BcMath::isPositive($item['proposed_uncovered_quantity']),
-                    default => true,
-                };
-                if ($matches) {
-                    $items[] = $item;
-                }
-            }
+            $snapshotVersion = $result['snapshot_version'];
+            $items = array_values(array_filter($result['items'], fn (array $item) => match ($trigger) {
+                'rf_shortage' => BcMath::isPositive($item['unreserved_approved_rf_shortage']),
+                'rop_breach' => $item['low_stock_breach'],
+                'uncovered_only' => BcMath::isPositive($item['proposed_uncovered_quantity']),
+                default => true,
+            }));
         }
 
         $page = $this->pagination->paginate(
             $items, $selectors['cursor'] ?? null, $limit, 'replenishment_needs', $actorId, $chapterId,
             $authority->version, $snapshotVersion, [$itemId, $variantId, $trigger, $prefix],
-            [$pageVersions, array_map(fn (array $item) => array_diff_key($item, ['observed_at' => true]), $items)],
+            array_map(fn (array $item) => array_diff_key($item, ['observed_at' => true]), $items),
         );
 
         return response()->json([
