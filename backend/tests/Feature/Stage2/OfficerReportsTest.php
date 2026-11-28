@@ -17,6 +17,7 @@ use App\Models\ReceivingHold;
 use App\Models\Repf;
 use App\Models\RepfLine;
 use App\Models\Stage2RecordHistory;
+use App\Models\StockReservation;
 use App\Models\User;
 use App\Services\Shared\CanonicalJson;
 use Carbon\CarbonImmutable;
@@ -141,8 +142,10 @@ class OfficerReportsTest extends TestCase
         $cursor = $first->json('page.next_cursor');
         $this->assertIsString($cursor);
         $controlNext = $control.'&cursor='.rawurlencode($cursor);
+        $this->travel(1)->seconds();
         $second = $this->get($controlNext)->assertOk()->assertJsonCount(1, 'audit_history')->assertJsonCount(1, 'overdue_exceptions')
-            ->assertJsonPath('page.snapshot_version', $first->json('page.snapshot_version'));
+            ->assertJsonPath('page.snapshot_version', $first->json('page.snapshot_version'))
+            ->assertJsonPath('metadata.generated_at', $first->json('metadata.generated_at'));
         $this->assertNotSame($first->json('audit_history.0.event_id'), $second->json('audit_history.0.event_id'));
         $history(3);
         $this->get($controlNext)->assertConflict()->assertJsonPath('error.code', 'snapshot_stale');
@@ -182,6 +185,10 @@ class OfficerReportsTest extends TestCase
             'requested_quantity' => '10', 'approved_quantity' => '10', 'issued_quantity' => '2',
             'reserved_quantity' => '4', 'canceled_quantity' => '1',
         ]);
+        StockReservation::create([
+            'chapter_id' => $chapter->id, 'lot_id' => $lot->id, 'source_id' => $rf->id, 'source_type' => 'RF',
+            'source_line_id' => $line->id, 'rf_line_id' => $line->id, 'quantity' => '4', 'active_quantity' => '4', 'status' => 'ACTIVE',
+        ]);
         $hold = ReceivingHold::create([
             'chapter_id' => $chapter->id, 'status' => 'held', 'arrived_at' => now()->subHours(26),
             'holding_location_id' => $location->id, 'carrier_or_sender_name' => 'Carrier',
@@ -199,7 +206,9 @@ class OfficerReportsTest extends TestCase
             ->assertJsonPath('data.0.approved_rop', '5')
             ->assertJsonPath('data.0.approved_target', '20')
             ->assertJsonPath('data.0.low_stock_breach', true)
-            ->assertJsonPath('data.0.unreserved_rf_shortage', '3');
+            ->assertJsonPath('data.0.unreserved_rf_shortage', '3')
+            ->assertJsonPath('data.0.rf_reserved', '4')
+            ->assertJsonPath('data.0.available_to_allocate', '1');
         $this->get("$base/reports/procurement?$period")->assertOk()
             ->assertJsonPath('rf_demand_summary.0.issued_quantity', '2')
             ->assertJsonPath('rf_demand_summary.0.canceled_quantity', '1')
@@ -209,7 +218,23 @@ class OfficerReportsTest extends TestCase
             ->assertJsonPath('overdue_exceptions.0.record_id', $hold->id)
             ->assertJsonPath('overdue_exceptions.0.overdue_hours', 2);
 
-        $lot->update(['quantity_on_hand' => '6']);
+        $scoped = $this->officer($chapter, 'RF_APPROVER');
+        $scoped->dutyGrants()->create([
+            'chapter_id' => $chapter->id, 'duty_code' => 'INVENTORY', 'scope' => ['unit_id' => (string) Str::uuid()],
+        ]);
+        $this->asBrowserOfficer($scoped->id)->get("$base/alerts?alert_type=open_rf_shortage")->assertOk()->assertJsonCount(0, 'data');
+        $this->asBrowserOfficer($officer->id);
+
+        $sibling = CatalogueVariant::create([
+            'chapter_id' => $chapter->id, 'item_id' => $item->id, 'unit_id' => $unit->id, 'code' => 'KIT-2', 'label' => 'Kit second size',
+        ]);
+        InventoryLot::create([
+            'chapter_id' => $chapter->id, 'variant_id' => $sibling->id, 'unit_id' => $unit->id, 'location_id' => $location->id,
+            'condition' => 'USABLE', 'custody' => 'STOCKROOM', 'quantity_on_hand' => '1', 'restriction_state' => 'uninterpreted',
+        ]);
+        $this->get("$base/reports/inventory?$period&variant_id={$variant->id}&location_id={$location->id}")->assertOk()
+            ->assertJsonPath('data.0.low_stock_breach', false)
+            ->assertJsonPath('data.0.unreserved_rf_shortage', '3');
         $line->update(['reserved_quantity' => '7']);
         $hold->update(['status' => 'linked_to_source']);
         $this->get("$base/alerts")->assertOk()->assertJsonCount(0, 'data');

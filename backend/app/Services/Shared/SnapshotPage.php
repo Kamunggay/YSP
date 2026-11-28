@@ -4,6 +4,7 @@ namespace App\Services\Shared;
 
 use App\Exceptions\ContractException;
 use App\Services\Authority\ChapterAuthority;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,11 +34,24 @@ final class SnapshotPage
         ?string $rawCursor,
         array $sections,
         array $snapshotContext = [],
+        ?CarbonImmutable $observedAt = null,
     ): array {
         $digest = CanonicalJson::sha256([$sections, $snapshotContext]);
         $version = 1 + ((int) hexdec(substr($digest, 0, 8)) % 2147483647);
 
-        return self::paginate($request, $chapterId, $scope, [CanonicalJson::sha256($filters)], $limit, $rawCursor, $sections, $version, $digest);
+        return self::paginate($request, $chapterId, $scope, [CanonicalJson::sha256($filters)], $limit, $rawCursor, $sections, $version, $digest, $observedAt);
+    }
+
+    public static function observedAt(?string $cursor): CarbonImmutable
+    {
+        $decoded = $cursor === null ? [] : self::decode($cursor);
+        if ($cursor !== null && ! isset($decoded['observed_at'])) {
+            throw new ContractException(400, 'invalid_selector', 'Invalid report cursor.');
+        }
+
+        return isset($decoded['observed_at'])
+            ? CarbonImmutable::parse($decoded['observed_at'], 'UTC')
+            : CarbonImmutable::now('UTC');
     }
 
     private static function paginate(
@@ -50,8 +64,8 @@ final class SnapshotPage
         array $sections,
         int $snapshotVersion,
         ?string $snapshotHash = null,
+        ?CarbonImmutable $observedAt = null,
     ): array {
-
         $authority = $request->attributes->get(ChapterAuthority::class);
         $userId = $request->user()->id;
         $grantsHash = hash('sha256', CanonicalJson::encode($authority->grants->map(fn ($grant) => [
@@ -62,14 +76,7 @@ final class SnapshotPage
         $expires = now('UTC')->addMinutes(5)->timestamp;
 
         if ($rawCursor !== null) {
-            if (strlen($rawCursor) > 1024) {
-                throw new ContractException(400, 'invalid_selector', 'Invalid cursor.');
-            }
-            try {
-                $decoded = json_decode(Crypt::decryptString($rawCursor), true, flags: JSON_THROW_ON_ERROR);
-            } catch (DecryptException|\JsonException) {
-                throw new ContractException(400, 'invalid_selector', 'Invalid cursor.');
-            }
+            $decoded = self::decode($rawCursor);
             if (($decoded['scope'] ?? null) !== $scope
                 || ($decoded['user'] ?? null) !== $userId
                 || ($decoded['chapter'] ?? null) !== $chapterId
@@ -100,6 +107,7 @@ final class SnapshotPage
                 'snapshot' => $snapshotHash,
                 'offset' => $offset + $limit,
                 'expires' => $expires,
+                ...($observedAt === null ? [] : ['observed_at' => $observedAt->toISOString()]),
             ], JSON_THROW_ON_ERROR))
             : null;
 
@@ -109,5 +117,19 @@ final class SnapshotPage
                 'snapshot_version' => max(1, $snapshotVersion),
             ],
         ];
+    }
+
+    private static function decode(string $cursor): array
+    {
+        if (strlen($cursor) > 1024) {
+            throw new ContractException(400, 'invalid_selector', 'Invalid cursor.');
+        }
+        try {
+            $value = json_decode(Crypt::decryptString($cursor), true, flags: JSON_THROW_ON_ERROR);
+        } catch (DecryptException|\JsonException) {
+            throw new ContractException(400, 'invalid_selector', 'Invalid cursor.');
+        }
+
+        return is_array($value) ? $value : [];
     }
 }

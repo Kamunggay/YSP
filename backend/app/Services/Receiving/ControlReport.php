@@ -11,6 +11,7 @@ use App\Models\InventoryLot;
 use App\Models\PurchaseOrder;
 use App\Models\ReceivingDiscrepancy;
 use App\Models\ReceivingHold;
+use App\Models\ReceivingReport;
 use App\Models\Repf;
 use App\Models\Stage2RecordHistory;
 use App\Models\User;
@@ -26,10 +27,10 @@ final class ControlReport
     {
         $variants = Records::variants($chapterId, $filters)->with('unit')->get()->keyBy('id');
         $locationId = $filters['location_id'];
-        $daReceipts = Records::receipts($chapterId, 'da')->orderBy('id')->get()->groupBy('source_line_id');
-        $eligibleLots = InventoryLot::where('chapter_id', $chapterId)->where('source_kind', 'da')
-            ->where('quantity_on_hand', '>', 0)->whereRaw('LOWER(condition) = ?', ['usable'])
-            ->whereRaw('LOWER(custody) = ?', ['stockroom'])->where('immediately_allocatable', true)
+        $daReceipts = Records::receipts($chapterId, 'da')->whereIn('variant_id', $variants->keys())->orderBy('id')->get()->groupBy('source_line_id');
+        $eligibleLots = InventoryLot::where('chapter_id', $chapterId)->where('source_kind', 'da_rm')
+            ->where('quantity_on_hand', '>', 0)->whereIn('condition', ['usable', 'USABLE'])
+            ->whereIn('custody', ['stockroom', 'STOCKROOM'])->where('immediately_allocatable', true)
             ->when($locationId, fn (Builder $query, string $id) => $query->where('location_id', $id))
             ->pluck('origin_source_line_id')->flip();
 
@@ -40,6 +41,7 @@ final class ControlReport
                 ->contains(fn ($receipt) => $receipt->receivingReport->location_id === $locationId));
 
         $status = $filters['status'];
+        $historyLocations = $locationId === null ? [] : $this->recordsAtLocation($chapterId, $locationId);
         $donations = $allLines->filter(fn ($line) => $this->inPeriod($line->donation->created_at, $filters)
             && match ($status) {
                 'all' => true,
@@ -80,7 +82,7 @@ final class ControlReport
         $overdue = $this->overdue($chapterId, $variants->keys(), $allLines, $daReceipts, $filters, $now);
         $history = Records::period(Stage2RecordHistory::where('chapter_id', $chapterId), 'recorded_at', $filters)
             ->orderByDesc('recorded_at')->orderBy('id')->get()
-            ->filter(fn (Stage2RecordHistory $row) => $this->matchesHistory($row, $variants->keys(), $filters, $allLines, $overdue))
+            ->filter(fn (Stage2RecordHistory $row) => $this->matchesHistory($row, $variants->keys(), $filters, $allLines, $overdue, $historyLocations))
             ->values();
         $actors = User::whereKey($resolutions->pluck('actor_id')->merge($history->pluck('actor_user_id'))->unique()->values()->all())
             ->get()->keyBy('id');
@@ -184,7 +186,7 @@ final class ControlReport
                 }
                 $receipts = $daReceipts->get($line->id, collect());
                 $locationId = $selectedLocation ?? $receipts->first()?->receivingReport->location_id;
-                $since = CarbonImmutable::parse($da->acknowledgment['signed_at'] ?? $da->created_at, 'UTC');
+                $since = CarbonImmutable::parse($da->acknowledgment['committed_at'] ?? $da->acknowledgment['signed_at'] ?? $da->created_at, 'UTC');
                 $add('unresolved_uninterpreted_restriction', $da, $da->reference, $locationId, 'CHAPTER_HEAD', $since,
                     (int) config('stage2.sla_hours.uninterpreted_restriction'), 'Donation still has an uninterpreted donor restriction.');
             }
@@ -210,7 +212,28 @@ final class ControlReport
         return $user === null ? ['user_id' => $id, 'display_name' => 'Former officer'] : RepfResource::actor($user);
     }
 
-    private function matchesHistory(Stage2RecordHistory $row, Collection $variants, array $filters, Collection $donations, array $overdue): bool
+    private function recordsAtLocation(string $chapterId, string $locationId): array
+    {
+        $rms = ReceivingReport::where('chapter_id', $chapterId)->where('location_id', $locationId)
+            ->get(['id', 'source_id', 'source_kind', 'status']);
+        $location = CatalogueLocation::where('chapter_id', $chapterId)->findOrFail($locationId);
+        $poIds = $rms->where('source_kind', 'po')->where('status', 'posted')->pluck('source_id');
+        $orders = PurchaseOrder::where('chapter_id', $chapterId)->where(fn (Builder $query) => $query
+            ->whereIn('id', $poIds)->orWhereIn('delivery_location', [$locationId, $location->name]))
+            ->get(['id', 'repf_id']);
+        $rfLines = Records::rfLinesAtLocation($chapterId, $locationId);
+        $repfs = Repf::where('chapter_id', $chapterId)
+            ->whereHas('lines', fn (Builder $lines) => $lines->whereIn('rf_line_id', array_keys($rfLines)))
+            ->pluck('id')->merge($orders->pluck('repf_id'));
+
+        return [
+            'receiving_report' => $rms->pluck('id')->flip()->all(),
+            'purchase_order' => $orders->pluck('id')->flip()->all(),
+            'repf' => $repfs->flip()->all(),
+        ];
+    }
+
+    private function matchesHistory(Stage2RecordHistory $row, Collection $variants, array $filters, Collection $donations, array $overdue, array $locations): bool
     {
         $snapshot = $row->snapshot_json;
         $status = $snapshot['status'] ?? null;
@@ -221,7 +244,9 @@ final class ControlReport
             return false;
         }
         if ($filters['location_id'] !== null && $daLines->isEmpty()
-            && ($snapshot['location_id'] ?? $snapshot['holding_location_id'] ?? null) !== $filters['location_id']) {
+            && ($snapshot['location_id'] ?? $snapshot['holding_location_id'] ?? null) !== $filters['location_id']
+            && ! isset($locations[$row->record_kind][$row->record_id])
+            && ! isset($locations['receiving_report'][$snapshot['rm_id'] ?? ''])) {
             return false;
         }
 

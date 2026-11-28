@@ -9,7 +9,6 @@ use App\Services\Inventory\InventoryReport;
 use App\Services\Procurement\ProcurementReport;
 use App\Services\Receiving\ControlReport;
 use App\Services\Shared\SnapshotPage;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -21,7 +20,7 @@ final class Stage2ReportController
         $print = $request->route()->defaults['print'];
         [$filters, $limit, $cursor] = Stage2ReportInput::filters($request, $chapterId, $kind, $print);
         $authority = $request->attributes->get(ChapterAuthority::class);
-        $now = CarbonImmutable::now('UTC');
+        $now = SnapshotPage::observedAt($cursor);
 
         [$sections, $totals, $labels] = match ($kind) {
             'inventory' => app(InventoryReport::class)->build($chapterId, $filters, $now),
@@ -47,6 +46,6 @@ final class Stage2ReportController
 
         return response()->json(['metadata' => $metadata, ...$labels, 'totals' => $totals]
             + SnapshotPage::sections($request, $chapterId, "reports.$kind", $filters, $limit, $cursor, $sections,
-                [$authority->chapter->name, $totals, $labels]));
+                [$authority->chapter->name, $totals, $labels], $now));
     }
 }

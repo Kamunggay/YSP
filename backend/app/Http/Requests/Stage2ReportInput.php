@@ -80,7 +80,7 @@ final class Stage2ReportInput
     {
         if (! preg_match('/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/', $value, $parts)
             || ! checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])
-            || (int) $parts[1] < 1000) {
+        ) {
             throw new ContractException(400, 'invalid_selector', 'Use valid date_from and date_to dates.');
         }
 

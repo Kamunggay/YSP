@@ -315,6 +315,14 @@ class ReceivingWorkflowTest extends TestCase
         $this->get("/api/v1/chapters/{$chapter->id}/alerts?alert_type=open_receiving_discrepancy")->assertOk()
             ->assertJsonPath('data.0.record_id', $discrepancyId)
             ->assertJsonPath('data.0.record_reference', $rm1Ref);
+        $audit = $this->get("$reports/control?$period")->assertOk()->json('audit_history');
+        $this->assertTrue(collect($audit)->contains('record_id', $discrepancyId));
+
+        $this->travelTo(ReceivingDiscrepancy::findOrFail($discrepancyId)->created_at->addHours(74)->addMinute());
+        $late = $this->asBrowserOfficer($receiver->id)->get("$reports/control?$period&status=discrepancy_open")->assertOk();
+        $late->assertJsonPath('overdue_exceptions.0.record_id', $discrepancyId)
+            ->assertJsonPath('overdue_exceptions.0.overdue_hours', 3);
+        $this->travelBack();
 
         // Posted RM is immutable (cannot replace or cancel)
         $this->write($receiver, "$rmUrl/$rm1Id/cancel", [
@@ -621,10 +629,10 @@ class ReceivingWorkflowTest extends TestCase
         $period = "date_from=$date&date_to=$date&location_id={$location->id}";
         $control = $this->get("$reports/control?$period")->assertOk()
             ->assertJsonPath('totals.uninterpreted_donation_count', 1);
-        $donations = collect($control->json('donation_restrictions'))->keyBy('variant_id');
-        $this->assertFalse($donations[$daLine1->variant_id]['allocatable_now']);
-        $this->assertTrue($donations[$daLine2->variant_id]['allocatable_now']);
-        $this->assertSame('uninterpreted', $donations[$daLine1->variant_id]['restriction']['state']);
+        $donations = collect($control->json('donation_restrictions'))->keyBy('restriction.state');
+        $this->assertFalse($donations['uninterpreted']['allocatable_now']);
+        $this->assertTrue($donations['bounded']['allocatable_now']);
+        $this->assertSame('10', $donations['uninterpreted']['received_quantity']);
         $this->get("$reports/inventory?$period&status=with_uninterpreted_restriction")->assertOk()
             ->assertJsonPath('data.0.restriction_state', 'uninterpreted')
             ->assertJsonPath('data.0.available_to_allocate', '0');

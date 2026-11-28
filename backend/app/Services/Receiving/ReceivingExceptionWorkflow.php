@@ -220,6 +220,10 @@ final class ReceivingExceptionWorkflow
 
                 $formatted = ReceivingResource::discrepancy($discrepancy);
                 $operationId = (string) Str::uuid();
+                self::recordDiscrepancyHistory(
+                    $formatted, $actorId, $operationId, $now, $discrepancy->status,
+                    $input['reason'] ?? $input['review_notes'] ?? $input['notification_notes'] ?? null,
+                );
                 $result = [
                     'data' => [
                         'operation_id' => $operationId,
@@ -595,5 +599,25 @@ final class ReceivingExceptionWorkflow
         return Stage2RecordHistory::where('chapter_id', $hold->chapter_id)
             ->where('record_kind', 'receiving_hold')
             ->where('record_id', $hold->id);
+    }
+
+    public static function recordDiscrepancyHistory(
+        array $snapshot, string $actorId, string $operationId, CarbonImmutable $recordedAt, string $action, ?string $reason,
+    ): void {
+        Stage2RecordHistory::create([
+            'chapter_id' => $snapshot['chapter_id'],
+            'record_kind' => 'receiving_discrepancy',
+            'record_id' => $snapshot['id'],
+            'sequence_no' => $snapshot['version'],
+            'version' => $snapshot['version'],
+            'material_version' => $snapshot['material_version'],
+            'is_version_snapshot' => true,
+            'event_type' => $action,
+            'actor_user_id' => $actorId,
+            'reason' => $reason,
+            'snapshot_json' => $snapshot,
+            'operation_json' => ['operation_id' => $operationId],
+            'recorded_at' => $recordedAt,
+        ]);
     }
 }

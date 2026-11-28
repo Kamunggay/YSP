@@ -27,7 +27,7 @@ final class OfficerAlertController
         }
         $limit = Stage2ReportInput::limit($selectors);
         $now = CarbonImmutable::now('UTC');
-        $rows = $alerts->build($chapterId, $duties, $filters, $now);
+        $rows = $alerts->build($authority, $duties, $filters, $now);
 
         return response()->json([
             'caller_matched_duties' => $duties,

@@ -20,12 +20,10 @@ final class ProcurementReport
     {
         $variants = Records::variants($chapterId, $filters)->with('unit')->orderBy('id')->get()->keyBy('id');
         $locations = CatalogueLocation::where('chapter_id', $chapterId)->get()->keyBy('id');
-        $receipts = Records::receipts($chapterId, 'po')
-            ->when($filters['location_id'], fn (Builder $query, string $id) => $query->whereHas('receivingReport', fn (Builder $rm) => $rm->where('location_id', $id)))
+        $receipts = Records::receipts($chapterId, 'po')->whereIn('variant_id', $variants->keys())
             ->orderBy('id')->get()->groupBy('source_line_id');
         $discrepancies = ReceivingDiscrepancy::where('chapter_id', $chapterId)->where('source_kind', 'po')
-            ->when($filters['location_id'], fn (Builder $query, string $id) => $query->whereHas('receivingReport', fn (Builder $rm) => $rm->where('location_id', $id)))
-            ->get()->groupBy('source_line_id');
+            ->whereIn('variant_id', $variants->keys())->get()->groupBy('source_line_id');
         $priority = collect(Records::policy($chapterId, 'allocation_priority', 'CHAPTER_HEAD', 'AllocationPriorityPolicyValue', $now)['priorities'] ?? [])
             ->pluck('rank', 'requesting_unit_id');
         $rfLocations = $filters['location_id'] === null ? null : Records::rfLinesAtLocation($chapterId, $filters['location_id']);
@@ -54,17 +52,22 @@ final class ProcurementReport
         $orderLines = PurchaseOrderLine::whereIn('variant_id', $variants->keys())
             ->whereHas('purchaseOrder', fn (Builder $query) => Records::period($query->where('chapter_id', $chapterId), 'created_at', $filters))
             ->with(['purchaseOrder', 'unit'])->orderBy('id')->get();
-        $poRows = $orderLines->map(function (PurchaseOrderLine $line) use ($variants, $receipts, $discrepancies, $locations, $filters) {
+        $lineLocations = function (PurchaseOrderLine $line) use ($receipts, $locations): Collection {
+            $receiving = $receipts->get($line->id, collect())->sortByDesc(fn ($receipt) => $receipt->receivingReport->posted_at)
+                ->map(fn ($receipt) => $receipt->receivingReport->location_id);
+            $destination = Records::deliveryLocation($line->purchaseOrder->delivery_location, $locations)?->id;
+
+            return $receiving->push($destination)->filter()->unique()->values();
+        };
+        $locationId = $filters['location_id'];
+        if ($locationId !== null) {
+            $orderLines = $orderLines->filter(fn (PurchaseOrderLine $line) => $lineLocations($line)->contains($locationId));
+        }
+        $poRows = $orderLines->map(function (PurchaseOrderLine $line) use ($variants, $receipts, $discrepancies, $lineLocations, $locationId) {
             $order = $line->purchaseOrder;
             $row = PurchaseOrderResource::line($line);
             $lineReceipts = $receipts->get($line->id, collect());
-            $locationId = $lineReceipts->sortByDesc(fn ($receipt) => $receipt->receivingReport->posted_at)
-                ->first()?->receivingReport->location_id ?? Records::deliveryLocation($order->delivery_location, $locations)?->id;
             $exceptions = $discrepancies->get($line->id, collect());
-            $accepted = $filters['location_id'] === null ? $row['accepted_quantity']
-                : Records::sum($lineReceipts, 'accepted_quantity', $line->quantity_scale);
-            $rejected = $filters['location_id'] === null ? $row['rejected_or_disputed_quantity']
-                : BcMath::format(BcMath::add(Records::sum($lineReceipts, 'damaged_quantity', 6), Records::sum($lineReceipts, 'rejected_quantity', 6)), $line->quantity_scale);
 
             return [
                 'po_id' => $order->id, 'po_line_id' => $line->id, 'po_reference' => $order->po_reference,
@@ -72,20 +75,20 @@ final class ProcurementReport
                 'linked_demand_canceled' => $line->linked_demand_canceled,
                 'variant_id' => $line->variant_id, 'variant_code' => $variants->get($line->variant_id)->code,
                 'unit_id' => $line->unit_id, 'unit_code' => $line->unit->code, 'quantity_scale' => $line->quantity_scale,
-                'location_id' => $locationId, 'ordered_quantity' => $row['ordered_quantity'], 'accepted_quantity' => $accepted,
-                'rejected_or_disputed_quantity' => $rejected, 'outstanding_quantity' => $row['outstanding_quantity'],
+                'location_id' => $locationId ?? $lineLocations($line)->first(), 'ordered_quantity' => $row['ordered_quantity'], 'accepted_quantity' => $row['accepted_quantity'],
+                'rejected_or_disputed_quantity' => $row['rejected_or_disputed_quantity'], 'outstanding_quantity' => $row['outstanding_quantity'],
                 'ordered_total_php' => $line->line_total_php, 'accepted_value_php' => Records::sum($lineReceipts, 'accepted_value_php'),
                 'open_discrepancy_count' => $exceptions->whereIn('status', Records::OPEN_DISCREPANCY)->count(),
                 'resolved_discrepancy_count' => $exceptions->where('status', 'resolved')->count(),
             ];
-        })->filter(fn ($row) => $filters['location_id'] === null || $row['location_id'] === $filters['location_id']);
+        });
 
-        $locationRepfs = $poRows->pluck('repf_id')->flip();
+        $locationRepfLines = $orderLines->pluck('repf_line_id')->flip();
         $repfs = Records::period(Repf::where('chapter_id', $chapterId), 'created_at', $filters)->with(['lines', 'quotations'])
-            ->orderBy('id')->get()->map(function (Repf $repf) use ($variants, $locationRepfs, $rfLocations) {
+            ->orderBy('id')->get()->map(function (Repf $repf) use ($variants, $locationRepfLines, $rfLocations) {
                 $lines = $repf->lines->whereIn('variant_id', $variants->keys());
-                if ($rfLocations !== null && ! $locationRepfs->has($repf->id)) {
-                    $lines = $lines->filter(fn ($line) => isset($rfLocations[$line->rf_line_id]));
+                if ($rfLocations !== null) {
+                    $lines = $lines->filter(fn ($line) => isset($rfLocations[$line->rf_line_id]) || $locationRepfLines->has($line->id));
                 }
                 if ($lines->isEmpty()) {
                     return null;

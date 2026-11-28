@@ -327,6 +327,10 @@ final class ReceivingReportWorkflow
                 }
 
                 foreach ($createdDiscrepancies as $discrepancy) {
+                    $discrepancy->setRelation('receivingReport', $rm);
+                    ReceivingExceptionWorkflow::recordDiscrepancyHistory(
+                        ReceivingResource::discrepancy($discrepancy), $actorId, $operationId, $now, 'opened', $discrepancy->discrepancy_notes,
+                    );
                     $this->outbox->recordIntent(
                         'stage2.receiving-discrepancy.changed.v1',
                         $chapterId,

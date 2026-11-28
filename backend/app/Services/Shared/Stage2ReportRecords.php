@@ -93,11 +93,16 @@ final class Stage2ReportRecords
 
     public static function rfLinesAtLocation(string $chapterId, string $locationId): array
     {
-        return DB::table('rf_reservation_allocations as allocations')
-            ->join('inventory_lots as lots', 'lots.id', '=', 'allocations.lot_id')
-            ->join('stock_reservations as reservations', 'reservations.id', '=', 'allocations.reservation_id')
-            ->where('allocations.chapter_id', $chapterId)->where('lots.chapter_id', $chapterId)
-            ->where('lots.location_id', $locationId)->distinct()->pluck('reservations.rf_line_id')->flip()->all();
+        $lots = DB::table('inventory_lots')->where('chapter_id', $chapterId)->where('location_id', $locationId)->select('id');
+        $issued = DB::table('actual_issue_lines')->whereIn('lot_id', clone $lots)
+            ->whereIn('actual_issue_id', DB::table('actual_issues')->where('chapter_id', $chapterId)->where('status', 'posted')->select('id'))
+            ->select('requisition_line_id');
+        $allocations = DB::table('rf_reservation_allocations')->where('chapter_id', $chapterId)
+            ->whereIn('lot_id', clone $lots)->select('reservation_id');
+
+        return DB::table('stock_reservations')->where('chapter_id', $chapterId)->whereNotNull('rf_line_id')
+            ->where(fn ($query) => $query->whereIn('id', $allocations)->orWhereIn('lot_id', $lots))
+            ->select('rf_line_id')->union($issued)->pluck('rf_line_id')->flip()->all();
     }
 
     public static function sum(Collection $rows, string $field, int $scale = 2): string

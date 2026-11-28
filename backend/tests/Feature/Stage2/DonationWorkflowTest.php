@@ -497,6 +497,15 @@ class DonationWorkflowTest extends TestCase
             ->assertJsonPath('data.0.resource_id', $lot->id)
             ->assertJsonPath('data.0.da_line_id', $line1Id);
 
+        $date = now('Asia/Manila')->toDateString();
+        $report = "/api/v1/chapters/{$chapter->id}/reports/control";
+        $control = $this->asBrowserOfficer($approver->id)->get("$report?date_from=$date&date_to=$date")->assertOk();
+        $control->assertJsonPath('totals.resolution_count', 3)
+            ->assertJsonFragment(['previous_state' => 'uninterpreted', 'resolved_state' => 'uninterpreted'])
+            ->assertJsonFragment(['evidence_id' => $applyPaper2['evidence_id'], 'affected_lot_count' => 1])
+            ->assertJsonFragment(['action' => 'resolve_donation_restriction', 'record_id' => $daId]);
+        $this->get("$report/print?date_from=$date&date_to=$date")->assertOk()->assertDontSee('/evidence/', false);
+
         // Recovery via /donation-operations/by-key and /{operation_id}
         $opId = $applied->json('data.operation_id');
         $byKeyUrl = "/api/v1/chapters/{$chapter->id}/donation-operations/by-key?operation_name=resolveDonationRestriction&action_key={$resKey}";

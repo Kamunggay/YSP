@@ -11,6 +11,7 @@ use App\Models\PolicyRecord;
 use App\Models\PurchaseOrderLine;
 use App\Models\RfReservationAllocation;
 use App\Models\StockHoldRange;
+use App\Models\StockReservation;
 use App\Services\Authority\ChapterAuthority;
 use App\Services\Shared\BcMath;
 use App\Services\Shared\Stage2ReportRecords as Records;
@@ -39,30 +40,41 @@ final class InventoryReport
         $variants = Records::variants($chapterId, $filters)->with(['item', 'unit'])->orderBy('id')->get()->keyBy('id');
         $locations = CatalogueLocation::where('chapter_id', $chapterId)->orderBy('id')->get()->keyBy('id');
         $thresholds = $this->thresholds($chapterId, $now, $variants);
+        $breaches = $this->breaches($chapterId, $variants, $thresholds);
         $lots = InventoryLot::where('chapter_id', $chapterId)->whereIn('variant_id', $variants->keys())
+            ->when($filters['location_id'], fn (Builder $query, string $id) => $query->where('location_id', $id))
             ->with('custodian')->orderBy('id')->get();
-        $holds = StockHoldRange::where('chapter_id', $chapterId)
+        $lotIds = $lots->modelKeys();
+        $holds = StockHoldRange::where('chapter_id', $chapterId)->whereIn('lot_id', $lotIds)
             ->whereHas('hold', fn (Builder $query) => $query->where('status', 'active'))
             ->get()->groupBy('lot_id');
-        $reservations = RfReservationAllocation::where('chapter_id', $chapterId)->where('status', 'active')
+        $reservations = RfReservationAllocation::where('chapter_id', $chapterId)->whereIn('lot_id', $lotIds)->where('status', 'active')
             ->whereHas('reservation', fn (Builder $query) => $query->where('status', 'ACTIVE'))
             ->get()->groupBy('lot_id');
-        $movements = InventoryMovement::where('chapter_id', $chapterId)->whereIn('variant_id', $variants->keys())
+        $legacyReservations = StockReservation::where('chapter_id', $chapterId)->whereIn('lot_id', $lotIds)
+            ->where('status', 'ACTIVE')->whereIn('source_type', ['RF', 'rf'])
+            ->whereDoesntHave('allocations', fn (Builder $query) => $query->where('status', 'active'))
+            ->get()->groupBy('lot_id');
+        $movements = InventoryMovement::where('chapter_id', $chapterId)->whereIn('lot_id', $lotIds)
+            ->whereIn('movement_kind', ['accepted_receipt', 'opening_accepted_receipt'])
             ->orderBy('created_at')->orderBy('id')->get()->groupBy('lot_id');
-        $issues = ActualIssueLine::whereIn('lot_id', $lots->modelKeys())
+        $issues = ActualIssueLine::whereIn('lot_id', $lotIds)
             ->whereHas('actualIssue', fn (Builder $query) => Records::period($query->where('chapter_id', $chapterId)
                 ->where('status', 'posted'), 'posted_at', $filters))->get()->groupBy('lot_id');
         $receivingLocations = Records::receiptLocations($chapterId, 'po');
         $commitments = PurchaseOrderLine::whereIn('variant_id', $variants->keys())->where('outstanding_quantity', '>', 0)
             ->whereHas('purchaseOrder', fn (Builder $query) => $query->where('chapter_id', $chapterId)->whereIn('status', Records::OPEN_PO))
             ->with('purchaseOrder')->orderBy('id')->get()->groupBy('variant_id');
-        $demand = Records::rfLines($chapterId)->get()->groupBy('variant_id');
-        $breaches = $this->breaches($lots, $thresholds);
+        $rfLocations = $filters['location_id'] === null ? null : Records::rfLinesAtLocation($chapterId, $filters['location_id']);
+        $demand = Records::rfLines($chapterId)->whereIn('variant_id', $variants->keys())
+            ->when($rfLocations !== null, fn (Builder $query) => $query->whereIn('id', array_keys($rfLocations ?? [])))
+            ->get()->groupBy('variant_id');
         $rows = [];
+        $stockroomRows = [];
 
         foreach ($lots as $lot) {
             $location = $locations->get($lot->location_id);
-            if ($location === null || ($filters['location_id'] && $location->id !== $filters['location_id'])) {
+            if ($location === null) {
                 continue;
             }
             $variant = $variants->get($lot->variant_id);
@@ -92,52 +104,53 @@ final class InventoryReport
             $key = implode('|', [$variant->id, $location->id, $lot->custodian_user_id, $condition, $custody, $restriction, $eligibility]);
             $rows[$key] ??= $this->row($variant, $location, $thresholds, $breaches, $condition, $custody, $restriction, $eligibility,
                 $lot->custodian_user_id, $lot->custodian?->name);
+            if ($usable && $restriction === 'unrestricted') {
+                $stockroomRows[$variant->id] ??= $key;
+            }
+            $legacyReserved = $legacyReservations->get($lot->id, collect())->reduce(
+                fn (string $total, $reservation) => BcMath::add($total, $reservation->active_quantity ?? $reservation->quantity), '0'
+            );
+            $unavailable = BcMath::add(BcMath::intervalUnionLength([...$holdRanges, ...$reservedRanges]), $legacyReserved);
             $lotMovements = $movements->get($lot->id, collect());
             $amounts = [
                 'usable_stockroom_on_hand' => $usable ? $lot->quantity_on_hand : '0',
                 'available_to_allocate' => $usable && $restriction !== 'uninterpreted' && $lot->immediately_allocatable !== false
-                    ? BcMath::max('0', BcMath::sub($lot->quantity_on_hand, BcMath::intervalUnionLength([...$holdRanges, ...$reservedRanges])))
+                    ? BcMath::max('0', BcMath::sub($lot->quantity_on_hand, $unavailable))
                     : '0',
-                'rf_reserved' => BcMath::intervalUnionLength($reservedRanges),
+                'rf_reserved' => BcMath::add(BcMath::intervalUnionLength($reservedRanges), $legacyReserved),
                 'quarantined_rejected' => $condition === 'usable' ? '0' : $lot->quantity_on_hand,
                 'active_stock_hold' => $held,
                 'period_issues_quantity' => Records::sum($issues->get($lot->id, collect()), 'issued_quantity', 6),
                 'usable_valuation_php' => $usable ? $this->valuation($lot, $lotMovements) : '0',
             ];
-            foreach ($lotMovements as $movement) {
-                if (! $this->withinPeriod($movement->created_at, $filters)) {
-                    continue;
-                }
-                if (in_array($movement->movement_kind, ['accepted_receipt', 'opening_accepted_receipt'], true)) {
-                    $amounts['period_receipts_quantity'] = BcMath::add($amounts['period_receipts_quantity'] ?? '0', $movement->quantity);
-
-                }
-            }
+            $amounts['period_receipts_quantity'] = Records::sum($lotMovements->filter(
+                fn (InventoryMovement $movement) => $this->withinPeriod($movement->created_at, $filters),
+            ), 'quantity', 6);
             foreach ($amounts as $field => $amount) {
                 $rows[$key][$field] = BcMath::add($rows[$key][$field], $amount);
             }
         }
 
-        $defaultLocation = $locations->first(fn ($location) => $location->kind === 'stockroom' && $location->state === 'active');
+        $stockrooms = $locations->filter(fn ($location) => $location->kind === 'stockroom' && $location->state === 'active');
+        $reportingLocation = $filters['location_id'] === null ? $stockrooms->first() : $stockrooms->get($filters['location_id']);
         foreach ($variants as $variant) {
-            $variantRows = collect($rows)->where('variant_id', $variant->id);
-            $location = $defaultLocation;
-            $variantDemand = $demand->get($variant->id, collect());
-            $shortage = $filters['location_id'] === null ? $variantDemand->reduce(
+            $shortage = $demand->get($variant->id, collect())->reduce(
                 fn (string $total, $line) => BcMath::add($total, Records::shortage($line)), '0'
-            ) : '0';
-            if ($location && ($filters['location_id'] === null || $filters['location_id'] === $location->id)
-                && (isset($breaches[$variant->id]) || BcMath::isPositive($shortage))) {
-                $key = $variantRows->firstWhere('restriction_state', 'unrestricted');
-                $rowKey = $key === null ? "$variant->id|$location->id|demand" : $variantRows->search($key);
-                $rows[$rowKey] ??= $this->row($variant, $location, $thresholds, $breaches);
-                $rows[$rowKey]['unreserved_rf_shortage'] = $shortage;
+            );
+            $stockroomKey = $stockroomRows[$variant->id] ?? null;
+            if ($stockroomKey !== null) {
+                $rows[$stockroomKey]['unreserved_rf_shortage'] = $shortage;
+            } elseif ($reportingLocation && (isset($breaches[$variant->id]) || BcMath::isPositive($shortage))) {
+                $key = "$variant->id|$reportingLocation->id|demand";
+                $rows[$key] = $this->row($variant, $reportingLocation, $thresholds, $breaches);
+                $rows[$key]['unreserved_rf_shortage'] = $shortage;
             }
+
             foreach ($commitments->get($variant->id, collect()) as $line) {
                 $po = $line->purchaseOrder;
                 $location = $locations->get($receivingLocations->get($po->id)?->first())
                     ?? Records::deliveryLocation($po->delivery_location, $locations)
-                    ?? ($filters['location_id'] === null ? $defaultLocation : null);
+                    ?? ($filters['location_id'] === null && $stockrooms->count() === 1 ? $stockrooms->first() : null);
                 if ($location === null || ($filters['location_id'] !== null && $filters['location_id'] !== $location->id)) {
                     continue;
                 }
@@ -218,16 +231,18 @@ final class InventoryReport
 
     private function valuation(InventoryLot $lot, Collection $movements): string
     {
-        $receipt = $movements->first(fn ($movement) => in_array($movement->movement_kind, ['accepted_receipt', 'opening_accepted_receipt'], true));
-        if ($receipt === null) {
+        $receipt = $movements->first();
+        if ($receipt === null || ! BcMath::isPositive($receipt->quantity)) {
             return '0.00';
         }
-        if ($receipt->unit_valuation_php !== null) {
-            return (string) BigDecimal::of($receipt->unit_valuation_php)->multipliedBy($lot->quantity_on_hand)->toScale(2, RoundingMode::HalfUp);
+        $recordedValue = $receipt->total_value_php ?? $receipt->accepted_value;
+        if ($recordedValue !== null) {
+            return (string) BigDecimal::of($recordedValue)->multipliedBy($lot->quantity_on_hand)
+                ->dividedBy($receipt->quantity, 2, RoundingMode::HalfUp);
         }
 
-        return (string) BigDecimal::of($receipt->accepted_value)->multipliedBy($lot->quantity_on_hand)
-            ->dividedBy($receipt->quantity, 2, RoundingMode::HalfUp);
+        return (string) BigDecimal::of($receipt->unit_valuation_php ?? '0')
+            ->multipliedBy($lot->quantity_on_hand)->toScale(2, RoundingMode::HalfUp);
     }
 
     public function thresholds(string $chapterId, CarbonImmutable $now, Collection $variants): array
@@ -250,16 +265,26 @@ final class InventoryReport
         )])->filter()->all();
     }
 
-    public function breaches(Collection $lots, array $thresholds): array
+    public function breaches(string $chapterId, Collection $variants, array $thresholds): array
     {
-        $usable = $lots->filter(fn (InventoryLot $lot) => strtolower($lot->condition) === 'usable'
-            && strtolower($lot->custody) === 'stockroom' && $lot->restriction_state !== 'uninterpreted')->groupBy('variant_id');
+        $ropVariants = $variants->filter(fn (CatalogueVariant $variant) => isset($thresholds[$variant->id]['rop']));
+        if ($ropVariants->isEmpty()) {
+            return [];
+        }
+
+        $siblings = Records::variants($chapterId)->whereIn('item_id', $ropVariants->pluck('item_id')->unique())
+            ->get(['id', 'item_id'])->keyBy('id');
+        $usable = InventoryLot::where('chapter_id', $chapterId)->whereIn('variant_id', $siblings->keys())
+            ->whereIn('condition', ['USABLE', 'usable'])->whereIn('custody', ['STOCKROOM', 'stockroom'])
+            ->get(['variant_id', 'unit_id', 'quantity_on_hand', 'updated_at'])
+            ->groupBy(fn (InventoryLot $lot) => $siblings->get($lot->variant_id)->item_id.'|'.$lot->unit_id);
         $breaches = [];
-        foreach ($thresholds as $variantId => $threshold) {
-            $rop = $threshold['rop']['quantity'] ?? null;
-            $balance = Records::sum($usable->get($variantId, collect()), 'quantity_on_hand', 6);
-            if ($rop !== null && BcMath::comp($balance, $rop) <= 0) {
-                $breaches[$variantId] = $balance;
+        foreach ($ropVariants as $variant) {
+            $rop = $thresholds[$variant->id]['rop'];
+            $lots = $usable->get($variant->item_id.'|'.$variant->unit_id, collect());
+            $balance = Records::sum($lots, 'quantity_on_hand', 6);
+            if (BcMath::comp($balance, $rop['quantity']) <= 0) {
+                $breaches[$variant->id] = max($rop['effective_from'], $lots->max('updated_at'));
             }
         }
 

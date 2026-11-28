@@ -4,11 +4,11 @@ namespace App\Services\Inventory;
 
 use App\Http\Resources\RepfResource;
 use App\Models\Donation;
-use App\Models\InventoryLot;
 use App\Models\PurchaseOrder;
 use App\Models\ReceivingDiscrepancy;
 use App\Models\ReceivingHold;
 use App\Models\Repf;
+use App\Services\Authority\ChapterAuthority;
 use App\Services\Shared\BcMath;
 use App\Services\Shared\Stage2ReportRecords as Records;
 use Carbon\CarbonImmutable;
@@ -23,18 +23,25 @@ final class OfficerAlerts
 
     public function __construct(private InventoryReport $inventory) {}
 
-    public function build(string $chapterId, array $duties, array $filters, CarbonImmutable $now): array
+    public function build(ChapterAuthority $authority, array $duties, array $filters, CarbonImmutable $now): array
     {
+        $chapterId = $authority->chapter->id;
         $alerts = [];
-        $add = function (string $type, string $severity, string $kind, array $responsible, string $route, string $summary, callable $rows) use ($chapterId, $duties, $filters, &$alerts): void {
+        $add = function (string $type, string $severity, string $kind, array $responsible, string $route, string $summary, callable $rows) use ($authority, $chapterId, $duties, $filters, &$alerts): void {
             $eligible = array_values(array_intersect($responsible, $duties));
-            $duty = $filters['responsible_duty'] ?? ($eligible[0] ?? null);
-            if (! in_array($duty, $eligible, true)
-                || ($filters['alert_type'] ?? $type) !== $type || ($filters['severity'] ?? $severity) !== $severity) {
+            if (isset($filters['responsible_duty'])) {
+                $eligible = array_intersect($eligible, [$filters['responsible_duty']]);
+            }
+            if ($eligible === [] || ($filters['alert_type'] ?? $type) !== $type || ($filters['severity'] ?? $severity) !== $severity) {
                 return;
             }
 
-            foreach ($rows() as [$id, $reference, $detectedAt]) {
+            foreach ($rows() as $row) {
+                [$id, $reference, $detectedAt] = $row;
+                $duty = collect($eligible)->first(fn (string $code) => $authority->allowsDuty($code, $row[3] ?? null));
+                if ($duty === null) {
+                    continue;
+                }
                 $path = str_replace('{id}', $id, $route);
                 $alerts[] = [
                     'alert_key' => "$type:$kind:$id", 'alert_type' => $type, 'severity' => $severity,
@@ -94,7 +101,7 @@ final class OfficerAlerts
             fn () => Records::rfLines($chapterId)->get()
                 ->filter(fn ($line) => $line->rf->status === 'approved' && BcMath::isPositive(Records::shortage($line)))
                 ->unique('rf_id')->sortBy('rf_id')->map(fn ($line) => [
-                    $line->rf_id, $line->rf->rf_number, RepfResource::instant($line->rf->approved_at),
+                    $line->rf_id, $line->rf->rf_number, RepfResource::instant($line->rf->approved_at), $line->rf->requesting_unit_id,
                 ]));
 
         return $alerts;
@@ -104,14 +111,11 @@ final class OfficerAlerts
     {
         $variants = Records::variants($chapterId)->where('is_active', true)->where('state', 'active')->orderBy('id')->get();
         $thresholds = $this->inventory->thresholds($chapterId, $now, $variants);
-        $lots = InventoryLot::where('chapter_id', $chapterId)->whereIn('variant_id', array_keys($thresholds))->get();
-        $breaches = $this->inventory->breaches($lots, $thresholds);
+        $breaches = $this->inventory->breaches($chapterId, $variants, $thresholds);
 
         return $variants->whereIn('id', array_keys($breaches))
             ->map(fn ($variant) => [
-                $variant->id, $variant->code, RepfResource::instant(collect([
-                    $thresholds[$variant->id]['rop']['effective_from'], $lots->where('variant_id', $variant->id)->max('updated_at'),
-                ])->max()),
+                $variant->id, $variant->code, RepfResource::instant($breaches[$variant->id]),
             ]);
     }
 
