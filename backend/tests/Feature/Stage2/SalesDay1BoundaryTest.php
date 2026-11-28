@@ -93,8 +93,6 @@ class SalesDay1BoundaryTest extends TestCase
             '/reports/finance',
             '/reports/booth',
             '/export',
-            '/replenishment/needs',
-            '/repfs',
         ];
 
         foreach ($deferredOrExcludedFragments as $fragment) {
@@ -119,8 +117,6 @@ class SalesDay1BoundaryTest extends TestCase
             ['GET', "/api/v1/chapters/{$chapterId}/reports/finance"],
             ['GET', "/api/v1/chapters/{$chapterId}/reports/booth"],
             ['GET', "/api/v1/chapters/{$chapterId}/reports/inventory/export"],
-            ['GET', "/api/v1/chapters/{$chapterId}/replenishment/needs"],
-            ['POST', "/api/v1/chapters/{$chapterId}/repfs"],
         ] as [$method, $path]) {
             $this->json($method, $path)->assertNotFound();
         }

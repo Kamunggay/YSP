@@ -191,10 +191,11 @@ class InventoryDay1PrepareReceivingTest extends TestCase
         $sourceId = (string) Str::uuid();
         $sourceLineId = (string) Str::uuid();
         $rmLineId = (string) Str::uuid();
+        $label = str_repeat('Shirt ', 19).'— Polo';
 
         $ack = $this->seedEvidenceAcknowledgment($rmId, 'po_supplier_dr');
         $input = $this->makePoInput($rmId, 'RM-2026-0002', $sourceId, 'PO-2026-0001', 1, $ack, [
-            $this->makePoLine($rmLineId, $sourceLineId, $this->variantPcsId, $this->unitPcsId, 0, 'Chapter Shirt / Medium', '50', '40', '0', '10', '240.00', '10 shirts rejected for misaligned print.'),
+            $this->makePoLine($rmLineId, $sourceLineId, $this->variantPcsId, $this->unitPcsId, 0, $label, '50', '40', '0', '10', '240.00', '10 shirts rejected for misaligned print.'),
         ]);
 
         $sourceContext = [
@@ -218,6 +219,7 @@ class InventoryDay1PrepareReceivingTest extends TestCase
 
         $this->assertSame('ready', $result['outcome']);
         $this->assertSame(2, $result['stock_version']);
+        $this->assertSame($label, InventoryLot::findOrFail($result['usable_lots'][0]['lot_id'])->historical_variant_label);
         $this->assertTrue($result['emit_stock_lot_changed_event']);
 
         $this->assertCount(1, $result['usable_lots']);

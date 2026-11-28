@@ -325,7 +325,7 @@ class PrepareReceivingInventoryParticipant
             if (! is_int($ln['variant_material_version']) || $ln['variant_material_version'] < 1
                 || ! is_int($ln['unit_material_version']) || $ln['unit_material_version'] < 1
                 || ! is_int($ln['quantity_scale']) || $ln['quantity_scale'] < 0 || $ln['quantity_scale'] > 6
-                || ! is_string($ln['historical_variant_label']) || trim($ln['historical_variant_label']) === '' || strlen($ln['historical_variant_label']) > 120) {
+                || ! is_string($ln['historical_variant_label']) || trim($ln['historical_variant_label']) === '' || mb_strlen($ln['historical_variant_label']) > 120) {
                 return 'source_not_eligible';
             }
 
